@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datenschutzerklärung - HealthCoach</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: white;
+        }
+        h1 { color: #1a73e8; border-bottom: 3px solid #1a73e8; padding-bottom: 10px; }
+        h2 { color: #1a73e8; margin-top: 30px; }
+        .meta {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 4px solid #1a73e8;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #1a73e8;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+        code {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th { background: #f5f5f5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Zurück zur Startseite</a>
+
+        <h1>Datenschutzerklärung</h1>
+        
+        <div class="meta">
+            <strong>Gültig ab:</strong> 23. Juni 2026<br>
+            <strong>Sprache:</strong> Deutsch | <a href="privacy-policy.html">English</a>
+        </div>
+
+        <h2>1. Verantwortlicher für Datenverarbeitung</h2>
+        <p>
+            <strong>Name:</strong> [IHR NAME HIER]<br>
+            <strong>Email:</strong> [IHRE EMAIL]<br>
+            <strong>Adresse:</strong> [IHRE ADRESSE]
+        </p>
+
+        <h2>2. Einführung</h2>
+        <p>
+            Die HealthCoach App ist eine Fitness- und Gesundheitsüberwachungsanwendung, 
+            die Ihnen hilft, Ihre Trainings-, Ernährungs- und Schlafmuster zu verfolgen. 
+            Diese Datenschutzerklärung erläutert, wie wir Ihre Daten verarbeiten.
+        </p>
+
+        <h2>3. Welche Daten verarbeiten wir?</h2>
+        <table>
+            <tr>
+                <th>Datentyp</th>
+                <th>Quelle</th>
+                <th>Speicherort</th>
+                <th>Rechtfertigung</th>
+            </tr>
+            <tr>
+                <td>Gesundheitsdaten (HealthKit)</td>
+                <td>Apple HealthKit (auf Ihrem Gerät)</td>
+                <td>Bleibt auf Ihrem Gerät</td>
+                <td>Benutzerkontext</td>
+            </tr>
+            <tr>
+                <td>Benutzerprofil</td>
+                <td>Von Ihnen eingegeben</td>
+                <td>Supabase (🇪🇺 EU)</td>
+                <td>Vertraglich notwendig</td>
+            </tr>
+            <tr>
+                <td>Trainings-/Ernährungslogs</td>
+                <td>Von Ihnen eingegeben</td>
+                <td>Supabase (🇪🇺 EU)</td>
+                <td>Vertraglich notwendig</td>
+            </tr>
+            <tr>
+                <td>AI Coaching Anfragen</td>
+                <td>Ihre Abfragen</td>
+                <td>OpenAI (🇺🇸 USA)</td>
+                <td>Berechtigtes Interesse</td>
+            </tr>
+        </table>
+
+        <h2>4. Apple HealthKit</h2>
+        <p>
+            <strong>Daten:</strong> Herzdaten, Trainings- und Fitnessdaten, Schlafmetriken, 
+            Aktivitydaten von Apple Watch und iPhone.
+        </p>
+        <p>
+            <strong>Speicherort:</strong> Diese Daten bleiben auf Ihrem Gerät und Ihrer privaten iCloud. 
+            Die HealthCoach App liest nur mit Ihrer ausdrücklichen Zustimmung darauf zu.
+        </p>
+        <p>
+            <strong>Wichtig:</strong> Apple HealthKit Daten dürfen nicht ohne Ihre Erlaubnis 
+            mit Dritten geteilt werden. Wir verkaufen diese Daten niemals.
+        </p>
+
+        <h2>5. Supabase Datenspeicher</h2>
+        <p>
+            <strong>Speichert:</strong> Benutzerprofil, Ernährungslogs, Trainingshistorie
+        </p>
+        <p>
+            <strong>Speicherort:</strong> 🇪🇺 Europäische Union (EU-Server)
+        </p>
+        <p>
+            <strong>Datenschutz:</strong> Ihre Daten unterliegen vollständig der DSGVO. 
+            Supabase-Server sind in der EU gehostet, daher gibt es keine Datentransfer-Bedenken.
+        </p>
+        <p>
+            <strong>Datenschutzvereinbarung:</strong> Ja, Supabase ist DPA-konform
+        </p>
+        <p>
+            <strong>Aufbewahrung:</strong> Ihre Daten werden auf Supabase gespeichert, 
+            bis Sie Ihr Konto löschen. Bei Kontolöschung werden alle Daten gelöscht.
+        </p>
+
+        <h2>6. OpenAI API (KI Coaching)</h2>
+        <p>
+            <strong>Daten an OpenAI gesendet:</strong> Anonymisierte Trainingszusammenfassungen, 
+            Ihre Coaching-Fragen (Gesundheitsmetriken können enthalten sein)
+        </p>
+        <p>
+            <strong>Speicherort:</strong> 🇺🇸 Vereinigte Staaten (OpenAI Server)
+        </p>
+        <p>
+            <strong>Aufbewahrung:</strong> OpenAI speichert diese Daten für 30 Tage standardmäßig 
+            zur API-Verbesserung. Sie können diese Aufbewahrung widersprechen.
+        </p>
+        <p>
+            <strong>Datenschutz:</strong> OpenAI verwendet Standard Contractual Clauses (SCCs) 
+            für EU-Datentransfers, um DSGVO-Konformität zu gewährleisten.
+        </p>
+        <p>
+            <strong>Datenschutzvereinbarung:</strong> Ja, verfügbar unter: 
+            <a href="https://openai.com/business/terms/" target="_blank">https://openai.com/business/terms/</a>
+        </p>
+        <p>
+            <strong>Opt-out:</strong> Sie können KI Coaching in den App-Einstellungen deaktivieren.
+        </p>
+
+        <h2>7. Sub-Prozessoren</h2>
+        <p>
+            <strong>OpenAI Sub-Prozessoren:</strong> 
+            <a href="https://openai.com/policies/sub-processor-list/" target="_blank">
+                OpenAI Sub-Processor List
+            </a>
+        </p>
+
+        <h2>8. Ihre Rechte nach DSGVO</h2>
+        <p>Sie haben folgende Rechte:</p>
+        <ul>
+            <li><strong>Auskunftsrecht (Art. 15):</strong> Sie können Ihre Daten anfordern</li>
+            <li><strong>Recht auf Löschung (Art. 17):</strong> Sie können Ihr Konto und alle Daten löschen</li>
+            <li><strong>Recht auf Datenportabilität (Art. 20):</strong> Sie können Ihre Daten exportieren</li>
+            <li><strong>Recht auf Berichtigung (Art. 16):</strong> Sie können Ihre Daten bearbeiten</li>
+            <li><strong>Recht auf Widerspruch (Art. 21):</strong> Sie können bestimmte Verarbeitungen ablehnen</li>
+        </ul>
+        <p>Um diese Rechte auszuüben, kontaktieren Sie: [IHRE EMAIL]</p>
+
+        <h2>9. Datensicherheit</h2>
+        <p>
+            Wir implementieren folgende Sicherheitsmaßnahmen:
+        </p>
+        <ul>
+            <li>HTTPS/TLS-Verschlüsselung für alle API-Aufrufe</li>
+            <li>Sichere Passwort-Hashing mit bcrypt</li>
+            <li>Datenbank-Verschlüsselung in Supabase</li>
+            <li>Regelmäßige Sicherheitsupdates</li>
+        </ul>
+
+        <h2>10. Kontakt & Beschwerden</h2>
+        <p>
+            <strong>Fragen zum Datenschutz:</strong> [IHRE EMAIL]
+        </p>
+        <p>
+            <strong>Datenschutzbeschwerde:</strong> Sie haben das Recht, sich bei der 
+            zuständigen Aufsichtsbehörde zu beschweren. In Deutschland: 
+            <a href="https://www.bfdi.bund.de/" target="_blank">Bundesbeauftragte für Datenschutz (BfDI)</a>
+        </p>
+
+        <h2>11. Änderungen dieser Erklärung</h2>
+        <p>
+            Wir können diese Datenschutzerklärung aktualisieren. 
+            Änderungen treten sofort nach Veröffentlichung auf dieser Seite in Kraft. 
+            Das letzte Aktualisierungsdatum steht oben.
+        </p>
+
+        <hr style="margin: 40px 0;">
+        <p style="text-align: center; color: #999; font-size: 12px;">
+            Letzte Aktualisierung: 23. Juni 2026<br>
+            Version 1.0
+        </p>
+    </div>
+</body>
+</html>
