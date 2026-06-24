@@ -98,10 +98,22 @@
                 <td>Contractual necessity</td>
             </tr>
             <tr>
-                <td>AI Coaching Queries</td>
+                <td>AI Coaching Queries (incl. health metrics)</td>
                 <td>Your questions</td>
                 <td>OpenAI (🇺🇸 USA)</td>
-                <td>Legitimate interest</td>
+                <td>Explicit consent (Art. 9(2)(a) GDPR); transfer to USA based on explicit consent (Art. 49(1)(a) GDPR)</td>
+            </tr>
+            <tr>
+                <td>Food search terms &amp; barcode numbers</td>
+                <td>You provide (food search or barcode scan)</td>
+                <td>USDA FoodData Central (🇺🇸 USA) &amp; OpenFoodFacts (🇪🇺 EU)</td>
+                <td>Performance of contract / Legitimate interest (Art. 6(1)(b)/(f) GDPR)</td>
+            </tr>
+            <tr>
+                <td>Account &amp; Login Data (email)</td>
+                <td>You provide</td>
+                <td>Clerk (🇺🇸 USA)</td>
+                <td>Performance of contract (Art. 6(1)(b) GDPR); transfer to USA safeguarded by EU Standard Contractual Clauses</td>
             </tr>
         </table>
 
@@ -137,17 +149,66 @@
             When you delete your account, all data is permanently deleted.
         </p>
 
-        <h2>6. OpenAI API (AI Coaching)</h2>
+        <h2>6. Clerk Authentication</h2>
         <p>
-            <strong>Data Sent to OpenAI:</strong> Anonymized workout summaries, your coaching questions 
-            (may include health metrics)
+            <strong>Provider:</strong> Clerk, Inc.
+        </p>
+        <p>
+            <strong>Stores:</strong> Your email address and authentication/session data used to create your
+            account, sign in, and keep you logged in
+        </p>
+        <p>
+            <strong>Location:</strong> 🇺🇸 United States
+        </p>
+        <p>
+            <strong>Purpose &amp; Legal Basis:</strong> Account creation, login, and session management
+            (Art. 6(1)(b) GDPR — performance of the contract to provide the app).
+        </p>
+        <p>
+            <strong>International Transfer:</strong> Because Clerk processes data in the United States, your
+            account data is transferred to a third country. This transfer is safeguarded by the EU Standard
+            Contractual Clauses (SCCs) agreed under our Data Processing Agreement with Clerk.
+        </p>
+        <p>
+            <strong>Data Processing Agreement:</strong> Yes, in place with Standard Contractual Clauses.
+        </p>
+
+        <h2>7. OpenAI API (AI Coaching)</h2>
+        <p>
+            <strong>Legal basis:</strong> Two separate mandatory consents are required during
+            onboarding before AI Coaching is activated: (1) explicit consent to the processing of
+            your health data for AI coaching purposes (Art. 9(2)(a) GDPR); and (2) explicit consent
+            to the transfer of that data to OpenAI in the United States (Art. 49(1)(a) GDPR). Both
+            consents are mandatory — AI Coaching is not available unless both are given. You may
+            withdraw either consent at any time by disabling AI Coaching in app settings; this does
+            not affect the lawfulness of processing carried out before withdrawal.
+        </p>
+        <p>
+            <strong>Data Sent to OpenAI per coaching request:</strong>
+        </p>
+        <ul>
+            <li>Your <strong>preferred name</strong> (display name from your profile)</li>
+            <li>Your <strong>exact age</strong></li>
+            <li>Your <strong>biological sex</strong> (from Apple Health or manual entry)</li>
+            <li>Your <strong>height and weight</strong> (from Apple Health or manual entry)</li>
+            <li>Your <strong>coaching question</strong> (the message you typed)</li>
+            <li><strong>Relevant memory snippets</strong> — up to 5,000 characters of saved
+                coaching context and notes stored in the app</li>
+            <li><strong>Health analysis summaries</strong> — computed scores and trend analyses
+                produced on your device (not raw sensor readings such as individual HRV samples)</li>
+        </ul>
+        <p>
+            <strong>What is NOT sent to OpenAI:</strong> Your email address, Clerk authentication
+            data, raw HealthKit sensor readings (e.g. individual heart-rate measurements), or your
+            complete chat history.
         </p>
         <p>
             <strong>Location:</strong> 🇺🇸 United States (OpenAI servers)
         </p>
         <p>
-            <strong>Retention:</strong> OpenAI stores this data for 30 days by default for API improvement. 
-            You can request shorter retention.
+            <strong>Retention:</strong> OpenAI retains API request data for up to 30 days by
+            default. We have requested a shorter retention period from OpenAI; this page will be
+            updated once a shorter period is confirmed.
         </p>
         <p>
             <strong>Protection:</strong> OpenAI uses Standard Contractual Clauses (SCCs) 
@@ -161,15 +222,65 @@
             <strong>Opt-out:</strong> You can disable AI coaching in the app settings.
         </p>
 
-        <h2>7. Sub-Processors</h2>
+        <h2>8. Food Database Lookups (Nutrition Feature)</h2>
         <p>
-            <strong>OpenAI Sub-Processors:</strong> 
+            When you search for foods or scan a barcode in the nutrition feature, Pulse sends the
+            search term or barcode number to one or both of the following public food databases to
+            retrieve nutritional information. <strong>No health data, account data, or personal
+            identifiers are included in these requests</strong> — only the food name or barcode
+            number and your device's IP address (inherent to any internet request).
+        </p>
+        <table>
+            <tr>
+                <th>Service</th>
+                <th>Operator</th>
+                <th>Location</th>
+                <th>Data sent</th>
+                <th>Legal basis</th>
+            </tr>
+            <tr>
+                <td><strong>USDA FoodData Central</strong></td>
+                <td>U.S. Department of Agriculture</td>
+                <td>🇺🇸 United States</td>
+                <td>Food search term or barcode number; device IP address</td>
+                <td>Performance of contract / Legitimate interest (Art. 6(1)(b)/(f) GDPR).
+                    Transfer to a third country on the basis of Art. 49(1)(c) GDPR (public
+                    interest / official government database).</td>
+            </tr>
+            <tr>
+                <td><strong>OpenFoodFacts</strong></td>
+                <td>Open Food Facts (French non-profit)</td>
+                <td>🇪🇺 European Union</td>
+                <td>Food search term or barcode number; device IP address</td>
+                <td>Performance of contract / Legitimate interest (Art. 6(1)(b)/(f) GDPR).
+                    No third-country transfer.</td>
+            </tr>
+        </table>
+        <p>
+            Results are cached locally on your device; search terms are never stored on Pulse's
+            servers. Photos taken during barcode scanning are processed entirely on-device and
+            are never transmitted anywhere.
+        </p>
+
+        <h2>9. Sub-Processors</h2>
+        <p>
+            We use the following processors to operate Pulse:
+        </p>
+        <ul>
+            <li><strong>Supabase</strong> (🇪🇺 EU) — database and backend hosting</li>
+            <li><strong>Clerk, Inc.</strong> (🇺🇸 USA) — authentication and account management (transfer safeguarded by EU Standard Contractual Clauses)</li>
+            <li><strong>OpenAI</strong> (🇺🇸 USA) — AI coaching inference (transfer safeguarded by EU Standard Contractual Clauses)</li>
+            <li><strong>USDA FoodData Central</strong> (🇺🇸 USA) — food/nutrition lookup for the nutrition feature (public government database; no personal data beyond IP address transmitted)</li>
+            <li><strong>OpenFoodFacts</strong> (🇪🇺 EU) — food/nutrition lookup for the nutrition feature (non-profit; no personal data beyond IP address transmitted)</li>
+        </ul>
+        <p>
+            <strong>OpenAI Sub-Processors:</strong>
             <a href="https://openai.com/policies/sub-processor-list/" target="_blank">
                 OpenAI Sub-Processor List
             </a>
         </p>
 
-        <h2>8. Your GDPR Rights</h2>
+        <h2>10. Your GDPR Rights</h2>
         <p>You have the following rights:</p>
         <ul>
             <li><strong>Right to Access (Art. 15):</strong> Request your data</li>
@@ -178,9 +289,9 @@
             <li><strong>Right to Rectification (Art. 16):</strong> Edit your data</li>
             <li><strong>Right to Object (Art. 21):</strong> Object to processing</li>
         </ul>
-        <p>To exercise these rights, contact: [YOUR EMAIL]</p>
+        <p>To exercise these rights, contact: robin.juengerich@icloud.com</p>
 
-        <h2>9. Data Security</h2>
+        <h2>11. Data Security</h2>
         <p>We implement the following security measures:</p>
         <ul>
             <li>HTTPS/TLS encryption for all API calls</li>
@@ -189,17 +300,28 @@
             <li>Regular security updates</li>
         </ul>
 
-        <h2>10. Contact & Complaints</h2>
+        <h2>12. Contact & Complaints</h2>
         <p>
-            <strong>Privacy Questions:</strong> [YOUR EMAIL]
+            <strong>Privacy Questions:</strong> robin.juengerich@icloud.com
         </p>
         <p>
-            <strong>Data Protection Authority:</strong> You have the right to lodge a complaint with the appropriate 
-            supervisory authority. For the US, contact your state's attorney general. 
-            For EU, contact your national data protection authority.
+            <strong>Data Protection Authority:</strong> You have the right to lodge a complaint with
+            the competent supervisory authority. Because the data controller is based in
+            Schleswig-Holstein, Germany, the competent authority is:
+        </p>
+        <p>
+            <strong>Unabhängiges Landeszentrum für Datenschutz Schleswig-Holstein (ULD)</strong><br>
+            Holstenstraße 98, 24103 Kiel, Germany<br>
+            Phone: +49 431 988-1200<br>
+            Email: <a href="mailto:mail@datenschutzzentrum.de">mail@datenschutzzentrum.de</a><br>
+            <a href="https://www.datenschutzzentrum.de/" target="_blank">https://www.datenschutzzentrum.de/</a>
+        </p>
+        <p>
+            If you are based in another EU/EEA member state you may also contact your local
+            data protection authority, which may refer the matter to the ULD as the lead authority.
         </p>
 
-        <h2>11. Changes to This Policy</h2>
+        <h2>13. Changes to This Policy</h2>
         <p>
             We may update this Privacy Policy at any time. 
             Changes take effect immediately upon publication on this page. 

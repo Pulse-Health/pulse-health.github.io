@@ -90,7 +90,7 @@
                 <td>Gesundheitsdaten (HealthKit)</td>
                 <td>Apple HealthKit (auf Ihrem Gerät)</td>
                 <td>Bleibt auf Ihrem Gerät</td>
-                <td>Benutzerkontext</td>
+                <td>Einwilligung (Art. 9 Abs. 2 lit. a DSGVO)</td>
             </tr>
             <tr>
                 <td>Benutzerprofil</td>
@@ -105,10 +105,22 @@
                 <td>Vertraglich notwendig</td>
             </tr>
             <tr>
-                <td>AI Coaching Anfragen</td>
+                <td>KI-Coaching-Anfragen (inkl. Gesundheitsmetriken)</td>
                 <td>Ihre Abfragen</td>
                 <td>OpenAI (🇺🇸 USA)</td>
-                <td>Berechtigtes Interesse</td>
+                <td>Ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO); Übermittlung in die USA auf Basis Einwilligung (Art. 49 Abs. 1 lit. a DSGVO)</td>
+            </tr>
+            <tr>
+                <td>Lebensmittel-Suchbegriffe &amp; Barcode-Nummern</td>
+                <td>Von Ihnen eingegeben (Lebensmittelsuche oder Barcode-Scan)</td>
+                <td>USDA FoodData Central (🇺🇸 USA) &amp; OpenFoodFacts (🇪🇺 EU)</td>
+                <td>Vertragserfüllung / Berechtigtes Interesse (Art. 6 Abs. 1 lit. b/f DSGVO)</td>
+            </tr>
+            <tr>
+                <td>Konto- &amp; Anmeldedaten (E-Mail)</td>
+                <td>Von Ihnen eingegeben</td>
+                <td>Clerk (🇺🇸 USA)</td>
+                <td>Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO); Übermittlung in die USA abgesichert durch EU-Standardvertragsklauseln</td>
             </tr>
         </table>
 
@@ -145,17 +157,69 @@
             bis Sie Ihr Konto löschen. Bei Kontolöschung werden alle Daten gelöscht.
         </p>
 
-        <h2>6. OpenAI API (KI Coaching)</h2>
+        <h2>6. Clerk Authentifizierung</h2>
         <p>
-            <strong>Daten an OpenAI gesendet:</strong> Anonymisierte Trainingszusammenfassungen, 
-            Ihre Coaching-Fragen (Gesundheitsmetriken können enthalten sein)
+            <strong>Anbieter:</strong> Clerk, Inc.
+        </p>
+        <p>
+            <strong>Speichert:</strong> Ihre E-Mail-Adresse sowie Authentifizierungs-/Sitzungsdaten zur
+            Kontoerstellung, Anmeldung und zum Aufrechterhalten Ihrer Sitzung
+        </p>
+        <p>
+            <strong>Speicherort:</strong> 🇺🇸 Vereinigte Staaten
+        </p>
+        <p>
+            <strong>Zweck &amp; Rechtsgrundlage:</strong> Kontoerstellung, Anmeldung und
+            Sitzungsverwaltung (Art. 6 Abs. 1 lit. b DSGVO — Erfüllung des Nutzungsvertrags).
+        </p>
+        <p>
+            <strong>Drittlandübermittlung:</strong> Da Clerk Daten in den USA verarbeitet, werden Ihre
+            Kontodaten in ein Drittland übermittelt. Diese Übermittlung ist durch die
+            EU-Standardvertragsklauseln (SCC) im Rahmen unseres Auftragsverarbeitungsvertrags mit Clerk
+            abgesichert.
+        </p>
+        <p>
+            <strong>Datenschutzvereinbarung:</strong> Ja, mit Standardvertragsklauseln (SCC) vorhanden.
+        </p>
+
+        <h2>7. OpenAI API (KI-Coaching)</h2>
+        <p>
+            <strong>Rechtsgrundlage:</strong> Vor Aktivierung des KI-Coachings werden im Onboarding
+            zwei gesonderte, jeweils verpflichtende Einwilligungen eingeholt: (1) ausdrückliche
+            Einwilligung zur Verarbeitung Ihrer Gesundheitsdaten für KI-Coaching-Zwecke
+            (Art. 9 Abs. 2 lit. a DSGVO); und (2) ausdrückliche Einwilligung zur Übermittlung
+            dieser Daten an OpenAI in die Vereinigten Staaten (Art. 49 Abs. 1 lit. a DSGVO). Beide
+            Einwilligungen sind Pflichtfelder — KI-Coaching steht nur zur Verfügung, wenn beide
+            erteilt wurden. Sie können jede Einwilligung jederzeit widerrufen, indem Sie
+            KI-Coaching in den App-Einstellungen deaktivieren; die Rechtmäßigkeit der bis zum
+            Widerruf erfolgten Verarbeitung bleibt unberührt.
+        </p>
+        <p>
+            <strong>Pro Coaching-Anfrage an OpenAI übermittelte Daten:</strong>
+        </p>
+        <ul>
+            <li>Ihr <strong>bevorzugter Name</strong> (Anzeigename aus Ihrem Profil)</li>
+            <li>Ihr <strong>exaktes Alter</strong></li>
+            <li>Ihr <strong>biologisches Geschlecht</strong> (aus Apple Health oder manueller Eingabe)</li>
+            <li>Ihre <strong>Körpergröße und Ihr Gewicht</strong> (aus Apple Health oder manueller Eingabe)</li>
+            <li>Ihre <strong>Coaching-Frage</strong> (die von Ihnen eingegebene Nachricht)</li>
+            <li><strong>Relevante Erinnerungsauszüge</strong> — bis zu 5.000 Zeichen gespeicherter
+                Coaching-Kontextnotizen aus der App</li>
+            <li><strong>Gesundheitsanalyse-Zusammenfassungen</strong> — auf Ihrem Gerät berechnete
+                Scores und Trendanalysen (keine Roh-Sensordaten wie einzelne HRV-Messwerte)</li>
+        </ul>
+        <p>
+            <strong>Was nicht an OpenAI gesendet wird:</strong> Ihre E-Mail-Adresse,
+            Clerk-Authentifizierungsdaten, Roh-HealthKit-Sensordaten (z.B. einzelne
+            Herzfrequenzmessungen) sowie Ihr vollständiger Chat-Verlauf.
         </p>
         <p>
             <strong>Speicherort:</strong> 🇺🇸 Vereinigte Staaten (OpenAI Server)
         </p>
         <p>
-            <strong>Aufbewahrung:</strong> OpenAI speichert diese Daten für 30 Tage standardmäßig 
-            zur API-Verbesserung. Sie können diese Aufbewahrung widersprechen.
+            <strong>Aufbewahrung:</strong> OpenAI speichert API-Anfragedaten standardmäßig bis zu
+            30 Tage lang. Wir haben bei OpenAI eine kürzere Aufbewahrungsfrist beantragt; diese
+            Seite wird aktualisiert, sobald eine Verkürzung bestätigt ist.
         </p>
         <p>
             <strong>Datenschutz:</strong> OpenAI verwendet Standard Contractual Clauses (SCCs) 
@@ -169,15 +233,66 @@
             <strong>Opt-out:</strong> Sie können KI Coaching in den App-Einstellungen deaktivieren.
         </p>
 
-        <h2>7. Sub-Prozessoren</h2>
+        <h2>8. Lebensmitteldatenbanken (Ernährungsfunktion)</h2>
         <p>
-            <strong>OpenAI Sub-Prozessoren:</strong> 
+            Wenn Sie in der Ernährungsfunktion nach Lebensmitteln suchen oder einen Barcode scannen,
+            übermittelt Pulse den Suchbegriff oder die Barcode-Nummer an eine der folgenden öffentlichen
+            Lebensmitteldatenbanken, um Nährwertinformationen abzurufen. <strong>Gesundheitsdaten,
+            Kontodaten oder personenbezogene Kennzeichen werden dabei nicht übertragen</strong> — lediglich
+            der Lebensmittelname oder die Barcode-Nummer sowie die IP-Adresse Ihres Geräts (die bei jedem
+            Internetaufruf technisch übermittelt wird).
+        </p>
+        <table>
+            <tr>
+                <th>Dienst</th>
+                <th>Betreiber</th>
+                <th>Speicherort</th>
+                <th>Übermittelte Daten</th>
+                <th>Rechtsgrundlage</th>
+            </tr>
+            <tr>
+                <td><strong>USDA FoodData Central</strong></td>
+                <td>U.S. Department of Agriculture</td>
+                <td>🇺🇸 Vereinigte Staaten</td>
+                <td>Lebensmittel-Suchbegriff oder Barcode-Nummer; IP-Adresse des Geräts</td>
+                <td>Vertragserfüllung / Berechtigtes Interesse (Art. 6 Abs. 1 lit. b/f DSGVO).
+                    Drittlandübermittlung auf Grundlage von Art. 49 Abs. 1 lit. c DSGVO
+                    (öffentliches Interesse / staatliche Behörde).</td>
+            </tr>
+            <tr>
+                <td><strong>OpenFoodFacts</strong></td>
+                <td>Open Food Facts (gemeinnütziger Verein, Frankreich)</td>
+                <td>🇪🇺 Europäische Union</td>
+                <td>Lebensmittel-Suchbegriff oder Barcode-Nummer; IP-Adresse des Geräts</td>
+                <td>Vertragserfüllung / Berechtigtes Interesse (Art. 6 Abs. 1 lit. b/f DSGVO).
+                    Keine Drittlandübermittlung.</td>
+            </tr>
+        </table>
+        <p>
+            Suchergebnisse werden lokal auf Ihrem Gerät zwischengespeichert; Suchbegriffe werden
+            nicht auf Pulse-Servern gespeichert. Beim Barcode-Scan aufgenommene Fotos werden
+            ausschließlich auf dem Gerät verarbeitet und niemals übertragen.
+        </p>
+
+        <h2>9. Sub-Prozessoren</h2>
+        <p>
+            Wir setzen folgende Auftragsverarbeiter zum Betrieb von Pulse ein:
+        </p>
+        <ul>
+            <li><strong>Supabase</strong> (🇪🇺 EU) — Datenbank- und Backend-Hosting</li>
+            <li><strong>Clerk, Inc.</strong> (🇺🇸 USA) — Authentifizierung und Kontoverwaltung (Übermittlung abgesichert durch EU-Standardvertragsklauseln)</li>
+            <li><strong>OpenAI</strong> (🇺🇸 USA) — KI-Coaching-Inferenz (Übermittlung abgesichert durch EU-Standardvertragsklauseln)</li>
+            <li><strong>USDA FoodData Central</strong> (🇺🇸 USA) — Lebensmittel-/Nährwert-Abfragen für die Ernährungsfunktion (staatliche Behörde; keine personenbezogenen Daten außer IP-Adresse übermittelt)</li>
+            <li><strong>OpenFoodFacts</strong> (🇪🇺 EU) — Lebensmittel-/Nährwert-Abfragen für die Ernährungsfunktion (gemeinnützig; keine personenbezogenen Daten außer IP-Adresse übermittelt)</li>
+        </ul>
+        <p>
+            <strong>OpenAI Sub-Prozessoren:</strong>
             <a href="https://openai.com/policies/sub-processor-list/" target="_blank">
                 OpenAI Sub-Processor List
             </a>
         </p>
 
-        <h2>8. Ihre Rechte nach DSGVO</h2>
+        <h2>10. Ihre Rechte nach DSGVO</h2>
         <p>Sie haben folgende Rechte:</p>
         <ul>
             <li><strong>Auskunftsrecht (Art. 15):</strong> Sie können Ihre Daten anfordern</li>
@@ -188,7 +303,7 @@
         </ul>
         <p>Um diese Rechte auszuüben, kontaktieren Sie: robin.juengerich@icloud.com</p>
 
-        <h2>9. Datensicherheit</h2>
+        <h2>10. Datensicherheit</h2>
         <p>
             Wir implementieren folgende Sicherheitsmaßnahmen:
         </p>
@@ -199,17 +314,24 @@
             <li>Regelmäßige Sicherheitsupdates</li>
         </ul>
 
-        <h2>10. Kontakt & Beschwerden</h2>
+        <h2>11. Kontakt & Beschwerden</h2>
         <p>
             <strong>Fragen zum Datenschutz:</strong> robin.juengerich@icloud.com
         </p>
         <p>
-            <strong>Datenschutzbeschwerde:</strong> Sie haben das Recht, sich bei der 
-            zuständigen Aufsichtsbehörde zu beschweren. In Deutschland: 
-            <a href="https://www.bfdi.bund.de/" target="_blank">Bundesbeauftragte für Datenschutz (BfDI)</a>
+            <strong>Datenschutzbeschwerde:</strong> Sie haben das Recht, sich bei der
+            zuständigen Aufsichtsbehörde zu beschweren. Da der Verantwortliche in
+            Schleswig-Holstein ansässig ist, ist dies das:
+        </p>
+        <p>
+            <strong>Unabhängiges Landeszentrum für Datenschutz Schleswig-Holstein (ULD)</strong><br>
+            Holstenstraße 98, 24103 Kiel<br>
+            Telefon: +49 431 988-1200<br>
+            E-Mail: <a href="mailto:mail@datenschutzzentrum.de">mail@datenschutzzentrum.de</a><br>
+            <a href="https://www.datenschutzzentrum.de/" target="_blank">https://www.datenschutzzentrum.de/</a>
         </p>
 
-        <h2>11. Änderungen dieser Erklärung</h2>
+        <h2>12. Änderungen dieser Erklärung</h2>
         <p>
             Wir können diese Datenschutzerklärung aktualisieren. 
             Änderungen treten sofort nach Veröffentlichung auf dieser Seite in Kraft. 
