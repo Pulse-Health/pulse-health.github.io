@@ -55,13 +55,14 @@
         
         <div class="meta">
             <strong>Effective Date:</strong> June 23, 2026<br>
-            <strong>Language:</strong> English | <a href="datenschutz.html">Deutsch</a>
+            <strong>Language:</strong> English | <a href="datenschutz.html">Deutsch</a><br>
+            <strong>See also:</strong> <a href="terms.html">Terms of Service</a> · <a href="impressum.html">Impressum</a>
         </div>
 
         <h2>1. Data Controller</h2>
         <p>
             <strong>Name:</strong> Robin Jüngerich<br>
-            <strong>Email:</strong> robin.juengerich@icloud.com<br>
+            <strong>Email:</strong> <a class="js-contact-email-link"></a><noscript>robin.juengerich@icloud.com</noscript><br>
             <strong>Address:</strong> Dorfstraße 179, 24222 Schwentinental
         </p>
 
@@ -243,9 +244,10 @@
                 <td>U.S. Department of Agriculture</td>
                 <td>🇺🇸 United States</td>
                 <td>Food search term or barcode number; device IP address</td>
-                <td>Performance of contract / Legitimate interest (Art. 6(1)(b)/(f) GDPR).
-                    Transfer to a third country on the basis of Art. 49(1)(c) GDPR (public
-                    interest / official government database).</td>
+                <td>Performance of contract (Art. 6(1)(b) GDPR): the nutrition feature of the app
+                    requires food database lookups. Transfer to USA safeguarded by contract necessity
+                    under Art. 49(1)(b) GDPR. Data minimization: only search terms/barcodes sent (no
+                    health data, no personal identifiers); TLS 1.3 encryption in transit.</td>
             </tr>
             <tr>
                 <td><strong>OpenFoodFacts</strong></td>
@@ -262,23 +264,64 @@
             are never transmitted anywhere.
         </p>
 
-        <h2>9. Sub-Processors</h2>
-        <p>
-            We use the following processors to operate Pulse:
-        </p>
-        <ul>
-            <li><strong>Supabase</strong> (🇪🇺 EU) — database and backend hosting</li>
-            <li><strong>Clerk, Inc.</strong> (🇺🇸 USA) — authentication and account management (transfer safeguarded by EU Standard Contractual Clauses)</li>
-            <li><strong>OpenAI</strong> (🇺🇸 USA) — AI coaching inference (transfer safeguarded by EU Standard Contractual Clauses)</li>
-            <li><strong>USDA FoodData Central</strong> (🇺🇸 USA) — food/nutrition lookup for the nutrition feature (public government database; no personal data beyond IP address transmitted)</li>
-            <li><strong>OpenFoodFacts</strong> (🇪🇺 EU) — food/nutrition lookup for the nutrition feature (non-profit; no personal data beyond IP address transmitted)</li>
-        </ul>
-        <p>
-            <strong>OpenAI Sub-Processors:</strong>
-            <a href="https://openai.com/policies/sub-processor-list/" target="_blank">
-                OpenAI Sub-Processor List
-            </a>
-        </p>
+        <h2>9. Sub-Processors & Recipients</h2>
+
+        <p>Your data may be shared with the following processors and recipients:</p>
+
+        <table>
+            <tr>
+                <th>Processor/Recipient</th>
+                <th>Role</th>
+                <th>Location</th>
+                <th>Purpose</th>
+                <th>DPA Status</th>
+                <th>Transfer Safeguard</th>
+            </tr>
+            <tr>
+                <td><strong>Supabase</strong></td>
+                <td>Data Processor (Art. 28)</td>
+                <td>🇪🇺 EU (Ireland)</td>
+                <td>Store user profile, workouts, nutrition logs, coaching metadata</td>
+                <td>✅ DPA signed</td>
+                <td>N/A (EU)</td>
+            </tr>
+            <tr>
+                <td><strong>Clerk</strong></td>
+                <td>Data Processor (Auth)</td>
+                <td>🇺🇸 USA</td>
+                <td>Authentication, email, session tokens</td>
+                <td>✅ DPA signed</td>
+                <td>SCC</td>
+            </tr>
+            <tr>
+                <td><strong>OpenAI</strong></td>
+                <td>Data Processor (AI Coaching)</td>
+                <td>🇺🇸 USA</td>
+                <td>LLM inference for personalized coaching</td>
+                <td>✅ DPA signed</td>
+                <td>SCC</td>
+            </tr>
+            <tr>
+                <td><strong>USDA FoodData Central</strong></td>
+                <td>Recipient (Public API)</td>
+                <td>🇺🇸 USA</td>
+                <td>Food barcode/name lookups (search terms only)</td>
+                <td>N/A (Public)</td>
+                <td>Public API</td>
+            </tr>
+            <tr>
+                <td><strong>OpenFoodFacts</strong></td>
+                <td>Recipient (Public API)</td>
+                <td>🇪🇺 EU</td>
+                <td>Food barcode/name lookups (search terms only)</td>
+                <td>N/A (Public)</td>
+                <td>Public API</td>
+            </tr>
+        </table>
+
+        <p><strong>OpenAI Sub-Processors:</strong> See <a href="https://openai.com/policies/sub-processor-list/" target="_blank">OpenAI Sub-Processor List</a>.</p>
+
+        <p><strong>Data Processing Agreements:</strong> All processors have signed Data Processing Agreements (Art. 28 GDPR) with Standard Contractual Clauses where applicable. Details available on request.</p>
 
         <h2>10. Your GDPR Rights</h2>
         <p>You have the following rights:</p>
@@ -289,7 +332,7 @@
             <li><strong>Right to Rectification (Art. 16):</strong> Edit your data</li>
             <li><strong>Right to Object (Art. 21):</strong> Object to processing</li>
         </ul>
-        <p>To exercise these rights, contact: robin.juengerich@icloud.com</p>
+        <p>To exercise these rights, contact: <a class="js-contact-email-link"></a><noscript>robin.juengerich@icloud.com</noscript></p>
 
         <h2>11. Data Security</h2>
         <p>We implement the following security measures:</p>
@@ -302,7 +345,7 @@
 
         <h2>12. Contact & Complaints</h2>
         <p>
-            <strong>Privacy Questions:</strong> robin.juengerich@icloud.com
+            <strong>Privacy Questions:</strong> <a class="js-contact-email-link"></a><noscript>robin.juengerich@icloud.com</noscript>
         </p>
         <p>
             <strong>Data Protection Authority:</strong> You have the right to lodge a complaint with
@@ -334,5 +377,6 @@
             Version 1.0
         </p>
     </div>
+    <script src="site.js"></script>
 </body>
 </html>
