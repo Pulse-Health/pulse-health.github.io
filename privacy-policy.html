@@ -188,39 +188,55 @@
             <strong>Data Sent to OpenAI per coaching request:</strong>
         </p>
         <ul>
-            <li>Your <strong>preferred name</strong> (display name from your profile)</li>
-            <li>Your <strong>exact age</strong></li>
+            <li>Your <strong>name (pseudonymized)</strong> — Your preferred name is not sent in plain text.
+                Instead, Pulse uses a placeholder (<code>%name%</code>) that OpenAI includes in its responses.
+                The placeholder is replaced with your real name only on your device before the response is
+                displayed to you. <strong>OpenAI never learns your actual name.</strong></li>
+            <li>Your <strong>exact age</strong> (e.g. 28 years)</li>
             <li>Your <strong>biological sex</strong> (from Apple Health or manual entry)</li>
             <li>Your <strong>height and weight</strong> (from Apple Health or manual entry)</li>
             <li>Your <strong>coaching question</strong> (the message you typed)</li>
             <li><strong>Relevant memory snippets</strong> — up to 5,000 characters of saved
-                coaching context and notes stored in the app</li>
+                coaching context and notes stored in the app (also using the pseudonymized name placeholder)</li>
             <li><strong>Health analysis summaries</strong> — computed scores and trend analyses
                 produced on your device (not raw sensor readings such as individual HRV samples)</li>
         </ul>
         <p>
-            <strong>What is NOT sent to OpenAI:</strong> Your email address, Clerk authentication
-            data, raw HealthKit sensor readings (e.g. individual heart-rate measurements), or your
-            complete chat history.
+            <strong>Safeguards against government access:</strong>
+        </p>
+        <ul>
+            <li><strong>Name pseudonymization:</strong> Your name is not included in data sent to OpenAI,
+                making identification impossible without access to your device.</li>
+            <li><strong>Data minimization:</strong> We do not send raw HealthKit sensor readings
+                (e.g. individual heart-rate measurements) or your complete chat history.</li>
+            <li><strong>Encryption in transit:</strong> All data is encrypted via TLS 1.3 during transmission.</li>
+            <li><strong>EU relay:</strong> Requests pass through a Supabase Edge Function in the EU,
+                serving as an intermediary layer.</li>
+        </ul>
+        <p>
+            <strong>What is NOT sent to OpenAI:</strong> Your email address, authentication
+            credentials, raw HealthKit sensor readings (e.g. individual heart-rate measurements), or your
+            complete chat history (OpenAI receives only a summary of your coaching history).
         </p>
         <p>
             <strong>Location:</strong> 🇺🇸 United States (OpenAI servers)
         </p>
         <p>
-            <strong>Retention:</strong> OpenAI retains API request data for up to 30 days by
-            default. We have requested a shorter retention period from OpenAI; this page will be
-            updated once a shorter period is confirmed.
+            <strong>Retention at OpenAI:</strong> OpenAI retains API request data for up to 30 days by
+            default for system improvement. We have requested a shorter retention period from OpenAI;
+            this page will be updated once confirmed.
         </p>
         <p>
-            <strong>Protection:</strong> OpenAI uses Standard Contractual Clauses (SCCs) 
+            <strong>Protection &amp; Transfer Mechanism:</strong> OpenAI uses Standard Contractual Clauses (SCCs)
             for EU data transfers to ensure GDPR compliance.
         </p>
         <p>
-            <strong>Data Processing Agreement:</strong> Yes, available at: 
-            <a href="https://openai.com/de-DE/policies/row-privacy-policy/" target="_blank">https://openai.com/de-DE/policies/row-privacy-policy/</a>
+            <strong>Data Processing Agreement:</strong> Yes, available at:
+            <a href="https://openai.com/policies/row-privacy-policy/" target="_blank">https://openai.com/policies/row-privacy-policy/</a>
         </p>
         <p>
-            <strong>Opt-out:</strong> You can disable AI coaching in the app settings.
+            <strong>Opt-out:</strong> You can disable AI Coaching in the app settings at any time.
+            All fitness, nutrition, and sleep features work offline without AI Coaching.
         </p>
 
         <h2>8. Food Database Lookups (Nutrition Feature)</h2>

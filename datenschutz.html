@@ -199,39 +199,55 @@
             <strong>Pro Coaching-Anfrage an OpenAI übermittelte Daten:</strong>
         </p>
         <ul>
-            <li>Ihr <strong>bevorzugter Name</strong> (Anzeigename aus Ihrem Profil)</li>
-            <li>Ihr <strong>exaktes Alter</strong></li>
+            <li>Ihr <strong>Name (pseudonymisiert)</strong> — Ihr bevorzugter Name wird nicht wörtlich
+                übermittelt. Stattdessen verwendet Pulse einen Platzhalter (<code>%name%</code>), den OpenAI
+                in Antworten wiederholt. Der Platzhalter wird nur auf Ihrem Gerät durch Ihren echten Namen
+                ersetzt, bevor die Antwort angezeigt wird. <strong>OpenAI kennt Ihren echten Namen nicht.</strong></li>
+            <li>Ihr <strong>exaktes Alter</strong> (z.B. 28 Jahre)</li>
             <li>Ihr <strong>biologisches Geschlecht</strong> (aus Apple Health oder manueller Eingabe)</li>
             <li>Ihre <strong>Körpergröße und Ihr Gewicht</strong> (aus Apple Health oder manueller Eingabe)</li>
             <li>Ihre <strong>Coaching-Frage</strong> (die von Ihnen eingegebene Nachricht)</li>
             <li><strong>Relevante Erinnerungsauszüge</strong> — bis zu 5.000 Zeichen gespeicherter
-                Coaching-Kontextnotizen aus der App</li>
+                Coaching-Kontextnotizen aus der App (ebenfalls mit pseudonymisiertem Namen)</li>
             <li><strong>Gesundheitsanalyse-Zusammenfassungen</strong> — auf Ihrem Gerät berechnete
                 Scores und Trendanalysen (keine Roh-Sensordaten wie einzelne HRV-Messwerte)</li>
         </ul>
         <p>
+            <strong>Datensicherungsmaßnahmen gegen Behördenzugriff:</strong>
+        </p>
+        <ul>
+            <li><strong>Namenspseudononymisierung:</strong> Ihr Name ist nicht in den an OpenAI gesendeten
+                Daten enthalten, wodurch eine Identifizierung ohne Gerätezugriff unmöglich ist.</li>
+            <li><strong>Minimierung:</strong> Wir senden keine Roh-HealthKit-Sensordaten (z.B. einzelne
+                Herzfrequenzmessungen) oder Ihren vollständigen Chat-Verlauf.</li>
+            <li><strong>Verschlüsselung in Transit:</strong> Alle Daten werden über TLS 1.3 verschlüsselt übermittelt.</li>
+            <li><strong>EU-Proxy:</strong> Die Anfragen laufen über eine Supabase Edge Function in der EU,
+                die als Vermittlungsschicht fungiert.</li>
+        </ul>
+        <p>
             <strong>Was nicht an OpenAI gesendet wird:</strong> Ihre E-Mail-Adresse,
-            Clerk-Authentifizierungsdaten, Roh-HealthKit-Sensordaten (z.B. einzelne
-            Herzfrequenzmessungen) sowie Ihr vollständiger Chat-Verlauf.
+            Authentifizierungsdaten, Roh-HealthKit-Sensordaten (z.B. einzelne Herzfrequenzmessungen) sowie
+            Ihr vollständiger Chat-Verlauf (OpenAI erhält nur eine Zusammenfassung der Coaching-Historie).
         </p>
         <p>
             <strong>Speicherort:</strong> 🇺🇸 Vereinigte Staaten (OpenAI Server)
         </p>
         <p>
-            <strong>Aufbewahrung:</strong> OpenAI speichert API-Anfragedaten standardmäßig bis zu
-            30 Tage lang. Wir haben bei OpenAI eine kürzere Aufbewahrungsfrist beantragt; diese
-            Seite wird aktualisiert, sobald eine Verkürzung bestätigt ist.
+            <strong>Aufbewahrung bei OpenAI:</strong> OpenAI speichert API-Anfragedaten standardmäßig bis zu
+            30 Tage lang zur Systemverbesserung. Wir haben OpenAI um eine Verkürzung gebeten; diese
+            Seite wird aktualisiert, sobald eine Bestätigung vorliegt.
         </p>
         <p>
-            <strong>Datenschutz:</strong> OpenAI verwendet Standard Contractual Clauses (SCCs) 
+            <strong>Datenschutz &amp; Transfer-Mechanismus:</strong> OpenAI verwendet Standard Contractual Clauses (SCCs)
             für EU-Datentransfers, um DSGVO-Konformität zu gewährleisten.
         </p>
         <p>
-            <strong>Datenschutzvereinbarung:</strong> Ja, verfügbar unter: 
+            <strong>Datenschutzvereinbarung:</strong> Ja, verfügbar unter:
             <a href="https://openai.com/de-DE/policies/row-privacy-policy/" target="_blank">https://openai.com/de-DE/policies/row-privacy-policy/</a>
         </p>
         <p>
-            <strong>Opt-out:</strong> Sie können KI Coaching in den App-Einstellungen deaktivieren.
+            <strong>Opt-out:</strong> Sie können KI Coaching in den App-Einstellungen jederzeit deaktivieren.
+            Alle Fitness-, Ernährungs- und Schlaf-Funktionen arbeiten dann offline.
         </p>
 
         <h2>8. Lebensmitteldatenbanken (Ernährungsfunktion)</h2>
