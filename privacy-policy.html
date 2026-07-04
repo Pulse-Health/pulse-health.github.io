@@ -260,6 +260,17 @@
             All fitness, nutrition, and sleep features work offline without AI Coaching.
         </p>
 
+        <p>
+            <strong>AI provider / routing:</strong> AI-coaching requests may be routed through
+            <strong>Eden AI</strong> (Eden AI SAS, France, EU) &mdash; an AI-API aggregator that
+            forwards the request to an underlying language model configured by us. Where that
+            underlying model is hosted outside the EU (for example OpenAI in the USA), the same
+            third-country-transfer safeguards described above apply (Standard Contractual Clauses
+            and your explicit consent). The specific model and its region are recorded in our
+            processing documentation, and we do not enable a provider until a data-processing
+            agreement with it is in place.
+        </p>
+
         <h2>8. Food Database Lookups (Nutrition Feature)</h2>
         <p>
             When you search for foods or scan a barcode in the nutrition feature, Pulse sends the
@@ -337,6 +348,14 @@
                 <td>LLM inference for personalized coaching</td>
                 <td>✅ DPA signed</td>
                 <td>SCC</td>
+            </tr>
+            <tr>
+                <td><strong>Eden AI</strong></td>
+                <td>Data Processor (AI aggregator)</td>
+                <td>🇫🇷 France (EU)</td>
+                <td>Routes AI-coaching requests to a configured underlying model</td>
+                <td>⏳ DPA required before enabling</td>
+                <td>SCC (where the underlying model is non-EU)</td>
             </tr>
             <tr>
                 <td><strong>USDA FoodData Central</strong></td>
