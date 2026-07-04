@@ -107,8 +107,8 @@
             <tr>
                 <td>AI Coaching Queries (incl. health metrics)</td>
                 <td>Your questions</td>
-                <td>OpenAI (🇺🇸 USA)</td>
-                <td>Explicit consent (Art. 9(2)(a) GDPR); transfer to USA based on explicit consent (Art. 49(1)(a) GDPR)</td>
+                <td>Eden AI (🇫🇷 FR) &rarr; Nebius (🇳🇱 NL) — EU-internal</td>
+                <td>Explicit consent (Art. 9(2)(a) GDPR); EU-internal pipeline, no third-country transfer for coaching</td>
             </tr>
             <tr>
                 <td>Food search terms &amp; barcode numbers</td>
@@ -126,7 +126,7 @@
 
         <h2>4. Apple HealthKit</h2>
         <p>
-            <strong>Data Collected:</strong> Heart rate, workout data, fitness metrics, sleep data, plus your date of birth and biological sex, from Apple Watch and iPhone. Your date of birth is used on your device only (to derive an age range) and is never sent to OpenAI.
+            <strong>Data Collected:</strong> Heart rate, workout data, fitness metrics, sleep data, plus your date of birth and biological sex, from Apple Watch and iPhone. Your date of birth is used on your device only (to derive an age range) and is never sent to the AI provider.
         </p>
         <p>
             <strong>Storage:</strong> This data remains on your device and your private iCloud. 
@@ -146,14 +146,20 @@
         <ul>
             <li><strong>Opt-in:</strong> off by default; imported only after you explicitly enable it.</li>
             <li><strong>Storage:</strong> on your device only &mdash; not stored on Supabase.</li>
-            <li><strong>Never sent to OpenAI:</strong> clinical records are excluded from AI coaching.</li>
+            <li><strong>Never sent to the AI provider:</strong> clinical records are excluded from AI coaching.</li>
             <li><strong>Legal basis:</strong> explicit consent (Art. 9(2)(a) GDPR).</li>
             <li><strong>Retention:</strong> kept on your device until you delete them or uninstall the app.</li>
         </ul>
 
         <h2>5. Supabase Data Storage</h2>
         <p>
-            <strong>Stores:</strong> User profile, workout history (food/nutrition logs stay on your device)
+            <strong>Stores:</strong> Your user profile and workout history. If you use
+            AI Coaching, Supabase also stores your <strong>chat messages, the health-analysis
+            summaries computed on your device, and the health context you enter during
+            onboarding (e.g. illness notes and physical limitations)</strong>. These are
+            special-category health data, processed on the basis of your explicit consent
+            (Art. 9(2)(a) GDPR). <strong>Nutrition logs are stored only on your device and are
+            not uploaded to Supabase.</strong>
         </p>
         <p>
             <strong>Location:</strong> 🇪🇺 European Union (EU servers)
@@ -194,24 +200,31 @@
             <strong>Data Processing Agreement:</strong> Yes, in place with Standard Contractual Clauses.
         </p>
 
-        <h2>7. OpenAI API (AI Coaching)</h2>
+        <h2>7. AI Coaching (Eden AI &rarr; Nebius, EU-internal)</h2>
         <p>
-            <strong>Legal basis:</strong> Two separate mandatory consents are required during
-            onboarding before AI Coaching is activated: (1) explicit consent to the processing of
-            your health data for AI coaching purposes (Art. 9(2)(a) GDPR); and (2) explicit consent
-            to the transfer of that data to OpenAI in the United States (Art. 49(1)(a) GDPR). Both
-            consents are mandatory — AI Coaching is not available unless both are given. You may
-            withdraw either consent at any time by disabling AI Coaching in app settings; this does
-            not affect the lawfulness of processing carried out before withdrawal.
+            <strong>Processing pipeline:</strong> AI-coaching requests pass from a Supabase Edge
+            Function in the EU to <strong>Eden AI</strong> (Eden AI SAS, France, EU), an AI-API
+            aggregator, which forwards them to the underlying language model
+            <strong>Nebius / Qwen3-235B</strong> (Nebius Group N.V., Netherlands, EU). The entire
+            AI-coaching pipeline runs inside the EU, so <strong>there is no third-country transfer
+            for coaching</strong>. OpenAI is no longer used for AI coaching.
         </p>
         <p>
-            <strong>Data Sent to OpenAI per coaching request:</strong>
+            <strong>Legal basis:</strong> Before AI Coaching is activated, you give explicit consent
+            during onboarding to the processing of your health data for AI coaching purposes
+            (Art. 9(2)(a) GDPR). Because the pipeline is EU-internal, no separate consent to a
+            third-country transfer is required. AI Coaching is not available unless this consent is
+            given. You may withdraw it at any time by disabling AI Coaching in app settings; this
+            does not affect the lawfulness of processing carried out before withdrawal.
+        </p>
+        <p>
+            <strong>Data sent to the AI provider per coaching request:</strong>
         </p>
         <ul>
             <li>Your <strong>name (pseudonymized)</strong> — Your preferred name is not sent in plain text.
-                Instead, Pulse uses a placeholder (<code>%name%</code>) that OpenAI includes in its responses.
+                Instead, Pulse uses a placeholder (<code>%name%</code>) that the AI model includes in its responses.
                 The placeholder is replaced with your real name only on your device before the response is
-                displayed to you. <strong>OpenAI never learns your actual name.</strong></li>
+                displayed to you. <strong>The AI provider never learns your actual name.</strong></li>
             <li>Your <strong>age range</strong> (e.g. 20&ndash;29) &mdash; never your exact age or date of birth</li>
             <li>Your <strong>biological sex</strong> (from Apple Health or manual entry)</li>
             <li>Your <strong>height and weight</strong> (from Apple Health or manual entry)</li>
@@ -222,53 +235,41 @@
                 produced on your device (not raw sensor readings such as individual HRV samples)</li>
         </ul>
         <p>
-            <strong>Safeguards against government access:</strong>
+            <strong>Safeguards:</strong>
         </p>
         <ul>
-            <li><strong>Name pseudonymization:</strong> Your name is not included in data sent to OpenAI,
-                which significantly reduces the risk of identification &mdash; though other data
-                (biological sex, height, weight, and your coaching question) is still sent.</li>
+            <li><strong>Name pseudonymization:</strong> Your name is not included in data sent to the
+                AI provider, which significantly reduces the risk of identification &mdash; though other
+                data (biological sex, height, weight, and your coaching question) is still sent.</li>
             <li><strong>Data minimization:</strong> We do not send raw HealthKit sensor readings
                 (e.g. individual heart-rate measurements) or your complete chat history.</li>
             <li><strong>Encryption in transit:</strong> All data is encrypted via TLS 1.3 during transmission.</li>
             <li><strong>EU relay:</strong> Requests pass through a Supabase Edge Function in the EU,
-                serving as an intermediary layer.</li>
+                serving as an intermediary layer before reaching Eden AI (France) and Nebius (Netherlands).</li>
         </ul>
         <p>
-            <strong>What is NOT sent to OpenAI:</strong> Your email address, authentication
+            <strong>What is NOT sent to the AI provider:</strong> Your email address, authentication
             credentials, raw HealthKit sensor readings (e.g. individual heart-rate measurements), or your
-            complete chat history (OpenAI receives only a summary of your coaching history).
+            complete chat history (the AI provider receives only a summary of your coaching history).
         </p>
         <p>
-            <strong>Location:</strong> 🇺🇸 United States (OpenAI servers)
+            <strong>Location:</strong> 🇪🇺 European Union (Eden AI in France; Nebius in the Netherlands)
         </p>
         <p>
-            <strong>Retention at OpenAI:</strong> OpenAI retains API request data for up to 30 days by
-            default for system improvement. We have requested a shorter retention period from OpenAI;
-            this page will be updated once confirmed.
+            <strong>Retention:</strong> Retention of coaching-request data is governed by the Eden AI and
+            Nebius data-processing terms. We are finalizing the applicable data-processing agreement and will
+            update this page once the retention period is confirmed.
         </p>
         <p>
-            <strong>Protection &amp; Transfer Mechanism:</strong> OpenAI uses Standard Contractual Clauses (SCCs)
-            for EU data transfers to ensure GDPR compliance.
-        </p>
-        <p>
-            <strong>Data Processing Agreement:</strong> Yes, available at:
-            <a href="https://openai.com/policies/row-privacy-policy/" target="_blank">https://openai.com/policies/row-privacy-policy/</a>
+            <strong>Protection &amp; Transfer Mechanism:</strong> Because the AI-coaching pipeline is
+            EU-internal (Eden AI in France forwarding to Nebius in the Netherlands), no third-country
+            transfer arises for coaching. An Eden AI data-processing agreement (Art. 28 GDPR) and a
+            Nebius due-diligence review are being finalized before broad rollout
+            (<strong>Eden AI DPA + Nebius due-diligence pending</strong>).
         </p>
         <p>
             <strong>Opt-out:</strong> You can disable AI Coaching in the app settings at any time.
             All fitness, nutrition, and sleep features work offline without AI Coaching.
-        </p>
-
-        <p>
-            <strong>AI provider / routing:</strong> AI-coaching requests may be routed through
-            <strong>Eden AI</strong> (Eden AI SAS, France, EU) &mdash; an AI-API aggregator that
-            forwards the request to an underlying language model configured by us. Where that
-            underlying model is hosted outside the EU (for example OpenAI in the USA), the same
-            third-country-transfer safeguards described above apply (Standard Contractual Clauses
-            and your explicit consent). The specific model and its region are recorded in our
-            processing documentation, and we do not enable a provider until a data-processing
-            agreement with it is in place.
         </p>
 
         <h2>8. Food Database Lookups (Nutrition Feature)</h2>
@@ -342,20 +343,20 @@
                 <td>SCC</td>
             </tr>
             <tr>
-                <td><strong>OpenAI</strong></td>
-                <td>Data Processor (AI Coaching)</td>
-                <td>🇺🇸 USA</td>
-                <td>LLM inference for personalized coaching</td>
-                <td>✅ DPA signed</td>
-                <td>SCC</td>
-            </tr>
-            <tr>
                 <td><strong>Eden AI</strong></td>
                 <td>Data Processor (AI aggregator)</td>
                 <td>🇫🇷 France (EU)</td>
-                <td>Routes AI-coaching requests to a configured underlying model</td>
-                <td>⏳ DPA required before enabling</td>
-                <td>SCC (where the underlying model is non-EU)</td>
+                <td>Routes AI-coaching requests to Nebius / Qwen3-235B (Nebius Group N.V., 🇳🇱 Netherlands, EU)</td>
+                <td>⏳ Eden AI DPA + Nebius DD pending</td>
+                <td>EU-internal (Eden FR &rarr; Nebius NL)</td>
+            </tr>
+            <tr>
+                <td><strong>OpenAI</strong> (legacy)</td>
+                <td>Data Processor (AI Coaching) — no longer used</td>
+                <td>🇺🇸 USA</td>
+                <td>Removed: AI coaching no longer uses OpenAI (now EU-internal via Eden AI &rarr; Nebius)</td>
+                <td>N/A (removed)</td>
+                <td>N/A (removed)</td>
             </tr>
             <tr>
                 <td><strong>USDA FoodData Central</strong></td>
@@ -375,7 +376,7 @@
             </tr>
         </table>
 
-        <p><strong>OpenAI Sub-Processors:</strong> See <a href="https://openai.com/policies/sub-processor-list/" target="_blank">OpenAI Sub-Processor List</a>.</p>
+        <p><strong>OpenAI (legacy):</strong> OpenAI is no longer used for AI coaching. Its former sub-processor list remains available at the <a href="https://openai.com/policies/sub-processor-list/" target="_blank">OpenAI Sub-Processor List</a> for reference only.</p>
 
         <p><strong>Data Processing Agreements:</strong> All processors have signed Data Processing Agreements (Art. 28 GDPR) with Standard Contractual Clauses where applicable. Details available on request.</p>
 
@@ -420,10 +421,20 @@
             data protection authority, which may refer the matter to the ULD as the lead authority.
         </p>
 
-        <h2>13. Changes to This Policy</h2>
+        <h2>13. Website Hosting</h2>
         <p>
-            We may update this Privacy Policy at any time. 
-            Changes take effect immediately upon publication on this page. 
+            These legal pages are hosted on <strong>GitHub Pages (GitHub, Inc., USA)</strong>.
+            When you visit them, GitHub automatically processes your IP address and standard
+            server-log data in order to deliver the pages (GitHub's legitimate interest,
+            Art. 6(1)(f) GDPR; any transfer to the USA is safeguarded by GitHub's Standard
+            Contractual Clauses). This concerns only these website pages, not the Pulse app.
+            See GitHub's Privacy Statement for details.
+        </p>
+
+        <h2>14. Changes to This Policy</h2>
+        <p>
+            We may update this Privacy Policy at any time.
+            Changes take effect immediately upon publication on this page.
             The last update date is shown above.
         </p>
 

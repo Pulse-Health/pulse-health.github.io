@@ -114,8 +114,8 @@
             <tr>
                 <td>KI-Coaching-Anfragen (inkl. Gesundheitsmetriken)</td>
                 <td>Ihre Abfragen</td>
-                <td>OpenAI (🇺🇸 USA)</td>
-                <td>Ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO); Übermittlung in die USA auf Basis Einwilligung (Art. 49 Abs. 1 lit. a DSGVO)</td>
+                <td>Eden AI (🇫🇷 FR) &rarr; Nebius (🇳🇱 NL) — EU-intern</td>
+                <td>Ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO)</td>
             </tr>
             <tr>
                 <td>Lebensmittel-Suchbegriffe &amp; Barcode-Nummern</td>
@@ -136,7 +136,7 @@
             <strong>Daten:</strong> Herzdaten, Trainings- und Fitnessdaten, Schlafmetriken,
             Aktivitydaten sowie Ihr Geburtsdatum und biologisches Geschlecht von Apple Watch und iPhone.
             Ihr Geburtsdatum wird nur auf Ihrem Gerät verwendet (zur Ableitung eines Altersbereichs)
-            und niemals an OpenAI übermittelt.
+            und niemals an den KI-Anbieter übermittelt.
         </p>
         <p>
             <strong>Speicherort:</strong> Diese Daten bleiben auf Ihrem Gerät und Ihrer privaten iCloud. 
@@ -156,14 +156,14 @@
         <ul>
             <li><strong>Opt-in:</strong> standardm&auml;&szlig;ig aus; Import nur nach ausdr&uuml;cklicher Aktivierung.</li>
             <li><strong>Speicherort:</strong> ausschlie&szlig;lich auf Ihrem Ger&auml;t &mdash; nicht auf Supabase.</li>
-            <li><strong>Niemals an OpenAI:</strong> Befunde sind vom KI-Coaching ausgeschlossen.</li>
+            <li><strong>Niemals an den KI-Anbieter:</strong> Befunde sind vom KI-Coaching ausgeschlossen.</li>
             <li><strong>Rechtsgrundlage:</strong> ausdr&uuml;ckliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO).</li>
             <li><strong>Aufbewahrung:</strong> verbleiben auf Ihrem Ger&auml;t, bis Sie sie l&ouml;schen oder die App deinstallieren.</li>
         </ul>
 
         <h2>5. Supabase Datenspeicher</h2>
         <p>
-            <strong>Speichert:</strong> Benutzerprofil, Trainingshistorie (Ernährungslogs bleiben auf Ihrem Gerät)
+            <strong>Speichert:</strong> Ihr Benutzerprofil und Ihre Trainingshistorie. Bei Nutzung des KI-Coachings speichert Supabase zusätzlich Ihre <strong>Chat-Nachrichten, die auf Ihrem Gerät berechneten Gesundheitsanalyse-Zusammenfassungen sowie die im Onboarding eingegebenen Gesundheitsangaben (z. B. Erkrankungen und körperliche Einschränkungen)</strong>. Dies sind besondere Kategorien von Gesundheitsdaten, die auf Grundlage Ihrer ausdrücklichen Einwilligung (Art. 9 Abs. 2 lit. a DSGVO) verarbeitet werden. <strong>Ernährungslogs werden ausschließlich auf Ihrem Gerät gespeichert und nicht zu Supabase hochgeladen.</strong>
         </p>
         <p>
             <strong>Speicherort:</strong> 🇪🇺 Europäische Union (EU-Server)
@@ -205,26 +205,35 @@
             <strong>Datenschutzvereinbarung:</strong> Ja, mit Standardvertragsklauseln (SCC) vorhanden.
         </p>
 
-        <h2>7. OpenAI API (KI-Coaching)</h2>
+        <h2>7. KI-Coaching (Eden AI &rarr; Nebius, EU-intern)</h2>
         <p>
-            <strong>Rechtsgrundlage:</strong> Vor Aktivierung des KI-Coachings werden im Onboarding
-            zwei gesonderte, jeweils verpflichtende Einwilligungen eingeholt: (1) ausdrückliche
-            Einwilligung zur Verarbeitung Ihrer Gesundheitsdaten für KI-Coaching-Zwecke
-            (Art. 9 Abs. 2 lit. a DSGVO); und (2) ausdrückliche Einwilligung zur Übermittlung
-            dieser Daten an OpenAI in die Vereinigten Staaten (Art. 49 Abs. 1 lit. a DSGVO). Beide
-            Einwilligungen sind Pflichtfelder — KI-Coaching steht nur zur Verfügung, wenn beide
-            erteilt wurden. Sie können jede Einwilligung jederzeit widerrufen, indem Sie
-            KI-Coaching in den App-Einstellungen deaktivieren; die Rechtmäßigkeit der bis zum
-            Widerruf erfolgten Verarbeitung bleibt unberührt.
+            <strong>Rechtsgrundlage:</strong> KI-Coaching setzt Ihre ausdrückliche Einwilligung in die
+            Verarbeitung Ihrer Gesundheitsdaten für KI-Coaching-Zwecke voraus
+            (Art. 9 Abs. 2 lit. a DSGVO). Diese Einwilligung wird im Onboarding eingeholt und ist
+            Voraussetzung dafür, dass KI-Coaching zur Verfügung steht. Eine gesonderte Einwilligung in eine
+            Drittlandübermittlung ist nicht erforderlich, da die gesamte KI-Pipeline innerhalb der EU
+            betrieben wird und für das Coaching <strong>keine Drittlandübermittlung</strong> stattfindet.
+            Sie können Ihre Einwilligung jederzeit widerrufen, indem Sie KI-Coaching in den
+            App-Einstellungen deaktivieren; die Rechtmäßigkeit der bis zum Widerruf erfolgten Verarbeitung
+            bleibt unberührt.
         </p>
         <p>
-            <strong>Pro Coaching-Anfrage an OpenAI übermittelte Daten:</strong>
+            <strong>Verarbeitungskette (Pipeline):</strong> Coaching-Anfragen laufen von einer
+            <strong>Supabase Edge Function (EU)</strong> an <strong>Eden AI</strong>
+            (Eden AI SAS, Frankreich, EU), die sie an das zugrunde liegende Sprachmodell
+            <strong>Nebius/Qwen3-235B</strong> (Nebius Group N.V., Niederlande, EU) weiterleitet. Die
+            gesamte KI-Pipeline wird innerhalb der EU betrieben &mdash; für das Coaching findet
+            <strong>keine Drittlandübermittlung</strong> statt.
+        </p>
+        <p>
+            <strong>Pro Coaching-Anfrage an den KI-Anbieter übermittelte Daten:</strong>
         </p>
         <ul>
             <li>Ihr <strong>Name (pseudonymisiert)</strong> — Ihr bevorzugter Name wird nicht wörtlich
-                übermittelt. Stattdessen verwendet Pulse einen Platzhalter (<code>%name%</code>), den OpenAI
-                in Antworten wiederholt. Der Platzhalter wird nur auf Ihrem Gerät durch Ihren echten Namen
-                ersetzt, bevor die Antwort angezeigt wird. <strong>OpenAI kennt Ihren echten Namen nicht.</strong></li>
+                übermittelt. Stattdessen verwendet Pulse einen Platzhalter (<code>%name%</code>), den das
+                KI-Modell in Antworten wiederholt. Der Platzhalter wird nur auf Ihrem Gerät durch Ihren
+                echten Namen ersetzt, bevor die Antwort angezeigt wird. <strong>Der KI-Anbieter kennt
+                Ihren echten Namen nicht.</strong></li>
             <li>Ihren <strong>Altersbereich</strong> (z.B. 20&ndash;29) &mdash; niemals Ihr exaktes Alter oder Geburtsdatum</li>
             <li>Ihr <strong>biologisches Geschlecht</strong> (aus Apple Health oder manueller Eingabe)</li>
             <li>Ihre <strong>Körpergröße und Ihr Gewicht</strong> (aus Apple Health oder manueller Eingabe)</li>
@@ -235,54 +244,44 @@
                 Scores und Trendanalysen (keine Roh-Sensordaten wie einzelne HRV-Messwerte)</li>
         </ul>
         <p>
-            <strong>Datensicherungsmaßnahmen gegen Behördenzugriff:</strong>
+            <strong>Datensicherungsmaßnahmen:</strong>
         </p>
         <ul>
-            <li><strong>Namenspseudononymisierung:</strong> Ihr Name ist nicht in den an OpenAI gesendeten
-                Daten enthalten, wodurch das Risiko einer Identifizierung ohne Gerätezugriff deutlich
-                verringert wird &mdash; weitere Daten (biologisches Geschlecht, Größe, Gewicht und Ihre
-                Coaching-Frage) werden jedoch weiterhin übermittelt.</li>
+            <li><strong>Namenspseudononymisierung:</strong> Ihr Name ist nicht in den an den KI-Anbieter
+                gesendeten Daten enthalten, wodurch das Risiko einer Identifizierung ohne Gerätezugriff
+                erheblich reduziert wird &mdash; weitere Daten (biologisches Geschlecht, Größe, Gewicht und
+                Ihre Coaching-Frage) werden jedoch weiterhin übermittelt.</li>
             <li><strong>Minimierung:</strong> Wir senden keine Roh-HealthKit-Sensordaten (z.B. einzelne
                 Herzfrequenzmessungen) oder Ihren vollständigen Chat-Verlauf.</li>
             <li><strong>Verschlüsselung in Transit:</strong> Alle Daten werden über TLS 1.3 verschlüsselt übermittelt.</li>
-            <li><strong>EU-Proxy:</strong> Die Anfragen laufen über eine Supabase Edge Function in der EU,
-                die als Vermittlungsschicht fungiert.</li>
+            <li><strong>EU-interne Pipeline:</strong> Die Anfragen laufen über eine Supabase Edge Function
+                in der EU, die als Vermittlungsschicht zu Eden AI (Frankreich) und Nebius (Niederlande)
+                fungiert.</li>
         </ul>
         <p>
-            <strong>Was nicht an OpenAI gesendet wird:</strong> Ihre E-Mail-Adresse,
+            <strong>Was nicht an den KI-Anbieter gesendet wird:</strong> Ihre E-Mail-Adresse,
             Authentifizierungsdaten, Roh-HealthKit-Sensordaten (z.B. einzelne Herzfrequenzmessungen) sowie
-            Ihr vollständiger Chat-Verlauf (OpenAI erhält nur eine Zusammenfassung der Coaching-Historie).
+            Ihr vollständiger Chat-Verlauf (der KI-Anbieter erhält nur eine Zusammenfassung der
+            Coaching-Historie).
         </p>
         <p>
-            <strong>Speicherort:</strong> 🇺🇸 Vereinigte Staaten (OpenAI Server)
+            <strong>Speicherort:</strong> 🇪🇺 Europäische Union (Eden AI Frankreich; Nebius Niederlande)
         </p>
         <p>
-            <strong>Aufbewahrung bei OpenAI:</strong> OpenAI speichert API-Anfragedaten standardmäßig bis zu
-            30 Tage lang zur Systemverbesserung. Wir haben OpenAI um eine Verkürzung gebeten; diese
-            Seite wird aktualisiert, sobald eine Bestätigung vorliegt.
+            <strong>Aufbewahrung:</strong> Die Aufbewahrung der Anfragedaten richtet sich nach den
+            Datenverarbeitungsbedingungen von Eden AI bzw. Nebius. Wir finalisieren derzeit den
+            Auftragsverarbeitungsvertrag; diese Seite wird aktualisiert, sobald die Bedingungen bestätigt
+            sind.
         </p>
         <p>
-            <strong>Datenschutz &amp; Transfer-Mechanismus:</strong> OpenAI verwendet Standard Contractual Clauses (SCCs)
-            für EU-Datentransfers, um DSGVO-Konformität zu gewährleisten.
-        </p>
-        <p>
-            <strong>Datenschutzvereinbarung:</strong> Ja, verfügbar unter:
-            <a href="https://openai.com/de-DE/policies/row-privacy-policy/" target="_blank">https://openai.com/de-DE/policies/row-privacy-policy/</a>
+            <strong>Datenschutz &amp; Transfer-Mechanismus:</strong> Die Pipeline ist EU-intern, sodass
+            für das Coaching keine Drittlandübermittlung entsteht. Ein Auftragsverarbeitungsvertrag mit
+            Eden AI (Art. 28 DSGVO) sowie eine Due-Diligence-Prüfung von Nebius werden vor einem breiten
+            Rollout finalisiert (<strong>Eden AI DPA + Nebius-Prüfung ausstehend</strong>).
         </p>
         <p>
             <strong>Opt-out:</strong> Sie können KI Coaching in den App-Einstellungen jederzeit deaktivieren.
             Alle Fitness-, Ernährungs- und Schlaf-Funktionen arbeiten dann offline.
-        </p>
-
-        <p>
-            <strong>KI-Anbieter / Routing:</strong> KI-Coaching-Anfragen können über
-            <strong>Eden AI</strong> (Eden AI SAS, Frankreich, EU) geleitet werden &mdash; einen
-            KI-API-Aggregator, der die Anfrage an ein von uns konfiguriertes zugrunde liegendes
-            Sprachmodell weiterleitet. Sofern dieses Modell außerhalb der EU gehostet wird (z.B.
-            OpenAI in den USA), gelten dieselben oben beschriebenen Drittlandtransfer-Garantien
-            (Standardvertragsklauseln und Ihre ausdrückliche Einwilligung). Das konkrete Modell und
-            seine Region sind in unserer Verarbeitungsdokumentation festgehalten; wir aktivieren einen
-            Anbieter erst, wenn ein Auftragsverarbeitungsvertrag mit ihm vorliegt.
         </p>
 
         <h2>8. Lebensmitteldatenbanken (Ernährungsfunktion)</h2>
@@ -359,19 +358,19 @@
             </tr>
             <tr>
                 <td><strong>OpenAI</strong></td>
-                <td>Auftragsverarbeiter (KI-Coaching)</td>
+                <td>Auftragsverarbeiter (KI-Coaching) — nicht mehr genutzt / Legacy</td>
                 <td>🇺🇸 USA</td>
-                <td>LLM-Inferenz für personalisiertes Coaching</td>
+                <td>Entfernt: KI-Coaching nutzt OpenAI nicht mehr (EU-intern über Eden AI &rarr; Nebius)</td>
                 <td>✅ AVV unterzeichnet</td>
                 <td>SCC</td>
             </tr>
             <tr>
-                <td><strong>Eden AI</strong></td>
+                <td><strong>Eden AI</strong> (Modell: Nebius/Qwen3-235B)</td>
                 <td>Auftragsverarbeiter (KI-Aggregator)</td>
-                <td>🇫🇷 Frankreich (EU)</td>
-                <td>Leitet KI-Coaching-Anfragen an ein konfiguriertes zugrunde liegendes Modell</td>
-                <td>⏳ AVV vor Aktivierung erforderlich</td>
-                <td>SCC (sofern Modell außerhalb der EU)</td>
+                <td>🇫🇷 Frankreich (EU); Modell Nebius/Qwen3-235B 🇳🇱 Niederlande (EU)</td>
+                <td>Leitet KI-Coaching-Anfragen an das zugrunde liegende Modell Nebius/Qwen3-235B (Nebius Group N.V., Niederlande, EU) weiter</td>
+                <td>⏳ Eden AI DPA + Nebius-Prüfung ausstehend</td>
+                <td>EU-intern (Eden FR &rarr; Nebius NL)</td>
             </tr>
             <tr>
                 <td><strong>USDA FoodData Central</strong></td>
@@ -434,9 +433,18 @@
             <a href="https://www.datenschutzzentrum.de/" target="_blank">https://www.datenschutzzentrum.de/</a>
         </p>
 
-        <h2>13. Änderungen dieser Erklärung</h2>
+        <h2>13. Website-Hosting</h2>
         <p>
-            Wir können diese Datenschutzerklärung aktualisieren. 
+            Diese Rechtsseiten werden über <strong>GitHub Pages (GitHub, Inc., USA)</strong> gehostet.
+            Beim Aufruf verarbeitet GitHub automatisch Ihre IP-Adresse und übliche Server-Logdaten, um die
+            Seiten auszuliefern (berechtigtes Interesse von GitHub, Art. 6 Abs. 1 lit. f DSGVO; eine
+            etwaige Übermittlung in die USA ist durch die Standardvertragsklauseln von GitHub abgesichert).
+            Dies betrifft ausschließlich diese Website-Seiten, nicht die Pulse-App.
+        </p>
+
+        <h2>14. Änderungen dieser Erklärung</h2>
+        <p>
+            Wir können diese Datenschutzerklärung aktualisieren.
             Änderungen treten sofort nach Veröffentlichung auf dieser Seite in Kraft. 
             Das letzte Aktualisierungsdatum steht oben.
         </p>
