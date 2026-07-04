@@ -93,9 +93,15 @@
                 <td>Contractual necessity</td>
             </tr>
             <tr>
-                <td>Workout/Nutrition Logs</td>
+                <td>Workout Logs</td>
                 <td>You provide</td>
                 <td>Supabase (🇪🇺 EU)</td>
+                <td>Contractual necessity</td>
+            </tr>
+            <tr>
+                <td>Food / Nutrition Logs</td>
+                <td>You provide</td>
+                <td>Stays on your device</td>
                 <td>Contractual necessity</td>
             </tr>
             <tr>
@@ -120,7 +126,7 @@
 
         <h2>4. Apple HealthKit</h2>
         <p>
-            <strong>Data Collected:</strong> Heart rate, workout data, fitness metrics, sleep data from Apple Watch and iPhone.
+            <strong>Data Collected:</strong> Heart rate, workout data, fitness metrics, sleep data, plus your date of birth and biological sex, from Apple Watch and iPhone. Your date of birth is used on your device only (to derive an age range) and is never sent to OpenAI.
         </p>
         <p>
             <strong>Storage:</strong> This data remains on your device and your private iCloud. 
@@ -131,9 +137,23 @@
             We never sell this data.
         </p>
 
+        <h2>4a. Apple Health Records (optional)</h2>
+        <p>
+            If you enable it, Pulse can import your Apple Health <strong>clinical records</strong>
+            (allergies, conditions, immunizations, lab results, medications, procedures, vital signs)
+            so you can view them inside the app.
+        </p>
+        <ul>
+            <li><strong>Opt-in:</strong> off by default; imported only after you explicitly enable it.</li>
+            <li><strong>Storage:</strong> on your device only &mdash; not stored on Supabase.</li>
+            <li><strong>Never sent to OpenAI:</strong> clinical records are excluded from AI coaching.</li>
+            <li><strong>Legal basis:</strong> explicit consent (Art. 9(2)(a) GDPR).</li>
+            <li><strong>Retention:</strong> kept on your device until you delete them or uninstall the app.</li>
+        </ul>
+
         <h2>5. Supabase Data Storage</h2>
         <p>
-            <strong>Stores:</strong> User profile, nutrition logs, workout history
+            <strong>Stores:</strong> User profile, workout history (food/nutrition logs stay on your device)
         </p>
         <p>
             <strong>Location:</strong> 🇪🇺 European Union (EU servers)
@@ -192,7 +212,7 @@
                 Instead, Pulse uses a placeholder (<code>%name%</code>) that OpenAI includes in its responses.
                 The placeholder is replaced with your real name only on your device before the response is
                 displayed to you. <strong>OpenAI never learns your actual name.</strong></li>
-            <li>Your <strong>exact age</strong> (e.g. 28 years)</li>
+            <li>Your <strong>age range</strong> (e.g. 20&ndash;29) &mdash; never your exact age or date of birth</li>
             <li>Your <strong>biological sex</strong> (from Apple Health or manual entry)</li>
             <li>Your <strong>height and weight</strong> (from Apple Health or manual entry)</li>
             <li>Your <strong>coaching question</strong> (the message you typed)</li>
@@ -206,7 +226,8 @@
         </p>
         <ul>
             <li><strong>Name pseudonymization:</strong> Your name is not included in data sent to OpenAI,
-                making identification impossible without access to your device.</li>
+                which significantly reduces the risk of identification &mdash; though other data
+                (biological sex, height, weight, and your coaching question) is still sent.</li>
             <li><strong>Data minimization:</strong> We do not send raw HealthKit sensor readings
                 (e.g. individual heart-rate measurements) or your complete chat history.</li>
             <li><strong>Encryption in transit:</strong> All data is encrypted via TLS 1.3 during transmission.</li>
@@ -237,6 +258,17 @@
         <p>
             <strong>Opt-out:</strong> You can disable AI Coaching in the app settings at any time.
             All fitness, nutrition, and sleep features work offline without AI Coaching.
+        </p>
+
+        <p>
+            <strong>AI provider / routing:</strong> AI-coaching requests may be routed through
+            <strong>Eden AI</strong> (Eden AI SAS, France, EU) &mdash; an AI-API aggregator that
+            forwards the request to an underlying language model configured by us. Where that
+            underlying model is hosted outside the EU (for example OpenAI in the USA), the same
+            third-country-transfer safeguards described above apply (Standard Contractual Clauses
+            and your explicit consent). The specific model and its region are recorded in our
+            processing documentation, and we do not enable a provider until a data-processing
+            agreement with it is in place.
         </p>
 
         <h2>8. Food Database Lookups (Nutrition Feature)</h2>
@@ -297,7 +329,7 @@
                 <td><strong>Supabase</strong></td>
                 <td>Data Processor (Art. 28)</td>
                 <td>🇪🇺 EU (Ireland)</td>
-                <td>Store user profile, workouts, nutrition logs, coaching metadata</td>
+                <td>Store user profile, workouts, coaching metadata (nutrition logs stay on-device)</td>
                 <td>✅ DPA signed</td>
                 <td>N/A (EU)</td>
             </tr>
@@ -316,6 +348,14 @@
                 <td>LLM inference for personalized coaching</td>
                 <td>✅ DPA signed</td>
                 <td>SCC</td>
+            </tr>
+            <tr>
+                <td><strong>Eden AI</strong></td>
+                <td>Data Processor (AI aggregator)</td>
+                <td>🇫🇷 France (EU)</td>
+                <td>Routes AI-coaching requests to a configured underlying model</td>
+                <td>⏳ DPA required before enabling</td>
+                <td>SCC (where the underlying model is non-EU)</td>
             </tr>
             <tr>
                 <td><strong>USDA FoodData Central</strong></td>
