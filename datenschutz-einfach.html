@@ -1,0 +1,80 @@
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4; margin: 2.2cm 2cm 2.4cm 2cm; }
+  body { font-family: Helvetica, Arial, sans-serif; font-size: 10.5pt; color: #222; line-height: 1.5; }
+  h1 { color: #17a24a; font-size: 20pt; margin-bottom: 2px; }
+  .subtitle { color: #666; font-size: 10pt; margin-top: 0; margin-bottom: 18px; }
+  h2 { color: #17a24a; font-size: 13pt; margin-top: 20px; margin-bottom: 6px; border-bottom: 1px solid #d8ecdf; padding-bottom: 3px; }
+  .tldr { background: #eafaf1; border-left: 4px solid #17a24a; padding: 10px 14px; margin-bottom: 4px; }
+  .tldr ul { margin: 4px 0 0 0; padding-left: 18px; }
+  .tldr li { margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 14px 0; }
+  th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 9.5pt; vertical-align: top; }
+  th { background: #f2f2f2; }
+  .yes { color: #17a24a; font-weight: bold; }
+  .no { color: #b02a2a; font-weight: bold; }
+  .rights li { margin-bottom: 5px; }
+  .rights b { color: #17a24a; }
+  .footer { margin-top: 22px; padding-top: 10px; border-top: 1px solid #ddd; font-size: 9pt; color: #666; }
+  .footer a { color: #17a24a; }
+  .contact { background: #f7f7f7; padding: 10px 14px; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<h1>Wie Pulse mit deinen Daten umgeht</h1>
+<p class="subtitle">Kurzfassung in einfacher Sprache &middot; Stand 26. Juli 2026</p>
+
+<div class="tldr">
+  <b>Das Wichtigste zuerst:</b>
+  <ul>
+    <li>Deine <b>Gesundheitsdaten aus Apple Health</b> (Herzfrequenz, Schlaf, HRV usw.) und deine <b>Ernährungs-Logs</b> bleiben immer auf deinem iPhone.</li>
+    <li>Deine <b>Trainingshistorie und dein Profil</b> werden verschlüsselt auf einem Server in der EU (Irland) gespeichert, sobald du mit einem Konto angemeldet bist &ndash; damit du z.&nbsp;B. beim Handy-Wechsel nichts verlierst.</li>
+    <li><b>KI-Coaching ist freiwillig</b> und standardmäßig aus. Ohne KI-Coaching läuft die App normal weiter &ndash; nur der Chat mit dem Coach ist dann gesperrt.</li>
+    <li>Aktivierst du KI-Coaching, gehen ausgewählte Angaben an <b>Anbieter in Frankreich und den Niederlanden</b> &ndash; niemals in die USA, und dein Name wird vorher durch einen Platzhalter ersetzt.</li>
+    <li>Du kannst jederzeit alles einsehen, exportieren oder löschen.</li>
+  </ul>
+</div>
+
+<h2>Was wird gespeichert &ndash; und wo?</h2>
+<table>
+  <tr><th>Daten</th><th>Speicherort</th><th>Verlässt dein Handy?</th></tr>
+  <tr><td>Herzfrequenz, HRV, Schlaf, Training (aus Apple Health)</td><td>Nur dein iPhone</td><td class="no">Nein</td></tr>
+  <tr><td>Ernährungs-Logs</td><td>Nur dein iPhone</td><td class="no">Nein</td></tr>
+  <tr><td>Trainingshistorie &amp; Profil (Name, Alter, Ziele)</td><td>EU-Server (Irland)</td><td class="yes">Ja, EU-verschlüsselt</td></tr>
+  <tr><td>Chat-Verlauf &amp; Gesundheits-Zusammenfassungen</td><td>EU-Server &ndash; nur wenn KI-Coaching an ist</td><td class="yes">Ja, nur mit KI an</td></tr>
+  <tr><td>KI-Coaching-Anfrage (Alter, Geschlecht, Größe, Gewicht, deine Frage)</td><td>KI-Anbieter in Frankreich/Niederlande &ndash; nur wenn KI-Coaching an ist</td><td class="yes">Ja, nur mit KI an, nie in die USA</td></tr>
+  <tr><td>Login-E-Mail</td><td>Anmeldedienst Clerk, USA (rechtlich abgesichert)</td><td class="yes">Ja</td></tr>
+</table>
+<p style="font-size:9pt; color:#666; margin-top:-8px;">Rohdaten aus Apple Health (einzelne Herzschlag-Messwerte) gehen niemals irgendwohin &ndash; auch nicht an die KI. Verkauft wird nichts, niemals.</p>
+
+<h2>Mit oder ohne KI-Coaching</h2>
+<p><b>KI-Coaching aus (Standard):</b> Fitness-, Ernährungs- und Schlaf-Funktionen laufen komplett normal und offline. Es geht nichts an eine KI. Deine Trainingshistorie und dein Profil synchronisieren trotzdem weiter mit dem EU-Server &ndash; das ist unabhängig vom KI-Schalter und dient nur dazu, dass du z.&nbsp;B. auf einem neuen Handy weitermachen kannst.</p>
+<p><b>KI-Coaching an:</b> Zusätzlich werden deine Coaching-Fragen und ein paar Profildaten an EU-Anbieter geschickt, um dir zu antworten. Dein Name wird dabei durch einen Platzhalter ersetzt, bevor er das Gerät verlässt. Du kannst das jederzeit wieder ausschalten (Profil &rarr; Privatsphäre &amp; Einwilligung).</p>
+
+<h2>Deine Rechte</h2>
+<ul class="rights">
+  <li><b>Einsehen:</b> Du kannst jederzeit anfordern, welche Daten über dich gespeichert sind.</li>
+  <li><b>Exportieren:</b> Du kannst deine Daten als Datei mitnehmen.</li>
+  <li><b>Berichtigen:</b> Du kannst falsche Angaben korrigieren lassen.</li>
+  <li><b>Löschen:</b> Kontolöschung entfernt alle Server-Daten dauerhaft &ndash; sofort.</li>
+  <li><b>Widersprechen &amp; einschränken:</b> Du kannst einzelnen Verarbeitungen widersprechen oder sie einschränken lassen.</li>
+  <li><b>Einwilligung widerrufen:</b> Jede Einwilligung (z.&nbsp;B. KI-Coaching) kannst du jederzeit für die Zukunft zurückziehen.</li>
+</ul>
+
+<div class="contact">
+  <b>Fragen oder Anliegen?</b><br>
+  Robin Jüngerich &middot; robin.juengerich@icloud.com<br>
+  Beschwerderecht bei einer Aufsichtsbehörde: Unabhängiges Landeszentrum für Datenschutz Schleswig-Holstein (ULD), mail@datenschutzzentrum.de
+</div>
+
+<div class="footer">
+  Dies ist eine leicht verständliche Zusammenfassung. Es gilt die vollständige, rechtlich verbindliche
+  Datenschutzerklärung: <a href="https://pulse-health.github.io/datenschutz.html">pulse-health.github.io/datenschutz.html</a>
+  (englische Version: <a href="https://pulse-health.github.io/privacy-policy.html">/privacy-policy.html</a>).
+</div>
+
+</body>
+</html>
