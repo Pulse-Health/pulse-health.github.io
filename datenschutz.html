@@ -60,7 +60,7 @@
         <h1>Datenschutzerklärung</h1>
         
         <div class="meta">
-            <strong>Gültig ab:</strong> 23. Juni 2026<br>
+            <strong>Gültig ab:</strong> 23. Juni 2026 &middot; <strong>Zuletzt aktualisiert:</strong> 2. September 2026<br>
             <strong>Sprache:</strong> Deutsch | <a href="privacy-policy.html">English</a><br>
             <strong>Siehe auch:</strong> <a href="agb.html">AGB</a> · <a href="impressum.html">Impressum</a>
         </div>
@@ -112,6 +112,18 @@
                 <td>Vertraglich notwendig</td>
             </tr>
             <tr>
+                <td>Koffein-, Alkohol- &amp; Wasser-Log</td>
+                <td>Von Ihnen eingegeben</td>
+                <td>Bleibt auf Ihrem Gerät</td>
+                <td>Ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO); nur eine Tagessumme kann den KI-Coach erreichen</td>
+            </tr>
+            <tr>
+                <td>Medikamenten-Einnahmen (Dosis &amp; Uhrzeit)</td>
+                <td>Von Ihnen eingegeben</td>
+                <td>Bleibt auf Ihrem Gerät (gesondert geschützte Datei, vom Backup ausgenommen, Löschung beim Abmelden)</td>
+                <td>Gesonderte ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO); Einzeleinträge werden nie übermittelt</td>
+            </tr>
+            <tr>
                 <td>KI-Coaching-Anfragen (inkl. Gesundheitsmetriken)</td>
                 <td>Ihre Abfragen</td>
                 <td>Eden AI (🇫🇷 FR) &rarr; Nebius (🇳🇱 NL) — EU-intern</td>
@@ -159,6 +171,37 @@
             <li><strong>Niemals an den KI-Anbieter:</strong> Befunde sind vom KI-Coaching ausgeschlossen.</li>
             <li><strong>Rechtsgrundlage:</strong> ausdr&uuml;ckliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO).</li>
             <li><strong>Aufbewahrung:</strong> verbleiben auf Ihrem Ger&auml;t, bis Sie sie l&ouml;schen oder die App deinstallieren.</li>
+        </ul>
+
+        <h2>4b. Koffein, Alkohol &amp; Medikation (optional, nur auf dem Gerät)</h2>
+        <p>
+            Wenn Sie möchten, können Sie in Pulse festhalten, was Sie zu sich genommen haben und wann
+            &mdash; Koffein, Alkohol, Wasser und <strong>eingenommene Medikamente</strong>. Pulse zeigt
+            Ihnen dann, ob diese Mengen mit Ihren eigenen Werten (Schlaf, HRV, Ruhepuls und weitere)
+            <strong>zusammen auftreten</strong>.
+        </p>
+        <ul>
+            <li><strong>Opt-in:</strong> Es wird nichts erfasst, was Sie nicht selbst eintragen.</li>
+            <li><strong>Speicherort:</strong> ausschließlich auf Ihrem Gerät. Einzelne Einträge &mdash;
+                Präparat, Dosis und Uhrzeit &mdash; werden <strong>nie</strong> übermittelt.
+                Medikamenten-Einträge liegen in einer gesondert geschützten Datei, sind vom Backup
+                ausgenommen und werden beim Abmelden gelöscht.</li>
+            <li><strong>Was den KI-Coach erreichen kann:</strong> nur eine <em>Tagessumme</em> für Koffein,
+                Alkohol und Wasser sowie ein bereits fertig berechnetes statistisches Ergebnis.
+                <strong>Medikation ist in dieser Tagessumme nicht enthalten</strong> und erreicht den Coach
+                nur als zusammengefasster Befund &mdash; und nur, wenn Sie dafür gesondert einwilligen.</li>
+            <li><strong>Nicht nach Apple Health geschrieben:</strong> Alkohol wird nur gelesen, Medikation
+                gar nicht zurückgeschrieben. Koffein und Wasser nur, wenn Sie den Abgleich einschalten.</li>
+            <li><strong>Nur beschreibend:</strong> Pulse sagt, ob sich zwei Dinge <em>gemeinsam bewegt</em>
+                haben &mdash; immer mit der Zahl der Tage, auf denen das beruht. Das ist <strong>kein
+                Beleg für eine Ursache</strong>, und Pulse sagt das auch so. Es werden keine Dosierungs-,
+                Therapie- oder Konsumempfehlungen gegeben.</li>
+            <li><strong>Ehrliche Absagen:</strong> Unter 14 passenden Tagen &mdash; oder 5 Tagen je Gruppe
+                &mdash; nennt Pulse gar keine Zahl, statt eine schwache Zahl mit einem Hinweis zu versehen.</li>
+            <li><strong>Rechtsgrundlage:</strong> ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO);
+                für Medikation eine eigene, gesonderte Einwilligung.</li>
+            <li><strong>Speicherdauer:</strong> auf Ihrem Gerät, bis Sie die Einträge löschen oder die App
+                deinstallieren.</li>
         </ul>
 
         <h2>5. Supabase Datenspeicher</h2>
@@ -357,6 +400,14 @@
                 <td>SCC</td>
             </tr>
             <tr>
+                <td><strong>Rollbar</strong></td>
+                <td>Auftragsverarbeiter (Absturz-/Fehler-Reporting) — optional</td>
+                <td>🇺🇸 USA</td>
+                <td>App-Absturz-/Fehlerdiagnose (nur technische Daten — Gesundheits-, Coaching- und Ernährungsinhalte sind by design ausgeschlossen; keine Übermittlung ohne Ihre Einwilligung)</td>
+                <td>⏳ AVV ausstehend</td>
+                <td>SCC</td>
+            </tr>
+            <tr>
                 <td><strong>OpenAI</strong></td>
                 <td>Auftragsverarbeiter (KI-Coaching) — nicht mehr genutzt / Legacy</td>
                 <td>🇺🇸 USA</td>
@@ -391,6 +442,8 @@
         </table>
 
         <p><strong>OpenAI Sub-Prozessoren:</strong> Siehe <a href="https://openai.com/policies/sub-processor-list/" target="_blank">OpenAI Sub-Processor List</a>.</p>
+
+        <p><strong>Rollbar:</strong> Rollbar bietet keine EU-Datenresidenz an. Diese Übermittlung stützt sich daher auf Standardvertragsklauseln sowie Ihre ausdrückliche, optionale Einwilligung (Art. 6 Abs. 1 lit. a und Art. 49 Abs. 1 lit. a DSGVO) — Sie können sie jederzeit unter Profil → Datenschutz &amp; Einwilligung aktivieren oder deaktivieren. Absturzberichte enthalten ausschließlich technische Daten: Unsere App entfernt Gesundheits-, Coaching- und Ernährungsdaten gezielt, bevor überhaupt etwas an Rollbar gesendet wird, und Berichte sind standardmäßig nicht mit Ihrem Konto verknüpft.</p>
 
         <p><strong>Auftragsverarbeitungsverträge:</strong> Alle Auftragsverarbeiter haben Auftragsverarbeitungsverträge (Art. 28 DSGVO) mit Standard Contractual Clauses (SCC) wo erforderlich unterzeichnet. Details sind auf Anfrage erhältlich.</p>
 

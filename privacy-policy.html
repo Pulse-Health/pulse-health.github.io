@@ -54,7 +54,7 @@
         <h1>Privacy Policy</h1>
         
         <div class="meta">
-            <strong>Effective Date:</strong> June 23, 2026<br>
+            <strong>Effective Date:</strong> June 23, 2026 &middot; <strong>Last updated:</strong> September 2, 2026<br>
             <strong>Language:</strong> English | <a href="datenschutz.html">Deutsch</a><br>
             <strong>See also:</strong> <a href="terms.html">Terms of Service</a> · <a href="impressum.html">Impressum</a>
         </div>
@@ -105,6 +105,18 @@
                 <td>Contractual necessity</td>
             </tr>
             <tr>
+                <td>Caffeine, Alcohol &amp; Water Log</td>
+                <td>You provide</td>
+                <td>Stays on your device</td>
+                <td>Explicit consent (Art. 9(2)(a) GDPR); only a daily total can reach the AI coach</td>
+            </tr>
+            <tr>
+                <td>Medication Intakes (dose &amp; time)</td>
+                <td>You provide</td>
+                <td>Stays on your device (separately protected file, excluded from backup, erased on sign-out)</td>
+                <td>Separate explicit consent (Art. 9(2)(a) GDPR); individual entries are never transmitted</td>
+            </tr>
+            <tr>
                 <td>AI Coaching Queries (incl. health metrics)</td>
                 <td>Your questions</td>
                 <td>Eden AI (🇫🇷 FR) &rarr; Nebius (🇳🇱 NL) — EU-internal</td>
@@ -149,6 +161,34 @@
             <li><strong>Never sent to the AI provider:</strong> clinical records are excluded from AI coaching.</li>
             <li><strong>Legal basis:</strong> explicit consent (Art. 9(2)(a) GDPR).</li>
             <li><strong>Retention:</strong> kept on your device until you delete them or uninstall the app.</li>
+        </ul>
+
+        <h2>4b. Caffeine, Alcohol &amp; Medication Log (optional, on-device only)</h2>
+        <p>
+            If you use it, Pulse lets you record what you consumed and when &mdash; caffeine, alcohol,
+            water, and <strong>medication you have taken</strong> &mdash; and shows you whether those
+            amounts move together with your own health metrics (sleep, HRV, resting heart rate and so on).
+        </p>
+        <ul>
+            <li><strong>Opt-in:</strong> nothing is recorded unless you enter it yourself.</li>
+            <li><strong>Storage:</strong> on your device only. Individual entries &mdash; what you took,
+                how much, and at what time &mdash; are <strong>never</strong> sent anywhere. Medication
+                entries are held in a separately protected file, excluded from backups, and erased when
+                you sign out.</li>
+            <li><strong>What can reach the AI coach:</strong> only a daily <em>total</em> for caffeine,
+                alcohol and water, plus any finished statistical result. <strong>Medication is not part
+                of that daily summary</strong> and can reach the coach only as an aggregate finding, and
+                only if you give separate consent for it.</li>
+            <li><strong>Never written to Apple Health:</strong> alcohol is read-only, and medication is
+                never written back at all. Caffeine and water are only synced if you switch that on.</li>
+            <li><strong>Descriptive only:</strong> Pulse reports whether two things <em>moved together</em>,
+                always with the number of days behind it. That is not proof that one caused the other,
+                and Pulse says so. It gives no dosing, treatment or consumption advice.</li>
+            <li><strong>Honest refusals:</strong> below 14 matching days &mdash; or 5 days per group &mdash;
+                Pulse reports no figure at all, rather than a weak number with a warning attached.</li>
+            <li><strong>Legal basis:</strong> explicit consent (Art. 9(2)(a) GDPR); medication under its own
+                separate consent.</li>
+            <li><strong>Retention:</strong> kept on your device until you delete it or uninstall the app.</li>
         </ul>
 
         <h2>5. Supabase Data Storage</h2>
@@ -343,6 +383,14 @@
                 <td>SCC</td>
             </tr>
             <tr>
+                <td><strong>Rollbar</strong></td>
+                <td>Data Processor (Crash/Error Reporting) — optional</td>
+                <td>🇺🇸 USA</td>
+                <td>App crash/error diagnostics (technical data only — health, coaching and nutrition content excluded by design; no data sent unless you opt in)</td>
+                <td>⏳ DPA pending</td>
+                <td>SCC</td>
+            </tr>
+            <tr>
                 <td><strong>Eden AI</strong></td>
                 <td>Data Processor (AI aggregator)</td>
                 <td>🇫🇷 France (EU)</td>
@@ -377,6 +425,8 @@
         </table>
 
         <p><strong>OpenAI (legacy):</strong> OpenAI is no longer used for AI coaching. Its former sub-processor list remains available at the <a href="https://openai.com/policies/sub-processor-list/" target="_blank">OpenAI Sub-Processor List</a> for reference only.</p>
+
+        <p><strong>Rollbar:</strong> Rollbar has no EU data residency option, so this transfer relies on Standard Contractual Clauses plus your explicit, optional consent (Art. 6(1)(a) and Art. 49(1)(a) GDPR) — you can enable or disable it anytime under Profile → Privacy &amp; Consent. Crash reports are technical only: our app deliberately strips health, coaching and nutrition data before sending anything to Rollbar, and no Rollbar report is linked to your account by default.</p>
 
         <p><strong>Data Processing Agreements:</strong> All processors have signed Data Processing Agreements (Art. 28 GDPR) with Standard Contractual Clauses where applicable. Details available on request.</p>
 
