@@ -66,8 +66,11 @@ enum SvcSyncFix {
         return [
             .state(SyncEnvelope(state: state, endedWorkoutID: nil, sentAt: at(5))),
             .state(SyncEnvelope(state: nil, endedWorkoutID: uuid(9), sentAt: at(6))),
+            .state(SyncEnvelope(state: state, endedWorkoutID: nil, sentAt: at(5.5), ackedCommandIDs: [uuid(2), uuid(3), uuid(4)])),
+            .state(SyncEnvelope(state: nil, endedWorkoutID: uuid(9), sentAt: at(6.5), ackedCommandIDs: [uuid(4)])),
             .command(RemoteCommand(id: uuid(2), action: .logSet(exerciseID: target.id, setID: target.sets[3].id), origin: .watch, issuedAt: at(7))),
             .command(RemoteCommand(id: uuid(3), action: .nudgeNextSet(weightSteps: -1, repsSteps: 2), origin: .liveActivity, issuedAt: at(8))),
+            .command(RemoteCommand(id: uuid(4), action: .skipRest, origin: .watch, issuedAt: at(8.5), workoutID: state.id)),
             .heartRate(HeartRateSample(bpm: 142, at: at(9.5))),
             .watchSession(isRecording: true),
             .watchSession(isRecording: false),
@@ -125,6 +128,80 @@ final class SyncCodecTests: XCTestCase {
             let command = RemoteCommand(id: SvcSyncFix.uuid(7), action: .skipRest, origin: origin, issuedAt: SvcSyncFix.epoch)
             XCTAssertEqual(try SyncCodec.decode(try SyncCodec.encode(.command(command))), .command(command))
         }
+    }
+
+    // MARK: Acknowledgements (sync protocol, ARCHITECTURE 3.4)
+
+    /// Encodes `message`, lets `edit` change the JSON object inside `.state` / `.command`, and decodes it again.
+    private func decodeEdited(_ message: SyncMessage, payloadKey: String, _ edit: (inout [String: Any]) -> Void) throws -> SyncMessage {
+        let data = try XCTUnwrap(try SyncCodec.encode(message)["m"] as? Data)
+        var root = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        var wrapper = try XCTUnwrap(root[payloadKey] as? [String: Any])
+        var body = try XCTUnwrap(wrapper["_0"] as? [String: Any])
+        edit(&body)
+        wrapper["_0"] = body
+        root[payloadKey] = wrapper
+        return try SyncCodec.decode(["m": try JSONSerialization.data(withJSONObject: root)])
+    }
+
+    func testAcknowledgementsKeepTheirOrderAndSurviveTheRoundTrip() throws {
+        let ids = (10..<20).map { SvcSyncFix.uuid($0) }
+        let envelope = SyncEnvelope(state: SvcSyncFix.richState(), sentAt: SvcSyncFix.epoch, ackedCommandIDs: ids)
+        guard case let .state(decoded) = try SyncCodec.decode(try SyncCodec.encode(.state(envelope))) else { return XCTFail("not a state message") }
+        XCTAssertEqual(decoded.ackedCommandIDs, ids)
+        XCTAssertEqual(decoded, envelope)
+        let empty = SyncEnvelope(state: nil, endedWorkoutID: SvcSyncFix.uuid(9), sentAt: SvcSyncFix.epoch)
+        XCTAssertEqual(empty.ackedCommandIDs, [], "the default is no acknowledgements")
+        XCTAssertEqual(try SyncCodec.decode(try SyncCodec.encode(.state(empty))), .state(empty))
+    }
+
+    func testAnEnvelopeWrittenBeforeAcknowledgementsExistedStillDecodes() throws {
+        let envelope = SyncEnvelope(state: SvcSyncFix.richState(), endedWorkoutID: nil, sentAt: SvcSyncFix.at(3), ackedCommandIDs: [SvcSyncFix.uuid(5)])
+        let message = try decodeEdited(.state(envelope), payloadKey: "state") { body in
+            XCTAssertNotNil(body["ackedCommandIDs"])
+            body.removeValue(forKey: "ackedCommandIDs")
+        }
+        guard case let .state(old) = message else { return XCTFail("not a state message") }
+        XCTAssertEqual(old.ackedCommandIDs, [])
+        XCTAssertEqual(old.state, envelope.state)
+        XCTAssertEqual(old.sentAt, envelope.sentAt)
+
+        let ended = SyncEnvelope(state: nil, endedWorkoutID: SvcSyncFix.uuid(9), sentAt: SvcSyncFix.at(4), ackedCommandIDs: [SvcSyncFix.uuid(6)])
+        guard case let .state(oldEnd) = try decodeEdited(.state(ended), payloadKey: "state", { $0.removeValue(forKey: "ackedCommandIDs") }) else {
+            return XCTFail("not a state message")
+        }
+        XCTAssertEqual(oldEnd, SyncEnvelope(state: nil, endedWorkoutID: SvcSyncFix.uuid(9), sentAt: SvcSyncFix.at(4)))
+    }
+
+    func testAMalformedAcknowledgementListIsRejected() throws {
+        let envelope = SyncEnvelope(state: nil, sentAt: SvcSyncFix.epoch, ackedCommandIDs: [SvcSyncFix.uuid(5)])
+        for garbage: Any in ["text", 5, ["not a uuid"], [1, 2]] {
+            let data = try XCTUnwrap(try SyncCodec.encode(.state(envelope))["m"] as? Data)
+            var root = try XCTUnwrap(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+            var wrapper = try XCTUnwrap(root["state"] as? [String: Any])
+            var body = try XCTUnwrap(wrapper["_0"] as? [String: Any])
+            body["ackedCommandIDs"] = garbage
+            wrapper["_0"] = body
+            root["state"] = wrapper
+            let payload = ["m": try JSONSerialization.data(withJSONObject: root)]
+            XCTAssertThrowsError(try SyncCodec.decode(payload), "\(garbage)") { error in
+                guard case .undecodablePayload = error as? SyncCodecError else { return XCTFail("unexpected error \(error)") }
+            }
+        }
+    }
+
+    func testACommandCarriesItsWorkoutAndAnOldOneWithoutDecodesToNil() throws {
+        let named = RemoteCommand(id: SvcSyncFix.uuid(7), action: .skipRest, origin: .watch, issuedAt: SvcSyncFix.at(2), workoutID: SvcSyncFix.uuid(1))
+        XCTAssertEqual(try SyncCodec.decode(try SyncCodec.encode(.command(named))), .command(named))
+        guard case let .command(old) = try decodeEdited(.command(named), payloadKey: "command", { body in
+            XCTAssertEqual(body["workoutID"] as? String, SvcSyncFix.uuid(1).uuidString)
+            body.removeValue(forKey: "workoutID")
+        }) else { return XCTFail("not a command") }
+        XCTAssertNil(old.workoutID)
+        XCTAssertEqual(old.id, named.id)
+        XCTAssertEqual(old.action, named.action)
+        XCTAssertEqual(old.issuedAt, named.issuedAt)
+        XCTAssertNil(RemoteCommand(action: .skipRest, origin: .watch).workoutID, "the initializer's default")
     }
 
     func testDatesAreWrittenAsISO8601Text() throws {

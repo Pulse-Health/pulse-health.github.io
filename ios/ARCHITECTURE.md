@@ -51,7 +51,11 @@ ios/
 
 Already written (do not change without updating this file and every user): `Models.swift`,
 `WorkoutState.swift`, `WorkoutAction.swift`, `Presentation.swift`, `Snapshot.swift`, `Completed.swift`,
-`SideEffects.swift`. Read them first. Public API to implement, by file:
+`SideEffects.swift`. Read them first. Every public struct of `Presentation.swift` (`ActiveWorkoutPresentation` and its nested `Segment`, `Header`,
+`Navigator`, `SetRow`, `Card`, `Dock`, `Totals`, `FinishCheck`), `Snapshot.swift` (`WorkoutSnapshot`) and `Completed.swift` (including `ExerciseSession`,
+`ExerciseRecordRow`, `ExerciseHistory`) has an explicit `public init` with every stored property as a parameter (labels in declaration order; an
+optional property defaults to nil), so code outside the module (UI fixtures, snapshot tests) can construct them; a Swift memberwise initializer would
+be internal. Public API to implement, by file:
 
 ### 3.1 `ExerciseLibrary.swift`, `Metrics.swift` (area: library and metrics)
 
@@ -114,7 +118,8 @@ Reducer rules (ported from `Active.dc.html`; `S` = state):
    nothing else happens; if it changed, `revision += 1`. Unknown ids / out-of-range indexes are no-ops.
    `currentIndex` is always within `0..<exercises.count` (0 when empty) after every action.
 2. Logging (`toggleSet`, `logSet`, `logNextSet`): toggling a done set makes it pending (rir is kept, rest untouched).
-   A set becoming done: `lastLogged = SetRef`; rest seconds = warm-up ? `max(30, round(rest*0.4/5)*5)` : the
+   A set becoming done: `lastLogged = SetRef`; rest seconds = 0 when the exercise's `restSeconds` is 0 (the timer is Off: no rest after a
+   set of ANY type, warm-ups included), else warm-up ? `max(30, round(rest*0.4/5)*5)` : the
    exercise's `restSeconds`. Superset: take the indexes of exercises sharing the (non-nil) `supersetGroup`; if the
    exercise is not the last of the group, `currentIndex = index + 1` and no rest starts; otherwise
    `currentIndex = first index of the group` and rest starts. Not in a superset: `currentIndex` unchanged.
@@ -140,7 +145,8 @@ Reducer rules (ported from `Active.dc.html`; `S` = state):
    its default rest, empty note; clears `lastLogged` if it pointed at it. `addExercises` appends entries with default
    sets and default rest; into an empty workout it sets `currentIndex = 0`. `setRest` sets `restSeconds`, clamped to
    0...`maximumRestSeconds` (3,600 s; the rest presets stop at 5:00); default rests are clamped the same way.
-   `WorkoutTemplate.estimatedMinutes` counts a rest outside that range (a template that did not come through the reducer) as the nearest bound.
+   `WorkoutTemplate.estimatedMinutes` counts a rest outside that range (a template that did not come through the reducer) as the nearest bound,
+   and follows rule 2: 45 s of work per set plus the rest after it (warm-up rule as above), nothing for an exercise whose rest is 0.
 8. `toggleSuperset(exerciseID)`: in a group -> leaves it (orphan clean-up as in rule 6); otherwise joins the NEXT exercise
    (no next -> no-op): both get the next exercise's group, or the first unused letter of A, B, C, D, E, Z.
 9. Rest: `adjustRest(seconds)`: no rest and seconds > 0 -> start `now + seconds` (total = seconds); otherwise
@@ -220,8 +226,24 @@ public enum SyncCodec {
 }
 public struct SeenCommands: Sendable { public init(capacity: Int = 256); public mutating func insertIfNew(_ id: UUID) -> Bool }
 public enum SyncReconciler {
-    /// True when `incoming` should replace `local`: no local state, a different workout id, or a higher revision.
+    public static let pendingLifetime: TimeInterval = 15      // how long the Watch keeps showing an edit the phone has not acknowledged
+    public static let pendingCapacity = 64                    // unacknowledged edits the Watch keeps (the oldest is forgotten beyond that)
+    public static let acknowledgementWindow = 64              // command ids every envelope acknowledges (the most recent)
+    public static let acknowledgedMemory = 256                // command ids the phone remembers
+    /// First-generation rule: no local state, a different workout id, or a STRICTLY higher revision. Kept for compatibility; the mirror
+    /// no longer uses it (an optimistic Watch raises its local revision above the phone's and would ignore every envelope).
     public static func isNewer(_ incoming: WorkoutState, than local: WorkoutState?) -> Bool
+    /// The mirror's rule: true for another workout (or none shown, or no phone revision known), else `incoming.revision >= authoritativeRevision`.
+    public static func shouldAdopt(incoming: WorkoutState, authoritativeRevision: Int?, currentWorkoutID: UUID?) -> Bool
+    /// Pending edits minus the acknowledged ones and those older than `pendingLifetime`.
+    public static func remainingPending(_ pending: [RemoteCommand], acknowledged: [UUID], now: Date) -> [RemoteCommand]
+    /// The phone's state with the pending edits replayed on top, in order, each with `now: command.issuedAt`.
+    public static func rebase(_ authoritative: WorkoutState, replaying pending: [RemoteCommand]) -> WorkoutState
+}
+public struct RemoteCommand { id: UUID; action: WorkoutAction; origin: ActionOrigin; issuedAt: Date; workoutID: UUID? }   // Watch -> phone; workoutID nil in old payloads
+public struct SyncEnvelope { state: WorkoutState?; endedWorkoutID: UUID?; sentAt: Date; ackedCommandIDs: [UUID] }          // phone -> Watch; ackedCommandIDs [] in old payloads
+public protocol WorkoutSideEffect { /* workoutStarted, workoutChanged, workoutEnded as before, plus: */
+    func commandIssued(_ command: RemoteCommand)    // default: nothing. The mirror made `command` of an action taken on the Watch (see "Sync protocol")
 }
 
 public final class FileStrengthPersistence: @unchecked Sendable {
@@ -270,8 +292,11 @@ public final class WorkoutController: ObservableObject {
     public func restoreFromDisk()                                    // on launch: reload the active workout and notify effects
     public func startWorkout(template: WorkoutTemplate?, name: String? = nil)   // nil template = empty workout named `name ?? "Workout"`
     public func send(_ action: WorkoutAction, origin: ActionOrigin = .phone)    // reduce, persist (authority), notify effects
-    public func receive(_ command: RemoteCommand)                    // authority: dedupe by id (SeenCommands), then send(action, origin: command.origin)
-    public func receive(_ envelope: SyncEnvelope)                    // mirror: adopt when SyncReconciler.isNewer; nil state = ended
+    public func receive(_ command: RemoteCommand)                    // authority: acknowledge the id, dedupe (SeenCommands), then send(action, origin: command.origin)
+    public func receive(_ envelope: SyncEnvelope)                    // mirror: adopt per SyncReconciler.shouldAdopt, replay unacknowledged edits; nil state = ended
+    public func makeEnvelope(now: Date) -> SyncEnvelope              // authority: state (or nil + last ended id) + the last 64 acknowledged command ids
+    public var pendingCommands: [RemoteCommand] { get }              // mirror: edits shown on top of the phone's state that are not acknowledged yet
+    public var authoritativeRevision: Int? { get }                   // mirror: revision of the last phone state adopted for the running workout
     public func presentation(now: Date) -> ActiveWorkoutPresentation?
     public func snapshot(now: Date) -> WorkoutSnapshot?
     public func templateDiff() -> TemplateDiff
@@ -279,11 +304,51 @@ public final class WorkoutController: ObservableObject {
     public func discard()
 }
 ```
-Mirror role: `send` applies the reducer locally (optimistic) and notifies effects (the Watch effect forwards a `RemoteCommand`
-when `origin == .watch`); `receive(envelope)` replaces local state and NEVER calls `workoutChanged` (no echo): it calls
-`workoutStarted(state)` when an envelope for a different workout id arrives, and `workoutEnded(previousState, completed: nil)` when the
-envelope carries no state. Authority role persists after every change; `receive(command)` ends in `send(action, origin: command.origin)`.
-`finish` also ends a mirror locally.
+Roles: the authority (phone) persists after every change and `receive(command)` ends in `send(action, origin: command.origin)`; the mirror (Watch)
+never persists. `finish` also ends a mirror locally. Both are implemented by `WorkoutEngine`; `WorkoutController` forwards to it.
+
+#### Sync protocol (optimistic edits, acknowledgements)
+
+Delivery between phone and Watch is unreliable: a command can arrive twice (`sendMessage` AND `transferUserInfo`), late, out of order or never; envelopes
+can arrive out of order or be coalesced by `updateApplicationContext`. The Watch applies its own taps at once and the phone's envelopes acknowledge them.
+
+*Authority (phone).*
+* `receive(command)` records the command id as acknowledged in EVERY case: applied, duplicate (`SeenCommands`, 256 ids, drops it), changed nothing, or no
+  workout running. A repeated id moves to the most recent position. A command whose `workoutID` is not the running workout is not applied (a late command
+  of an earlier workout cannot act on the next one; an action that names exercise or set ids is a no-op in any other workout anyway, an action without ids
+  such as `logNextSet` or `skipRest` is not, hence the `workoutID`); a sender that names none (older Watch app) is applied to whatever runs.
+* `makeEnvelope(now:)` carries the current state, or no state plus `endedWorkoutID` (the workout that ended last, nil if none ended since launch), and
+  `ackedCommandIDs` = the last 64 acknowledged ids, oldest first. The bridge pushes it after every change (except heart-rate samples) AND after every
+  inbound command, even when the state did not change: that envelope is the acknowledgement of a duplicate or a no-op.
+
+*Mirror (Watch).*
+* `send(action, origin: .watch)` applies the reducer locally, then creates ONE `RemoteCommand(action:origin: .watch, issuedAt: clock, workoutID: shown
+  workout)`, appends it to `pendingCommands` (at most 64) and calls `commandIssued` on the effects (after `workoutChanged`); `WatchConnectivityClient`
+  sends it from there. No command for `.updateHeartRate` (its own message), for another origin or for an action that changes nothing.
+* `receive(envelope)` adopts when `SyncReconciler.shouldAdopt`: the workout id differs, or `envelope.state.revision >= authoritativeRevision` (the revision
+  of the last ADOPTED phone state, not of the optimistically edited local copy). A lower revision is stale and ignored; an equal one is adopted because it
+  may only carry acknowledgements, but nothing is published when the resulting state is identical. On adoption: pending edits whose id is in
+  `ackedCommandIDs`, and those older than 15 s of the Watch clock, are removed; the phone's state becomes the base; the remaining pending edits are
+  replayed on it in order with the reducer, each at its own `issuedAt`; `authoritativeRevision` is updated; the state is published. The Watch therefore
+  always shows `phone's truth + its unacknowledged taps`: no flicker when an acknowledgement is late, a lost tap disappears after 15 s, a tap whose
+  targets the phone has deleted does nothing (the phone wins), a tap the phone found to be a no-op is dropped when it is acknowledged.
+* `receive(envelope)` NEVER calls `workoutChanged` (no echo, so no command); it calls `workoutStarted(state)` when the envelope is for another workout id
+  than the one shown, and `workoutEnded(previous, completed: nil)` when the workout ends.
+* A restarted Watch has no state and no revision: it adopts the first envelope it receives (e.g. the answer to `requestState`), later ones correct it.
+
+*Envelope without a state* (`endedWorkoutID` = the workout the phone says ended):
+
+| Watch shows | `endedWorkoutID` | effect |
+|---|---|---|
+| nothing | nil | nothing happens; no id is remembered (it must not block the next state of any workout) |
+| nothing | X | X is remembered: a late state of X is ignored |
+| W | W | W ends (`workoutEnded`) and is remembered |
+| W | X ≠ W | W keeps running and X is remembered (a late notice of an earlier workout); unless the notice was sent after the last state adopted for W, then W is a ghost the Watch never heard ended and ends |
+| W | nil | the legacy "no workout" notice: W ends, but its id is NOT remembered, so the phone's next state for W is adopted again (the notice named nobody) |
+
+Known limits: `SeenCommands` is in memory, so a command redelivered after more than 256 later commands, or after a phone relaunch, would run again; a
+command that reaches the phone after the Watch dropped it (15 s) is still applied and shows up with the next envelope; a phone that restores a LOWER
+revision than the Watch adopted (the active-workout file could not be written) is not followed until its revision catches up or the Watch restarts.
 
 `record` always updates the store in memory; its result is `.failure(error)` when the workout could not be written to the history file (the
 only place its sets are kept: the personal bests are re-read from the history, so a failed write of the bests or the template is only
@@ -304,6 +369,10 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 610 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 622 (the controller and
+  store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
+  phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
+  40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice.
 * Apple-only files cannot be compiled on Linux: they are syntax-checked with `swiftc -parse`, then reviewed adversarially against the
   iOS 17 / watchOS 10 SDK APIs. The README states plainly that the Apple targets have not been built in Xcode.
 
@@ -411,7 +480,7 @@ public struct PulseStrengthRootView: View { public init(environment: StrengthApp
   heart-rate-only updates to one per 10 s; never update from `workoutChanged` caused by `.updateHeartRate` more often), ends it on `workoutEnded`; re-attaches to an existing activity after relaunch.
 * `RestNotificationScheduler` schedules a time-sensitive local notification at the rest end (identifier `StrengthConfig.restNotificationID`), cancels it on skip / pause / finish / discard, only when `settings.alertWhenRestEnds`; foreground presentation suppressed.
 * `HealthKitWorkoutWriter` writes an `HKWorkout` (traditional strength training) with `HKWorkoutBuilder` when a workout is finished and `state.usedWatch == false`; with the Watch recording, the Watch saves it.
-* `PhoneWatchBridge` (WCSession): pushes `SyncEnvelope` after every state change (`updateApplicationContext`, plus `sendMessage` when reachable), answers `.requestState`, turns inbound `.command` / `.heartRate` / `.watchSession` messages into controller calls, launches the Watch app with `HKHealthStore.startWatchApp(with:)` when a workout starts and the Watch app is installed.
+* `PhoneWatchBridge` (WCSession): pushes `controller.makeEnvelope(now:)` after every state change (`updateApplicationContext`, plus `sendMessage` when reachable) and, after every inbound `.command`, again when the command caused no push itself (a duplicate or no-op: the envelope is the acknowledgement; see 3.4), answers `.requestState`, turns inbound `.command` / `.heartRate` / `.watchSession` messages into controller calls, launches the Watch app with `HKHealthStore.startWatchApp(with:)` when a workout starts and the Watch app is installed.
 
 ### 5.4 Live Activity, Dynamic Island, App Intents
 
@@ -451,7 +520,7 @@ public final class WatchAppDelegate: NSObject, WKApplicationDelegate { public fu
 ```
 Screens follow `Watch.dc.html` (three screens): vertical-page `TabView` (`.verticalPage`): Log set (exercise name + time, "Set 4 of 5", weight with - / + and Digital Crown,
 reps with - / +, green "Log set"), Rest (draining ring + countdown, next set text, -15 / skip / +15, auto-selected while resting, haptic when over), Metrics (elapsed in yellow, heart
-rate with beat, volume, sets). Idle state ("Start a workout on your iPhone"), summary at the end. Actions go through `controller.send(..., origin: .watch)`; the target set ids come from
+rate with beat, volume, sets). Idle state ("Start a workout on your iPhone"), summary at the end. Actions go through `controller.send(..., origin: .watch)`, which applies them at once and issues one `RemoteCommand` per tap (`WorkoutSideEffect.commandIssued`); `WatchConnectivityClient` sends that command (`sendMessage` when reachable, else `transferUserInfo`; it no longer builds commands itself) and the phone's next envelope acknowledges it, so the screens keep showing unacknowledged taps on top of the phone's state (see "Sync protocol" in 3.4); the target set ids come from
 `controller.snapshot(now:)`; crown uses absolute `setWeight` after idle, buttons use `nudgeNextSet`. `WatchEnvironment` also publishes `session: WatchWorkoutSession` (`@Published isRecording`, `authorizationDenied`), `isPhoneReachable`, `endedSummary: WatchEndedSummary?` (+ `dismissSummary()`) and
 `requestStateFromPhone()`; `public struct WatchEndedSummary: Equatable { workoutName, durationText, volumeText, setsText, averageHeartRateText }` is built from the last known state when the workout ends.
 `WatchWorkoutSession` runs `HKWorkoutSession` +

@@ -311,6 +311,9 @@ public struct WorkoutTemplate: Identifiable, Codable, Hashable, Sendable {
 
     /// Rough duration: working time per set (45 s) plus rest, rounded to 5 minutes.
     ///
+    /// The rest after a set follows the reducer: the exercise's rest, 40 % of it (at least 30 s) after a warm-up, and none at all
+    /// when the exercise's rest is 0 (timer off), for every set type.
+    ///
     /// A rest outside `0...WorkoutReducer.maximumRestSeconds` (only possible for a template that did not come through the
     /// reducer, such as a damaged file) counts as the nearest bound, so the arithmetic cannot overflow.
     public var estimatedMinutes: Int {
@@ -318,7 +321,8 @@ public struct WorkoutTemplate: Identifiable, Codable, Hashable, Sendable {
         for entry in entries {
             let rest = max(0, min(entry.restSeconds, WorkoutReducer.maximumRestSeconds))
             for set in entry.plannedSets {
-                seconds += 45 + (set.type == .warmup ? max(30, rest * 2 / 5) : rest)
+                let restAfterSet = rest == 0 ? 0 : (set.type == .warmup ? max(30, rest * 2 / 5) : rest)
+                seconds += 45 + restAfterSet
             }
         }
         let minutes = Int((Double(seconds) / 60.0 / 5.0).rounded()) * 5

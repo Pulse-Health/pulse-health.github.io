@@ -64,18 +64,40 @@ public final class WorkoutController: ObservableObject {
     }
 
     /// Applies `action`: reduce, save (authority), publish, tell the effects.
+    ///
+    /// A mirror (the Watch) that applies an action of origin `.watch` also makes a `RemoteCommand` of it, remembers it in
+    /// `pendingCommands` until the phone acknowledges it and tells the effects through `commandIssued`.
     public func send(_ action: WorkoutAction, origin: ActionOrigin = .phone) {
         engine.send(action, origin: origin)
     }
 
-    /// Authority: runs a command from the Watch or the Live Activity once (duplicates by id are dropped).
+    /// Authority: runs a command from the Watch or the Live Activity once (duplicates by id are dropped) and acknowledges it, even
+    /// when it was a duplicate or changed nothing. Send `makeEnvelope(now:)` afterwards.
     public func receive(_ command: RemoteCommand) {
         engine.receive(command)
     }
 
-    /// Mirror: adopts the phone's newer state; an envelope without a state ends the local workout.
+    /// Mirror: adopts the phone's state unless it is stale (see `SyncReconciler.shouldAdopt`), drops the edits the envelope
+    /// acknowledges and replays the others on top; an envelope without a state ends the local workout. Never reports a change to
+    /// the effects (no echo).
     public func receive(_ envelope: SyncEnvelope) {
         engine.receive(envelope)
+    }
+
+    /// Authority: the envelope to push to the Watch (state, or the id of the workout that ended last, plus the acknowledgements
+    /// of the most recent commands). Push it after every change and after every received command, even a duplicate or a no-op.
+    public func makeEnvelope(now: Date) -> SyncEnvelope {
+        engine.makeEnvelope(now: now)
+    }
+
+    /// Mirror: the edits shown on top of the phone's state that the phone has not acknowledged yet, oldest first.
+    public var pendingCommands: [RemoteCommand] {
+        engine.pendingCommands
+    }
+
+    /// Mirror: the revision of the last phone state adopted for the workout in progress (the phone's, not the Watch's own).
+    public var authoritativeRevision: Int? {
+        engine.authoritativeRevision
     }
 
     /// The active-workout screen model for `now`; nil without a workout.

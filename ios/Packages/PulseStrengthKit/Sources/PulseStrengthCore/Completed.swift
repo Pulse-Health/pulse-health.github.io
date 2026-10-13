@@ -168,6 +168,14 @@ public struct ExerciseSession: Identifiable, Hashable, Sendable {
     public var workoutName: String
     public var sets: [CompletedSet]
     public var isPersonalRecord: Bool
+
+    public init(id: UUID, date: Date, workoutName: String, sets: [CompletedSet], isPersonalRecord: Bool) {
+        self.id = id
+        self.date = date
+        self.workoutName = workoutName
+        self.sets = sets
+        self.isPersonalRecord = isPersonalRecord
+    }
 }
 
 public struct ExerciseRecordRow: Identifiable, Equatable, Sendable {
@@ -175,6 +183,13 @@ public struct ExerciseRecordRow: Identifiable, Equatable, Sendable {
     public var label: String
     public var value: String
     public var date: Date?
+
+    public init(id: String, label: String, value: String, date: Date? = nil) {
+        self.id = id
+        self.label = label
+        self.value = value
+        self.date = date
+    }
 }
 
 /// Data behind the exercise-detail screen. Built by `StrengthStore.history(for:now:)`.
@@ -191,4 +206,26 @@ public struct ExerciseHistory: Equatable, Sendable {
     public var volumeLast30Days: Double
     public var sessionsLast30Days: Int
     public var records: [ExerciseRecordRow]
+
+    public init(
+        exerciseID: String,
+        sessions: [ExerciseSession],
+        e1RMSeries: [E1RMPoint],
+        bestE1RM: Double,
+        bestSetText: String? = nil,
+        bestSetDate: Date? = nil,
+        volumeLast30Days: Double,
+        sessionsLast30Days: Int,
+        records: [ExerciseRecordRow]
+    ) {
+        self.exerciseID = exerciseID
+        self.sessions = sessions
+        self.e1RMSeries = e1RMSeries
+        self.bestE1RM = bestE1RM
+        self.bestSetText = bestSetText
+        self.bestSetDate = bestSetDate
+        self.volumeLast30Days = volumeLast30Days
+        self.sessionsLast30Days = sessionsLast30Days
+        self.records = records
+    }
 }

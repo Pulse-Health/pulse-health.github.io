@@ -32,6 +32,11 @@ public protocol WorkoutDataProviding: AnyObject {
 /// The engine has no Combine dependency. After each change it calls `onUpdate` (so a wrapper can publish) and then tells the
 /// registered side effects. Heart-rate samples are applied to the in-memory state every time, but they are saved and reported to
 /// the effects at most once per `heartRateInterval` seconds of the injected clock.
+///
+/// Phone / Watch sync (`SyncReconciler` explains the rules): the authority applies commands once, acknowledges every command it
+/// receives and puts the acknowledgements into `makeEnvelope(now:)`. The mirror applies its own edits at once, issues one command
+/// per edit (`WorkoutSideEffect.commandIssued`) and, when a phone envelope arrives, shows the phone's state with its still
+/// unacknowledged edits replayed on top.
 @MainActor
 public final class WorkoutEngine {
     /// Minimum time between saving / reporting two heart-rate-only changes (10 seconds).
@@ -54,6 +59,17 @@ public final class WorkoutEngine {
     /// Called after `state` or `lastCompleted` changed and before the side effects are told.
     public var onUpdate: (() -> Void)?
 
+    /// Mirror: the edits shown on top of the phone's state that the phone has not acknowledged yet, oldest first (empty for an
+    /// authority).
+    public var pendingCommands: [RemoteCommand] { pending }
+
+    /// Mirror: the revision of the last phone state adopted for the workout in progress. This is the phone's own revision, not the
+    /// revision of the mirror's optimistically edited copy. nil without a workout or before the first adoption.
+    public var authoritativeRevision: Int? {
+        guard let authoritative, authoritative.workoutID == state?.id else { return nil }
+        return authoritative.revision
+    }
+
     private let persistence: FileStrengthPersistence?
     private let data: WorkoutDataProviding
     private let clock: @Sendable () -> Date
@@ -61,6 +77,21 @@ public final class WorkoutEngine {
     private var effects: [WorkoutSideEffect] = []
     private var lastHeartRateReport: Date?
     private var recentlyEnded: [UUID] = []
+
+    /// Authority: the ids of the commands it has dealt with (applied, duplicate or without effect), oldest first, at most
+    /// `SyncReconciler.acknowledgedMemory`. The most recent ones go out in every envelope.
+    private var acknowledged: [UUID] = []
+    /// Mirror: the edits applied locally that the phone has not acknowledged yet, oldest first.
+    private var pending: [RemoteCommand] = []
+    /// Mirror: what the last adopted phone state of the running workout looked like.
+    private var authoritative: AuthoritativeMark?
+
+    /// The phone's last adopted state of the workout the mirror shows: its id and revision, and when the phone sent it.
+    private struct AuthoritativeMark {
+        var workoutID: UUID
+        var revision: Int
+        var sentAt: Date
+    }
 
     /// Creates an engine; `persistence` is only written when `role == .authority`.
     public init(
@@ -118,6 +149,8 @@ public final class WorkoutEngine {
         state = started
         lastCompleted = nil
         lastHeartRateReport = nil
+        pending.removeAll()
+        authoritative = nil
         persistActiveWorkout()
         onUpdate?()
         for effect in effects { effect.workoutStarted(started) }
@@ -125,6 +158,10 @@ public final class WorkoutEngine {
     }
 
     /// Applies `action`: reduce, save (authority only), publish, tell the effects. A change-free action does nothing.
+    ///
+    /// A mirror that applies an action of origin `.watch` also makes ONE `RemoteCommand` of it, keeps it in `pendingCommands`
+    /// until the phone acknowledges it and tells the effects through `commandIssued` (after `workoutChanged`). Heart-rate samples
+    /// make no command: they travel as their own message.
     public func send(_ action: WorkoutAction, origin: ActionOrigin = .phone) {
         guard let old = state else { return }
         let now = clock()
@@ -133,7 +170,9 @@ public final class WorkoutEngine {
         guard new != old else { return }
         state = new
 
-        if case .updateHeartRate = action {
+        let isHeartRate: Bool
+        if case .updateHeartRate = action { isHeartRate = true } else { isHeartRate = false }
+        if isHeartRate {
             if let last = lastHeartRateReport, now >= last, now.timeIntervalSince(last) < Self.heartRateInterval {
                 onUpdate?()
                 return
@@ -141,47 +180,83 @@ public final class WorkoutEngine {
             lastHeartRateReport = now
         }
 
+        var issued: RemoteCommand?
+        if role == .mirror, origin == .watch, !isHeartRate {
+            let command = RemoteCommand(action: action, origin: .watch, issuedAt: now, workoutID: new.id)
+            pending.append(command)
+            if pending.count > SyncReconciler.pendingCapacity {
+                pending.removeFirst(pending.count - SyncReconciler.pendingCapacity)
+            }
+            issued = command
+        }
+
         persistActiveWorkout()
         onUpdate?()
         for effect in effects {
             effect.workoutChanged(from: old, to: new, action: action, origin: origin)
         }
+        if let issued {
+            for effect in effects { effect.commandIssued(issued) }
+        }
     }
 
-    /// Authority: runs a command from another surface once (a repeated command id is ignored). A mirror ignores commands.
+    /// Authority: runs a command from another surface once (a repeated command id is ignored) and acknowledges it. A mirror
+    /// ignores commands.
+    ///
+    /// The id is acknowledged in every case: when the command changes the state, when it is a duplicate, and when it changes
+    /// nothing (including a command that arrives without a workout). A command that names another workout than the one running
+    /// (a late command of an earlier workout) is not applied either, but still acknowledged. `makeEnvelope(now:)` carries the
+    /// acknowledgements; the caller sends an envelope even when the state did not change.
     public func receive(_ command: RemoteCommand) {
         guard role == .authority else { return }
-        guard seenCommands.insertIfNew(command.id) else { return }
+        let isNew = seenCommands.insertIfNew(command.id)
+        acknowledge(command.id)
+        guard isNew else { return }
+        if let target = command.workoutID, target != state?.id { return }
         send(command.action, origin: command.origin)
     }
 
-    /// Mirror: adopts the phone's workout when it is newer, or ends the local one when the envelope carries no state.
+    /// Authority: the envelope for the Watch. It carries the current state, or no state and the id of the workout that ended last,
+    /// plus the ids of the most recent commands received (`SyncReconciler.acknowledgementWindow`). Send it after every change and
+    /// after every received command, changed or not.
     ///
-    /// Never calls `workoutChanged` (no echo back to the phone). An envelope for a workout that already ended is ignored.
+    /// A mirror has nothing to acknowledge; its envelope carries no acknowledgements.
+    public func makeEnvelope(now: Date) -> SyncEnvelope {
+        SyncEnvelope(
+            state: state,
+            endedWorkoutID: state == nil ? recentlyEnded.last : nil,
+            sentAt: now,
+            ackedCommandIDs: Array(acknowledged.suffix(SyncReconciler.acknowledgementWindow))
+        )
+    }
+
+    /// Mirror: follows the phone. An envelope that carries a state is adopted when it is not stale, an envelope without a state
+    /// ends the local workout (see the table below).
+    ///
+    /// Adopting (`SyncReconciler.shouldAdopt`): the phone's state becomes the base, the commands the envelope acknowledges and
+    /// those older than `SyncReconciler.pendingLifetime` leave `pendingCommands`, and the rest is replayed on the base in order,
+    /// so the Watch keeps showing its unacknowledged taps on top of the phone's truth. An envelope that changes nothing is not
+    /// published.
+    ///
+    /// Never calls `workoutChanged` (no echo back to the phone). Calls `workoutStarted` when the envelope is for another workout
+    /// than the one shown, `workoutEnded(_, completed: nil)` when the workout ends. An envelope for a workout that already ended is
+    /// ignored.
+    ///
+    /// An envelope without a state (`endedWorkoutID` is the workout the phone says ended):
+    ///
+    /// | local workout | `endedWorkoutID` | effect |
+    /// |---|---|---|
+    /// | none | nil | nothing happens; nothing is remembered |
+    /// | none | X | X is remembered, so a late state of X is ignored |
+    /// | W | W | W ends and is remembered |
+    /// | W | X, a different workout | W keeps running, X is remembered; unless the notice is newer than the last state adopted for W, then W is a ghost the Watch never heard ended and ends |
+    /// | W | nil | the legacy notice "the phone has no workout": W ends but is NOT remembered, so the phone's next state for W is welcome |
     public func receive(_ envelope: SyncEnvelope) {
         guard role == .mirror else { return }
         if let incoming = envelope.state {
-            guard !recentlyEnded.contains(incoming.id), SyncReconciler.isNewer(incoming, than: state) else { return }
-            let isNewWorkout = state?.id != incoming.id
-            state = incoming
-            if isNewWorkout {
-                lastCompleted = nil
-                lastHeartRateReport = nil
-            }
-            onUpdate?()
-            if isNewWorkout {
-                for effect in effects { effect.workoutStarted(incoming) }
-            }
+            adopt(incoming, from: envelope)
         } else {
-            guard let previous = state else {
-                if let ended = envelope.endedWorkoutID { remember(ended) }
-                return
-            }
-            if let ended = envelope.endedWorkoutID, ended != previous.id {
-                remember(ended)
-                return
-            }
-            end(previous, completed: nil)
+            apply(endNoticeOf: envelope)
         }
     }
 
@@ -238,11 +313,77 @@ public final class WorkoutEngine {
 
     // MARK: Helpers
 
+    /// Adopts the phone's `incoming` state (mirror), see `receive(_: SyncEnvelope)`.
+    private func adopt(_ incoming: WorkoutState, from envelope: SyncEnvelope) {
+        guard !recentlyEnded.contains(incoming.id) else { return }
+        guard SyncReconciler.shouldAdopt(incoming: incoming, authoritativeRevision: authoritativeRevision, currentWorkoutID: state?.id)
+        else { return }
+
+        let isNewWorkout = state?.id != incoming.id
+        if isNewWorkout { pending.removeAll() }
+        pending = SyncReconciler.remainingPending(pending, acknowledged: envelope.ackedCommandIDs, now: clock())
+        let shown = SyncReconciler.rebase(incoming, replaying: pending)
+
+        let previous = state
+        let previousSentAt = isNewWorkout ? nil : authoritative?.sentAt
+        authoritative = AuthoritativeMark(
+            workoutID: incoming.id,
+            revision: incoming.revision,
+            sentAt: max(envelope.sentAt, previousSentAt ?? envelope.sentAt)
+        )
+        state = shown
+        if isNewWorkout {
+            lastCompleted = nil
+            lastHeartRateReport = nil
+        }
+        if isNewWorkout || shown != previous { onUpdate?() }
+        if isNewWorkout {
+            for effect in effects { effect.workoutStarted(shown) }
+        }
+    }
+
+    /// Applies an envelope without a state (mirror), see the table at `receive(_: SyncEnvelope)`.
+    private func apply(endNoticeOf envelope: SyncEnvelope) {
+        guard let previous = state else {
+            if let ended = envelope.endedWorkoutID { remember(ended) }
+            return
+        }
+        guard let ended = envelope.endedWorkoutID else {
+            // The phone says only "no workout": whatever runs here ends, but the next state for it is welcome.
+            end(previous, completed: nil, remembering: false)
+            return
+        }
+        if ended != previous.id {
+            remember(ended)
+            // A notice that is newer than everything adopted for the running workout means the phone has moved on: the Watch
+            // never heard that this workout ended. An older notice belongs to an earlier workout and changes nothing.
+            guard let mark = authoritative, mark.workoutID == previous.id, envelope.sentAt > mark.sentAt else { return }
+        }
+        end(previous, completed: nil)
+    }
+
+    /// Authority: remembers that the command was dealt with; a repeated id moves to the most recent position.
+    private func acknowledge(_ id: UUID) {
+        if let index = acknowledged.lastIndex(of: id) { acknowledged.remove(at: index) }
+        acknowledged.append(id)
+        if acknowledged.count > SyncReconciler.acknowledgedMemory {
+            acknowledged.removeFirst(acknowledged.count - SyncReconciler.acknowledgedMemory)
+        }
+    }
+
     /// Ends the workout. With `unsavedBecause` (the finished workout could not be written to the history) the active-workout file
-    /// is left alone: it still holds the workout's sets and is the only copy on disk.
-    private func end(_ previous: WorkoutState, completed: CompletedWorkout?, unsavedBecause saveFailure: Error? = nil) {
+    /// is left alone: it still holds the workout's sets and is the only copy on disk. With `remembering` false the workout's id
+    /// is not added to the ended workouts, so a later state for it is not ignored.
+    private func end(
+        _ previous: WorkoutState,
+        completed: CompletedWorkout?,
+        unsavedBecause saveFailure: Error? = nil,
+        remembering: Bool = true
+    ) {
         state = nil
-        remember(previous.id)
+        pending.removeAll()
+        authoritative = nil
+        if remembering { remember(previous.id) }
         lastHeartRateReport = nil
         if let saveFailure {
             lastPersistenceError = saveFailure

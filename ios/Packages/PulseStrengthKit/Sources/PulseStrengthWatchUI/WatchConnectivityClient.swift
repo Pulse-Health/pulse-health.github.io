@@ -39,10 +39,11 @@ private func deliverIfReachable(_ payload: [String: Any], over session: WCSessio
 /// * Phone -> Watch: `SyncMessage.state` envelopes arrive through `didReceiveApplicationContext`, `didReceiveMessage` or
 ///   `didReceiveUserInfo`. They are decoded on the delegate queue, then handed to the main actor and given to
 ///   `WorkoutController.receive(_: SyncEnvelope)`.
-/// * Watch -> phone: as a `WorkoutSideEffect` the client forwards every action the Watch applied locally
-///   (`origin == .watch`) as a `RemoteCommand`. Commands and `watchSession` messages use `sendMessage` while the phone is
-///   reachable and `transferUserInfo` otherwise, so they are never lost; heart-rate samples (at most one every 5 s) and
-///   state requests are sent only while the phone is reachable.
+/// * Watch -> phone: as a `WorkoutSideEffect` the client sends every `RemoteCommand` the mirror controller issues for an
+///   action the Watch applied locally (`commandIssued`, once per command). Commands and `watchSession` messages use
+///   `sendMessage` while the phone is reachable and `transferUserInfo` otherwise, so they are never lost (the phone drops a
+///   command it receives twice); heart-rate samples (at most one every 5 s) and state requests are sent only while the phone
+///   is reachable.
 /// * It tracks the phone's reachability and asks the phone for the current state whenever the session activates or the
 ///   phone becomes reachable.
 ///
@@ -158,12 +159,10 @@ public final class WatchConnectivityClient: NSObject, WCSessionDelegate, Workout
         lastHeartRateSent = nil
     }
 
-    public func workoutChanged(from old: WorkoutState, to new: WorkoutState, action: WorkoutAction, origin: ActionOrigin) {
-        // Only edits made on the Watch go to the phone; edits that came from the phone (envelopes) never reach this method.
-        guard origin == .watch else { return }
-        // Heart-rate samples have their own throttled channel.
-        if case .updateHeartRate = action { return }
-        sendReliably(.command(RemoteCommand(action: action, origin: .watch)))
+    public func commandIssued(_ command: RemoteCommand) {
+        // The controller makes one command per edit made on the Watch (never for heart-rate samples, which have their own
+        // throttled channel, and never for envelopes from the phone) and keeps it until the phone acknowledges it.
+        sendReliably(.command(command))
     }
 
     public func workoutEnded(_ state: WorkoutState, completed: CompletedWorkout?) {

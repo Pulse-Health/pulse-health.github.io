@@ -9,6 +9,11 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         /// 0...1 share of this exercise's sets that are logged.
         public var fraction: Double
         public var isCurrent: Bool
+
+        public init(fraction: Double, isCurrent: Bool) {
+            self.fraction = fraction
+            self.isCurrent = isCurrent
+        }
     }
 
     public struct Header: Equatable, Sendable {
@@ -24,6 +29,26 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         public var heartRateText: String
         public var hasHeartRate: Bool
         public var segments: [Segment]
+
+        public init(
+            title: String,
+            clockText: String,
+            isPaused: Bool,
+            volumeText: String,
+            setsText: String,
+            heartRateText: String,
+            hasHeartRate: Bool,
+            segments: [Segment]
+        ) {
+            self.title = title
+            self.clockText = clockText
+            self.isPaused = isPaused
+            self.volumeText = volumeText
+            self.setsText = setsText
+            self.heartRateText = heartRateText
+            self.hasHeartRate = hasHeartRate
+            self.segments = segments
+        }
     }
 
     public struct Navigator: Equatable, Sendable {
@@ -32,6 +57,13 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         public var total: Int
         public var canGoPrevious: Bool
         public var canGoNext: Bool
+
+        public init(position: Int, total: Int, canGoPrevious: Bool, canGoNext: Bool) {
+            self.position = position
+            self.total = total
+            self.canGoPrevious = canGoPrevious
+            self.canGoNext = canGoNext
+        }
     }
 
     public enum RecoveryLevel: String, Equatable, Sendable {
@@ -64,6 +96,38 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         /// "RIR 3" / "RIR 4+" when recorded on a done set.
         public var rirText: String?
         public var accessibilityLabel: String
+
+        public init(
+            id: UUID,
+            number: String,
+            type: SetType,
+            previousText: String,
+            weightText: String,
+            repsText: String,
+            weightEditable: Bool,
+            isDone: Bool,
+            isNext: Bool,
+            isPersonalRecord: Bool,
+            estimated1RM: Int? = nil,
+            rir: Int? = nil,
+            rirText: String? = nil,
+            accessibilityLabel: String
+        ) {
+            self.id = id
+            self.number = number
+            self.type = type
+            self.previousText = previousText
+            self.weightText = weightText
+            self.repsText = repsText
+            self.weightEditable = weightEditable
+            self.isDone = isDone
+            self.isNext = isNext
+            self.isPersonalRecord = isPersonalRecord
+            self.estimated1RM = estimated1RM
+            self.rir = rir
+            self.rirText = rirText
+            self.accessibilityLabel = accessibilityLabel
+        }
     }
 
     public struct Card: Equatable, Sendable {
@@ -84,6 +148,34 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         /// Coach suggestion shown while no rest timer is running (nil otherwise).
         public var coachTip: String?
         public var rows: [SetRow]
+
+        public init(
+            exerciseID: UUID,
+            exercise: Exercise,
+            recoveryPercent: Int,
+            recoveryLevel: RecoveryLevel,
+            supersetLabel: String? = nil,
+            restSeconds: Int,
+            restText: String,
+            note: String,
+            weightColumnTitle: String,
+            repsColumnTitle: String,
+            coachTip: String? = nil,
+            rows: [SetRow]
+        ) {
+            self.exerciseID = exerciseID
+            self.exercise = exercise
+            self.recoveryPercent = recoveryPercent
+            self.recoveryLevel = recoveryLevel
+            self.supersetLabel = supersetLabel
+            self.restSeconds = restSeconds
+            self.restText = restText
+            self.note = note
+            self.weightColumnTitle = weightColumnTitle
+            self.repsColumnTitle = repsColumnTitle
+            self.coachTip = coachTip
+            self.rows = rows
+        }
     }
 
     public enum DockPhase: Equatable, Sendable {
@@ -105,6 +197,28 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         public var showsRIR: Bool
         public var rirSelection: Int?
         public var isPaused: Bool
+
+        public init(
+            phase: DockPhase,
+            remainingSeconds: Int,
+            totalSeconds: Int,
+            fraction: Double,
+            remainingText: String,
+            nextSetText: String,
+            showsRIR: Bool,
+            rirSelection: Int? = nil,
+            isPaused: Bool
+        ) {
+            self.phase = phase
+            self.remainingSeconds = remainingSeconds
+            self.totalSeconds = totalSeconds
+            self.fraction = fraction
+            self.remainingText = remainingText
+            self.nextSetText = nextSetText
+            self.showsRIR = showsRIR
+            self.rirSelection = rirSelection
+            self.isPaused = isPaused
+        }
     }
 
     public struct Totals: Equatable, Sendable {
@@ -112,6 +226,13 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         public var totalSets: Int
         public var volumeKg: Double
         public var completedExercises: Int
+
+        public init(loggedSets: Int, totalSets: Int, volumeKg: Double, completedExercises: Int) {
+            self.loggedSets = loggedSets
+            self.totalSets = totalSets
+            self.volumeKg = volumeKg
+            self.completedExercises = completedExercises
+        }
     }
 
     public struct FinishCheck: Equatable, Sendable {
@@ -126,6 +247,26 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         public var diffMessage: String
         /// Offer "Update template?" after finishing.
         public var asksToUpdateTemplate: Bool
+
+        public init(
+            loggedSets: Int,
+            unloggedSets: Int,
+            canFinish: Bool,
+            title: String,
+            message: String,
+            templateDiff: TemplateDiff,
+            diffMessage: String,
+            asksToUpdateTemplate: Bool
+        ) {
+            self.loggedSets = loggedSets
+            self.unloggedSets = unloggedSets
+            self.canFinish = canFinish
+            self.title = title
+            self.message = message
+            self.templateDiff = templateDiff
+            self.diffMessage = diffMessage
+            self.asksToUpdateTemplate = asksToUpdateTemplate
+        }
     }
 
     public var header: Header
@@ -137,6 +278,26 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
     public var isEmpty: Bool
     public var totals: Totals
     public var finishCheck: FinishCheck
+
+    public init(
+        header: Header,
+        navigator: Navigator? = nil,
+        card: Card? = nil,
+        dock: Dock? = nil,
+        undoText: String? = nil,
+        isEmpty: Bool,
+        totals: Totals,
+        finishCheck: FinishCheck
+    ) {
+        self.header = header
+        self.navigator = navigator
+        self.card = card
+        self.dock = dock
+        self.undoText = undoText
+        self.isEmpty = isEmpty
+        self.totals = totals
+        self.finishCheck = finishCheck
+    }
 }
 
 /// What changed relative to the template the workout was started from.

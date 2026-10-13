@@ -338,13 +338,18 @@ final class WorkoutReducerLoggingTests: XCTestCase {
     }
 
     func testWarmupRestFactorTable() {
-        // rest -> warm-up rest: max(30, round(rest * 0.4 / 5) * 5)
-        let table: [(Int, Int)] = [(45, 30), (60, 30), (75, 30), (90, 35), (100, 40), (120, 50), (150, 60), (180, 70), (0, 30)]
+        // rest -> warm-up rest: max(30, round(rest * 0.4 / 5) * 5); a rest of 0 (Off) means no rest after any set type (rule 2),
+        // so the warm-up of an Off exercise starts no timer either (it used to start the 30 s minimum).
+        let table: [(Int, Int)] = [(45, 30), (60, 30), (75, 30), (90, 35), (100, 40), (120, 50), (150, 60), (180, 70), (0, 0)]
         for (rest, expected) in table {
             let entry = RFix.entry(1, RFix.bench, [(.warmup, 40, 8), (.normal, 80, 5)], rest: rest)
             let s = RFix.state([entry])
             let warm = RFix.reduced(s, RFix.toggle(s, 0, 0), at: 0)
-            XCTAssertEqual(warm.rest?.totalSeconds, expected, "warm-up after rest \(rest)")
+            if expected > 0 {
+                XCTAssertEqual(warm.rest?.totalSeconds, expected, "warm-up after rest \(rest)")
+            } else {
+                XCTAssertNil(warm.rest, "rest Off starts no timer after a warm-up either")
+            }
             let work = RFix.reduced(s, RFix.toggle(s, 0, 1), at: 0)
             if rest > 0 {
                 XCTAssertEqual(work.rest?.totalSeconds, rest, "working set after rest \(rest)")
@@ -352,6 +357,57 @@ final class WorkoutReducerLoggingTests: XCTestCase {
                 XCTAssertNil(work.rest, "rest Off starts no timer after a working set")
             }
         }
+    }
+
+    /// Rule 2: an exercise rest of 0 (Off) means no rest after a set of ANY type; a warm-up used to start its 30 s minimum.
+    func testRestOffMeansNoRestForAnySetType() {
+        let types: [SetType] = [.normal, .warmup, .drop, .failure]
+        for type in types {
+            let entry = RFix.entry(1, RFix.bench, [(type, 40, 8), (.normal, 80, 5)], rest: 0)
+            let s = RFix.state([entry])
+            for action in [RFix.toggle(s, 0, 0), RFix.log(s, 0, 0), WorkoutAction.logNextSet] {
+                let logged = RFix.reduced(s, action, at: 5)
+                XCTAssertTrue(logged.exercises[0].sets[0].isDone, "\(type) \(action)")
+                XCTAssertNil(logged.rest, "no timer after a \(type) set of an exercise whose rest is Off (\(action))")
+            }
+        }
+    }
+
+    func testLoggingAWarmupOfAnOffExerciseEndsARestThatWasRunning() {
+        // A running rest from the previous exercise is replaced by "no rest", like after a working set of an Off exercise.
+        let first = RFix.entry(1, RFix.bench, RFix.normal(1, 80, 5), rest: 90)
+        let off = RFix.entry(2, RFix.incline, [(.warmup, 10, 10), (.normal, 20, 10)], rest: 0)
+        var s = RFix.state([first, off])
+        s = RFix.reduced(s, RFix.toggle(s, 0, 0), at: 1)
+        XCTAssertEqual(s.rest?.totalSeconds, 90)
+        s = RFix.reduced(s, RFix.toggle(s, 1, 0), at: 2)
+        XCTAssertNil(s.rest)
+        XCTAssertEqual(s.lastLogged, SetRef(exerciseID: RFix.ex(s, 1), setID: RFix.setID(s, 1, 0)))
+    }
+
+    func testTurningTheTimerOffDuringTheWorkoutAlsoSilencesWarmups() {
+        let s = RFix.state([RFix.entry(1, RFix.bench, [(.warmup, 40, 8), (.warmup, 60, 5), (.normal, 80, 5)], rest: 150)])
+        let before = RFix.reduced(s, RFix.toggle(s, 0, 0), at: 1)
+        XCTAssertEqual(before.rest?.totalSeconds, 60)
+        var off = RFix.reduced(s, .setRest(exerciseID: RFix.ex(s, 0), seconds: 0), at: 1)
+        off = RFix.reduced(off, RFix.toggle(off, 0, 0), at: 2)
+        XCTAssertNil(off.rest)
+        // Turning it back on restores the warm-up rule.
+        var on = RFix.reduced(off, .setRest(exerciseID: RFix.ex(off, 0), seconds: 100), at: 3)
+        on = RFix.reduced(on, RFix.toggle(on, 0, 1), at: 4)
+        XCTAssertEqual(on.rest?.totalSeconds, 40)
+    }
+
+    func testAWarmupOfAnOffExerciseInASupersetStartsNoRestEither() {
+        let a = RFix.entry(1, RFix.lateral, [(.warmup, 4, 15), (.normal, 8, 15)], rest: 0, group: "A")
+        let b = RFix.entry(2, RFix.pushdown, [(.warmup, 15, 12), (.normal, 30, 12)], rest: 0, group: "A")
+        var s = RFix.state([a, b])
+        s = RFix.reduced(s, RFix.toggle(s, 0, 0), at: 1)
+        XCTAssertEqual(s.currentIndex, 1, "the superset still moves on to its partner")
+        XCTAssertNil(s.rest)
+        s = RFix.reduced(s, RFix.toggle(s, 1, 0), at: 2)
+        XCTAssertEqual(s.currentIndex, 0)
+        XCTAssertNil(s.rest, "end of the round: still no rest, the timer is Off")
     }
 
     func testDropAndFailureSetsUseTheFullRest() {

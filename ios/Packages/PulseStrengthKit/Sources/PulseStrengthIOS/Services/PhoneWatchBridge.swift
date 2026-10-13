@@ -35,10 +35,12 @@ private func deliverToWatch(_ payload: [String: Any], over session: WCSession) {
 /// The phone's end of the Phone <-> Watch channel (WatchConnectivity).
 ///
 /// * Phone -> Watch: after every change except heart-rate samples, the phone's authoritative state goes out as a
-///   `SyncEnvelope` (`updateApplicationContext`, plus `sendMessage` when the Watch is reachable). When the workout
-///   ends, an envelope without state and with the workout id follows.
+///   `SyncEnvelope` made by `WorkoutController.makeEnvelope(now:)` (`updateApplicationContext`, plus `sendMessage` when the
+///   Watch is reachable). When the workout ends, an envelope without state and with the workout id follows.
 /// * Watch -> phone: commands, heart-rate samples, "the Watch is recording" and "send me the state" requests are
-///   decoded on the delegate queue, then handed to the main actor and turned into controller calls.
+///   decoded on the delegate queue, then handed to the main actor and turned into controller calls. Every command is
+///   acknowledged by the envelope that follows it: when the command changed the state that is the envelope of the
+///   change, otherwise (a duplicate, or a command without effect) the bridge pushes an envelope of its own.
 /// * A new workout launches the Watch app (`HKHealthStore.startWatchApp(with:)`) when it is installed.
 /// * The reachability of an installed Watch app during a workout becomes the `WatchStatus` shown on the workout screen.
 @MainActor
@@ -51,6 +53,8 @@ final class PhoneWatchBridge: NSObject, WorkoutSideEffect, WCSessionDelegate {
     private weak var controller: WorkoutController?
     private let healthStore: HKHealthStore?
     private var activeWorkoutID: UUID?
+    /// How many envelopes `push` was asked for so far; lets `handle` see whether a command already caused one.
+    private var pushRequests = 0
     /// A workout that started before the session finished activating; its Watch launch waits for activation.
     private var pendingLaunchWorkoutID: UUID?
     private var graceTask: Task<Void, Never>?
@@ -77,7 +81,7 @@ final class PhoneWatchBridge: NSObject, WorkoutSideEffect, WCSessionDelegate {
 
     func workoutStarted(_ state: WorkoutState) {
         activeWorkoutID = state.id
-        push(.state(SyncEnvelope(state: state)))
+        pushCurrentState()
         launchWatchApp(for: state)
         refreshStatus()
     }
@@ -91,31 +95,33 @@ final class PhoneWatchBridge: NSObject, WorkoutSideEffect, WCSessionDelegate {
             activeWorkoutID = new.id
             refreshStatus()
         }
-        push(.state(SyncEnvelope(state: new)))
+        pushCurrentState()
     }
 
     func workoutEnded(_ state: WorkoutState, completed: CompletedWorkout?) {
         activeWorkoutID = nil
         pendingLaunchWorkoutID = nil
-        push(.state(SyncEnvelope(state: nil, endedWorkoutID: state.id)))
+        pushCurrentState()
         refreshStatus()
     }
 
     // MARK: Phone -> Watch
 
-    /// Sends the phone's current state (nil state = no workout) to the Watch.
+    /// Sends the controller's envelope to the Watch: the current state (no state and the id of the workout that ended last when
+    /// there is no workout) and the acknowledgements of the most recent commands.
     private func pushCurrentState() {
         guard let controller = controller else { return }
-        push(.state(SyncEnvelope(state: controller.state)))
+        push(.state(controller.makeEnvelope(now: Date())))
     }
 
     /// Sends the current state only while a workout is running.
     private func pushStateIfWorkoutRunning() {
         guard let controller = controller, controller.state != nil else { return }
-        push(.state(SyncEnvelope(state: controller.state)))
+        pushCurrentState()
     }
 
     private func push(_ message: SyncMessage) {
+        pushRequests += 1
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled else { return }
@@ -146,7 +152,13 @@ final class PhoneWatchBridge: NSObject, WorkoutSideEffect, WCSessionDelegate {
         guard let controller = controller else { return }
         switch message {
         case .command(let command):
+            let requestsBefore = pushRequests
             controller.receive(command)
+            // A command that changed the state was announced by workoutChanged, acknowledgement included. A duplicate, or a
+            // command without effect, changed nothing: its acknowledgement needs an envelope of its own.
+            if pushRequests == requestsBefore {
+                pushCurrentState()
+            }
         case .heartRate(let sample):
             controller.send(.updateHeartRate(sample.bpm), origin: .watch)
         case .watchSession(let isRecording):

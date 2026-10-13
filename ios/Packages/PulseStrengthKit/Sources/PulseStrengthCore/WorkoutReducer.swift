@@ -188,8 +188,10 @@ private extension WorkoutReducer {
 
 private extension WorkoutReducer {
     /// Rest after a set: warm-ups rest 40 % of the exercise rest (rounded to 5 s, at least 30 s), other sets the full rest.
+    /// An exercise rest of 0 means the timer is off: no rest after a set of any type.
     static func restSeconds(for exercise: WorkoutExercise, set: LoggedSet) -> Int {
         let base = max(0, exercise.restSeconds)
+        guard base > 0 else { return 0 }
         guard set.type == .warmup else { return base }
         let scaled = (Double(base) * 0.4 / 5).rounded(.toNearestOrAwayFromZero) * 5
         return max(30, Int(scaled))

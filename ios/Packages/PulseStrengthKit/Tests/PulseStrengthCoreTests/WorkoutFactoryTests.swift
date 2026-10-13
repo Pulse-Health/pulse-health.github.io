@@ -352,3 +352,62 @@ final class WorkoutFactoryTests: XCTestCase {
         XCTAssertEqual(decodedTemplate, template)
     }
 }
+
+/// `WorkoutTemplate.estimatedMinutes` follows reducer rule 2: an exercise rest of 0 (Off) means no rest after any set type.
+final class TemplateEstimateRestTests: XCTestCase {
+    private func template(_ entries: [TemplateEntry]) -> WorkoutTemplate {
+        WorkoutTemplate(id: RedFix.uuid(0x2FE, 1), name: "Estimate", entries: entries)
+    }
+
+    private func warmups(_ count: Int) -> [PlannedSet] {
+        Array(repeating: PlannedSet(type: .warmup, weightKg: 40, reps: 8), count: count)
+    }
+
+    /// The arithmetic of the rule, written out once more for the comparison.
+    private func reference(_ template: WorkoutTemplate) -> Int {
+        var seconds = 0
+        for entry in template.entries {
+            let rest = max(0, min(entry.restSeconds, 3_600))
+            for set in entry.plannedSets {
+                let after = rest == 0 ? 0 : (set.type == .warmup ? max(30, rest * 2 / 5) : rest)
+                seconds += 45 + after
+            }
+        }
+        return max(5, Int((Double(seconds) / 60.0 / 5.0).rounded()) * 5)
+    }
+
+    func testWarmupsOfAnOffExerciseAddNoRest() {
+        // 20 warm-ups at 45 s of work each = 15 minutes; they used to add a 30 s rest each (25 minutes).
+        let off = template([RedTemplateFix.entry(1, RedFix.bench, warmups(20), rest: 0)])
+        XCTAssertEqual(off.estimatedMinutes, 15)
+        // The same sets with a rest still count it: 40 % of 100 s = 40 s per warm-up.
+        let timed = template([RedTemplateFix.entry(1, RedFix.bench, warmups(20), rest: 100)])
+        XCTAssertEqual(timed.estimatedMinutes, 30, "20 x (45 s + 40 s) = 28.3 minutes")
+        // The 30 s minimum still applies to a short, non-zero rest.
+        let short = template([RedTemplateFix.entry(1, RedFix.bench, warmups(20), rest: 5)])
+        XCTAssertEqual(short.estimatedMinutes, 25, "20 x (45 s + 30 s) = 25 minutes")
+    }
+
+    func testWorkingSetsOfAnOffExerciseAddNoRestAsBefore() {
+        let off = template([RedTemplateFix.entry(1, RedFix.bench, RedTemplateFix.planned(30, 60, 8), rest: 0)])
+        XCTAssertEqual(off.estimatedMinutes, 25, "30 x 45 s = 22.5 minutes, rounded to 5")
+    }
+
+    func testMixedEntriesAgreeWithTheRule() {
+        let mixed = template([
+            RedTemplateFix.entry(1, RedFix.bench, warmups(6) + RedTemplateFix.planned(4, 80, 5), rest: 0),
+            RedTemplateFix.entry(2, RedFix.incline, warmups(2) + RedTemplateFix.planned(3, 28, 10), rest: 90),
+            RedTemplateFix.entry(3, RedFix.ohp, warmups(12), rest: 0),
+        ])
+        XCTAssertEqual(mixed.estimatedMinutes, reference(mixed))
+        var allOn = mixed
+        for index in allOn.entries.indices where allOn.entries[index].restSeconds == 0 { allOn.entries[index].restSeconds = 90 }
+        XCTAssertGreaterThan(allOn.estimatedMinutes, mixed.estimatedMinutes, "switching the timer on adds the rests")
+    }
+
+    func testTheSampleTemplatesAreUnchanged() {
+        for sample in SampleData.templates() {
+            XCTAssertEqual(sample.estimatedMinutes, reference(sample), sample.name)
+        }
+    }
+}

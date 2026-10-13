@@ -574,12 +574,14 @@ final class EngineSyncTests: XCTestCase {
         }
     }
 
+    /// Sync protocol (ARCHITECTURE 3.4): an older envelope is ignored. An envelope with the same revision is adopted (it may only
+    /// carry acknowledgements, see SyncProtocolTests), but when it holds the state the Watch already shows nothing is published.
     func testOlderAndEqualEnvelopesAreIgnored() {
         svcMain {
             let rig = SvcRig(self, role: .mirror)
             let current = state(id: 1, revision: 5, name: "Current")
             rig.engine.receive(envelope(current, at: rig))
-            rig.engine.receive(envelope(state(id: 1, revision: 5, name: "Same revision"), at: rig))
+            rig.engine.receive(envelope(current, at: rig))
             rig.engine.receive(envelope(state(id: 1, revision: 2, name: "Older"), at: rig))
             XCTAssertEqual(rig.engine.state, current)
             XCTAssertEqual(rig.updates, 1)

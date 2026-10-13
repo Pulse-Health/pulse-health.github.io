@@ -61,37 +61,126 @@ public struct WorkoutSnapshot: Codable, Hashable, Sendable {
     /// "Set 4 · 82.5 kg × 6"
     public var nextSetText: String
     public var nextExerciseName: String?
+
+    public init(
+        workoutID: UUID,
+        revision: Int,
+        workoutName: String,
+        activeStart: Date,
+        isPaused: Bool,
+        elapsedWhenPaused: Int,
+        phase: SnapshotPhase,
+        exerciseName: String,
+        exerciseIndex: Int,
+        exerciseCount: Int,
+        targetExerciseID: UUID? = nil,
+        targetSetID: UUID? = nil,
+        setLabel: String,
+        tracking: TrackingKind,
+        weightText: String,
+        repsText: String,
+        repsUnit: String,
+        showsWeight: Bool,
+        restStartedAt: Date? = nil,
+        restEndsAt: Date? = nil,
+        restTotalSeconds: Int,
+        restFrozenRemaining: Int? = nil,
+        heartRate: Int? = nil,
+        volumeText: String,
+        loggedSets: Int,
+        totalSets: Int,
+        nextSetText: String,
+        nextExerciseName: String? = nil
+    ) {
+        self.workoutID = workoutID
+        self.revision = revision
+        self.workoutName = workoutName
+        self.activeStart = activeStart
+        self.isPaused = isPaused
+        self.elapsedWhenPaused = elapsedWhenPaused
+        self.phase = phase
+        self.exerciseName = exerciseName
+        self.exerciseIndex = exerciseIndex
+        self.exerciseCount = exerciseCount
+        self.targetExerciseID = targetExerciseID
+        self.targetSetID = targetSetID
+        self.setLabel = setLabel
+        self.tracking = tracking
+        self.weightText = weightText
+        self.repsText = repsText
+        self.repsUnit = repsUnit
+        self.showsWeight = showsWeight
+        self.restStartedAt = restStartedAt
+        self.restEndsAt = restEndsAt
+        self.restTotalSeconds = restTotalSeconds
+        self.restFrozenRemaining = restFrozenRemaining
+        self.heartRate = heartRate
+        self.volumeText = volumeText
+        self.loggedSets = loggedSets
+        self.totalSets = totalSets
+        self.nextSetText = nextSetText
+        self.nextExerciseName = nextExerciseName
+    }
 }
 
 // MARK: - Watch / Live Activity -> phone sync
 
 /// A command issued on another surface (Watch, Live Activity button) and executed by the phone.
 public struct RemoteCommand: Codable, Hashable, Sendable, Identifiable {
-    /// Unique id so the receiver can drop duplicates (WatchConnectivity may redeliver).
+    /// Unique id so the receiver can drop duplicates (WatchConnectivity may redeliver) and acknowledge the command
+    /// (`SyncEnvelope.ackedCommandIDs`).
     public var id: UUID
     public var action: WorkoutAction
     public var origin: ActionOrigin
     public var issuedAt: Date
+    /// The workout the sender was showing when it issued the command; nil for a sender that does not say.
+    ///
+    /// The phone ignores a command whose workout is not the one running, so a late command (queued by
+    /// `transferUserInfo` while the Watch was out of reach) cannot act on the next workout. An older payload without this
+    /// entry decodes to nil.
+    public var workoutID: UUID?
 
-    public init(id: UUID = UUID(), action: WorkoutAction, origin: ActionOrigin, issuedAt: Date = Date()) {
+    public init(id: UUID = UUID(), action: WorkoutAction, origin: ActionOrigin, issuedAt: Date = Date(), workoutID: UUID? = nil) {
         self.id = id
         self.action = action
         self.origin = origin
         self.issuedAt = issuedAt
+        self.workoutID = workoutID
     }
 }
 
-/// The phone's authoritative state, pushed to the Watch after every change.
+/// The phone's authoritative state, pushed to the Watch after every change and after every command it received.
+///
+/// Besides the state it acknowledges the commands the phone dealt with (`ackedCommandIDs`), so the Watch can stop showing its
+/// own, optimistic copy of those edits. An envelope can be delivered twice, late, out of order or coalesced with a newer one;
+/// the acknowledgements therefore repeat the most recent command ids in every envelope.
 public struct SyncEnvelope: Codable, Hashable, Sendable {
     /// nil = the workout ended; see `endedWorkoutID`.
     public var state: WorkoutState?
     public var endedWorkoutID: UUID?
     public var sentAt: Date
+    /// Ids of the most recent commands the phone has dealt with (applied, dropped as duplicates or found to be no-ops), oldest
+    /// first. The Watch removes these from the edits it still shows on top of `state`. Empty in an older payload.
+    public var ackedCommandIDs: [UUID]
 
-    public init(state: WorkoutState?, endedWorkoutID: UUID? = nil, sentAt: Date = Date()) {
+    public init(state: WorkoutState?, endedWorkoutID: UUID? = nil, sentAt: Date = Date(), ackedCommandIDs: [UUID] = []) {
         self.state = state
         self.endedWorkoutID = endedWorkoutID
         self.sentAt = sentAt
+        self.ackedCommandIDs = ackedCommandIDs
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case state, endedWorkoutID, sentAt, ackedCommandIDs
+    }
+
+    /// Reads an envelope; a payload written before acknowledgements existed has no `ackedCommandIDs` and decodes to `[]`.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        state = try container.decodeIfPresent(WorkoutState.self, forKey: .state)
+        endedWorkoutID = try container.decodeIfPresent(UUID.self, forKey: .endedWorkoutID)
+        sentAt = try container.decode(Date.self, forKey: .sentAt)
+        ackedCommandIDs = try container.decodeIfPresent([UUID].self, forKey: .ackedCommandIDs) ?? []
     }
 }
 
