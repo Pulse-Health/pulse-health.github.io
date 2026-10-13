@@ -119,12 +119,18 @@
             <tr>
                 <td>AI Coaching Queries (incl. health metrics)</td>
                 <td>Your questions</td>
-                <td>EU-hosted AI models (Mistral AI 🇫🇷 FR, Nebius 🇳🇱 NL) via Eden AI (🇫🇷 FR) — EU-internal</td>
+                <td>EU-hosted AI models (Mistral AI 🇫🇷 FR) via Eden AI (🇫🇷 FR) — EU-internal</td>
                 <td>Explicit consent (Art. 9(2)(a) GDPR); EU-internal pipeline, no third-country transfer for coaching</td>
             </tr>
             <tr>
+                <td>AI Coaching Chat History, Health-Analysis Summaries &amp; Onboarding Health Context</td>
+                <td>Your chat messages; summaries computed on your device; illness notes and physical limitations you enter at onboarding</td>
+                <td>Supabase (🇪🇺 EU, Frankfurt)</td>
+                <td>Explicit consent (Art. 9(2)(a) GDPR); stored until you delete your account &mdash; see Section 5</td>
+            </tr>
+            <tr>
                 <td>AI-Generated Training &amp; Meal Plans (Premium)</td>
-                <td>Your plan settings (goal, level, schedule, equipment, body areas to avoid, optional short text)</td>
+                <td>Your plan settings (goal, level, schedule, equipment, body areas to avoid, optional short text and, if entered during onboarding, illness notes and physical limitations)</td>
                 <td>Request: EU-hosted AI models via Eden AI (EU-internal). The generated plan stays on your device</td>
                 <td>Explicit consent (Art. 9(2)(a) GDPR); EU-internal pipeline, no third-country transfer</td>
             </tr>
@@ -195,8 +201,11 @@
                 you sign out.</li>
             <li><strong>What can reach the AI coach:</strong> only a daily <em>total</em> for caffeine,
                 alcohol and water, plus any finished statistical result. <strong>Medication is not part
-                of that daily summary</strong> and can reach the coach only as an aggregate finding, and
-                only if you give separate consent for it.</li>
+                of that daily summary</strong>, and individual entries (substance, dose, time) never
+                reach the coach. Only if you give separate consent for medication does the coach receive
+                the <em>drug class</em> you declared (for example beta blocker, SSRI/SNRI or thyroid
+                hormone &mdash; never the substance, brand, dose or time) and any finished aggregate
+                finding about it.</li>
             <li><strong>Never written to Apple Health:</strong> alcohol is read-only, and medication is
                 never written back at all. Caffeine and water are only synced if you switch that on.</li>
             <li><strong>Descriptive only:</strong> Pulse reports whether two things <em>moved together</em>,
@@ -221,7 +230,10 @@
             <li><strong>What is sent to the AI provider:</strong> the settings you choose &mdash; goal,
                 experience level, training days per week and duration, equipment, sport, body areas you
                 want to avoid loading (for example knees or lower back) and whether you are 18 or older
-                &mdash; plus the plan you are currently revising, if any, and any short text you add
+                &mdash; and, if you entered them during onboarding, your illness notes and physical
+                limitations (free text, each up to 500 characters; they are passed on so that the
+                generator avoids movements that conflict with them) &mdash; plus the plan you are
+                currently revising, if any, and any short text you add
                 yourself (for meal plans: dietary preferences, calorie and protein targets, meals per
                 day). The AI provider does not receive your email address or raw Apple Health data.</li>
             <li><strong>Where it is processed:</strong> in the same EU-internal pipeline as AI Coaching
@@ -230,7 +242,8 @@
                 catalogue of ready-made plan templates is stored on Supabase (EU) and contains no
                 personal data.</li>
             <li><strong>Legal basis:</strong> explicit consent (Art. 9(2)(a) GDPR), because plan settings
-                such as body areas to avoid can reveal health information.</li>
+                such as body areas to avoid, and any illness notes or physical limitations you entered
+                during onboarding, can reveal health information.</li>
             <li><strong>Not medical advice:</strong> plans are general suggestions; see Sections 7 and 8
                 of our <a href="terms.html">Terms of Service</a>.</li>
         </ul>
@@ -257,14 +270,19 @@
         </p>
         <p>
             <strong>Retention:</strong> Your data is stored on Supabase until you delete your account. 
-            When you delete your account, all data is permanently deleted.
+            When you delete your account, all data linked to your account is permanently deleted,
+            including your AI usage log and AI error log (Section 5a). Anonymous entries that are not
+            linked to any account (the anonymous question sample and the anonymous plan statistics,
+            Section 5a) cannot be assigned to you and therefore remain. Data already passed to the AI
+            providers follows their retention terms (Section 7).
         </p>
 
         <h2>5a. Operational Logs &amp; Anonymous Statistics</h2>
         <p>
             To keep the AI features reliable, within budget and protected from abuse, the backend
-            records limited technical information. None of it contains the text of your messages,
-            health values or plan contents.
+            records limited technical information. The AI usage log and the AI error log contain no
+            message text, health values or plan contents. The anonymous question sample (below) is the
+            only exception: it stores the text of coaching questions, without any link to your account.
         </p>
         <ul>
             <li><strong>AI usage log (linked to your account):</strong> time, feature, AI model used,
@@ -276,13 +294,18 @@
                 failed AI requests &mdash; never anything you typed. Legal basis: Art. 6(1)(b) and (f)
                 GDPR (keeping the service working). Deleted with your account.</li>
             <li><strong>Anonymous question sample (not linked to you):</strong> to understand what
-                people ask the coach, a sample of coaching questions is stored with the date, language
-                and the tools the coach used &mdash; but without any user ID, session ID or time of day.
-                Memory snippets and profile data are not part of it, and it cannot be read from the app.
-                Because these entries are not linked to any account, they cannot be assigned to you or
-                deleted on request.</li>
+                people ask the coach and to improve it, the text of coaching questions is stored with
+                the date, language and the tools the coach used &mdash; but without any user ID, session
+                ID or time of day. Before storing, email addresses, links, dates, phone numbers and long
+                ID numbers are replaced automatically with placeholders. This cannot catch everything:
+                names, health details or other personal information you type into a question can end up
+                in the sample, so please do not enter anything you do not want stored. Memory snippets
+                and profile data are not part of it, and it cannot be read from the app. Because these
+                entries are not linked to any account, we usually cannot assign them to you and
+                therefore cannot delete them on request.</li>
             <li><strong>Anonymous plan statistics:</strong> daily counters of plan events (for example
-                how many plans were started or completed) without any reference to a person.</li>
+                how often the coach offered a plan, how often creating a plan failed, or how often a
+                plan was not offered because it requires Premium) without any reference to a person.</li>
         </ul>
 
         <h2>6. Clerk Authentication</h2>
@@ -315,8 +338,7 @@
             from a Supabase Edge Function in the EU to <strong>Eden AI</strong> (Eden AI SAS, France,
             EU), an AI-API aggregator, via its EU endpoint. Eden AI forwards them to EU-hosted
             language models: currently models of <strong>Mistral AI</strong> (Mistral AI SAS, France,
-            EU) and models hosted by <strong>Nebius</strong> (Nebius Group N.V., Netherlands, EU).
-            Only models on our list of EU-hosted models are used for these features. We may change
+            EU). Only models on our list of EU-hosted models are used for these features. We may change
             the models or providers, and may connect to a provider's EU interface directly instead of
             going through Eden AI; in every case the processing for these features takes place on
             servers in the EU, and this page is updated accordingly. The entire pipeline runs inside
@@ -349,8 +371,12 @@
             <li><strong>Health analysis summaries</strong> — computed scores and trend analyses
                 produced on your device (not raw sensor readings such as individual HRV samples)</li>
             <li>Your <strong>coaching profile from onboarding</strong> — main goal, experience level,
-                preferred coaching style and, if you entered them, <strong>illness notes and physical
-                limitations</strong> (free text, each limited to 500 characters)</li>
+                preferred coaching style, the optimization goal you typed and, if you entered them,
+                <strong>illness notes and physical limitations</strong> (free text; each of these three
+                free-text fields is limited to 500 characters)</li>
+            <li>If you gave the separate medication consent: the <strong>drug classes</strong> you
+                declared (for example beta blocker or SSRI/SNRI) &mdash; never medication names, brands,
+                doses or times</li>
         </ul>
         <p>
             <strong>Safeguards:</strong>
@@ -364,7 +390,7 @@
             <li><strong>Encryption in transit:</strong> All data is encrypted via TLS 1.3 during transmission.</li>
             <li><strong>EU relay:</strong> Requests pass through a Supabase Edge Function in the EU,
                 serving as an intermediary layer before reaching Eden AI (France) and the EU-hosted
-                models (Mistral AI, France; Nebius, Netherlands).</li>
+                models (Mistral AI, France).</li>
         </ul>
         <p>
             <strong>What is NOT sent to the AI provider:</strong> Your email address, authentication
@@ -372,25 +398,26 @@
             complete chat history (the AI provider receives only a summary of your coaching history).
         </p>
         <p>
-            <strong>Location:</strong> 🇪🇺 European Union (Eden AI and Mistral AI in France; Nebius in the Netherlands)
+            <strong>Location:</strong> 🇪🇺 European Union (Eden AI and Mistral AI in France)
         </p>
         <p>
-            <strong>Retention:</strong> Retention of coaching-request data is governed by the Eden AI,
-            Mistral AI and Nebius data-processing terms. We are finalizing the applicable data-processing agreement and will
-            update this page once the retention period is confirmed.
+            <strong>Retention:</strong> Retention of AI request data (coaching and plan generation) is
+            governed by the Eden AI and Mistral AI data-processing terms. We are finalizing the
+            applicable data-processing agreements and will update this page once the retention
+            periods are confirmed.
         </p>
         <p>
-            <strong>Protection &amp; Transfer Mechanism:</strong> Because the AI-coaching pipeline is
-            EU-internal (Eden AI in France forwarding to EU-hosted models of Mistral AI in France and
-            Nebius in the Netherlands), no third-country transfer arises for coaching. An Eden AI
-            data-processing agreement (Art. 28 GDPR) and due-diligence reviews of Mistral AI and
-            Nebius are being finalized before broad rollout
-            (<strong>Eden AI DPA + Mistral AI / Nebius due-diligence pending</strong>).
+            <strong>Protection &amp; Transfer Mechanism:</strong> Because the AI pipeline is
+            EU-internal (Eden AI in France forwarding to EU-hosted models of Mistral AI in France),
+            no third-country transfer arises for coaching or plan generation. An Eden AI
+            data-processing agreement (Art. 28 GDPR) and a due-diligence review of Mistral AI are
+            being finalized before broad rollout
+            (<strong>Eden AI DPA + Mistral AI due-diligence pending</strong>).
         </p>
         <p>
             <strong>Opt-out:</strong> You can disable AI Coaching in the app settings at any time.
-            Tracking of fitness, nutrition and sleep keeps working without AI Coaching; features that
-            use AI (the coaching chat and AI-generated plans) are then unavailable.
+            Tracking of fitness, nutrition and sleep keeps working without AI Coaching; the coaching
+            chat and AI-generated plans are then unavailable.
         </p>
 
         <h2>8. Food Database Lookups (Nutrition Feature)</h2>
@@ -483,16 +510,8 @@
                 <td><strong>Mistral AI</strong></td>
                 <td>Data Processor (language models)</td>
                 <td>🇫🇷 France (EU)</td>
-                <td>Language models for AI coaching and plan generation (reached via Eden AI or directly)</td>
+                <td>Language models for AI coaching and plan generation (currently reached via Eden AI; a direct connection to Mistral AI's EU interface may be used in future)</td>
                 <td>⏳ DPA / due-diligence pending</td>
-                <td>EU-internal</td>
-            </tr>
-            <tr>
-                <td><strong>Nebius</strong></td>
-                <td>Data Processor (model hosting)</td>
-                <td>🇳🇱 Netherlands (EU)</td>
-                <td>Hosts language models for AI coaching and plan generation (reached via Eden AI or directly)</td>
-                <td>⏳ Due-diligence pending</td>
                 <td>EU-internal</td>
             </tr>
             <tr>
@@ -531,7 +550,7 @@
         <p>You have the following rights:</p>
         <ul>
             <li><strong>Right to Access (Art. 15):</strong> Request your data</li>
-            <li><strong>Right to Delete (Art. 17):</strong> Delete your account and all data</li>
+            <li><strong>Right to Delete (Art. 17):</strong> Delete your account and all data linked to it (for the anonymous question sample, see Section 5a)</li>
             <li><strong>Right to Data Portability (Art. 20):</strong> Export your data</li>
             <li><strong>Right to Rectification (Art. 16):</strong> Edit your data</li>
             <li><strong>Right to Object (Art. 21):</strong> Object to processing</li>
@@ -588,7 +607,7 @@
         <hr style="margin: 40px 0;">
         <p style="text-align: center; color: #999; font-size: 12px;">
             Last Updated: October 13, 2026<br>
-            Version 1.0
+            Version 1.1
         </p>
     </div>
     <script src="site.js"></script>
