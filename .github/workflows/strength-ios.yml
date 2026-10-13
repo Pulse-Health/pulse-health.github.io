@@ -170,6 +170,24 @@ jobs:
             grep -E "error:" "$log" | sed -E 's#^/Users/runner/work/[^/]+/[^/]+/##' | sort -u | head -n 120 || true
           done
 
+      # Proof that the builds really compiled the Swift sources: product listing, compile counts, unique warnings.
+      - name: Build digest
+        if: always()
+        run: |
+          for f in xcodebuild-ios xcodebuild-watch; do
+            log="$LOG_DIR/$f.log"
+            [ -f "$log" ] || continue
+            echo "===== $f ====="
+            grep -E "BUILD (SUCCEEDED|FAILED)" "$log" || true
+            echo "swift compile steps: $(grep -cE '^(SwiftCompile|CompileSwiftSources|SwiftEmitModule|EmitSwiftModule)' "$log" || true)"
+            echo "warnings (unique):"
+            grep -E "warning:" "$log" | sed -E 's#^/Users/runner/work/[^/]+/[^/]+/##' | sort -u | head -n 100 || true
+          done
+          echo "===== products ====="
+          find ~/Library/Developer/Xcode/DerivedData -maxdepth 5 \( -name "*.app" -o -name "*.appex" \) -not -path "*/Index.noindex/*" 2>/dev/null | head -n 20 || true
+          echo "===== swift files per target in the generated project ====="
+          grep -cE "\.swift in Sources" "$LOG_DIR/project.pbxproj" || true
+
       - name: Job summary
         if: always()
         run: |
