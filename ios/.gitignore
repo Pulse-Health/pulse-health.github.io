@@ -1,0 +1,9 @@
+# SwiftPM / Xcode build products
+.build/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+.DS_Store
