@@ -1,0 +1,151 @@
+#if os(iOS)
+import Foundation
+import Combine
+import SwiftUI
+import PulseStrengthCore
+import PulseStrengthActivity
+
+/// Everything the strength feature needs at runtime, created once and shared by the screens:
+/// persistence (App Group container), the store, the workout controller (the phone is the authority),
+/// the platform services (Live Activity, notifications, HealthKit, Watch bridge) and the Watch status.
+///
+/// `StrengthAppEnvironment.shared` is created lazily on the main actor. Touching it early (for example
+/// in the `App` initializer) is enough for a Live Activity button press to work when the app was launched
+/// in the background by an App Intent: `live(seedDemoData:)` restores the running workout from disk and
+/// installs the `WorkoutCommandBus` handler that forwards the button's action to the controller.
+@MainActor
+public final class StrengthAppEnvironment: ObservableObject {
+    public let persistence: FileStrengthPersistence
+    public let store: StrengthStore
+    public let controller: WorkoutController
+    public let services: PulseServices
+    /// False for `preview(withActiveWorkout:)`: the services are inert and must not ask for permissions.
+    public let hasSystemServices: Bool
+
+    /// Apple Watch state worth telling the user about; the root view publishes it as `\.watchStatus`.
+    @Published public var watchStatus: WatchStatus
+
+    /// The live environment of the running app (App Group persistence, demo data when the store is empty).
+    public static let shared: StrengthAppEnvironment = StrengthAppEnvironment.live()
+
+    private init(
+        persistence: FileStrengthPersistence,
+        store: StrengthStore,
+        controller: WorkoutController,
+        services: PulseServices,
+        hasSystemServices: Bool,
+        watchStatus: WatchStatus
+    ) {
+        self.persistence = persistence
+        self.store = store
+        self.controller = controller
+        self.services = services
+        self.hasSystemServices = hasSystemServices
+        self.watchStatus = watchStatus
+    }
+
+    // MARK: Live
+
+    /// Builds the environment of the running app: App Group persistence (falling back to
+    /// Application Support/PulseStrength), the platform services, the command-bus handler for the Live Activity
+    /// buttons, and restores a workout that was running when the app was last closed.
+    public static func live(seedDemoData: Bool = true) -> StrengthAppEnvironment {
+        let persistence = makeLivePersistence()
+        let store = StrengthStore(persistence: persistence, seedDemoData: seedDemoData)
+        let controller = WorkoutController(store: store, persistence: persistence, role: .authority)
+        let services = PulseServices(controller: controller)
+        let environment = StrengthAppEnvironment(
+            persistence: persistence,
+            store: store,
+            controller: controller,
+            services: services,
+            hasSystemServices: true,
+            watchStatus: services.watchStatus
+        )
+        environment.installCommandBus()
+        environment.connectWatchStatus()
+        // Last, so that the services (Live Activity re-attach, Watch sync) see the restored workout.
+        controller.restoreFromDisk()
+        return environment
+    }
+
+    // MARK: Preview
+
+    /// Temporary persistence with the sample data and no live services; optionally with a workout already running.
+    ///
+    /// `services` is a required property, so previews get a `PulseServices` that is registered with a detached
+    /// controller nobody uses: the preview's own controller has no effects, so nothing reaches ActivityKit,
+    /// HealthKit, notifications or the Watch.
+    public static func preview(withActiveWorkout: Bool = false) -> StrengthAppEnvironment {
+        let persistence = FileStrengthPersistence.temporary()
+        let store = StrengthStore(persistence: persistence, seedDemoData: true)
+        let controller = WorkoutController(store: store, persistence: persistence, role: .authority)
+        let detached = WorkoutController(store: store, persistence: nil, role: .mirror)
+        let services = PulseServices(controller: detached)
+        let environment = StrengthAppEnvironment(
+            persistence: persistence,
+            store: store,
+            controller: controller,
+            services: services,
+            hasSystemServices: false,
+            watchStatus: .connected
+        )
+        if withActiveWorkout {
+            controller.startWorkout(template: store.templates.first)
+        }
+        return environment
+    }
+
+    // MARK: Wiring
+
+    /// Routes the Live Activity / Dynamic Island buttons (App Intents) to the controller.
+    /// The handler holds the environment weakly and hops to the main actor.
+    private func installCommandBus() {
+        let reference = EnvironmentReference(self)
+        WorkoutCommandBus.shared.install { action, origin in
+            await MainActor.run {
+                guard let environment = reference.environment else { return }
+                environment.controller.send(action, origin: origin)
+            }
+        }
+    }
+
+    /// Mirrors the services' Watch status into the published `watchStatus`.
+    /// The callback may arrive from a WatchConnectivity queue, so it hops to the main actor.
+    private func connectWatchStatus() {
+        let reference = EnvironmentReference(self)
+        services.onWatchStatusChange = { status in
+            Task { @MainActor in
+                reference.environment?.applyWatchStatus(status)
+            }
+        }
+        applyWatchStatus(services.watchStatus)
+    }
+
+    private func applyWatchStatus(_ status: WatchStatus) {
+        if watchStatus != status {
+            watchStatus = status
+        }
+    }
+
+    private static func makeLivePersistence() -> FileStrengthPersistence {
+        if let shared = FileStrengthPersistence.appGroup(identifier: StrengthConfig.appGroupID) {
+            return shared
+        }
+        let manager = FileManager.default
+        let base = manager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? manager.temporaryDirectory
+        // `FileStrengthPersistence` creates the directory when needed.
+        return FileStrengthPersistence(directory: base.appendingPathComponent("PulseStrength", isDirectory: true))
+    }
+}
+
+/// Lets the `Sendable` command-bus handler reach the environment without keeping it alive.
+/// The reference is only read inside `MainActor.run`.
+private final class EnvironmentReference: @unchecked Sendable {
+    weak var environment: StrengthAppEnvironment?
+
+    init(_ environment: StrengthAppEnvironment) {
+        self.environment = environment
+    }
+}
+#endif

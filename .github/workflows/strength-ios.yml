@@ -1,0 +1,179 @@
+# Pulse Strength (ios/): builds and tests the Swift package on Linux and compiles the Apple-only code on macOS.
+#
+#   core-linux  PulseStrengthCore on Linux (swift build / swift test, with and without the Combine shim).
+#   apple       XcodeGen -> PulseStrength.xcodeproj, package tests on macOS, xcodebuild of the iOS app (which also builds
+#               the widget extension and the embedded Watch app) and of the Watch scheme, both for the simulators and
+#               without code signing. This job is the first real compile of the iOS UI, the Live Activity and the Watch
+#               code; see ios/README.md, "Verification status".
+
+name: strength-ios
+
+on:
+  pull_request:
+    paths:
+      - 'ios/**'
+      - '.github/workflows/strength-ios.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'ios/**'
+      - '.github/workflows/strength-ios.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: strength-ios-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  core-linux:
+    name: core-linux
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ios/Packages/PulseStrengthKit
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Build
+        run: swift build
+
+      - name: Test
+        run: swift test
+
+      # The shim stands in for Combine so that StrengthStore and WorkoutController compile and are tested on Linux.
+      # A separate scratch path keeps the two configurations from invalidating each other's build products.
+      - name: Build (Combine shim)
+        run: swift build --scratch-path .build-shim -Xswiftc -DPULSE_COMBINE_SHIM
+
+      - name: Test (Combine shim)
+        run: swift test --scratch-path .build-shim -Xswiftc -DPULSE_COMBINE_SHIM
+
+  apple:
+    name: apple
+    runs-on: macos-15
+    timeout-minutes: 75
+    env:
+      LOG_DIR: ${{ github.workspace }}/build-logs
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      # run_logged.sh <log file> <command...>: runs the command, tees the complete output to the log file and, when the
+      # command fails, prints the unique "error:" lines and the last 150 lines of the log before failing the step.
+      - name: Prepare logs
+        run: |
+          mkdir -p "$LOG_DIR"
+          cat > "$RUNNER_TEMP/run_logged.sh" <<'SH'
+          #!/usr/bin/env bash
+          log="$1"
+          shift
+          "$@" 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo ""
+            echo "=============== FAILED (exit $status): $* ==============="
+            echo "----- grep -E \"error:\" $(basename "$log") | sort -u -----"
+            grep -E "error:" "$log" | sort -u || true
+            echo "----- last 150 lines of $(basename "$log") -----"
+            tail -n 150 "$log"
+          fi
+          exit "$status"
+          SH
+          chmod +x "$RUNNER_TEMP/run_logged.sh"
+
+      # The project needs Xcode 16 (the code also builds with 15.4). Use the newest installed 16.x release.
+      - name: Select Xcode 16
+        run: |
+          echo "Default: $(xcodebuild -version | head -n 1)"
+          newest="$(python3 - <<'PY'
+          import glob, re
+
+          def key(path):
+              match = re.search(r"Xcode_(\d+(?:\.\d+)*)\.app$", path)
+              return tuple(int(part) for part in match.group(1).split(".")) if match else ()
+
+          apps = [p for p in glob.glob("/Applications/Xcode_16*.app") if re.search(r"Xcode_16(\.\d+)*\.app$", p)]
+          print(max(apps, key=key) if apps else "")
+          PY
+          )"
+          if [ -n "$newest" ]; then
+            echo "Selecting $newest"
+            sudo xcode-select -s "$newest/Contents/Developer"
+          else
+            echo "::warning::No Xcode 16.x installed on this runner image, using the default Xcode"
+          fi
+          xcodebuild -version
+          swift --version
+          xcrun simctl list runtimes
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Generate the Xcode project
+        id: generate
+        working-directory: ios
+        run: |
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodegen.log" xcodegen generate
+          xcodebuild -list -project PulseStrength.xcodeproj | tee "$LOG_DIR/xcodebuild-list.log"
+          cp PulseStrength.xcodeproj/project.pbxproj "$LOG_DIR/project.pbxproj"
+
+      - name: Test the package on macOS
+        id: package-tests
+        working-directory: ios/Packages/PulseStrengthKit
+        run: |
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/swift-test-macos.log" swift test
+
+      - name: Build the iOS app (iOS Simulator; includes the widget extension and the Watch app)
+        id: ios-build
+        working-directory: ios
+        run: |
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodebuild-ios.log" \
+            xcodebuild -project PulseStrength.xcodeproj -scheme PulseStrength \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+
+      - name: Build the Watch app (watchOS Simulator)
+        id: watch-build
+        working-directory: ios
+        run: |
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodebuild-watch.log" \
+            xcodebuild -project PulseStrength.xcodeproj -scheme PulseStrengthWatch \
+            -destination 'generic/platform=watchOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "### strength-ios: apple job"
+            echo ""
+            echo "| Step | Result |"
+            echo "| --- | --- |"
+            echo "| xcodegen generate | ${{ steps.generate.outcome }} |"
+            echo "| swift test (macOS) | ${{ steps.package-tests.outcome }} |"
+            echo "| xcodebuild PulseStrength (iOS Simulator) | ${{ steps.ios-build.outcome }} |"
+            echo "| xcodebuild PulseStrengthWatch (watchOS Simulator) | ${{ steps.watch-build.outcome }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strength-ios-logs
+          path: build-logs/
+          if-no-files-found: ignore
+          retention-days: 14
