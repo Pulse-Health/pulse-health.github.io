@@ -92,6 +92,15 @@ final class LiveActivityManager: WorkoutSideEffect {
         }
     }
 
+    /// Returns when every ActivityKit operation queued so far has finished.
+    ///
+    /// The command-bus handler awaits this after it applied a Live Activity button, so the intent's `perform()` returns
+    /// only once the new content was handed to ActivityKit (a process that the intent launched in the background may be
+    /// suspended as soon as `perform()` has returned, before a fire-and-forget update would have run).
+    func waitUntilIdle() async {
+        await tail?.value
+    }
+
     // MARK: ActivityKit calls (run inside the queue)
 
     private func deliver(

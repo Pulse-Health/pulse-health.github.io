@@ -184,20 +184,33 @@ public struct SyncEnvelope: Codable, Hashable, Sendable {
     /// then lets the phone's state win, as it did before acknowledgements existed). Every envelope made by this code, including
     /// one with an empty list, writes the entry and is not legacy. Not part of the payload and not part of equality.
     public private(set) var isFromLegacyPhone: Bool = false
+    /// How the workout named by `endedWorkoutID` ended: true when the phone threw it away (Discard Workout, or a finish with no
+    /// logged set, which the phone discards), false when it was finished and recorded. nil when the envelope does not say: it
+    /// carries a state, no workout ended since the phone app launched, or it comes from a phone build that does not send the
+    /// entry (an older payload without it decodes to nil). The Watch uses it to decide whether its Health session saves the
+    /// workout to Health or throws it away.
+    public var discarded: Bool?
 
-    public init(state: WorkoutState?, endedWorkoutID: UUID? = nil, sentAt: Date = Date(), ackedCommandIDs: [UUID] = []) {
+    public init(
+        state: WorkoutState?,
+        endedWorkoutID: UUID? = nil,
+        sentAt: Date = Date(),
+        ackedCommandIDs: [UUID] = [],
+        discarded: Bool? = nil
+    ) {
         self.state = state
         self.endedWorkoutID = endedWorkoutID
         self.sentAt = sentAt
         self.ackedCommandIDs = ackedCommandIDs
+        self.discarded = discarded
     }
 
     private enum CodingKeys: String, CodingKey {
-        case state, endedWorkoutID, sentAt, ackedCommandIDs
+        case state, endedWorkoutID, sentAt, ackedCommandIDs, discarded
     }
 
     /// Reads an envelope; a payload written before acknowledgements existed has no `ackedCommandIDs`: it decodes to `[]` and
-    /// is marked `isFromLegacyPhone`.
+    /// is marked `isFromLegacyPhone`. A payload without `discarded` decodes to nil.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         state = try container.decodeIfPresent(WorkoutState.self, forKey: .state)
@@ -206,11 +219,12 @@ public struct SyncEnvelope: Codable, Hashable, Sendable {
         let acknowledged = try container.decodeIfPresent([UUID].self, forKey: .ackedCommandIDs)
         ackedCommandIDs = acknowledged ?? []
         isFromLegacyPhone = acknowledged == nil
+        discarded = try container.decodeIfPresent(Bool.self, forKey: .discarded)
     }
 
     public static func == (lhs: SyncEnvelope, rhs: SyncEnvelope) -> Bool {
         lhs.state == rhs.state && lhs.endedWorkoutID == rhs.endedWorkoutID && lhs.sentAt == rhs.sentAt
-            && lhs.ackedCommandIDs == rhs.ackedCommandIDs
+            && lhs.ackedCommandIDs == rhs.ackedCommandIDs && lhs.discarded == rhs.discarded
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -218,6 +232,7 @@ public struct SyncEnvelope: Codable, Hashable, Sendable {
         hasher.combine(endedWorkoutID)
         hasher.combine(sentAt)
         hasher.combine(ackedCommandIDs)
+        hasher.combine(discarded)
     }
 }
 

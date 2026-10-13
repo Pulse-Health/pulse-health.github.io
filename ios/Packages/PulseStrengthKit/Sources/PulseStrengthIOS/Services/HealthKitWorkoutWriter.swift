@@ -87,18 +87,34 @@ private func hkFinishWorkout(of builder: HKWorkoutBuilder) async throws {
 ///
 /// Only the phone writes, and only when no Apple Watch recorded the workout (`state.usedWatch == false`);
 /// with the Watch recording, the Watch saves it. Without HealthKit on the device every call is a silent no-op.
+///
+/// A workout is saved to Health at most once. The core can finish the same workout twice (when the history file could not
+/// be written the workout is kept and restored on the next launch, and finishing it again records it by its id), and
+/// HealthKit does not merge two workouts that carry the same `HKMetadataKeyExternalUUID`. So the writer keeps the ids of the
+/// workouts it has saved (the last 64, in `UserDefaults`, so they survive a relaunch) and skips a workout it already saved.
 @MainActor
 final class HealthKitWorkoutWriter: WorkoutSideEffect {
+    /// `UserDefaults` key of the saved workout ids (an array of `UUID` strings, oldest first).
+    private static let savedIDsKey = "health.pulse.strength.healthSavedWorkoutIDs"
+    /// How many saved workout ids are remembered. A workout can only be finished again right after a failed history write,
+    /// so a short memory is enough.
+    private static let savedIDsCapacity = 64
+
     /// Reports whether sharing workouts is denied: true when it is (or became) denied, false when it is not (any more).
     /// Called on the main actor, only when the value changes.
     var onAuthorizationDenied: (@MainActor (Bool) -> Void)?
 
     /// nil when HealthKit is not available on this device.
     private let healthStore: HKHealthStore?
+    /// Holds the ids of the workouts already saved to Health.
+    private let defaults: UserDefaults
+    /// Workouts whose Health write is running right now (a second `workoutEnded` for one of them is ignored).
+    private var writing = Set<UUID>()
     private var reportedDenied = false
 
-    init(healthStore: HKHealthStore?) {
+    init(healthStore: HKHealthStore?, defaults: UserDefaults = .standard) {
         self.healthStore = healthStore
+        self.defaults = defaults
     }
 
     // MARK: Authorization
@@ -142,6 +158,9 @@ final class HealthKitWorkoutWriter: WorkoutSideEffect {
     func workoutEnded(_ state: WorkoutState, completed: CompletedWorkout?) {
         guard let completed = completed, !state.usedWatch, let store = healthStore else { return }
         let workoutID = completed.id
+        // Finished a second time (see the class comment): Health already has it, or is being given it right now.
+        guard !hasSaved(workoutID), !writing.contains(workoutID) else { return }
+        writing.insert(workoutID)
         let start = state.startedAt
         // HealthKit rejects a workout that ends before it starts.
         let end = max(completed.finishedAt, start.addingTimeInterval(1))
@@ -154,6 +173,7 @@ final class HealthKitWorkoutWriter: WorkoutSideEffect {
     // MARK: Writing
 
     private func write(store: HKHealthStore, workoutID: UUID, start: Date, end: Date) async {
+        defer { writing.remove(workoutID) }
         refreshAuthorizationStatus()
         guard store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else { return }
 
@@ -175,10 +195,31 @@ final class HealthKitWorkoutWriter: WorkoutSideEffect {
             }
             try await hkEndCollection(of: builder, at: end)
             try await hkFinishWorkout(of: builder)
+            markSaved(workoutID)
         } catch {
             builder.discardWorkout()
             ServiceLog.error("Health workout could not be saved: \(error.localizedDescription)")
         }
+    }
+
+    // MARK: Saved workout ids
+
+    private func savedIDs() -> [String] {
+        defaults.stringArray(forKey: Self.savedIDsKey) ?? []
+    }
+
+    private func hasSaved(_ workoutID: UUID) -> Bool {
+        savedIDs().contains(workoutID.uuidString)
+    }
+
+    /// Remembers that `workoutID` is in Health; the oldest ids beyond the capacity are forgotten.
+    private func markSaved(_ workoutID: UUID) {
+        var ids = savedIDs().filter { $0 != workoutID.uuidString }
+        ids.append(workoutID.uuidString)
+        if ids.count > Self.savedIDsCapacity {
+            ids.removeFirst(ids.count - Self.savedIDsCapacity)
+        }
+        defaults.set(ids, forKey: Self.savedIDsKey)
     }
 }
 #endif

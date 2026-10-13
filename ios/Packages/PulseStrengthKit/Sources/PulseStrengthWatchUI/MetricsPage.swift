@@ -105,8 +105,11 @@ struct MetricsPage: View {
             .accessibilityValue(WatchFormat.spoken(seconds: elapsedSeconds))
     }
 
+    /// Number, heart and "bpm" share one vertical centre, as in the design (`align-items: center`). Baseline alignment would hang
+    /// the heart and the small "bpm" label below the middle of the digits. The volume and sets rows below stay on a baseline: in
+    /// the design their unit is inline text.
     private var heartRateRow: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
+        HStack(alignment: .center, spacing: 6) {
             Text(heartRateText)
                 .font(WatchFont.number(31, .bold))
                 .foregroundStyle(palette.primary)

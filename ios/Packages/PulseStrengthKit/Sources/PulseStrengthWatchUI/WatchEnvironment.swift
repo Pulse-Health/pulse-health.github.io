@@ -92,7 +92,10 @@ private final class WatchLifecycleEffect: WorkoutSideEffect {
 /// * `controller` is the Watch's mirror of the phone's workout (role `.mirror`, no persistence, an in-memory store).
 ///   Views read `controller.state` / `controller.snapshot(now:)` and dispatch with `controller.send(_, origin: .watch)`.
 /// * `WatchConnectivityClient` (phone sync) and the lifecycle effect are registered with the controller. When an envelope for
-///   a new workout arrives the Health `session` starts; when the workout ends the session ends and `endedSummary` is set.
+///   a new workout arrives the Health `session` starts; when the workout ends the session ends (saved to Health when the phone
+///   finished the workout, thrown away when the phone discarded it) and `endedSummary` is set for a finished one. The session
+///   follows the workout shown: another workout replacing it ends the old session, a pause on the phone pauses it, an app that
+///   becomes active retries a start that failed, and a session that survived a crash is taken over again.
 /// * `isPhoneReachable` follows WatchConnectivity; `requestStateFromPhone()` asks the phone for the current state.
 ///
 /// Use `WatchEnvironment.shared`. It is main-actor isolated, so touch it from main-actor code (the `App` struct's
@@ -117,6 +120,13 @@ public final class WatchEnvironment: ObservableObject {
 
     private let connectivity: WatchConnectivityClient
     private var sessionObserver: AnyCancellable?
+    private var stateObserver: AnyCancellable?
+    /// The workout the Health session records; nil when it was started for a phone launch and no workout has claimed it yet (or
+    /// there is no session).
+    private var sessionWorkoutID: UUID?
+    /// Whether that workout had a logged set the last time the Watch saw it (decides whether a session that lost its workout
+    /// without a word is saved).
+    private var sessionWorkoutHasLoggedSets = false
     /// When the phone sent the envelope that ended the workout (the summary's end time).
     private var pendingEndDate: Date?
     private var orphanCheck: Task<Void, Never>?
@@ -153,6 +163,10 @@ public final class WatchEnvironment: ObservableObject {
         // Views that observe the environment also refresh when the Health session changes (recording, access denied, heart rate).
         sessionObserver = session.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
+        }
+        // `$state` publishes the new value before it is stored, so the value it delivers is the one to look at.
+        stateObserver = controller.$state.sink { [weak self] (state: WorkoutState?) in
+            self?.stateChanged(state)
         }
 
         controller.addEffect(connectivity)
@@ -194,21 +208,71 @@ public final class WatchEnvironment: ObservableObject {
     func startSessionForPhoneLaunch() {
         session.start(workoutStartDate: controller.state?.startedAt ?? Date())
         if controller.state == nil {
-            scheduleOrphanCheck()
+            scheduleOrphanCheck(save: false)
         }
         requestStateFromPhone()
     }
 
-    private func scheduleOrphanCheck() {
+    /// Called by `WatchAppDelegate` when the system relaunches the app after it crashed or was terminated during a workout: takes
+    /// over the Health session the system kept alive and asks the phone for the workout. If no workout shows up the session is
+    /// stopped again, but saved: it recorded a real workout before the crash, which the phone may have finished meanwhile.
+    func recoverWorkoutSession() {
+        if session.recover(), controller.state == nil {
+            scheduleOrphanCheck(save: true)
+        }
+        requestStateFromPhone()
+    }
+
+    /// Called by `WatchAppDelegate` whenever the app becomes active: a Health session that failed to start (for instance because
+    /// the app was in the background when the workout arrived) is started again, and one that belongs to another workout than the
+    /// one shown is replaced. Does nothing without a workout.
+    func reconcileSessionWithWorkout() {
+        guard let state = controller.state else { return }
+        reconcileSession(with: state)
+    }
+
+    /// Ends the session after `orphanTimeoutNanoseconds` when still no workout is shown. `save` is whether the session recorded
+    /// anything worth keeping: a session the phone launched for a workout that never arrived did not, a recovered one did.
+    private func scheduleOrphanCheck(save: Bool) {
         orphanCheck?.cancel()
         let timeout = orphanTimeoutNanoseconds
         orphanCheck = Task { [weak self] in
             try? await Task.sleep(nanoseconds: timeout)
             guard !Task.isCancelled, let self else { return }
             if self.controller.state == nil {
-                self.session.end()
+                self.sessionWorkoutID = nil
+                self.session.end(save: save)
             }
             self.orphanCheck = nil
+        }
+    }
+
+    /// Makes the Health session record the workout `state` shows.
+    ///
+    /// A session that belongs to ANOTHER workout is ended first: the end notice of that workout never reached the Watch (the phone
+    /// pushes with `updateApplicationContext`, which keeps only the latest value, so "A ended" followed by "B started" while the
+    /// Watch was out of reach delivers only B), and without this B would carry on A's session and Health would get one long
+    /// workout. The new session waits behind the old one (`WatchWorkoutSession.start` queues it while the old one ends). Nothing
+    /// says how A ended, so it is saved when the Watch saw a logged set, the rule by which the phone discards a finish.
+    private func reconcileSession(with state: WorkoutState) {
+        if let owner = sessionWorkoutID, owner != state.id {
+            session.end(save: sessionWorkoutHasLoggedSets)
+            sessionWorkoutID = nil
+        }
+        if sessionWorkoutID == nil {
+            sessionWorkoutID = state.id
+            sessionWorkoutHasLoggedSets = WatchWorkoutTotals(state).loggedSets > 0
+        }
+        session.start(workoutStartDate: state.startedAt)
+    }
+
+    /// Every state the controller publishes (the Watch's own edits and the phone's): keeps the Health session paused while the
+    /// workout is, and remembers whether the session's workout has a logged set.
+    private func stateChanged(_ state: WorkoutState?) {
+        guard let state = state else { return }
+        session.setPaused(state.isPaused)
+        if state.id == sessionWorkoutID {
+            sessionWorkoutHasLoggedSets = WatchWorkoutTotals(state).loggedSets > 0
         }
     }
 
@@ -219,7 +283,7 @@ public final class WatchEnvironment: ObservableObject {
         pendingEndDate = nil
         orphanCheck?.cancel()
         orphanCheck = nil
-        session.start(workoutStartDate: state.startedAt)
+        reconcileSession(with: state)
     }
 
     fileprivate func handleWorkoutEnded(_ state: WorkoutState) {
@@ -227,9 +291,14 @@ public final class WatchEnvironment: ObservableObject {
         pendingEndDate = nil
         orphanCheck?.cancel()
         orphanCheck = nil
-        session.end()
-        // A workout without a logged set was discarded: there is nothing to summarise.
-        if WatchWorkoutTotals(state).loggedSets > 0 {
+        // The phone threw the workout away (Discard Workout, or a finish with no logged set): the Health session is discarded
+        // too, so no workout the user explicitly dropped lands in Health. Otherwise it is saved.
+        let discarded = controller.lastEndDiscarded
+        sessionWorkoutID = nil
+        session.end(save: !discarded)
+        session.setPaused(false)
+        // A discarded workout, and one without a logged set, has nothing to summarise.
+        if !discarded, WatchWorkoutTotals(state).loggedSets > 0 {
             endedSummary = WatchEndedSummary(state: state, endedAt: endedAt)
         }
     }

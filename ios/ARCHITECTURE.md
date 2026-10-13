@@ -245,7 +245,7 @@ public enum SyncReconciler {
     public static func rebase(_ authoritative: WorkoutState, replaying pending: [RemoteCommand]) -> WorkoutState
 }
 public struct RemoteCommand { id: UUID; action: WorkoutAction; origin: ActionOrigin; issuedAt: Date; workoutID: UUID?; senderID: UUID?; sequence: Int? }   // Watch -> phone; workoutID, senderID, sequence nil in old payloads
-public struct SyncEnvelope { state: WorkoutState?; endedWorkoutID: UUID?; sentAt: Date; ackedCommandIDs: [UUID]; isFromLegacyPhone: Bool }   // phone -> Watch; ackedCommandIDs [] in old payloads, and isFromLegacyPhone (not on the wire, not in ==) true when the key was missing
+public struct SyncEnvelope { state: WorkoutState?; endedWorkoutID: UUID?; sentAt: Date; ackedCommandIDs: [UUID]; discarded: Bool?; isFromLegacyPhone: Bool }   // phone -> Watch; ackedCommandIDs [] in old payloads, and isFromLegacyPhone (not on the wire, not in ==) true when the key was missing; discarded (decodeIfPresent, nil in old payloads) says how endedWorkoutID ended: true = thrown away (Discard Workout, or a finish with no logged set), false = finished and recorded, nil = not said
 public protocol WorkoutSideEffect { /* workoutStarted, workoutChanged, workoutEnded as before, plus: */
     func commandIssued(_ command: RemoteCommand)    // default: nothing. The mirror made `command` of an action taken on the Watch (see "Sync protocol")
 }
@@ -302,6 +302,7 @@ public final class WorkoutController: ObservableObject {
     public func makeEnvelope(now: Date) -> SyncEnvelope              // authority: state (or nil + last ended id) + the last 64 acknowledged command ids
     public var pendingCommands: [RemoteCommand] { get }              // mirror: edits shown on top of the phone's state that are not acknowledged yet
     public var authoritativeRevision: Int? { get }                   // mirror: revision of the last phone state adopted for the running workout
+    public var lastEndDiscarded: Bool { get }                        // how the workout that ended last ended (true = thrown away); set before the effects' workoutEnded run, which on a mirror always get completed == nil
     public var nextPendingExpiry: Date? { get }                      // mirror: when the oldest unacknowledged edit stops being shown (nil: none)
     @discardableResult public func expirePending() -> Bool           // mirror: drop the edits past their lifetime, show the phone's last state + the rest; true when one was dropped
     public func markQueued(commandID: UUID)                          // mirror: the transport queued this command (transferUserInfo): keep its edit for queuedPendingLifetime
@@ -382,7 +383,13 @@ can arrive out of order or be coalesced by `updateApplicationContext`. The Watch
 | nothing | X | X is remembered: a late state of X (sent before the notice) is ignored |
 | W | W | W ends (`workoutEnded`) and is remembered |
 | W | X ≠ W | W keeps running and X is remembered (a late notice of an earlier workout); unless the notice was sent after the last state adopted for W, then W is a ghost the Watch never heard ended and ends |
-| W | nil | the legacy "no workout" notice: W ends, but its id is NOT remembered, so the phone's next state for W is adopted again (the notice named nobody) |
+| W | nil | the legacy "no workout" notice: W ends, but its id is NOT remembered, so the phone's next state for W is adopted again (the notice named nobody); unless it was sent BEFORE the state last adopted for W (a stale application context the Watch re-read on a wrist raise, after W had been adopted from a message), then it is ignored |
+
+*How a workout ended.* The phone says it with `discarded` on the end notice (`makeEnvelope` writes it whenever it names `endedWorkoutID`): `discard()` and a
+`finish` with no logged set (the engine discards that) are `true`, a recorded finish is `false`. The mirror stores the outcome in `lastEndDiscarded` before it
+tells the effects. A notice that does not say (an older phone build, the legacy "no workout" notice, a ghost workout whose own end the Watch never heard: the
+flag then belongs to another workout) counts as a discard when the Watch's copy has no logged set, the phone's own rule for a finish. The Watch uses it to save
+the Health workout (`false`) or throw it away (`true`, no summary page).
 
 Known limits: a command redelivered after more than 256 later commands would run again (`SeenCommands` and the saved acknowledgements hold 256 ids); a
 command that reaches the phone after the Watch dropped it (15 s, or the queued lifetime) is still applied and shows up with the next envelope; cumulative
@@ -391,7 +398,8 @@ ordered against one of the next launch; the ordering rules use the phone's clock
 Watch's clock for `issuedAt`; a `sendMessage` that fails after the client handed it over moves to the system queue on its own and is not reported as queued, so its
 edit keeps the 15 s lifetime (the set can blink out and come back when the phone finally gets the command); `PhoneWatchBridge` hands each inbound message to the main
 actor in a task of its own, which does not promise first-in-first-out; a phone that restores a LOWER revision than the Watch adopted (the active-workout file could not be written) is not followed
-until its revision catches up or the Watch restarts; a jump from workout W1 to W2 on the Watch (the end notice was lost) does not call `workoutEnded(W1)`.
+until its revision catches up or the Watch restarts; a jump from workout W1 to W2 on the Watch (the end notice was lost) does not call `workoutEnded(W1)` (the Watch environment notices the new id in `workoutStarted` and
+ends the Health session of W1 itself, see 5.5).
 
 `record` always updates the store in memory; its result is `.failure(error)` when the workout could not be written to the history file (the
 only place its sets are kept: the personal bests are re-read from the history, so a failed write of the bests or the template is only
@@ -412,7 +420,7 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
-  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 661 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 675 (the controller and
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 682 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 697 (the controller and
   store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
   phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
   40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice. `SyncHardeningTests.swift` holds one
@@ -421,7 +429,9 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
   `SyncChannelFuzzTests.swift` is a second fuzzer with a closer model of the transports (a one-slot application context, a fast and a slow Watch -> phone
   channel, delivery delays, Watch restarts, phone relaunches, lost commands, workouts that end every other step) that also models the Watch client
   (`markQueued`, the expiry timer): the Watch never goes back to an older workout, equals the phone even when no last envelope comes, and no command runs
-  twice across a relaunch.
+  twice across a relaunch. `SyncWatchHealthTests.swift` covers the end outcome (`SyncEnvelope.discarded`, `lastEndDiscarded`: what the phone says for a discard, a
+  finish and an empty finish, what the Watch concludes when the notice does not say, ghost workouts, the codec and older payloads) and a stale "no workout"
+  notice after a workout was adopted.
 * Apple-only files cannot be compiled on Linux: they are syntax-checked with `swiftc -parse`, then reviewed adversarially against the
   iOS 17 / watchOS 10 SDK APIs. The README states plainly that the Apple targets have not been built in Xcode.
 
@@ -476,7 +486,10 @@ Skip, "Reps left" selector, Dismiss when over), undo toast, empty state. Everyth
 sets list may scroll inside the card when there are many sets. The `ActiveSheet` enum (Identifiable) and all presentation logic live in
 `ActiveWorkoutView`. Finish flow: `confirmationDialog` (Finish Workout / Keep Training / Discard Workout) -> discard alert, and the
 three-button "Update template?" alert when `finishCheck.asksToUpdateTemplate`; then `controller.finish(updateTemplate:)` and `onFinished`.
-Rest end feedback: `UINotificationFeedbackGenerator` when the dock phase turns `.finished` while the app is active.
+Rest end feedback: `UINotificationFeedbackGenerator` plus a VoiceOver "Rest over" announcement (`RestEndFeedback`, one helper) when the dock phase turns `.finished` while the app is active
+and `alertWhenRestEnds` is on. `ActiveWorkoutView` plays it while the workout screen is open, `PulseStrengthRootView` (on the in-progress bar) while the workout is minimised; the system
+notification stays suppressed in the foreground (`RestNotificationDelegate`). While the Watch banner state is on (not connected, Health denied) the header shows "–" and a still grey heart
+instead of the last heart rate; the Health-denied banner button opens the Health app (`x-apple-health://`, undocumented) and falls back to the app's page in Settings.
 
 **Area "sheets"** (`Sheets/`):
 ```swift
@@ -488,7 +501,7 @@ public struct CreateExerciseSheet: View { public init(initialName: String, onCre
 public struct KeypadSheet: View { public init(controller: WorkoutController, ref: SetRef, initialField: KeypadField) }   // value cards, -/+ steppers (Exercise.weightStepKg/repsStep), "Use last", plate chips for barbells, 3x4 keypad, Next/Log set/Done
 public struct SetDetailSheet: View { public init(controller: WorkoutController, ref: SetRef) }                   // set type list, RIR segmented (– 0 1 2 3 4+), delete
 public struct RestSettingsSheet: View { public init(controller: WorkoutController, exerciseID: UUID) }            // presets Off 0:30 ... 5:00, auto-start toggle, alert toggle
-public struct FormInfoSheet: View { public init(exercise: Exercise) }                                         // large demo, muscles, how-to cues, attribution line
+public struct FormInfoSheet: View { public init(exercise: Exercise, onShowHistory: (() -> Void)? = nil) }     // large demo, muscles, how-to cues, "History & records" row (only when onShowHistory is set; ActiveWorkoutView hosts it in a NavigationStack and pushes ExerciseDetailView), attribution line
 public extension View {
     func exerciseOptionsDialog(controller: WorkoutController, exerciseID: Binding<UUID?>,
                                onShowInfo: @escaping (Exercise) -> Void, onShowRestSettings: @escaping (UUID) -> Void,
@@ -523,12 +536,13 @@ public struct PulseStrengthRootView: View { public init(environment: StrengthApp
     public func requestPermissions() async            // notifications + HealthKit authorisation
     public var onWatchStatusChange: ((WatchStatus) -> Void)?   // fed by PhoneWatchBridge (reachability) and HealthKitWorkoutWriter (denied); healthDenied wins
     public private(set) var watchStatus: WatchStatus
+    public func waitForPendingUpdates() async         // returns when the Live Activity updates queued so far reached ActivityKit (LiveActivityManager.waitUntilIdle)
 }
 ```
 * `LiveActivityManager: WorkoutSideEffect` starts the Live Activity on `workoutStarted`, updates it on every change (content = `SnapshotBuilder.make(from:now:)`, `staleDate` = `restEndsAt` while an unpaused rest runs, else nil; throttle
   heart-rate-only updates to one per 10 s; never update from `workoutChanged` caused by `.updateHeartRate` more often), ends it on `workoutEnded`; re-attaches to an existing activity after relaunch.
 * `RestNotificationScheduler` schedules a time-sensitive local notification at the rest end (identifier `StrengthConfig.restNotificationID`), cancels it on skip / pause / finish / discard, only when `settings.alertWhenRestEnds`; foreground presentation suppressed.
-* `HealthKitWorkoutWriter` writes an `HKWorkout` (traditional strength training) with `HKWorkoutBuilder` when a workout is finished and `state.usedWatch == false`; with the Watch recording, the Watch saves it.
+* `HealthKitWorkoutWriter` writes an `HKWorkout` (traditional strength training) with `HKWorkoutBuilder` when a workout is finished and `state.usedWatch == false`; with the Watch recording, the Watch saves it. It saves a workout id once: the core can finish the same workout twice (after a failed history write the next launch restores and finishes it again), so the writer keeps the ids it saved (the last 64, in `UserDefaults`; the id is added after `finishWorkout` succeeded, so a failed write is retried) and ignores a workout it already saved or is saving.
 * `PhoneWatchBridge` (WCSession): pushes `controller.makeEnvelope(now:)` after every state change (`updateApplicationContext`, plus `sendMessage` when reachable) and, after every inbound `.command`, again when the command caused no push itself (a duplicate or no-op: the envelope is the acknowledgement; see 3.4), answers `.requestState`, turns inbound `.command` / `.heartRate` / `.watchSession` messages into controller calls, launches the Watch app with `HKHealthStore.startWatchApp(with:)` when a workout starts and the Watch app is installed.
 
 ### 5.4 Live Activity, Dynamic Island, App Intents
@@ -547,14 +561,14 @@ public final class WorkoutCommandBus: @unchecked Sendable { public static let sh
 ```
 `Apps/Shared/Intents/StrengthIntents.swift` (compiled into app and extension; `import AppIntents`, `import PulseStrengthActivity`, `import PulseStrengthCore`):
 `LogSetIntent(exerciseID: String, setID: String)`, `NudgeSetIntent(weightSteps: Int, repsSteps: Int)`, `AdjustRestIntent(seconds: Int)`, `SkipRestIntent()`,
-all `LiveActivityIntent` with `@Parameter` properties, a no-argument `init()`, a convenience init with the arguments, `static var title`, `openAppWhenRun = false`.
-`perform()` forwards to `WorkoutCommandBus.shared.perform(action, origin: .liveActivity)` (String ids parsed with `UUID(uuidString:)`, invalid -> no-op) and returns `.result()`.
+all `LiveActivityIntent` with `@Parameter` properties, a no-argument `init()`, a convenience init with the arguments, `static var title`, `openAppWhenRun = false`, `isDiscoverable = false` (AppIntent, iOS 17.0+: Siri, Spotlight and Shortcuts do not list them; the Live Activity buttons still run them).
+`perform()` forwards to `WorkoutCommandBus.shared.perform(action, origin: .liveActivity)` (String ids parsed with `UUID(uuidString:)`, invalid -> no-op) and returns `.result()`. The handler `StrengthAppEnvironment` installs applies the action with `controller.send` and then awaits `PulseServices.waitForPendingUpdates()` (the queued ActivityKit work), so `perform()` returns only after the new content reached ActivityKit: an app the intent launched in the background may be suspended right after `perform()` returns.
 
 `Apps/Shared/LiveActivity/` (widget extension sources; imports ActivityKit, WidgetKit, SwiftUI, AppIntents, the package modules): `public struct WorkoutLiveActivity: Widget` using
 `ActivityConfiguration(for: WorkoutActivityAttributes.self)`; the extension's `@main WidgetBundle` only lists it. Lock Screen view and Dynamic Island (compact leading/trailing, minimal,
 expanded leading/trailing/center/bottom) follow `LockScreen.dc.html` and `DynamicIsland.dc.html`: phases `.logging` (set label, kg and reps with - / + `Button(intent: NudgeSetIntent(...))`,
 "Log set" `Button(intent: LogSetIntent(...))`), `.resting` (countdown `Text(timerInterval:countsDown:)`, ring via `ProgressView(timerInterval:countsDown:)`, "Next" text, -15 s / +15 s / Skip intents),
-`.restOver` ("Go" + Log set), `.complete` ("All sets logged", tap opens the app). `widgetURL(StrengthConfig.workoutURL)`. Paused: frozen values (`elapsedWhenPaused`, `restFrozenRemaining`) and a
+`.restOver` ("Go" + Log set), `.complete` ("All sets logged", tap opens the app; a workout without any set, `totalSets == 0`, is `.complete` for the builder but the views show the barbell and "No exercises yet" / "No sets yet" with a hint instead). `widgetURL(StrengthConfig.workoutURL)`. Paused: frozen values (`elapsedWhenPaused`, `restFrozenRemaining`) and a
 "Paused" label. Always dark styling. A widget view cannot tick on its own, so the rest end is handled with the staleness date: `LiveActivityManager` (5.3) sets
 `ActivityContent.staleDate = restEndsAt` while a rest runs and the views treat `context.isStale && phase == .resting` as `.restOver` ("Go" + Log set); the countdown text stops at 0:00 meanwhile.
 
@@ -565,16 +579,34 @@ Files: `WatchEnvironment.swift`, `WatchConnectivityClient.swift`, `WatchWorkoutS
 ```swift
 @MainActor public final class WatchEnvironment: ObservableObject { public let controller: WorkoutController; public static let shared: WatchEnvironment; public init() }   // mirror role, WatchConnectivityClient + WatchWorkoutSession registered as effects
 public struct WatchRootView: View { public init(environment: WatchEnvironment) }
-public final class WatchAppDelegate: NSObject, WKApplicationDelegate { public func handle(_ workoutConfiguration: HKWorkoutConfiguration) }   // starts the session when the phone launches the Watch app
+public final class WatchAppDelegate: NSObject, WKApplicationDelegate { public func handle(_ workoutConfiguration: HKWorkoutConfiguration); public func handleActiveWorkoutRecovery() }   // handle starts the session when the phone launches the Watch app; handleActiveWorkoutRecovery takes over the session the system kept alive after a crash
 ```
 Screens follow `Watch.dc.html` (three screens): vertical-page `TabView` (`.verticalPage`): Log set (exercise name + time, "Set 4 of 5", weight with - / + and Digital Crown,
-reps with - / +, green "Log set"), Rest (draining ring + countdown, next set text, -15 / skip / +15, auto-selected while resting, haptic when over), Metrics (elapsed in yellow, heart
+reps with - / +, green "Log set"), Rest (draining ring + countdown, next set text, -15 / skip / +15, auto-selected while resting, haptic when over: `WatchRestAlert` in `WatchRootView.swift` schedules it for the rest's end time from the controller's state, so it plays on any page and with the wrist down), Metrics (elapsed in yellow, heart
 rate with beat, volume, sets). Idle state ("Start a workout on your iPhone"), summary at the end. Actions go through `controller.send(..., origin: .watch)`, which applies them at once and issues one `RemoteCommand` per tap (`WorkoutSideEffect.commandIssued`); `WatchConnectivityClient` sends that command (`sendMessage` when reachable and no older message waits in the `transferUserInfo` queue, else `transferUserInfo`, which keeps the order and is reported to the controller as `markQueued`; it no longer builds commands itself), runs the timer that expires a lost edit (`nextPendingExpiry`, `expirePending()`, then `requestState`) and the phone's next envelope acknowledges it, so the screens keep showing unacknowledged taps on top of the phone's state (see "Sync protocol" in 3.4); the target set ids come from
 `controller.snapshot(now:)`; crown uses absolute `setWeight` after idle, buttons use `nudgeNextSet`. `WatchEnvironment` also publishes `session: WatchWorkoutSession` (`@Published isRecording`, `authorizationDenied`), `isPhoneReachable`, `endedSummary: WatchEndedSummary?` (+ `dismissSummary()`) and
 `requestStateFromPhone()`; `public struct WatchEndedSummary: Equatable { workoutName, durationText, volumeText, setsText, averageHeartRateText }` is built from the last known state when the workout ends.
 `WatchWorkoutSession` runs `HKWorkoutSession` +
-`HKLiveWorkoutBuilder` (`.traditionalStrengthTraining`, indoor), streams heart rate to the phone (`SyncMessage.heartRate`, at most every 5 s), reports `.watchSession(isRecording:)`, ends and saves
-the workout when the phone ends the workout.
+`HKLiveWorkoutBuilder` (`.traditionalStrengthTraining`, indoor), streams heart rate to the phone (`SyncMessage.heartRate`, at most every 5 s), reports `.watchSession(isRecording:)` and ends when the
+phone ends the workout.
+
+*Health session lifecycle (`WatchEnvironment` owns the rules, `WatchWorkoutSession` the HealthKit calls).*
+* Save or discard. `WatchWorkoutSession.end(save: Bool = true)`: `true` ends the collection and `finishWorkout`s (saved to Health), `false` calls
+  `HKWorkoutBuilder.discardWorkout()` (nothing reaches Health; a discard wins when the session is already ending). `handleWorkoutEnded` passes
+  `save: !controller.lastEndDiscarded`, so a workout the user discarded on the phone, or finished with nothing logged, is not saved by the Watch, and no
+  "Workout Complete" page is built for it. The phone writes no Health workout itself while the Watch records (`usedWatch`), so a finish is always saved by exactly one side.
+  The 45 s check for a phone-launched session that never receives a workout ends it with `save: false`; a builder that cannot start collecting is discarded too.
+* One session per workout. `WatchEnvironment` remembers which workout the session records (`sessionWorkoutID`; nil for a session started by a phone launch
+  before its workout arrived, which the first state claims). A state of ANOTHER workout (the end notice of the first was lost: `updateApplicationContext` keeps
+  only the latest value) ends the old session first (saved when the Watch saw a logged set) and the new session is queued behind it.
+  `WatchAppDelegate.applicationDidBecomeActive` runs the same reconciliation, so a start that failed in the background (for example `errorBackgroundWorkoutSessionNotAllowed`) is
+  retried in the foreground. A session never runs without a workout: the end of the workout, the replacement and the 45 s check all end it.
+* Pause. The environment forwards `state.isPaused` of every published state to `WatchWorkoutSession.setPaused(_:)`, which pauses / resumes the
+  `HKWorkoutSession` (a pause that arrives before the session runs is applied when it does), so Health's duration, heart rate and energy leave out the pauses
+  like the app's own duration does.
+* Crash recovery. `WatchAppDelegate.handleActiveWorkoutRecovery()` (watchOS 7) calls `WatchWorkoutSession.recover()`: `HKHealthStore.recoverActiveWorkoutSession`
+  returns the surviving session, the Watch attaches a new data source and the delegates, and the phone is asked for the workout. Without a workout after 45 s the
+  recovered session is ended and saved (it recorded a real workout before the crash).
 
 ### 5.6 Project, CI, docs
 

@@ -168,8 +168,15 @@ final class FlowOutput {
 
 // MARK: - Driver
 
-/// Generic UI driving: steps with a status line in the log, finding by label (the topmost match, because a sheet
-/// presented over another one leaves the lower one's elements in the hierarchy), waiting, tapping, typing.
+/// Generic UI driving: steps with a status line in the log, finding by label (the topmost REACHABLE match, because a
+/// sheet or a full-screen cover presented over a screen leaves that screen's elements in the accessibility tree: the
+/// Strength hub's toolbar button "More" is still there, behind the active workout, and has the same label as the
+/// header's), waiting, tapping, typing.
+///
+/// XCTest ends the whole test method when an element action fails inside XCTest itself (a tap on an element without a
+/// valid hit point: "Failed to scroll to visible (by AX action)"; continueAfterFailure does not help there). The
+/// helpers therefore never hand XCTest an element that is gone or that cannot be hit when another match exists; they
+/// record an ordinary failure instead and the walk goes on.
 @MainActor
 class UIDriver {
     let app: XCUIApplication
@@ -210,6 +217,8 @@ class UIDriver {
         let runFailuresBefore = output.recordedFailureCount()
         let started = Date()
 
+        // Written before the step runs: when XCTest ends the test inside the step, the last line of the log names it.
+        output.log("RUNNING " + twoDigits(number) + " " + title)
         if checkApp {
             ensureAppRunning(before: title)
         }
@@ -313,20 +322,51 @@ class UIDriver {
         app.descendants(matching: target.type).matching(predicate(label: target.label, mode: mode))
     }
 
-    /// The topmost (last in hierarchy order) element that matches right now, or nil.
-    func find(_ target: Target) -> XCUIElement? {
-        var modes: [MatchMode] = [target.mode]
+    /// The match modes `find` tries, in order.
+    private func modes(of target: Target) -> [MatchMode] {
         if target.mode == .loose {
-            modes = [.exact, .prefix, .contains]
+            return [.exact, .prefix, .contains]
         }
-        for mode in modes {
+        return [target.mode]
+    }
+
+    /// The topmost element that matches right now, or nil. With several matches that is the last one (in hierarchy
+    /// order) that can be hit: a screen hidden by a cover or a sheet keeps its elements in the tree, and its copy of a
+    /// label ("More") must not win over the visible one. When none can be hit the last match is returned.
+    func find(_ target: Target) -> XCUIElement? {
+        for mode in modes(of: target) {
             let matches = query(target, mode: mode)
             let count = matches.count
             if count > 0 {
-                return matches.element(boundBy: count - 1)
+                return reachable(in: matches, count: count)
             }
         }
         return nil
+    }
+
+    private func reachable(in matches: XCUIElementQuery, count: Int) -> XCUIElement {
+        if count > 1 {
+            var index = count - 1
+            while index >= 0 {
+                let candidate = matches.element(boundBy: index)
+                if candidate.exists && candidate.isHittable {
+                    return candidate
+                }
+                index -= 1
+            }
+        }
+        return matches.element(boundBy: count - 1)
+    }
+
+    /// How many elements match the target right now (in the first match mode that matches at all).
+    func matchCount(_ target: Target) -> Int {
+        for mode in modes(of: target) {
+            let count = query(target, mode: mode).count
+            if count > 0 {
+                return count
+            }
+        }
+        return 0
     }
 
     func exists(_ target: Target) -> Bool {
@@ -391,7 +431,7 @@ class UIDriver {
         }
         if scrollUp {
             var attempts = 0
-            while !element.isHittable && attempts < 6 {
+            while element.exists && !element.isHittable && attempts < 6 {
                 app.swipeUp()
                 pause(0.5)
                 if let refreshed = find(target) {
@@ -400,14 +440,63 @@ class UIDriver {
                 attempts += 1
             }
         }
-        press(element)
+        // Several matches and the one found cannot be hit (an animation is still running, or only the copy of a
+        // screen that a cover hides is left): wait a moment for a reachable one instead of letting XCTest fail the tap
+        // (which would end the whole test). A single match is left to XCTest, which also scrolls it into view.
+        if element.exists && !element.isHittable && matchCount(target) > 1 {
+            let deadline = Date().addingTimeInterval(3)
+            while Date() < deadline {
+                pause(0.3)
+                if let refreshed = find(target), refreshed.exists, refreshed.isHittable {
+                    element = refreshed
+                    break
+                }
+            }
+            if element.exists && !element.isHittable {
+                if required {
+                    fail("None of the " + String(matchCount(target)) + " matches can be tapped (all hidden or off screen): " + target.summary)
+                }
+                return false
+            }
+        }
+        return press(element)
+    }
+
+    /// Taps the first of the targets that exists (they are tried in this order on every poll): a control with its own
+    /// accessibility identifier and, as a fallback, the same control by its label.
+    @discardableResult
+    func tap(anyOf targets: [Target], timeout: TimeInterval = 10, required: Bool = true) -> Bool {
+        guard let index = waitForAny(targets, timeout: timeout) else {
+            if required {
+                fail("Not found within " + String(Int(timeout)) + " s: " + targets.map { $0.summary }.joined(separator: " or "))
+            }
+            return false
+        }
+        return tap(targets[index], timeout: 3, required: required)
+    }
+
+    /// Taps an element that was found. XCTest scrolls it into view first when it sits in a scroll view; a blind tap at
+    /// the centre of an element that is not hittable could land on a key of the keyboard or on the rest dock.
+    /// An element that vanished since it was found (a dialog closing, a dock sliding away) would make XCTest end the
+    /// test, so it is checked first. Returns false (and records a failure when `failIfGone`) in that case.
+    @discardableResult
+    func press(_ element: XCUIElement, failIfGone: Bool = true) -> Bool {
+        guard element.exists else {
+            if failIfGone {
+                fail("The element to tap vanished between finding it and tapping it")
+            }
+            return false
+        }
+        element.tap()
         return true
     }
 
-    /// Taps an element that exists. XCTest scrolls it into view first when it sits in a scroll view; a blind tap at
-    /// the centre of an element that is not hittable could land on a key of the keyboard or on the rest dock.
-    func press(_ element: XCUIElement) {
-        element.tap()
+    /// True when the target exists and can be hit right now.
+    func isReachable(_ target: Target) -> Bool {
+        guard let element = find(target) else {
+            return false
+        }
+        return element.exists && element.isHittable
     }
 
     /// Taps a sheet's close button (Done / Cancel) and waits until `goneWhen` disappears.
@@ -436,6 +525,29 @@ class UIDriver {
         }
     }
 
+    /// Swipes the screen up one page at a time (at most `maxPages`) and takes a screenshot named
+    /// "<prefix><n>" after every page that moved the content. A swipe that changes nothing means the end of the
+    /// content was reached; it is not photographed again. Returns the number of swipes made, for swiping back.
+    @discardableResult
+    func scrollPages(named prefix: String, maxPages: Int) -> Int {
+        var swipes = 0
+        var shown = 0
+        var previous = XCUIScreen.main.screenshot().pngRepresentation
+        while swipes < maxPages {
+            app.swipeUp()
+            swipes += 1
+            pause(0.9)
+            let current = XCUIScreen.main.screenshot().pngRepresentation
+            if current == previous {
+                break
+            }
+            previous = current
+            shown += 1
+            shot(prefix + String(shown), settle: 0.1)
+        }
+        return swipes
+    }
+
     /// Goes back one level of a navigation stack: the leading button of the topmost navigation bar,
     /// or the edge-swipe gesture when there is none.
     func navigateBack() {
@@ -443,7 +555,7 @@ class UIDriver {
         let count = bars.count
         if count > 0 {
             let back = bars.element(boundBy: count - 1).buttons.element(boundBy: 0)
-            if back.exists {
+            if back.exists && back.isHittable {
                 back.tap()
                 pause(0.8)
                 return
@@ -496,14 +608,27 @@ class UIDriver {
 
     // MARK: Recovery
 
+    /// The harmless buttons that close a dialog, an alert or a sheet (never "Discard" or "Finish Workout").
+    static let overlayButtons = ["Cancel", "Back to Workout", "Keep Training", "Done"]
+
+    /// True when a dialog, alert, sheet or the keyboard is showing.
+    func overlayShowing() -> Bool {
+        for label in UIDriver.overlayButtons {
+            if exists(.button(label)) {
+                return true
+            }
+        }
+        return app.keyboards.count > 0
+    }
+
     /// Closes whatever dialog, alert or sheet a failed step left open, using only harmless buttons.
     func recoverOverlays() {
         for _ in 0..<4 {
             dismissKeyboard()
             var handled = false
-            for label in ["Cancel", "Back to Workout", "Keep Training", "Done"] {
+            for label in UIDriver.overlayButtons {
                 if let button = find(.button(label)) {
-                    press(button)
+                    press(button, failIfGone: false)
                     pause(0.8)
                     handled = true
                     break

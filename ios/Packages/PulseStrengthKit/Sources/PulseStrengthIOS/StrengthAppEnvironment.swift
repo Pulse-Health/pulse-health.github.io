@@ -99,14 +99,18 @@ public final class StrengthAppEnvironment: ObservableObject {
     // MARK: Wiring
 
     /// Routes the Live Activity / Dynamic Island buttons (App Intents) to the controller.
-    /// The handler holds the environment weakly and hops to the main actor.
+    /// The handler holds the environment weakly and hops to the main actor. It returns only after the Live Activity
+    /// update that the action caused was delivered to ActivityKit, because the intent's `perform()` returns with it and
+    /// the process, when the intent launched it in the background, may be suspended right after.
     private func installCommandBus() {
         let reference = EnvironmentReference(self)
         WorkoutCommandBus.shared.install { action, origin in
-            await MainActor.run {
-                guard let environment = reference.environment else { return }
+            let services = await MainActor.run { () -> PulseServices? in
+                guard let environment = reference.environment else { return nil }
                 environment.controller.send(action, origin: origin)
+                return environment.services
             }
+            await services?.waitForPendingUpdates()
         }
     }
 

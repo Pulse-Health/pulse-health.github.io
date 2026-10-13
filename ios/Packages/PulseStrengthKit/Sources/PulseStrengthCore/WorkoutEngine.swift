@@ -64,6 +64,16 @@ public final class WorkoutEngine {
     /// Called after `state` or `lastCompleted` changed and before the side effects are told.
     public var onUpdate: (() -> Void)?
 
+    /// How the workout that ended most recently ended: true when it was thrown away, false when it was finished and recorded.
+    /// Set before `onUpdate` and the effects' `workoutEnded` run, so an effect can read it from inside `workoutEnded` (a mirror
+    /// is always told `completed: nil`, which does not say which of the two it was).
+    ///
+    /// Authority: `discard()` and a `finish` with no logged set are discards. Mirror: what the phone's end notice says
+    /// (`SyncEnvelope.discarded`); a notice that does not say (an older phone build, the legacy "no workout" notice, a workout
+    /// the Watch never heard ended) counts as a discard when the Watch's copy has no logged set, the rule by which the phone
+    /// treats a finish. Meaningless before the first workout ended.
+    public private(set) var lastEndDiscarded = false
+
     /// Mirror: the edits shown on top of the phone's state that the phone has not acknowledged yet, oldest first (empty for an
     /// authority).
     public var pendingCommands: [RemoteCommand] { pending }
@@ -330,13 +340,18 @@ public final class WorkoutEngine {
     /// plus the ids of the most recent commands received (`SyncReconciler.acknowledgementWindow`). Send it after every change and
     /// after every received command, changed or not.
     ///
+    /// An envelope that names the ended workout also says how it ended (`SyncEnvelope.discarded`), so the Watch can throw its
+    /// Health session away for a discard instead of saving it.
+    ///
     /// A mirror has nothing to acknowledge; its envelope carries no acknowledgements.
     public func makeEnvelope(now: Date) -> SyncEnvelope {
-        SyncEnvelope(
+        let ended = state == nil ? recentlyEnded.last : nil
+        return SyncEnvelope(
             state: state,
-            endedWorkoutID: state == nil ? recentlyEnded.last : nil,
+            endedWorkoutID: ended,
             sentAt: now,
-            ackedCommandIDs: Array(acknowledged.suffix(SyncReconciler.acknowledgementWindow))
+            ackedCommandIDs: Array(acknowledged.suffix(SyncReconciler.acknowledgementWindow)),
+            discarded: ended == nil ? nil : lastEndDiscarded
         )
     }
 
@@ -367,7 +382,9 @@ public final class WorkoutEngine {
     /// | none | X | X is remembered, so a late state of X (sent before the notice) is ignored |
     /// | W | W | W ends and is remembered |
     /// | W | X, a different workout | W keeps running, X is remembered; unless the notice is newer than the last state adopted for W, then W is a ghost the Watch never heard ended and ends |
-    /// | W | nil | the legacy notice "the phone has no workout": W ends but is NOT remembered, so the phone's next state for W is welcome |
+    /// | W | nil | the legacy notice "the phone has no workout": W ends but is NOT remembered, so the phone's next state for W is welcome; unless the notice was sent BEFORE the last state adopted for W (a stale context re-read after W was adopted), then it is ignored |
+    ///
+    /// When a workout ends here, `lastEndDiscarded` tells the effects whether the phone threw it away.
     public func receive(_ envelope: SyncEnvelope) {
         guard role == .mirror else { return }
         if let incoming = envelope.state {
@@ -522,18 +539,31 @@ public final class WorkoutEngine {
             if let ended = envelope.endedWorkoutID { remember(ended, noticeSentAt: envelope.sentAt) }
             return
         }
+        // Without a flag from the phone, a workout with no logged set counts as discarded (the phone's own rule for a finish).
+        let unlogged = !Self.hasLoggedSet(previous)
         guard let ended = envelope.endedWorkoutID else {
-            // The phone says only "no workout": whatever runs here ends, but the next state for it is welcome.
-            end(previous, completed: nil, remembering: false)
+            // The phone says only "no workout": whatever runs here ends, but the next state for it is welcome. A notice sent
+            // before the state last adopted for this workout is a stale context that was read again (the Watch re-reads the
+            // last delivered one whenever it wakes, and it can lag behind a message): the workout started after it was written.
+            if let mark = authoritative, mark.workoutID == previous.id, envelope.sentAt < mark.sentAt { return }
+            end(previous, completed: nil, remembering: false, discarded: unlogged)
             return
         }
+        var discarded = envelope.discarded
         if ended != previous.id {
             remember(ended, noticeSentAt: envelope.sentAt)
             // A notice that is newer than everything adopted for the running workout means the phone has moved on: the Watch
             // never heard that this workout ended. An older notice belongs to an earlier workout and changes nothing.
             guard let mark = authoritative, mark.workoutID == previous.id, envelope.sentAt > mark.sentAt else { return }
+            // The flag tells how the OTHER workout ended; nothing says how this one did.
+            discarded = nil
         }
-        end(previous, completed: nil, noticeSentAt: envelope.sentAt)
+        end(previous, completed: nil, noticeSentAt: envelope.sentAt, discarded: discarded ?? unlogged)
+    }
+
+    /// True when at least one set of the workout is logged.
+    private static func hasLoggedSet(_ state: WorkoutState) -> Bool {
+        state.exercises.contains { entry in entry.sets.contains { $0.isDone } }
     }
 
     /// Mirror: replaces the pending edits and forgets the queue marks of the commands that are gone.
@@ -581,14 +611,17 @@ public final class WorkoutEngine {
     /// Ends the workout. With `unsavedBecause` (the finished workout could not be written to the history) the active-workout file
     /// is left alone: it still holds the workout's sets and is the only copy on disk. With `remembering` false the workout's id
     /// is not added to the ended workouts, so a later state for it is not ignored. `noticeSentAt` is when the phone's end notice
-    /// was sent (nil: the workout ended here, nothing sent later revives it).
+    /// was sent (nil: the workout ended here, nothing sent later revives it). `discarded` is how it ended (`lastEndDiscarded`);
+    /// nil: it was discarded exactly when there is no `completed` workout.
     private func end(
         _ previous: WorkoutState,
         completed: CompletedWorkout?,
         unsavedBecause saveFailure: Error? = nil,
         remembering: Bool = true,
-        noticeSentAt: Date? = nil
+        noticeSentAt: Date? = nil,
+        discarded: Bool? = nil
     ) {
+        lastEndDiscarded = discarded ?? (completed == nil)
         state = nil
         setPending([])
         authoritative = nil

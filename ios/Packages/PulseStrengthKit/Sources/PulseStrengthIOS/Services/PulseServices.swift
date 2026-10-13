@@ -64,6 +64,12 @@ public final class PulseServices {
         await healthWriter.requestAuthorization()
     }
 
+    /// Returns when the Live Activity updates queued so far have been delivered to ActivityKit.
+    /// The command-bus handler awaits it, so a Live Activity button's intent finishes only after its effect is on the Lock Screen.
+    public func waitForPendingUpdates() async {
+        await liveActivity.waitUntilIdle()
+    }
+
     // MARK: Watch status
 
     private func connectivityChanged(_ status: WatchStatus) {

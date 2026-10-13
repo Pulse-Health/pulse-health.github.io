@@ -20,10 +20,13 @@ public final class WatchAppDelegate: NSObject, WKApplicationDelegate {
         }
     }
 
-    /// Asks the phone for the current workout state whenever the app comes to the foreground.
+    /// Asks the phone for the current workout state whenever the app comes to the foreground, and makes sure the Health session
+    /// records the workout the Watch shows (a start that failed in the background is tried again here, where it can succeed).
     public func applicationDidBecomeActive() {
         Task { @MainActor in
-            WatchEnvironment.shared.requestStateFromPhone()
+            let environment = WatchEnvironment.shared
+            environment.requestStateFromPhone()
+            environment.reconcileSessionWithWorkout()
         }
     }
 
@@ -32,6 +35,14 @@ public final class WatchAppDelegate: NSObject, WKApplicationDelegate {
     public func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
         Task { @MainActor in
             WatchEnvironment.shared.startSessionForPhoneLaunch()
+        }
+    }
+
+    /// The system relaunched the app after it crashed (or was terminated) in the middle of a workout and kept the Health session
+    /// alive: take that session over instead of leaving it without an owner, and ask the phone for the workout again.
+    public func handleActiveWorkoutRecovery() {
+        Task { @MainActor in
+            WatchEnvironment.shared.recoverWorkoutSession()
         }
     }
 }

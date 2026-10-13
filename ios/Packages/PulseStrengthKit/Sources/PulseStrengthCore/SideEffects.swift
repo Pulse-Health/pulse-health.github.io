@@ -9,6 +9,9 @@ public protocol WorkoutSideEffect: AnyObject {
     /// The state changed because of `action`.
     func workoutChanged(from old: WorkoutState, to new: WorkoutState, action: WorkoutAction, origin: ActionOrigin)
     /// The workout was finished (`completed != nil`) or discarded (`completed == nil`).
+    ///
+    /// A mirror (the Watch) never has the completed workout, so it is told `completed == nil` in both cases: it reads
+    /// `WorkoutController.lastEndDiscarded` (set before this is called) to tell a discard from a finish the phone recorded.
     func workoutEnded(_ state: WorkoutState, completed: CompletedWorkout?)
     /// A mirror controller (the Watch) applied an action the user took on this surface and made `command` of it: the phone has to
     /// run the same action. Called once per command, right after `workoutChanged` for the same action; never for heart-rate

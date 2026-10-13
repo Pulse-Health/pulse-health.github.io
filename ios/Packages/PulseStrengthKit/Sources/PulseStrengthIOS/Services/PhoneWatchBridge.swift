@@ -36,7 +36,9 @@ private func deliverToWatch(_ payload: [String: Any], over session: WCSession) {
 ///
 /// * Phone -> Watch: after every change except heart-rate samples, the phone's authoritative state goes out as a
 ///   `SyncEnvelope` made by `WorkoutController.makeEnvelope(now:)` (`updateApplicationContext`, plus `sendMessage` when the
-///   Watch is reachable). When the workout ends, an envelope without state and with the workout id follows.
+///   Watch is reachable). When the workout ends, an envelope without state and with the workout id follows; it also says
+///   whether the workout was discarded or finished (`SyncEnvelope.discarded`), so the Watch saves its Health workout only for
+///   a finished one.
 /// * Watch -> phone: commands, heart-rate samples, "the Watch is recording" and "send me the state" requests are
 ///   decoded on the delegate queue, then handed to the main actor and turned into controller calls. Every command is
 ///   acknowledged by the envelope that follows it: when the command changed the state that is the envelope of the

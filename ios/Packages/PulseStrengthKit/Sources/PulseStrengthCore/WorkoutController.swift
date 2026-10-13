@@ -119,6 +119,12 @@ public final class WorkoutController: ObservableObject {
         engine.authoritativeRevision
     }
 
+    /// How the workout that ended most recently ended: true when it was thrown away, false when it was finished. Read it from
+    /// `WorkoutSideEffect.workoutEnded`, where `completed` is nil on a mirror in both cases. See `WorkoutEngine.lastEndDiscarded`.
+    public var lastEndDiscarded: Bool {
+        engine.lastEndDiscarded
+    }
+
     /// The active-workout screen model for `now`; nil without a workout.
     public func presentation(now: Date) -> ActiveWorkoutPresentation? {
         engine.presentation(now: now)

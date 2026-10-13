@@ -124,7 +124,7 @@ configuration, `CODE_SIGNING_ALLOWED=NO` and `-parallel-testing-enabled NO`.
 
 | Scheme (target) | What it produces | Files in the artifact |
 | --- | --- | --- |
-| `PulseStrengthLiveSnapshots` (`PulseStrengthLiveSnapshotTests`, no host app) | Lock Screen card, Dynamic Island compact / minimal / expanded in 11 workout states, plus contact sheets | `live-NN-*.png` (about 53), `live-measurements.txt` (sizes and limit violations) |
+| `PulseStrengthLiveSnapshots` (`PulseStrengthLiveSnapshotTests`, no host app) | Lock Screen card, Dynamic Island compact / minimal / expanded in 12 workout states, plus contact sheets | `live-NN-*.png` (about 57), `live-measurements.txt` (sizes and limit violations) |
 | `PulseStrengthUITests` (`PulseStrengthUITests`) | One long walk through the iPhone app in demo mode (`-PulseUITest`): hub, active workout, keypad, sheets, rest timer, undo, finish, summary, exercise library | `ui-NN-*.png` (about 70), `ui-flow-log.txt` (OK / FAILED / SKIPPED per step) |
 | `PulseStrengthWatchSnapshots` (`PulseStrengthWatchSnapshotTests`, no host app) | The Watch pages at 45 mm and at 40 / 41 / 44 / 49 mm, plus experimental root-view shots | `watch-NN-*.png` (44), `watch-manifest.txt` (a `BLANK` line marks an image that came out empty) |
 

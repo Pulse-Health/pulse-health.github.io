@@ -41,6 +41,28 @@ private func endCollectionAndSave(_ builder: HKLiveWorkoutBuilder, endDate: Date
     }
 }
 
+/// Stops the data collection and throws the workout away: nothing is written to Health.
+private func discardCollection(of builder: HKLiveWorkoutBuilder) {
+    builder.discardWorkout()
+}
+
+/// The answer of `recoverActiveWorkoutSession`, wrapped so that it can cross from HealthKit's queue to the main actor. The session
+/// is only handed on, never used from two threads at once.
+private final class RecoveredSession: @unchecked Sendable {
+    let session: HKWorkoutSession?
+
+    init(_ session: HKWorkoutSession?) {
+        self.session = session
+    }
+}
+
+/// Asks HealthKit for the workout session that was running when the app crashed or was terminated (nil when there is none).
+private func recoverActiveSession(store: HKHealthStore, completion: @escaping @Sendable (RecoveredSession) -> Void) {
+    store.recoverActiveWorkoutSession { (session: HKWorkoutSession?, _: Error?) in
+        completion(RecoveredSession(session))
+    }
+}
+
 /// A workout that started in the future or a very long time ago starts now instead.
 private func clampedStartDate(_ requested: Date, now: Date) -> Date {
     let longestWorkout: TimeInterval = 3 * 3600
@@ -59,8 +81,10 @@ private func clampedStartDate(_ requested: Date, now: Date) -> Date {
 /// * `onHeartRate` receives the most recent heart rate in beats per minute for every collected sample;
 /// * `onRecordingChanged` receives `true` when the session is running and `false` when it ends.
 ///
-/// `start(workoutStartDate:)` and `end()` are idempotent. HealthKit delegate callbacks arrive on background queues and are
-/// moved to the main actor with Sendable values only.
+/// `start(workoutStartDate:)` and `end(save:)` are idempotent. `end(save: false)` throws the workout away instead of saving it
+/// (the phone discarded it). `setPaused(_:)` follows the phone's pause, and `recover()` takes over the session the system kept
+/// alive after a crash. HealthKit delegate callbacks arrive on background queues and are moved to the main actor with Sendable
+/// values only.
 @MainActor
 public final class WatchWorkoutSession: NSObject, ObservableObject, HKWorkoutSessionDelegate, HKLiveWorkoutBuilderDelegate {
 
@@ -82,6 +106,8 @@ public final class WatchWorkoutSession: NSObject, ObservableObject, HKWorkoutSes
     private enum Phase {
         case idle
         case authorizing
+        /// Waiting for HealthKit to hand over the session that survived a crash.
+        case recovering
         case starting
         case running
         case ending
@@ -93,9 +119,16 @@ public final class WatchWorkoutSession: NSObject, ObservableObject, HKWorkoutSes
     private var phase: Phase = .idle
     /// Incremented when a pending authorisation request is abandoned, so its late answer is ignored.
     private var authorizationTicket = 0
-    /// A start requested while the previous session was still ending; run as soon as that one is finished.
+    /// A start requested while the previous session was still ending (or a crashed one was being recovered); run as soon as that
+    /// one is finished.
     private var restartDate: Date?
     private var endFallback: Task<Void, Never>?
+    /// Set by `end(save: false)` (and by a builder that could not start): the session being ended is finalized without saving.
+    private var discardOnEnd = false
+    /// An `end` that arrived while the crashed session was being recovered: it ends as soon as it is in hand.
+    private var endAfterRecovery = false
+    /// Whether the phone's workout is paused, and so whether the Health session should be (see `setPaused(_:)`).
+    private var wantsPaused = false
 
     public override init() {
         super.init()
@@ -109,7 +142,7 @@ public final class WatchWorkoutSession: NSObject, ObservableObject, HKWorkoutSes
         switch phase {
         case .idle:
             break
-        case .ending:
+        case .ending, .recovering:
             restartDate = workoutStartDate
             return
         case .authorizing, .starting, .running:
@@ -192,15 +225,19 @@ public final class WatchWorkoutSession: NSObject, ObservableObject, HKWorkoutSes
 
     private func collectionStarted(succeeded: Bool, sessionID: ObjectIdentifier) {
         guard !succeeded, let current = liveSession, ObjectIdentifier(current) == sessionID else { return }
-        // The builder could not start collecting: give this session up so that the next workout can try again.
+        // The builder could not start collecting: give this session up so that the next workout can try again. Nothing was
+        // recorded, so there is nothing worth saving.
+        discardOnEnd = true
         finalize(endDate: Date(), endSessionFirst: true)
     }
 
     // MARK: End
 
-    /// Ends the session and saves the workout to Health (end of collection, then finish). `isRecording` becomes false
-    /// immediately. Does nothing without a session.
-    public func end() {
+    /// Ends the session. With `save` (the default) the workout is saved to Health (end of collection, then finish); with
+    /// `save: false` it is thrown away (`HKWorkoutBuilder.discardWorkout()`: nothing reaches Health), which is what a workout the
+    /// phone discarded, or a session that never got a workout, needs. A discard wins over a save when the session is already
+    /// ending. `isRecording` becomes false immediately. Does nothing without a session.
+    public func end(save: Bool = true) {
         switch phase {
         case .idle:
             restartDate = nil
@@ -208,12 +245,19 @@ public final class WatchWorkoutSession: NSObject, ObservableObject, HKWorkoutSes
             authorizationTicket += 1
             phase = .idle
             restartDate = nil
+        case .recovering:
+            // The crashed session is not in hand yet: it ends as soon as it is.
+            endAfterRecovery = true
+            if !save { discardOnEnd = true }
+            restartDate = nil
         case .starting, .running:
+            if !save { discardOnEnd = true }
             phase = .ending
             setRecording(false)
             liveSession?.end()
             armEndFallback()
         case .ending:
+            if !save { discardOnEnd = true }
             restartDate = nil
         }
     }
@@ -230,11 +274,13 @@ public final class WatchWorkoutSession: NSObject, ObservableObject, HKWorkoutSes
         }
     }
 
-    /// Releases the session and the builder, saves the workout and starts a queued restart.
+    /// Releases the session and the builder, saves (or discards) the workout and starts a queued restart.
     private func finalize(endDate: Date, endSessionFirst: Bool) {
         endFallback?.cancel()
         endFallback = nil
 
+        let discard = discardOnEnd
+        discardOnEnd = false
         let session = liveSession
         let builder = liveBuilder
         if endSessionFirst, let session, session.state != .ended {
@@ -249,12 +295,92 @@ public final class WatchWorkoutSession: NSObject, ObservableObject, HKWorkoutSes
         setRecording(false)
 
         if let builder {
-            endCollectionAndSave(builder, endDate: endDate)
+            if discard {
+                discardCollection(of: builder)
+            } else {
+                endCollectionAndSave(builder, endDate: endDate)
+            }
         }
 
         if let date = restartDate {
             restartDate = nil
             start(workoutStartDate: date)
+        }
+    }
+
+    // MARK: Pause
+
+    /// Mirrors the phone's pause: while the workout is paused the Health session is paused too, so Health's duration, heart rate
+    /// and active energy leave the pauses out, as the app's own duration does. Call it with the phone's state whenever it
+    /// changes; a pause that arrives before the session is running is applied as soon as it runs. Does nothing for a repeated
+    /// value.
+    public func setPaused(_ paused: Bool) {
+        guard paused != wantsPaused else { return }
+        wantsPaused = paused
+        applyPause()
+    }
+
+    /// Brings the running Health session in line with `wantsPaused`. HealthKit reports the new state to the delegate afterwards;
+    /// `sessionStateChanged` leaves the `paused` state alone (and a resume to `running` is not a start).
+    private func applyPause() {
+        guard phase == .running, let session = liveSession else { return }
+        if wantsPaused {
+            if session.state == .running { session.pause() }
+        } else if session.state == .paused {
+            session.resume()
+        }
+    }
+
+    // MARK: Recovery
+
+    /// After the app crashed or was terminated during a workout the system keeps the Health session alive and relaunches the app
+    /// (`WKApplicationDelegate.handleActiveWorkoutRecovery()`): takes that session over, so heart rate flows again and the workout
+    /// is saved when it ends, instead of a second session being started next to the orphan. Returns false (and does nothing) while
+    /// a session already exists or is starting. The session is released like any other when `end(save:)` is called, so the caller
+    /// must end it when no workout shows up.
+    @discardableResult
+    public func recover() -> Bool {
+        guard phase == .idle else { return false }
+        phase = .recovering
+        endAfterRecovery = false
+        recoverActiveSession(store: healthStore) { [weak self] (recovered: RecoveredSession) in
+            Task { @MainActor [weak self] in
+                self?.recoveryFinished(recovered.session)
+            }
+        }
+        return true
+    }
+
+    private func recoveryFinished(_ recovered: HKWorkoutSession?) {
+        guard phase == .recovering else { return }
+        let endRequested = endAfterRecovery
+        endAfterRecovery = false
+        guard let recovered else {
+            // The system has no session to give back (the workout already ended): carry on with a start that waited.
+            phase = .idle
+            discardOnEnd = false
+            if let date = restartDate {
+                restartDate = nil
+                start(workoutStartDate: date)
+            }
+            return
+        }
+
+        let builder = recovered.associatedWorkoutBuilder()
+        builder.dataSource = HKLiveWorkoutDataSource(healthStore: healthStore, workoutConfiguration: recovered.workoutConfiguration)
+        recovered.delegate = self
+        builder.delegate = self
+
+        liveSession = recovered
+        liveBuilder = builder
+        restartDate = nil
+        latestHeartRate = nil
+        // A recovered session keeps the state it had; the phone's next state decides whether that is still right.
+        wantsPaused = recovered.state == .paused
+        phase = .running
+        setRecording(true)
+        if endRequested {
+            end()
         }
     }
 
@@ -272,6 +398,8 @@ public final class WatchWorkoutSession: NSObject, ObservableObject, HKWorkoutSes
             guard phase == .starting else { return }
             phase = .running
             setRecording(true)
+            // The phone may have been paused before the session got going.
+            applyPause()
         } else if isEnded {
             finalize(endDate: date, endSessionFirst: false)
         }
