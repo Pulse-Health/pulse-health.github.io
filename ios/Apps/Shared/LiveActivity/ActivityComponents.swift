@@ -27,6 +27,12 @@ extension WorkoutSnapshot {
         return .resting
     }
 
+    /// `displayPhase(isStale:now:)` at `staticNow` when the snapshot tests fix the clock (`\.activityStaticNow`),
+    /// otherwise at the current time, exactly as before.
+    func displayPhase(isStale: Bool, staticNow: Date?) -> SnapshotPhase {
+        displayPhase(isStale: isStale, now: staticNow ?? Date())
+    }
+
     /// `restStartedAt ... restEndsAt` for the system timer views; nil when the dates are missing or inverted.
     var restInterval: ClosedRange<Date>? {
         guard let end = restEndsAt else { return nil }
@@ -227,17 +233,22 @@ struct ActivityElapsedText: View {
     var size: CGFloat = 15
     var weight: Font.Weight = .regular
     var color: Color
+    /// Snapshot tests only (nil in production): draw the clock at this instant instead of a live timer.
+    @Environment(\.activityStaticNow) private var staticNow
 
     private var label: Text {
         if state.isPaused {
             return Text(state.frozenElapsedText)
+        }
+        if let now = staticNow {
+            return Text(NumberText.clock(seconds: max(0, Int(now.timeIntervalSince(state.activeStart)))))
         }
         return Text(state.activeStart, style: .timer)
     }
 
     private var hasHours: Bool {
         if state.isPaused { return state.elapsedWhenPaused >= 3600 }
-        return Date().timeIntervalSince(state.activeStart) >= 3300
+        return (staticNow ?? Date()).timeIntervalSince(state.activeStart) >= 3300
     }
 
     var body: some View {
@@ -262,6 +273,8 @@ struct ActivityRestCountdownText: View {
     let color: Color
     var alignment: TextAlignment = .center
     var tracking: CGFloat = 0
+    /// Snapshot tests only (nil in production): draw the countdown at this instant instead of a live timer.
+    @Environment(\.activityStaticNow) private var staticNow
 
     private var label: Text {
         if phase == .restOver {
@@ -269,6 +282,10 @@ struct ActivityRestCountdownText: View {
         }
         if state.isPaused {
             return Text(state.frozenRestText)
+        }
+        if let now = staticNow, let interval = state.restInterval {
+            let remaining = Int(max(0, interval.upperBound.timeIntervalSince(now)).rounded(.up))
+            return Text(NumberText.clock(seconds: remaining))
         }
         if let interval = state.restInterval {
             return Text(timerInterval: interval, countsDown: true, showsHours: false)
@@ -312,6 +329,8 @@ struct ActivityRestRing: View {
     let lineWidth: CGFloat
     let track: Color
     var centerFontSize: CGFloat? = nil
+    /// Snapshot tests only (nil in production): draw a static ring for this instant instead of a live `ProgressView`.
+    @Environment(\.activityStaticNow) private var staticNow
 
     var body: some View {
         ZStack {
@@ -335,6 +354,8 @@ struct ActivityRestRing: View {
             staticRing(fraction: 1)
         } else if state.isPaused {
             staticRing(fraction: state.frozenRestFraction)
+        } else if let now = staticNow, let interval = state.restInterval {
+            staticRing(fraction: remainingFraction(of: interval, at: now))
         } else if let interval = state.restInterval {
             ProgressView(timerInterval: interval, countsDown: true) {
                 EmptyView()
@@ -348,6 +369,13 @@ struct ActivityRestRing: View {
         } else {
             staticRing(fraction: 0)
         }
+    }
+
+    /// Portion (0...1) of `interval` that is left at `now` (snapshot tests only).
+    private func remainingFraction(of interval: ClosedRange<Date>, at now: Date) -> Double {
+        let total = interval.upperBound.timeIntervalSince(interval.lowerBound)
+        guard total > 0 else { return 0 }
+        return min(1, max(0, interval.upperBound.timeIntervalSince(now) / total))
     }
 
     private func staticRing(fraction: Double) -> some View {

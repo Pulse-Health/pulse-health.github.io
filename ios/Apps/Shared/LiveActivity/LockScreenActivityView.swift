@@ -19,9 +19,11 @@ struct LockScreenActivityView: View {
     let workoutName: String
     /// `ActivityViewContext.isStale`: the app sets `staleDate = restEndsAt`, so stale + resting means rest over.
     let isStale: Bool
+    /// Snapshot tests only (nil in production): the instant the views are drawn at.
+    @Environment(\.activityStaticNow) private var staticNow
 
     var body: some View {
-        let phase = state.displayPhase(isStale: isStale)
+        let phase = state.displayPhase(isStale: isStale, staticNow: staticNow)
         VStack(alignment: .leading, spacing: ActivityTheme.Metrics.lockSectionSpacing) {
             LockScreenHeader(state: state, workoutName: workoutName)
             LockScreenContent(state: state, phase: phase)

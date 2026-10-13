@@ -5,6 +5,11 @@
 #               the widget extension and the embedded Watch app) and of the Watch scheme, both for the simulators and
 #               without code signing. This job is the first real compile of the iOS UI, the Live Activity and the Watch
 #               code; see ios/README.md, "Verification status".
+#   visual      Screenshots of the running UI, in parallel with `apple`: XcodeGen, then the Lock Screen / Dynamic Island snapshot
+#               test and the iPhone UI flow test on an iPhone simulator and the Watch snapshot test on a watchOS simulator.
+#               Uploads the PNGs, logs and result summaries as artifact `strength-screens` (14 days) and the zipped .xcresult
+#               bundles as `strength-xcresults` (3 days). Failed assertions do not fail the job; only "no PNG at all" does.
+#               See ios/README.md, "Screenshots in CI".
 
 name: strength-ios
 
@@ -219,3 +224,533 @@ jobs:
             if [ "$outcome" != "success" ]; then status=1; fi
           done
           exit $status
+
+  # Screenshots of the running UI. Runs next to `apple` (needs nothing) and exists to PRODUCE PICTURES: every test step is
+  # continue-on-error, the PNGs are collected and uploaded whatever happened, and the final gate fails the job only when not
+  # a single PNG exists. Where to look: ios/README.md, "Screenshots in CI".
+  #   strength-screens   (artifact, 14 days)  ui-*.png (iPhone UI flow), live-*.png (Lock Screen / Dynamic Island), watch-*.png,
+  #                      ui-flow-log.txt, live-measurements.txt, watch-manifest.txt, digest.txt, logs/, results/
+  #   strength-xcresults (artifact, 3 days)   the zipped .xcresult bundles
+  visual:
+    name: visual
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      LOG_DIR: ${{ github.workspace }}/visual-logs
+      SCREENS_DIR: ${{ github.workspace }}/screens
+      RESULTS_DIR: ${{ github.workspace }}/xcresults
+      ZIP_DIR: ${{ github.workspace }}/xcresults-zip
+      # xcodebuild passes every TEST_RUNNER_* variable to the test process with the prefix removed: the tests read SCREENSHOT_DIR.
+      # The simulator shares the file system of the runner, so the path has to be absolute.
+      TEST_RUNNER_SCREENSHOT_DIR: ${{ github.workspace }}/screens
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      HOMEBREW_NO_INSTALL_CLEANUP: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      # Helpers (all in $RUNNER_TEMP):
+      #   run_logged.sh <log> <command...>  runs the command, tees the complete output to the log and, when it fails, prints the
+      #                                     unique error / failure lines and the last 100 lines.
+      #   pick_sim.py ios|watchos           prints "<udid><TAB><name><TAB><runtime>" of the simulator to use; creates one when the
+      #                                     runner image has none.
+      #   summarize_result.py <json> <name> turns `xcresulttool get test-results summary` JSON into a few readable lines.
+      #   fallback_attachments.py ...       copies PNG attachments of an .xcresult to the screens directory (only used when a
+      #                                     suite wrote no PNG files itself).
+      - name: Prepare
+        run: |
+          mkdir -p "$LOG_DIR" "$SCREENS_DIR" "$RESULTS_DIR" "$ZIP_DIR"
+
+          cat > "$RUNNER_TEMP/run_logged.sh" <<'SH'
+          #!/usr/bin/env bash
+          log="$1"
+          shift
+          "$@" 2>&1 | tee "$log"
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            echo ""
+            echo "=============== FAILED (exit $status): $* ==============="
+            echo "----- unique error / failure lines of $(basename "$log") -----"
+            grep -E "error:|XCTAssert|failed|FAILED" "$log" | LC_ALL=C sed -E 's#/Users/runner/work/[^/]+/[^/]+/##g' | LC_ALL=C cut -c1-300 | sort -u | head -n 80 || true
+            echo "----- last 100 lines of $(basename "$log") -----"
+            tail -n 100 "$log"
+          fi
+          exit "$status"
+          SH
+          chmod +x "$RUNNER_TEMP/run_logged.sh"
+
+          cat > "$RUNNER_TEMP/pick_sim.py" <<'PY'
+          import json
+          import subprocess
+          import sys
+
+          PREFERRED = {
+              "ios": ["iPhone 16 Pro", "iPhone 15 Pro", "iPhone 16", "iPhone 15", "iPhone 16 Pro Max", "iPhone 15 Pro Max"],
+              "watchos": ["Apple Watch Series 10 (46mm)", "Apple Watch Series 10 (42mm)", "Apple Watch Ultra 2 (49mm)",
+                          "Apple Watch Series 9 (45mm)", "Apple Watch Series 9 (41mm)"],
+          }
+          OS_NAME = {"ios": "iOS", "watchos": "watchOS"}
+          FAMILY = {"ios": "iPhone", "watchos": "Apple Watch"}
+
+
+          def log(message):
+              print(message, file=sys.stderr)
+
+
+          def simctl(*args):
+              return subprocess.check_output(["xcrun", "simctl"] + list(args), text=True)
+
+
+          def runtime_version(identifier):
+              # com.apple.CoreSimulator.SimRuntime.iOS-18-2 -> (18, 2)
+              tail = identifier.rsplit(".", 1)[-1]
+              return tuple(int(part) for part in tail.split("-")[1:] if part.isdigit())
+
+
+          def is_runtime(identifier, os_name):
+              return ("SimRuntime." + os_name + "-") in identifier
+
+
+          def rank(name, preferred):
+              return preferred.index(name) if name in preferred else len(preferred)
+
+
+          def main():
+              kind = sys.argv[1]
+              os_name = OS_NAME[kind]
+              family = FAMILY[kind]
+              preferred = PREFERRED[kind]
+
+              devices = json.loads(simctl("list", "devices", "available", "-j")).get("devices", {})
+              found = []
+              for runtime, entries in devices.items():
+                  if not is_runtime(runtime, os_name):
+                      continue
+                  for entry in entries:
+                      name = entry.get("name", "")
+                      if entry.get("isAvailable", True) and name.startswith(family):
+                          newest_first = tuple(-number for number in runtime_version(runtime))
+                          found.append((rank(name, preferred), newest_first, name, entry["udid"], runtime))
+              found.sort()
+              log("installed " + family + " simulators, best first:")
+              for item in found[:15]:
+                  log("  " + item[2] + "  " + item[4] + "  " + item[3])
+              if found:
+                  best = found[0]
+                  print("\t".join([best[3], best[2], best[4]]))
+                  return 0
+
+              log("no " + family + " simulator is installed; creating one")
+              runtimes = [r for r in json.loads(simctl("list", "runtimes", "available", "-j")).get("runtimes", [])
+                          if is_runtime(r.get("identifier", ""), os_name) and r.get("isAvailable", True)]
+              if not runtimes:
+                  log("no available " + os_name + " runtime")
+                  return 1
+              runtimes.sort(key=lambda r: runtime_version(r["identifier"]), reverse=True)
+              runtime = runtimes[0]
+              types = [t for t in runtime.get("supportedDeviceTypes", []) if t.get("name", "").startswith(family)]
+              if not types:
+                  log("the runtime " + runtime["identifier"] + " supports no " + family + " device type")
+                  return 1
+              types.sort(key=lambda t: (rank(t["name"], preferred), 0 if ("Series" in t["name"] or "Pro" in t["name"]) else 1))
+              chosen = types[0]
+              name = "Pulse " + family + " CI"
+              udid = simctl("create", name, chosen["identifier"], runtime["identifier"]).strip()
+              log("created " + name + " (" + chosen["name"] + ") on " + runtime["identifier"] + ": " + udid)
+              print("\t".join([udid, name, runtime["identifier"]]))
+              return 0
+
+
+          sys.exit(main())
+          PY
+
+          cat > "$RUNNER_TEMP/summarize_result.py" <<'PY'
+          import json
+          import sys
+
+          path = sys.argv[1]
+          label = sys.argv[2]
+          try:
+              with open(path) as handle:
+                  data = json.load(handle)
+          except Exception as error:
+              print(label + ": no readable result summary (" + str(error) + ")")
+              sys.exit(0)
+          if not isinstance(data, dict):
+              print(label + ": unexpected result summary of type " + type(data).__name__)
+              sys.exit(0)
+
+
+          def text(value):
+              return "?" if value is None else str(value)
+
+
+          print(label + ": result=" + text(data.get("result")) + " total=" + text(data.get("totalTestCount"))
+                + " passed=" + text(data.get("passedTests")) + " failed=" + text(data.get("failedTests"))
+                + " skipped=" + text(data.get("skippedTests")))
+          for failure in data.get("testFailures") or []:
+              if isinstance(failure, dict):
+                  print("  FAILED " + text(failure.get("testName")) + " [" + text(failure.get("targetName")) + "]: "
+                        + text(failure.get("failureText")))
+          for insight in data.get("topInsights") or []:
+              if isinstance(insight, dict):
+                  print("  insight: " + text(insight.get("text")))
+          PY
+
+          cat > "$RUNNER_TEMP/fallback_attachments.py" <<'PY'
+          import json
+          import os
+          import re
+          import shutil
+          import sys
+
+          manifest_path = sys.argv[1]
+          attachments_dir = sys.argv[2]
+          out_dir = sys.argv[3]
+          prefixes = sys.argv[4:]
+          try:
+              with open(manifest_path) as handle:
+                  manifest = json.load(handle)
+          except Exception as error:
+              print("cannot read " + manifest_path + ": " + str(error))
+              sys.exit(0)
+
+          items = []
+
+
+          def walk(node):
+              if isinstance(node, dict):
+                  if "exportedFileName" in node:
+                      items.append(node)
+                  for value in node.values():
+                      walk(value)
+              elif isinstance(node, list):
+                  for value in node:
+                      walk(value)
+
+
+          walk(manifest)
+          copied = 0
+          for item in items:
+              exported = str(item.get("exportedFileName"))
+              name = str(item.get("suggestedHumanReadableName") or exported)
+              name = re.sub(r"_\d+_[0-9A-Fa-f-]{36}(?=\.[A-Za-z0-9]+$)", "", name)
+              name = re.sub(r"(\.png)+$", ".png", os.path.basename(name), flags=re.IGNORECASE)
+              if not name.lower().endswith(".png"):
+                  continue
+              if not any(name.startswith(prefix) for prefix in prefixes):
+                  continue
+              name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+              source = os.path.join(attachments_dir, exported)
+              target = os.path.join(out_dir, name)
+              if os.path.isfile(source) and not os.path.exists(target):
+                  shutil.copyfile(source, target)
+                  copied += 1
+          print("copied " + str(copied) + " PNG attachment(s) of " + str(len(items)) + " listed in the manifest")
+          PY
+
+      # The project needs Xcode 16 (the code also builds with 15.4). Use the newest installed 16.x release.
+      - name: Select Xcode 16
+        run: |
+          echo "Default: $(xcodebuild -version | head -n 1)"
+          newest="$(python3 - <<'PY'
+          import glob, re
+
+          def key(path):
+              match = re.search(r"Xcode_(\d+(?:\.\d+)*)\.app$", path)
+              return tuple(int(part) for part in match.group(1).split(".")) if match else ()
+
+          apps = [p for p in glob.glob("/Applications/Xcode_16*.app") if re.search(r"Xcode_16(\.\d+)*\.app$", p)]
+          print(max(apps, key=key) if apps else "")
+          PY
+          )"
+          if [ -n "$newest" ]; then
+            echo "Selecting $newest"
+            sudo xcode-select -s "$newest/Contents/Developer"
+          else
+            echo "::warning::No Xcode 16.x installed on this runner image, using the default Xcode"
+          fi
+          xcodebuild -version
+          swift --version
+          xcrun simctl list runtimes
+
+      - name: Install XcodeGen
+        run: |
+          brew install xcodegen
+          xcodegen --version
+
+      - name: Generate the Xcode project
+        id: generate
+        working-directory: ios
+        run: |
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodegen.log" xcodegen generate
+          xcodebuild -list -project PulseStrength.xcodeproj | tee "$LOG_DIR/xcodebuild-list.log"
+
+      # --- iPhone simulator: the Lock Screen snapshots and the UI flow --------------------------------------------------------
+      # Prefers iPhone 16 Pro, then 15 Pro (Dynamic Island), else any iPhone; creates one when the image has none. The UDID is
+      # exported before the boot, so a hanging or failing `bootstatus` still lets xcodebuild try to boot the device itself.
+      - name: Boot an iPhone simulator
+        id: iphone
+        continue-on-error: true
+        timeout-minutes: 10
+        run: |
+          picked="$(python3 "$RUNNER_TEMP/pick_sim.py" ios)"
+          udid="$(printf '%s' "$picked" | cut -f1)"
+          name="$(printf '%s' "$picked" | cut -f2)"
+          echo "Using the iPhone simulator '$name' ($udid)"
+          echo "IOS_UDID=$udid" >> "$GITHUB_ENV"
+          # XCUIElement.typeText needs the software keyboard.
+          defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool NO || true
+          if ! xcrun simctl bootstatus "$udid" -b; then
+            echo "::warning::simctl bootstatus failed for the iPhone simulator; xcodebuild will try to boot it"
+          fi
+          xcrun simctl status_bar "$udid" override --time 9:41 --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 \
+            || echo "::warning::could not override the simulator status bar"
+          xcrun simctl list devices available | tee "$LOG_DIR/simctl-devices.log"
+
+      # --- Test steps: continue-on-error, so the screenshots are always collected. A red step here only means that a test
+      # --- failed to compile or that an assertion failed; look at the digest at the end of the log. -------------------------
+      - name: Lock Screen and Dynamic Island snapshots (iPhone simulator)
+        id: live
+        continue-on-error: true
+        timeout-minutes: 10
+        working-directory: ios
+        run: |
+          if [ -z "${IOS_UDID:-}" ]; then
+            echo "::error::No iPhone simulator is available (see the step 'Boot an iPhone simulator')"
+            exit 1
+          fi
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodebuild-live.log" \
+            xcodebuild test -project PulseStrength.xcodeproj -scheme PulseStrengthLiveSnapshots \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$IOS_UDID" \
+            -parallel-testing-enabled NO \
+            -resultBundlePath "$RESULTS_DIR/live.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: UI flow of the iPhone app (iPhone simulator)
+        id: ui
+        continue-on-error: true
+        timeout-minutes: 24
+        working-directory: ios
+        run: |
+          if [ -z "${IOS_UDID:-}" ]; then
+            echo "::error::No iPhone simulator is available (see the step 'Boot an iPhone simulator')"
+            exit 1
+          fi
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodebuild-ui.log" \
+            xcodebuild test -project PulseStrength.xcodeproj -scheme PulseStrengthUITests \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$IOS_UDID" \
+            -parallel-testing-enabled NO \
+            -resultBundlePath "$RESULTS_DIR/ui.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+
+      # --- Apple Watch simulator: the Watch page snapshots (a standalone, unpaired watchOS simulator is enough) --------------
+      - name: Boot a watchOS simulator
+        id: watchsim
+        continue-on-error: true
+        timeout-minutes: 8
+        run: |
+          # The standard runner has 7 GB of memory: shut the iPhone simulator down before the Watch tests.
+          if [ -n "${IOS_UDID:-}" ]; then
+            xcrun simctl shutdown "$IOS_UDID" || true
+          fi
+          picked="$(python3 "$RUNNER_TEMP/pick_sim.py" watchos)"
+          udid="$(printf '%s' "$picked" | cut -f1)"
+          name="$(printf '%s' "$picked" | cut -f2)"
+          echo "Using the watchOS simulator '$name' ($udid)"
+          echo "WATCH_UDID=$udid" >> "$GITHUB_ENV"
+          if ! xcrun simctl bootstatus "$udid" -b; then
+            echo "::warning::simctl bootstatus failed for the watchOS simulator; xcodebuild will try to boot it"
+          fi
+
+      - name: Watch page snapshots (watchOS simulator)
+        id: watch
+        continue-on-error: true
+        timeout-minutes: 10
+        working-directory: ios
+        run: |
+          if [ -z "${WATCH_UDID:-}" ]; then
+            echo "::error::No watchOS simulator is available (see the step 'Boot a watchOS simulator')"
+            exit 1
+          fi
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodebuild-watch.log" \
+            xcodebuild test -project PulseStrength.xcodeproj -scheme PulseStrengthWatchSnapshots \
+            -configuration Debug \
+            -destination "platform=watchOS Simulator,id=$WATCH_UDID" \
+            -parallel-testing-enabled NO \
+            -resultBundlePath "$RESULTS_DIR/watch.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+
+      # --- Collection ---------------------------------------------------------------------------------------------------------
+      # xcresult summaries (`xcresulttool get test-results`, Xcode 16; every call may fail without consequence), a fallback that
+      # exports the PNG attachments of a bundle when its suite wrote no PNG files itself, the logs, and the zipped bundles.
+      - name: Collect results
+        if: always()
+        run: |
+          mkdir -p "$SCREENS_DIR/results" "$SCREENS_DIR/logs" "$ZIP_DIR"
+          count() { find "$SCREENS_DIR" -maxdepth 1 -type f -name "$1" | wc -l | tr -d ' '; }
+
+          for bundle in "$RESULTS_DIR"/*.xcresult; do
+            [ -e "$bundle" ] || continue
+            name="$(basename "$bundle" .xcresult)"
+            summary="$SCREENS_DIR/results/$name-summary.json"
+            failures="$SCREENS_DIR/results/$name-failures.txt"
+            if xcrun xcresulttool get test-results summary --path "$bundle" > "$summary" 2> "$SCREENS_DIR/results/$name-summary.err"; then
+              python3 "$RUNNER_TEMP/summarize_result.py" "$summary" "$name" > "$failures" || true
+            else
+              echo "$name: xcresulttool could not read the result bundle (see $name-summary.err)" > "$failures"
+            fi
+            cat "$failures"
+          done
+
+          for suite in ui live watch; do
+            bundle="$RESULTS_DIR/$suite.xcresult"
+            if [ "$(count "$suite-*.png")" -eq 0 ] && [ -d "$bundle" ]; then
+              echo "No $suite-*.png was written to $SCREENS_DIR: trying to export the attachments of $suite.xcresult"
+              att="$RUNNER_TEMP/attachments-$suite"
+              rm -rf "$att"
+              mkdir -p "$att"
+              if xcrun xcresulttool export attachments --path "$bundle" --output-path "$att" > "$LOG_DIR/export-attachments-$suite.log" 2>&1; then
+                python3 "$RUNNER_TEMP/fallback_attachments.py" "$att/manifest.json" "$att" "$SCREENS_DIR" "$suite-" || true
+              else
+                echo "xcresulttool export attachments failed (see logs/export-attachments-$suite.log)"
+              fi
+            fi
+          done
+
+          cp "$LOG_DIR"/*.log "$SCREENS_DIR/logs/" 2>/dev/null || true
+
+          for bundle in "$RESULTS_DIR"/*.xcresult; do
+            [ -e "$bundle" ] || continue
+            ditto -c -k --sequesterRsrc --keepParent "$bundle" "$ZIP_DIR/$(basename "$bundle").zip" \
+              || echo "::warning::could not zip $bundle"
+          done
+          ls -la "$ZIP_DIR" || true
+
+      # The digest goes into the artifact (digest.txt) and is printed again by the gate, at the very end of the log.
+      - name: Write the digest
+        if: always()
+        run: |
+          mkdir -p "$SCREENS_DIR"
+          count() { find "$SCREENS_DIR" -maxdepth 1 -type f -name "$1" | wc -l | tr -d ' '; }
+          tidy() { LC_ALL=C sed -E 's#/Users/runner/work/[^/]+/[^/]+/##g' | LC_ALL=C cut -c1-300; }
+          {
+            echo "strength-ios visual digest"
+            echo "PNGs: ui=$(count 'ui-*.png') live=$(count 'live-*.png') watch=$(count 'watch-*.png') total=$(count '*.png')"
+
+            for name in xcodegen xcodebuild-live xcodebuild-ui xcodebuild-watch; do
+              log="$LOG_DIR/$name.log"
+              echo ""
+              if [ ! -f "$log" ]; then
+                echo "===== $name: no log (the step did not run) ====="
+                continue
+              fi
+              echo "===== $name: verdict ====="
+              grep -E "\*\* (BUILD|TEST) (SUCCEEDED|FAILED) \*\*|Executed [0-9]+ tests?, with|Testing failed" "$log" | tail -n 5 || true
+              echo "===== $name: unique error: / XCTAssert / failed lines ====="
+              grep -E "error:|XCTAssert|failed|FAILED" "$log" | tidy | sort -u | head -n 60 || true
+            done
+
+            for failures in "$SCREENS_DIR"/results/*-failures.txt; do
+              [ -e "$failures" ] || continue
+              echo ""
+              echo "===== xcresult summary: $(basename "$failures" -failures.txt) ====="
+              head -n 40 "$failures" | cut -c1-400
+            done
+
+            if [ -f "$SCREENS_DIR/ui-flow-log.txt" ]; then
+              echo ""
+              echo "===== ui-flow-log.txt: summary and FAILED / SKIPPED steps ====="
+              grep "SUMMARY:" "$SCREENS_DIR/ui-flow-log.txt" | cut -c1-300 || true
+              grep -A2 -E "\] (FAILED|SKIPPED)" "$SCREENS_DIR/ui-flow-log.txt" | cut -c1-300 | head -n 120 || true
+            fi
+            if [ -f "$SCREENS_DIR/live-measurements.txt" ]; then
+              echo ""
+              echo "===== live-measurements.txt: VIOLATION / note lines ====="
+              grep -E "VIOLATION|note:" "$SCREENS_DIR/live-measurements.txt" | cut -c1-300 | head -n 60 || true
+            fi
+            if [ -f "$SCREENS_DIR/watch-manifest.txt" ]; then
+              echo ""
+              echo "===== watch-manifest.txt: BLANK images ====="
+              grep "BLANK" "$SCREENS_DIR/watch-manifest.txt" | cut -c1-200 | head -n 60 || true
+            fi
+
+            for suite in ui live watch; do
+              echo ""
+              echo "===== $suite: $(count "$suite-*.png") PNG file names ====="
+              find "$SCREENS_DIR" -maxdepth 1 -type f -name "$suite-*.png" | sed 's#.*/##' | sort | paste -s -d ' ' - | fold -s -w 180 || true
+            done
+            echo ""
+            echo "===== other files in screens/ ====="
+            find "$SCREENS_DIR" -maxdepth 1 -type f ! -name '*.png' | sed 's#.*/##' | sort | paste -s -d ' ' - | fold -s -w 180 || true
+          } > "$SCREENS_DIR/digest.txt"
+          echo "digest written to screens/digest.txt ($(wc -l < "$SCREENS_DIR/digest.txt" | tr -d ' ') lines); it is printed again by the Gate step"
+
+      - name: Job summary
+        if: always()
+        run: |
+          mkdir -p "$SCREENS_DIR"
+          count() { find "$SCREENS_DIR" -maxdepth 1 -type f -name "$1" | wc -l | tr -d ' '; }
+          {
+            echo "### strength-ios: visual job"
+            echo ""
+            echo "| Step | Result | PNGs |"
+            echo "| --- | --- | --- |"
+            echo "| xcodegen generate | ${{ steps.generate.outcome }} | |"
+            echo "| iPhone simulator | ${{ steps.iphone.outcome }} | |"
+            echo "| Lock Screen and Dynamic Island snapshots | ${{ steps.live.outcome }} | $(count 'live-*.png') |"
+            echo "| UI flow of the iPhone app | ${{ steps.ui.outcome }} | $(count 'ui-*.png') |"
+            echo "| watchOS simulator | ${{ steps.watchsim.outcome }} | |"
+            echo "| Watch page snapshots | ${{ steps.watch.outcome }} | $(count 'watch-*.png') |"
+            echo ""
+            echo "Screenshots: artifact **strength-screens** (PNGs, ui-flow-log.txt, digest.txt, logs/). Result bundles: artifact **strength-xcresults**."
+            echo "A failed test step does not fail the job; only a run without any PNG does."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strength-screens
+          path: screens/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload result bundles
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strength-xcresults
+          path: xcresults-zip/
+          if-no-files-found: ignore
+          retention-days: 3
+          compression-level: 0
+
+      # Fails only when not a single PNG exists. Failed assertions do not matter here: the job exists to produce screenshots.
+      - name: Gate
+        if: always()
+        run: |
+          mkdir -p "$SCREENS_DIR"
+          count() { find "$SCREENS_DIR" -maxdepth 1 -type f -name "$1" | wc -l | tr -d ' '; }
+          echo "================ strength-ios visual: final digest ================"
+          cat "$SCREENS_DIR/digest.txt" || echo "(no digest was written)"
+          echo ""
+          echo "================ strength-ios visual: verdict ================"
+          echo "step outcomes: generate=${{ steps.generate.outcome }} iphone=${{ steps.iphone.outcome }} live=${{ steps.live.outcome }} ui=${{ steps.ui.outcome }} watchsim=${{ steps.watchsim.outcome }} watch=${{ steps.watch.outcome }}"
+          ui="$(count 'ui-*.png')"
+          live="$(count 'live-*.png')"
+          watch="$(count 'watch-*.png')"
+          total="$(count '*.png')"
+          echo "PNGs: ui=$ui live=$live watch=$watch total=$total"
+          if [ "$ui" -eq 0 ]; then echo "::warning title=No UI flow screenshots::The iPhone UI flow produced no PNG (see the digest and the log of the UI flow step)"; fi
+          if [ "$live" -eq 0 ]; then echo "::warning title=No Lock Screen screenshots::The Live Activity snapshot suite produced no PNG (see the digest)"; fi
+          if [ "$watch" -eq 0 ]; then echo "::warning title=No Watch screenshots::The Watch snapshot suite produced no PNG (see the digest)"; fi
+          if [ "$total" -eq 0 ]; then
+            echo "::error::No screenshot was produced at all"
+            exit 1
+          fi
+          echo "OK: $total screenshot(s) in the artifact strength-screens"

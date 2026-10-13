@@ -15,10 +15,17 @@ struct PulseStrengthApp: App {
     private let environment: StrengthAppEnvironment
 
     init() {
-        // Created here rather than lazily by the first view: when a Live Activity button (an App Intent) launches the
-        // app in the background no scene is ever created, but the first access to `StrengthAppEnvironment.shared`
-        // restores the running workout and installs the WorkoutCommandBus handler the intent is waiting for.
-        self.environment = StrengthAppEnvironment.shared
+        if ProcessInfo.processInfo.arguments.contains("-PulseUITest") {
+            // UI-test mode (Apps/PulseStrengthUITests): a fresh temporary store with the demo templates and history and
+            // no live services (no Live Activity, Health, notification or Watch side effects, no permission prompts),
+            // so every run starts from the same hub. `StrengthAppEnvironment.shared` is deliberately never touched.
+            self.environment = StrengthAppEnvironment.preview(withActiveWorkout: false)
+        } else {
+            // Created here rather than lazily by the first view: when a Live Activity button (an App Intent) launches the
+            // app in the background no scene is ever created, but the first access to `StrengthAppEnvironment.shared`
+            // restores the running workout and installs the WorkoutCommandBus handler the intent is waiting for.
+            self.environment = StrengthAppEnvironment.shared
+        }
     }
 
     var body: some Scene {

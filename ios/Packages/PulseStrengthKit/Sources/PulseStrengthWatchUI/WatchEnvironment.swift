@@ -160,6 +160,21 @@ public final class WatchEnvironment: ObservableObject {
         connectivity.activate()
     }
 
+    /// For the snapshot tests (and previews): wraps an existing `controller` and starts nothing. No WatchConnectivity session is
+    /// activated and no effect is registered, so handing the controller a workout does not start a Health session. Reachability
+    /// and the post-workout summary are set directly. Internal on purpose: it is not part of the public API.
+    init(previewController controller: WorkoutController, isPhoneReachable: Bool = false, endedSummary: WatchEndedSummary? = nil) {
+        let session = WatchWorkoutSession()
+        self.controller = controller
+        self.session = session
+        self.connectivity = WatchConnectivityClient(controller: controller)
+        self.isPhoneReachable = isPhoneReachable
+        self.endedSummary = endedSummary
+        sessionObserver = session.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }
+    }
+
     // MARK: Public API
 
     /// Hides the post-workout summary.

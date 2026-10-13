@@ -8,6 +8,13 @@
 #   PulseStrengthWidgets   widget extension that hosts the Live Activity (Lock Screen + Dynamic Island)
 #   PulseStrengthWatch     watchOS 10 single-target app (embedded in the iOS app through "Embed Watch Content")
 #
+# Visual test targets (the `visual` job of .github/workflows/strength-ios.yml; they write screenshots, see README.md,
+# "Screenshots in CI"). They are in their own schemes only, so the app, widget and Watch schemes above never build them:
+#   PulseStrengthUITests              iOS UI test: walks the app in the simulator, one screenshot per step (scheme PulseStrengthUITests)
+#   PulseStrengthLiveSnapshotTests    iOS logic test without a host app: draws the Lock Screen / Dynamic Island views
+#                                     (scheme PulseStrengthLiveSnapshots)
+#   PulseStrengthWatchSnapshotTests   watchOS logic test without a host app: draws the Watch pages (scheme PulseStrengthWatchSnapshots)
+#
 # Info.plist files and entitlements are the committed files under Apps/<target>/ (INFOPLIST_FILE and
 # CODE_SIGN_ENTITLEMENTS below); this spec does not use XcodeGen's `info:` / `entitlements:` generators, so there is
 # exactly one source of truth for them.
@@ -124,6 +131,76 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
         SKIP_INSTALL: "YES"
 
+  # ---------------------------------------------------------------------------------------------------------------
+  # Visual tests. None of the three is a dependency of an app target and none is in the PulseStrength /
+  # PulseStrengthWatch schemes, so the normal builds neither compile nor package them. They have no Info.plist file,
+  # hence GENERATE_INFOPLIST_FILE "YES" (the project-wide base value is "NO").
+  # ---------------------------------------------------------------------------------------------------------------
+
+  # UI test of the iPhone app (Apps/PulseStrengthUITests): launches PulseStrength with -PulseUITest (demo data, no
+  # live services) and takes a screenshot after every step. Depending on the app target makes Xcode build the app
+  # (with the widget extension and the Watch app) first, and XcodeGen sets TestTargetID for it.
+  PulseStrengthUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: Apps/PulseStrengthUITests
+    dependencies:
+      - target: PulseStrength
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).uitests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_TARGET_NAME: PulseStrength
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
+
+  # Snapshot test of the Live Activity (Lock Screen and Dynamic Island) views. A logic-test bundle WITHOUT a host app
+  # (no TEST_HOST, no dependency on the PulseStrength target): it compiles the Live Activity views and the intents as its
+  # own sources, exactly like the widget extension does, and renders them with ImageRenderer into PNG files. If
+  # rendering without a host ever misbehaves, add `- target: PulseStrength` to the dependencies (XcodeGen then sets
+  # TEST_HOST and BUNDLE_LOADER).
+  PulseStrengthLiveSnapshotTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Apps/PulseStrengthLiveSnapshotTests
+      - path: Apps/Shared/LiveActivity
+      - path: Apps/Shared/Intents
+    dependencies:
+      - package: PulseStrengthKit
+        product: PulseStrengthCore
+      - package: PulseStrengthKit
+        product: PulseStrengthActivity
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).livesnapshottests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: "YES"
+
+  # Snapshot test of the Watch pages (Apps/PulseStrengthWatchSnapshotTests), a watchOS logic-test bundle without a host
+  # app (the Watch app is not standalone and touches HealthKit and WatchConnectivity at launch). It uses
+  # `@testable import PulseStrengthWatchUI`, which needs the Debug configuration (ENABLE_TESTABILITY); the scheme and the CI
+  # step both use Debug.
+  PulseStrengthWatchSnapshotTests:
+    type: bundle.unit-test
+    platform: watchOS
+    sources:
+      - path: Apps/PulseStrengthWatchSnapshotTests
+    dependencies:
+      - package: PulseStrengthKit
+        product: PulseStrengthCore
+      - package: PulseStrengthKit
+        product: PulseStrengthWatchUI
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).watchsnapshottests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TARGETED_DEVICE_FAMILY: "4"
+        ENABLE_TESTABILITY: "YES"
+        SKIP_INSTALL: "YES"
+
 schemes:
   # Builds everything: the app target depends on the widget extension and on the Watch app (built for the matching
   # watchOS SDK), so one `xcodebuild -scheme PulseStrength` compiles all three targets.
@@ -156,3 +233,53 @@ schemes:
       config: Debug
     archive:
       config: Release
+
+  # ---------------------------------------------------------------------------------------------------------------
+  # Visual-test schemes (CI job `visual`, see README.md "Screenshots in CI"). Each runs in Debug and has its own scheme,
+  # so `xcodebuild -scheme PulseStrength` / `PulseStrengthWatch` (the `apple` job) never builds a test target.
+  # Run them with e.g.  TEST_RUNNER_SCREENSHOT_DIR=/absolute/dir xcodebuild test -project PulseStrength.xcodeproj
+  #   -scheme PulseStrengthLiveSnapshots -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 16 Pro'
+  # ---------------------------------------------------------------------------------------------------------------
+
+  # Builds the app (with the widget extension and the Watch app, as target dependencies) and runs the UI flow.
+  # The flow takes its own screenshots; Xcode's automatic per-action screenshots / screen recording stay off, so the
+  # result bundle stays small and the recording does not slow down a flow with a 6 second undo window.
+  PulseStrengthUITests:
+    build:
+      targets:
+        PulseStrength: [test]
+        PulseStrengthUITests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: false
+      captureScreenshotsAutomatically: false
+      targets:
+        - name: PulseStrengthUITests
+          parallelizable: false
+          randomExecutionOrder: false
+
+  # Lock Screen / Dynamic Island snapshots; needs an iOS Simulator destination.
+  PulseStrengthLiveSnapshots:
+    build:
+      targets:
+        PulseStrengthLiveSnapshotTests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - name: PulseStrengthLiveSnapshotTests
+          parallelizable: false
+          randomExecutionOrder: false
+
+  # Apple Watch page snapshots; needs a watchOS Simulator destination.
+  PulseStrengthWatchSnapshots:
+    build:
+      targets:
+        PulseStrengthWatchSnapshotTests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - name: PulseStrengthWatchSnapshotTests
+          parallelizable: false
+          randomExecutionOrder: false

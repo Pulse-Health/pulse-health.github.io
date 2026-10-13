@@ -158,4 +158,32 @@ enum ActivityTheme {
         static let compactRingLineWidth: CGFloat = 3
     }
 }
+
+// MARK: - Static clock (snapshot tests only)
+
+/// Environment key behind `\.activityStaticNow`.
+private struct ActivityStaticNowKey: EnvironmentKey {
+    static let defaultValue: Date? = nil
+}
+
+extension EnvironmentValues {
+    /// TEST-ONLY switch used by the snapshot tests (Apps/PulseStrengthLiveSnapshotTests); the widget never sets it.
+    ///
+    /// `nil` (the default, and the only value in production) leaves every view exactly as it is: the live system timer
+    /// views (`Text(timerInterval:)`, `Text(_:style: .timer)`, `ProgressView(timerInterval:)`) and the current time are used.
+    /// When a date is set, the views draw the state at that instant with static equivalents instead: the same "m:ss" /
+    /// "h:mm:ss" strings and a static ring at the same fraction. `ImageRenderer` cannot run (or reliably draw) the
+    /// system timer views and their text depends on the wall clock, so a snapshot would not be reproducible without it.
+    var activityStaticNow: Date? {
+        get { self[ActivityStaticNowKey.self] }
+        set { self[ActivityStaticNowKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// Draws the Live Activity views below this one as they look at `now`, without live timers (snapshot tests only).
+    func activityStaticClock(_ now: Date?) -> some View {
+        environment(\.activityStaticNow, now)
+    }
+}
 #endif

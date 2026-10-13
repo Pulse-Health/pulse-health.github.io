@@ -21,7 +21,7 @@ are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-ap
 ios/
   README.md                  this file
   ARCHITECTURE.md            build contract: models, reducer, presenter, services, Apple targets (read this next)
-  project.yml                XcodeGen spec: iOS app, widget extension, Watch app, schemes
+  project.yml                XcodeGen spec: iOS app, widget extension, Watch app, three visual-test targets, schemes
   Packages/PulseStrengthKit/ Swift package (swift-tools-version 5.9, iOS 17 / watchOS 10 / macOS 14)
     Sources/
       PulseStrengthCore/       Foundation only: models, reducer, presenter, controller, store, sync, exercise library
@@ -36,7 +36,10 @@ ios/
     PulseStrengthWatch/      watchOS app: @main entry point, Info.plist, entitlements, assets
     Shared/Intents/          App Intents behind the Live Activity buttons (compiled into the app AND the extension)
     Shared/LiveActivity/     Lock Screen and Dynamic Island views (compiled into the extension)
-.github/workflows/strength-ios.yml   (at the repository root) CI: Linux core tests + macOS Xcode builds
+    PulseStrengthUITests/              UI test: walks the iPhone app in the simulator, one screenshot per step
+    PulseStrengthLiveSnapshotTests/    test that draws the Lock Screen and Dynamic Island views into PNG files
+    PulseStrengthWatchSnapshotTests/   test that draws the Watch pages into PNG files
+.github/workflows/strength-ios.yml   (at the repository root) CI: Linux core tests + macOS Xcode builds + screenshots
 ```
 
 Why the intents and the Live Activity views are not in the package: a `LiveActivityIntent` is referenced by the
@@ -108,6 +111,58 @@ so the store and the controller are type-checked and tested there too. On Apple 
 the flag has no effect. Every file of the iOS and watchOS targets is wrapped in `#if os(iOS)` / `#if os(watchOS)`, so on
 Linux (and on macOS) those targets build as empty modules.
 
+## Screenshots in CI
+
+Nobody can run an iOS simulator on the machines this code was written on, so the `visual` job of the `strength-ios`
+workflow runs the app and the views in the simulators on a macOS runner and uploads what it drew. It starts together with
+the `apple` job (on every pull request and push that touches `ios/`, and on demand through **Run workflow**), needs nothing
+from it, and does not replace it.
+
+What it does, in this order: `xcodegen generate`; boots an iPhone simulator with a Dynamic Island (iPhone 16 Pro, else
+15 Pro, else any iPhone) and runs two schemes on it; boots a watchOS simulator and runs the third. All three use the Debug
+configuration, `CODE_SIGNING_ALLOWED=NO` and `-parallel-testing-enabled NO`.
+
+| Scheme (target) | What it produces | Files in the artifact |
+| --- | --- | --- |
+| `PulseStrengthLiveSnapshots` (`PulseStrengthLiveSnapshotTests`, no host app) | Lock Screen card, Dynamic Island compact / minimal / expanded in 11 workout states, plus contact sheets | `live-NN-*.png` (about 53), `live-measurements.txt` (sizes and limit violations) |
+| `PulseStrengthUITests` (`PulseStrengthUITests`) | One long walk through the iPhone app in demo mode (`-PulseUITest`): hub, active workout, keypad, sheets, rest timer, undo, finish, summary, exercise library | `ui-NN-*.png` (about 70), `ui-flow-log.txt` (OK / FAILED / SKIPPED per step) |
+| `PulseStrengthWatchSnapshots` (`PulseStrengthWatchSnapshotTests`, no host app) | The Watch pages at 45 mm and at 40 / 41 / 44 / 49 mm, plus experimental root-view shots | `watch-NN-*.png` (44), `watch-manifest.txt` (a `BLANK` line marks an image that came out empty) |
+
+The tests write their files to the directory in `SCREENSHOT_DIR`; the workflow passes it as `TEST_RUNNER_SCREENSHOT_DIR`
+(xcodebuild forwards `TEST_RUNNER_*` variables to the test process without the prefix).
+
+**Artifacts** (Actions run page, section "Artifacts"):
+
+* **`strength-screens`** (kept 14 days): all PNGs and text files above, `digest.txt`, `logs/` (the xcodebuild logs) and
+  `results/` (summaries of the `.xcresult` bundles, where Xcode 16's `xcresulttool` can read them).
+* **`strength-xcresults`** (kept 3 days): the zipped `.xcresult` bundles (`ui`, `live`, `watch`). They hold every test
+  attachment and are only needed when the PNGs and logs do not explain a failure.
+
+**Reading the result.** Every test step is `continue-on-error`, so the PNGs are collected and uploaded whatever happened, and
+the job fails only when no PNG exists at all (a failed assertion or one missing element does not fail it). Look at the end of
+the `Gate` step in the job log: it prints a digest with the verdict and the unique `error:` / `XCTAssert` / `failed` lines of
+each test log, the number of PNGs per suite and their file names (also saved as `digest.txt`). A suite with no PNG gets a
+warning annotation; the log of its step then usually shows a compile error of the test code. The UI flow keeps going after a
+failed step, so open `ui-flow-log.txt` first: it names the steps that failed, with the screenshot taken at that point.
+
+**Run it locally** (macOS, Xcode 16; the UI flow needs the software keyboard, so disconnect the hardware keyboard in the
+Simulator, I/O > Keyboard):
+
+```sh
+cd ios && xcodegen generate
+mkdir -p /tmp/pulse-screens
+TEST_RUNNER_SCREENSHOT_DIR=/tmp/pulse-screens xcodebuild test -project PulseStrength.xcodeproj \
+  -scheme PulseStrengthLiveSnapshots -configuration Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 16 Pro' CODE_SIGNING_ALLOWED=NO
+# -scheme PulseStrengthUITests: same destination; -scheme PulseStrengthWatchSnapshots: -destination 'platform=watchOS Simulator,name=Apple Watch Series 10 (46mm)'
+```
+
+**Limits.** The snapshot tests draw the views with `ImageRenderer`: the Lock Screen material, the island animation, scrolling
+containers and the live timers are not reproduced exactly (the Live Activity suite also draws the production timer views once,
+as `live-49` to `live-53`, to show what the renderer makes of them). The Watch images are plain rectangles of the screen size
+without status bar or rounded corners. None of this code had been compiled or run when the job was added; expect a fix or two
+after the first run.
+
 ## Architecture in ten lines
 
 1. All workout logic is a pure reducer in Core: `WorkoutState` + `WorkoutAction` -> `WorkoutReducer.reduce(_:_:now:)`.
@@ -120,8 +175,9 @@ Linux (and on macOS) those targets build as empty modules.
    custom exercises and personal bests.
 7. Live Activity buttons are App Intents compiled into app and extension; they call `WorkoutCommandBus`, whose handler the
    app installs when `StrengthAppEnvironment` starts (the app waits up to 3 s for a background launch).
-8. Phone and Watch exchange `SyncEnvelope`s / `RemoteCommand`s over WatchConnectivity; revision numbers decide which state wins
-   and command ids are de-duplicated.
+8. Phone and Watch exchange `SyncEnvelope`s / `RemoteCommand`s over WatchConnectivity. The Watch applies its taps at once and the
+   phone acknowledges every command in its next envelope (duplicates are dropped by command id); the Watch shows the phone's
+   state with its unacknowledged taps on top ("Sync protocol" in `ARCHITECTURE.md` 3.4).
 9. Clock-driven UI uses `TimelineView`; the Live Activity uses `Text(timerInterval:)` and a stale date, because a widget cannot tick.
 10. Contracts, file by file: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
@@ -203,6 +259,10 @@ above allows without touching the rest of the feature.
   (`xcodegen generate`, `swift test` on macOS, `xcodebuild` of the iOS and watchOS schemes for the simulators).
   Expect to fix compiler errors and generator issues on the first run; the job uploads the full logs as an artifact and
   prints the unique `error:` lines when a step fails.
+* **Visual tests** (the three test targets under `Apps/` and the `visual` job, see [Screenshots in CI](#screenshots-in-ci)):
+  written under the same conditions and not compiled or run by their authors. They are not part of the `PulseStrength` and
+  `PulseStrengthWatch` schemes, so a problem in them cannot break the `apple` job. What the screens look like and how the
+  app behaves at runtime is only known once someone has looked at the `strength-screens` artifact.
 * **CI status: see the latest run of strength-ios** (<https://github.com/Pulse-Health/pulse-health.github.io/actions/workflows/strength-ios.yml>).
   This README does not claim a result; update this line only once the `apple` job has been seen green.
 

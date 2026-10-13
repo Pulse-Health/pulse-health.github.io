@@ -19,9 +19,11 @@ import PulseStrengthCore
 struct IslandCompactLeading: View {
     let state: WorkoutSnapshot
     let isStale: Bool
+    /// Snapshot tests only (nil in production): the instant the views are drawn at.
+    @Environment(\.activityStaticNow) private var staticNow
 
     var body: some View {
-        let phase = state.displayPhase(isStale: isStale)
+        let phase = state.displayPhase(isStale: isStale, staticNow: staticNow)
         switch phase {
         case .resting, .restOver:
             ActivityRestRing(
@@ -46,9 +48,11 @@ struct IslandCompactLeading: View {
 struct IslandCompactTrailing: View {
     let state: WorkoutSnapshot
     let isStale: Bool
+    /// Snapshot tests only (nil in production): the instant the views are drawn at.
+    @Environment(\.activityStaticNow) private var staticNow
 
     var body: some View {
-        let phase = state.displayPhase(isStale: isStale)
+        let phase = state.displayPhase(isStale: isStale, staticNow: staticNow)
         switch phase {
         case .resting:
             ActivityRestCountdownText(
@@ -78,9 +82,11 @@ struct IslandCompactTrailing: View {
 struct IslandMinimal: View {
     let state: WorkoutSnapshot
     let isStale: Bool
+    /// Snapshot tests only (nil in production): the instant the views are drawn at.
+    @Environment(\.activityStaticNow) private var staticNow
 
     var body: some View {
-        let phase = state.displayPhase(isStale: isStale)
+        let phase = state.displayPhase(isStale: isStale, staticNow: staticNow)
         switch phase {
         case .resting, .restOver:
             ActivityRestRing(
@@ -108,9 +114,11 @@ struct IslandMinimal: View {
 struct IslandExpandedLeading: View {
     let state: WorkoutSnapshot
     let isStale: Bool
+    /// Snapshot tests only (nil in production): the instant the views are drawn at.
+    @Environment(\.activityStaticNow) private var staticNow
 
     private var title: String {
-        switch state.displayPhase(isStale: isStale) {
+        switch state.displayPhase(isStale: isStale, staticNow: staticNow) {
         case .resting: return state.isPaused ? "Rest \u{00B7} paused" : "Rest"
         case .restOver: return "Rest over"
         case .logging: return state.setLabel
@@ -137,9 +145,11 @@ struct IslandExpandedLeading: View {
 struct IslandExpandedTrailing: View {
     let state: WorkoutSnapshot
     let isStale: Bool
+    /// Snapshot tests only (nil in production): the instant the views are drawn at.
+    @Environment(\.activityStaticNow) private var staticNow
 
     var body: some View {
-        let phase = state.displayPhase(isStale: isStale)
+        let phase = state.displayPhase(isStale: isStale, staticNow: staticNow)
         switch phase {
         case .resting, .restOver:
             ActivityRestCountdownText(
@@ -175,9 +185,11 @@ struct IslandExpandedBottom: View {
     let state: WorkoutSnapshot
     let workoutName: String
     let isStale: Bool
+    /// Snapshot tests only (nil in production): the instant the views are drawn at.
+    @Environment(\.activityStaticNow) private var staticNow
 
     var body: some View {
-        let phase = state.displayPhase(isStale: isStale)
+        let phase = state.displayPhase(isStale: isStale, staticNow: staticNow)
         content(for: phase)
             .padding(.top, ActivityTheme.Metrics.islandBottomTopInset)
     }

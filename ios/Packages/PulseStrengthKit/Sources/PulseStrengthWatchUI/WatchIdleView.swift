@@ -24,26 +24,32 @@ struct WatchIdleView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 8) {
-                Image(systemName: "dumbbell.fill")
-                    .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(palette.accent)
-                    .accessibilityHidden(true)
-                Text("Start a workout on your iPhone")
-                    .font(WatchFont.text(16, .semibold))
-                    .foregroundStyle(palette.primary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(hintText)
-                    .font(WatchFont.text(12.5, .regular))
-                    .foregroundStyle(hintColor)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
-                checkButton
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 8)
+            pageContent
         }
+    }
+
+    /// The page without its scroll container. Internal (not private) only so that the snapshot tests can draw it:
+    /// `ImageRenderer` leaves the contents of a `ScrollView` blank.
+    var pageContent: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "dumbbell.fill")
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(palette.accent)
+                .accessibilityHidden(true)
+            Text("Start a workout on your iPhone")
+                .font(WatchFont.text(16, .semibold))
+                .foregroundStyle(palette.primary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(hintText)
+                .font(WatchFont.text(12.5, .regular))
+                .foregroundStyle(hintColor)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            checkButton
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 8)
     }
 
     private var checkButton: some View {

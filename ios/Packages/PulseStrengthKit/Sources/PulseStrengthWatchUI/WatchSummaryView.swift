@@ -31,16 +31,22 @@ struct WatchSummaryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                titleBlock
-                durationBlock
-                statBlock(title: "Volume", value: volumeValue)
-                statBlock(title: "Sets", value: setsValue)
-                statBlock(title: "Avg Heart Rate", value: heartRateValue)
-                doneButton
-            }
-            .padding(.horizontal, 10)
+            pageContent
         }
+    }
+
+    /// The page without its scroll container. Internal (not private) only so that the snapshot tests can draw it:
+    /// `ImageRenderer` leaves the contents of a `ScrollView` blank.
+    var pageContent: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            titleBlock
+            durationBlock
+            statBlock(title: "Volume", value: volumeValue)
+            statBlock(title: "Sets", value: setsValue)
+            statBlock(title: "Avg Heart Rate", value: heartRateValue)
+            doneButton
+        }
+        .padding(.horizontal, 10)
     }
 
     private var titleBlock: some View {
