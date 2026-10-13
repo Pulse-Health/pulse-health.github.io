@@ -421,6 +421,8 @@ private extension StrengthData {
 public final class StrengthDataModel: WorkoutDataProviding {
     /// The current data.
     public private(set) var data: StrengthData
+    /// The first error of the last save that failed; nil when the last save wrote every file it was asked to write.
+    public private(set) var lastPersistenceError: Error?
 
     private let persistence: FileStrengthPersistence?
     private var cache: (list: [Exercise], byID: [String: Exercise])?
@@ -460,10 +462,19 @@ public final class StrengthDataModel: WorkoutDataProviding {
     }
 
     /// Records a finished workout (history, personal bests, template) and saves what changed.
-    public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) {
+    ///
+    /// The data changes in memory in every case. The result is `.failure` when the workout could not be written to the history
+    /// file, which is the only place the workout's sets are kept; the other files are derived (the personal bests are re-read from
+    /// the history) or secondary (the template), so failing to write them is reported through `lastPersistenceError` only.
+    /// Every file is rewritten in full by its next save, so unsaved data is saved then.
+    @discardableResult
+    public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error> {
         data.record(completed, updateTemplate: updateTemplate)
         cache = nil
-        persist(templates: true, history: true, customExercises: false, personalBests: true)
+        if let historyError = persist(templates: true, history: true, customExercises: false, personalBests: true) {
+            return .failure(historyError)
+        }
+        return .success(())
     }
 
     /// The history of one exercise as shown on its detail screen.
@@ -497,11 +508,32 @@ public final class StrengthDataModel: WorkoutDataProviding {
         return (list, byID)
     }
 
-    private func persist(templates: Bool, history: Bool, customExercises: Bool, personalBests: Bool) {
-        guard let persistence else { return }
-        if templates { try? persistence.saveTemplates(data.templates) }
-        if history { try? persistence.saveHistory(data.history) }
-        if customExercises { try? persistence.saveCustomExercises(data.customExercises) }
-        if personalBests { try? persistence.savePersonalBests(data.personalBests) }
+    /// Writes the requested files, attempting every one even when an earlier one fails.
+    ///
+    /// Sets `lastPersistenceError` to the first error (nil when every requested file was written) and returns the error of the
+    /// history file, nil when it was written or not requested.
+    @discardableResult
+    private func persist(templates: Bool, history: Bool, customExercises: Bool, personalBests: Bool) -> Error? {
+        guard let persistence else {
+            lastPersistenceError = nil
+            return nil
+        }
+        var firstError: Error?
+        var historyError: Error?
+        func attempt(_ write: () throws -> Void) -> Error? {
+            do {
+                try write()
+                return nil
+            } catch {
+                if firstError == nil { firstError = error }
+                return error
+            }
+        }
+        if templates { _ = attempt { try persistence.saveTemplates(data.templates) } }
+        if history { historyError = attempt { try persistence.saveHistory(data.history) } }
+        if customExercises { _ = attempt { try persistence.saveCustomExercises(data.customExercises) } }
+        if personalBests { _ = attempt { try persistence.savePersonalBests(data.personalBests) } }
+        lastPersistenceError = firstError
+        return historyError
     }
 }

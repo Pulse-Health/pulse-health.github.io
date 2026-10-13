@@ -47,9 +47,13 @@ public final class StrengthStore: ObservableObject {
     }
 
     /// Records a finished workout: history (newest first), personal bests, the template's `lastPerformed`, and `updateTemplate` when given.
-    public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) {
-        model.record(completed, updateTemplate: updateTemplate)
+    ///
+    /// The store changes in every case; the result is `.failure` when the workout could not be written to the history file.
+    @discardableResult
+    public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error> {
+        let result = model.record(completed, updateTemplate: updateTemplate)
         publish()
+        return result
     }
 
     /// The sessions, trend, records and 30-day totals of one exercise, relative to `now`.

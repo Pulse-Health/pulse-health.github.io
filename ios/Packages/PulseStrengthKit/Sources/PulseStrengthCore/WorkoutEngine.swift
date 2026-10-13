@@ -18,7 +18,11 @@ public protocol WorkoutDataProviding: AnyObject {
     /// The saved template with the given id.
     func template(id: UUID) -> WorkoutTemplate?
     /// Records a finished workout (history, personal bests, template `lastPerformed`) and replaces `updateTemplate` when given.
-    func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?)
+    ///
+    /// The data changes in memory in every case. The result is `.failure` when the workout could not be saved to disk (its history
+    /// file); the engine then keeps the active-workout file, the last saved copy of the workout.
+    @discardableResult
+    func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error>
 }
 
 // MARK: - Engine
@@ -44,7 +48,8 @@ public final class WorkoutEngine {
     public private(set) var state: WorkoutState?
     /// The workout finished most recently (cleared when the next one starts).
     public private(set) var lastCompleted: CompletedWorkout?
-    /// The error of the last failed attempt to save the active workout; nil after a successful save.
+    /// The error of the last failed attempt to save the active workout, or of a finished workout that could not be saved to the
+    /// history; nil after a successful save.
     public private(set) var lastPersistenceError: Error?
     /// Called after `state` or `lastCompleted` changed and before the side effects are told.
     public var onUpdate: (() -> Void)?
@@ -184,6 +189,11 @@ public final class WorkoutEngine {
     ///
     /// With `updateTemplate` the workout's template is rebuilt from the exercises as they are now. A workout with no logged set is
     /// discarded instead (nil is returned). A mirror finishes locally too.
+    ///
+    /// The workout is finished (and returned) even when the history cannot be written. The saved active workout is then kept
+    /// instead of deleted and `lastPersistenceError` is set, so the logged sets are not lost: the next launch restores the workout
+    /// and finishing it again saves it (a workout is recorded by its id, so it is never saved twice). Starting another workout
+    /// replaces the kept file; until then the history is rewritten in full by the next successful save.
     @discardableResult
     public func finish(updateTemplate: Bool) -> CompletedWorkout? {
         guard let current = state else { return nil }
@@ -196,9 +206,10 @@ public final class WorkoutEngine {
         if updateTemplate, let templateID = current.templateID, let template = data.template(id: templateID) {
             updated = WorkoutFactory.updatedTemplate(template, from: current)
         }
-        data.record(completed, updateTemplate: updated)
+        var saveFailure: Error?
+        if case let .failure(error) = data.record(completed, updateTemplate: updated) { saveFailure = error }
         lastCompleted = completed
-        end(current, completed: completed)
+        end(current, completed: completed, unsavedBecause: saveFailure)
         return completed
     }
 
@@ -227,11 +238,17 @@ public final class WorkoutEngine {
 
     // MARK: Helpers
 
-    private func end(_ previous: WorkoutState, completed: CompletedWorkout?) {
+    /// Ends the workout. With `unsavedBecause` (the finished workout could not be written to the history) the active-workout file
+    /// is left alone: it still holds the workout's sets and is the only copy on disk.
+    private func end(_ previous: WorkoutState, completed: CompletedWorkout?, unsavedBecause saveFailure: Error? = nil) {
         state = nil
         remember(previous.id)
         lastHeartRateReport = nil
-        persistActiveWorkout()
+        if let saveFailure {
+            lastPersistenceError = saveFailure
+        } else {
+            persistActiveWorkout()
+        }
         onUpdate?()
         for effect in effects { effect.workoutEnded(previous, completed: completed) }
     }

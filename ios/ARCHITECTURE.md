@@ -96,6 +96,8 @@ public enum WorkoutTargets {
 }
 public enum WorkoutReducer {
     public static var undoWindow: TimeInterval { get }      // 6 seconds
+    public static let maximumWeightKg: Double               // 1_000_000 (rule 3)
+    public static let maximumRestSeconds: Int               // 3_600 (rule 7)
     public static func reduce(_ state: inout WorkoutState, _ action: WorkoutAction, now: Date)
 }
 public enum WorkoutFactory {
@@ -119,7 +121,8 @@ Reducer rules (ported from `Active.dc.html`; `S` = state):
    Starting rest: `settings.autoStartRest && seconds > 0` -> `rest = RestState(endsAt: now + seconds, totalSeconds: seconds,
    frozenRemaining: paused ? seconds : nil)`, otherwise `rest = nil`. `logSet` on a done set is a no-op.
    `logNextSet` first moves `currentIndex` to the exercise of `WorkoutTargets.nextPending`, then logs that set.
-3. `setWeight` clamps to >= 0 and rounds to 0.01; `setReps` clamps to 0...999; neither changes `isDone`.
+3. `setWeight` clamps to 0...`maximumWeightKg` (1,000,000 kg; the keypad's six characters stay below it) and rounds to 0.01; NaN and
+   +infinity are ignored (not representable). `setReps` clamps to 0...999; neither changes `isDone`.
    `nudgeNextSet(weightSteps:repsSteps:)` edits the `nextPending` set: weight += steps * `exercise.weightStepKg`
    (>= 0, only for weight-tracking exercises), reps += steps * `exercise.repsStep` (clamped 0...999).
 4. `setSetType`, `setRIR(rir)` (clamp 0...4, nil clears), `toggleLastSetRIR(v)` (applies to `lastLogged`; same value clears),
@@ -135,7 +138,9 @@ Reducer rules (ported from `Active.dc.html`; `S` = state):
 7. `moveExercise(from:to:)` and `moveExerciseBy(delta:)` reorder; `currentIndex` keeps following the same exercise.
    `replaceExercise` keeps the entry id and superset group, takes the new exercise with default sets (not done),
    its default rest, empty note; clears `lastLogged` if it pointed at it. `addExercises` appends entries with default
-   sets and default rest; into an empty workout it sets `currentIndex = 0`. `setRest` sets `restSeconds` (>= 0).
+   sets and default rest; into an empty workout it sets `currentIndex = 0`. `setRest` sets `restSeconds`, clamped to
+   0...`maximumRestSeconds` (3,600 s; the rest presets stop at 5:00); default rests are clamped the same way.
+   `WorkoutTemplate.estimatedMinutes` counts a rest outside that range (a template that did not come through the reducer) as the nearest bound.
 8. `toggleSuperset(exerciseID)`: in a group -> leaves it (orphan clean-up as in rule 6); otherwise joins the NEXT exercise
    (no next -> no-op): both get the next exercise's group, or the first unused letter of A, B, C, D, E, Z.
 9. Rest: `adjustRest(seconds)`: no rest and seconds > 0 -> start `now + seconds` (total = seconds); otherwise
@@ -178,7 +183,8 @@ Presenter rules (port of `renderVals` in `Active.dc.html`):
   ("80 × 6", "8 reps", "45 s", "–" when none); `weightText` = `NumberText.kg` / "BW" / "–"; `weightEditable` only for weightReps;
   `isNext` = the first pending set of the card. Personal record: a logged, non-warm-up set of a weight-tracking exercise whose
   Epley e1RM exceeds the running baseline + 0.05, where the baseline starts at `previousBestE1RM` and rises with each logged
-  set that beats it; no PR when `previousBestE1RM == 0`. `estimated1RM` = rounded e1RM for such sets. `rirText` = "RIR n" / "RIR 4+" only
+  set that beats it; no PR when `previousBestE1RM == 0`. `estimated1RM` = rounded e1RM for such sets, as a whole number that clamps at
+  1,000,000,000 (the presenter never traps on a state the reducer did not produce); an estimate that is not finite counts as 0. `rirText` = "RIR n" / "RIR 4+" only
   on logged sets. `accessibilityLabel` is a full sentence ("Set 3, working set, 82.5 kilograms, 6 reps, logged").
 * Dock exists iff a rest exists and there is a current exercise. `remainingSeconds` = ceil of the remaining time (frozen while
   paused); finished when 0 (`remainingText` "Go", `fraction` 1); `nextSetText` = "Next · Set 4 · 82.5 kg × 6" (warm-up:
@@ -246,7 +252,8 @@ public final class StrengthStore: ObservableObject {
     public func exercise(id: String) -> Exercise?
     public func addCustomExercise(_ exercise: Exercise)
     public func saveTemplate(_ template: WorkoutTemplate)
-    public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?)   // history, bests, template.lastPerformed, persists
+    @discardableResult
+    public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error>   // history, bests, template.lastPerformed, persists
     public func history(for exerciseID: String, now: Date) -> ExerciseHistory
     public func reload()
 }
@@ -277,6 +284,13 @@ when `origin == .watch`); `receive(envelope)` replaces local state and NEVER cal
 `workoutStarted(state)` when an envelope for a different workout id arrives, and `workoutEnded(previousState, completed: nil)` when the
 envelope carries no state. Authority role persists after every change; `receive(command)` ends in `send(action, origin: command.origin)`.
 `finish` also ends a mirror locally.
+
+`record` always updates the store in memory; its result is `.failure(error)` when the workout could not be written to the history file (the
+only place its sets are kept: the personal bests are re-read from the history, so a failed write of the bests or the template is only
+reported through `StrengthDataModel.lastPersistenceError`). `finish` then still returns the completed workout and ends the workout, but it
+does NOT delete `active-workout.json`: that file stays the last saved copy of the sets and the engine's `lastPersistenceError` carries the
+error. The next launch restores the workout (`restoreFromDisk`); finishing it again records it by its id, so it is never saved twice. Starting
+another workout replaces the kept file; the history is rewritten in full by the next successful save. A normal finish deletes the file.
 
 `SampleData`: `public enum SampleData { static func templates() -> [WorkoutTemplate]  // "Upper A · Push" (the 6 exercises of the design with
 the same sets), "Lower A · Quads", "Upper B · Pull"; static func history(now: Date) -> [CompletedWorkout]; static func personalBests(now:) }`

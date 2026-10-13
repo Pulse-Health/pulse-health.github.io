@@ -147,7 +147,7 @@ private extension WorkoutPresenter {
                 isDone: set.isDone,
                 isNext: isNext,
                 isPersonalRecord: info.isRecord,
-                estimated1RM: info.isRecord ? Int(info.e1RM.rounded()) : nil,
+                estimated1RM: info.isRecord ? PresenterSupport.wholeKilograms(info.e1RM) : nil,
                 rir: set.rir,
                 rirText: set.isDone ? set.rir.map(PresenterSupport.rirText) : nil,
                 accessibilityLabel: PresenterSupport.accessibilityLabel(setIndex: index, set: set, exercise: exercise)
@@ -298,6 +298,15 @@ enum PresenterSupport {
         return volume
     }
 
+    /// Largest whole-kilogram value shown for an estimate; anything above (only possible for a state the reducer did not produce) clamps.
+    private static let wholeKilogramLimit = 1_000_000_000.0
+
+    /// A kilogram value rounded to a whole number for display, never trapping: non-finite gives 0, huge values clamp.
+    static func wholeKilograms(_ value: Double) -> Int {
+        guard value.isFinite else { return 0 }
+        return Int(max(-wholeKilogramLimit, min(value.rounded(), wholeKilogramLimit)))
+    }
+
     // MARK: Personal records
 
     /// Per-set analysis in set order plus the final running baseline (previous best raised by the logged sets).
@@ -312,9 +321,11 @@ enum PresenterSupport {
         result.reserveCapacity(entry.sets.count)
 
         for set in entry.sets {
-            let e1RM = exercise.tracksWeight && set.type.countsTowardVolume
+            var e1RM = exercise.tracksWeight && set.type.countsTowardVolume
                 ? Estimated1RM.epley(weightKg: set.weightKg, reps: set.reps)
                 : 0
+            // A weight so large that the estimate overflows (a state not produced by the reducer) is not a usable estimate.
+            if !e1RM.isFinite { e1RM = 0 }
             let isRecord = set.isDone && hasHistory && e1RM > baseline + recordMargin
             if set.isDone && e1RM > baseline { baseline = e1RM }
             result.append(SetAnalysis(e1RM: e1RM, isRecord: isRecord))

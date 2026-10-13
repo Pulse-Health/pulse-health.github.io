@@ -128,7 +128,7 @@ private final class StoreDataAdapter: WorkoutDataProviding {
         store.templates.first { $0.id == id }
     }
 
-    func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) {
+    func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error> {
         store.record(completed, updateTemplate: updateTemplate)
     }
 }

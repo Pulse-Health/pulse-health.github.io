@@ -5,6 +5,12 @@ public enum WorkoutReducer {
     /// How long a removed exercise or deleted set can be restored with `.undo` (6 seconds).
     public static var undoWindow: TimeInterval { 6 }
 
+    /// Heaviest weight a set can hold (1,000,000 kg). Larger values are clamped to it; the keypad's six characters stay below it.
+    public static let maximumWeightKg: Double = 1_000_000
+
+    /// Longest rest an exercise can be given (one hour). Larger values are clamped to it; the rest presets stop at 5:00.
+    public static let maximumRestSeconds: Int = 3_600
+
     /// Applies `action` to `state`; `revision` grows by one when the state changed (never for heart-rate samples).
     public static func reduce(_ state: inout WorkoutState, _ action: WorkoutAction, now: Date) {
         let before = state
@@ -90,7 +96,7 @@ private extension WorkoutReducer {
             toggleSuperset(&s, exerciseID: exerciseID)
         case let .setRest(exerciseID, seconds):
             guard let k = s.exerciseIndex(id: exerciseID) else { return }
-            s.exercises[k].restSeconds = max(0, seconds)
+            s.exercises[k].restSeconds = clampRest(seconds)
 
         case let .adjustRest(seconds):
             adjustRest(&s, seconds: seconds, now: now)
@@ -139,11 +145,14 @@ private extension WorkoutReducer {
 
     static func clampRIR(_ value: Int) -> Int { max(0, min(value, 4)) }
 
-    /// Weight clamped to >= 0 and rounded to 0.01 kg; nil for NaN or values that cannot be represented.
+    static func clampRest(_ seconds: Int) -> Int { max(0, min(seconds, maximumRestSeconds)) }
+
+    /// Weight clamped to 0...`maximumWeightKg` and rounded to 0.01 kg; nil (ignored) for NaN and +infinity.
     static func roundedWeight(_ kg: Double) -> Double? {
         guard !kg.isNaN else { return nil }
-        let rounded = (max(0, kg) * 100).rounded(.toNearestOrAwayFromZero) / 100
-        return rounded.isFinite ? rounded : nil
+        let lowerBounded = max(0, kg)
+        guard lowerBounded.isFinite else { return nil }
+        return (min(lowerBounded, maximumWeightKg) * 100).rounded(.toNearestOrAwayFromZero) / 100
     }
 
     static func saturatingSum(_ a: Int, _ b: Int) -> Int {
@@ -167,7 +176,7 @@ private extension WorkoutReducer {
             id: id,
             exercise: exercise,
             sets: defaultSets(for: exercise),
-            restSeconds: max(0, exercise.defaults.restSeconds),
+            restSeconds: clampRest(exercise.defaults.restSeconds),
             supersetGroup: group,
             note: "",
             templateEntryID: templateEntryID
