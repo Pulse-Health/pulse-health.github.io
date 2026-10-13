@@ -43,8 +43,11 @@ final class PersistenceTests: XCTestCase {
 
     func testAppGroupIsOnlyAvailableOnApplePlatforms() {
         #if canImport(Darwin)
-        // Without the entitlement the container does not exist, so the result is nil on a plain test host too.
-        XCTAssertNil(FileStrengthPersistence.appGroup(identifier: "group.invalid.\(UUID().uuidString)"))
+        // macOS hands out a group container path even without the entitlement, iOS returns nil: both are valid.
+        // When a container exists, the persistence lives in its "PulseStrength" subdirectory.
+        if let persistence = FileStrengthPersistence.appGroup(identifier: "group.invalid.\(UUID().uuidString)") {
+            XCTAssertEqual(persistence.directory.lastPathComponent, "PulseStrength")
+        }
         #else
         XCTAssertNil(FileStrengthPersistence.appGroup(identifier: StrengthConfig.appGroupID))
         #endif

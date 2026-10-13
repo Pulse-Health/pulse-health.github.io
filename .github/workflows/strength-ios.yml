@@ -131,14 +131,10 @@ jobs:
           xcodebuild -list -project PulseStrength.xcodeproj | tee "$LOG_DIR/xcodebuild-list.log"
           cp PulseStrength.xcodeproj/project.pbxproj "$LOG_DIR/project.pbxproj"
 
-      - name: Test the package on macOS
-        id: package-tests
-        working-directory: ios/Packages/PulseStrengthKit
-        run: |
-          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/swift-test-macos.log" swift test
-
+      # The compile steps run first and never stop the job, so a single run reports every failure; the final gate fails the job.
       - name: Build the iOS app (iOS Simulator; includes the widget extension and the Watch app)
         id: ios-build
+        continue-on-error: true
         working-directory: ios
         run: |
           "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodebuild-ios.log" \
@@ -148,12 +144,31 @@ jobs:
 
       - name: Build the Watch app (watchOS Simulator)
         id: watch-build
+        continue-on-error: true
         working-directory: ios
         run: |
           "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodebuild-watch.log" \
             xcodebuild -project PulseStrength.xcodeproj -scheme PulseStrengthWatch \
             -destination 'generic/platform=watchOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build
+
+      - name: Test the package on macOS
+        id: package-tests
+        continue-on-error: true
+        working-directory: ios/Packages/PulseStrengthKit
+        run: |
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/swift-test-macos.log" swift test
+
+      # Compact error digest at the very end of the log (easy to read from the tail of the job log).
+      - name: Error digest
+        if: always()
+        run: |
+          for f in xcodebuild-ios xcodebuild-watch swift-test-macos; do
+            log="$LOG_DIR/$f.log"
+            [ -f "$log" ] || continue
+            echo "===== $f: unique errors ====="
+            grep -E "error:" "$log" | sed -E 's#^/Users/runner/work/[^/]+/[^/]+/##' | sort -u | head -n 120 || true
+          done
 
       - name: Job summary
         if: always()
@@ -164,9 +179,9 @@ jobs:
             echo "| Step | Result |"
             echo "| --- | --- |"
             echo "| xcodegen generate | ${{ steps.generate.outcome }} |"
-            echo "| swift test (macOS) | ${{ steps.package-tests.outcome }} |"
             echo "| xcodebuild PulseStrength (iOS Simulator) | ${{ steps.ios-build.outcome }} |"
             echo "| xcodebuild PulseStrengthWatch (watchOS Simulator) | ${{ steps.watch-build.outcome }} |"
+            echo "| swift test (macOS) | ${{ steps.package-tests.outcome }} |"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload logs
@@ -177,3 +192,12 @@ jobs:
           path: build-logs/
           if-no-files-found: ignore
           retention-days: 14
+
+      - name: Gate
+        if: always()
+        run: |
+          status=0
+          for outcome in "${{ steps.generate.outcome }}" "${{ steps.ios-build.outcome }}" "${{ steps.watch-build.outcome }}" "${{ steps.package-tests.outcome }}"; do
+            if [ "$outcome" != "success" ]; then status=1; fi
+          done
+          exit $status
