@@ -60,7 +60,7 @@
         <h1>Datenschutzerklärung</h1>
         
         <div class="meta">
-            <strong>Gültig ab:</strong> 23. Juni 2026 &middot; <strong>Zuletzt aktualisiert:</strong> 2. September 2026<br>
+            <strong>Gültig ab:</strong> 23. Juni 2026 &middot; <strong>Zuletzt aktualisiert:</strong> 13. Oktober 2026<br>
             <strong>Sprache:</strong> Deutsch | <a href="privacy-policy.html">English</a><br>
             <strong>Siehe auch:</strong> <a href="agb.html">AGB</a> · <a href="impressum.html">Impressum</a>
         </div>
@@ -126,8 +126,26 @@
             <tr>
                 <td>KI-Coaching-Anfragen (inkl. Gesundheitsmetriken)</td>
                 <td>Ihre Abfragen</td>
-                <td>Eden AI (🇫🇷 FR) &rarr; Nebius (🇳🇱 NL) — EU-intern</td>
+                <td>EU-gehostete KI-Modelle (Mistral AI 🇫🇷 FR, Nebius 🇳🇱 NL) über Eden AI (🇫🇷 FR) — EU-intern</td>
                 <td>Ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO)</td>
+            </tr>
+            <tr>
+                <td>KI-erstellte Trainings- &amp; Ernährungspläne (Premium)</td>
+                <td>Ihre Plan-Einstellungen (Ziel, Niveau, Zeitplan, Ausrüstung, zu schonende Körperbereiche, optionaler Kurztext)</td>
+                <td>Anfrage: EU-gehostete KI-Modelle über Eden AI (EU-intern). Der erstellte Plan bleibt auf Ihrem Gerät</td>
+                <td>Ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO); EU-interne Pipeline, keine Drittlandübermittlung</td>
+            </tr>
+            <tr>
+                <td>KI-Nutzungs- &amp; Fehlerprotokolle</td>
+                <td>Automatisch erzeugt (Modell, Token-Zahlen, Fehlerart &mdash; nie Ihre Nachrichten)</td>
+                <td>Supabase (🇪🇺 EU)</td>
+                <td>Art. 6 Abs. 1 lit. b und f DSGVO (Bereitstellung des Dienstes, Kostenkontrolle, Zuverlässigkeit)</td>
+            </tr>
+            <tr>
+                <td>Anonyme Fragenstichprobe</td>
+                <td>Coaching-Fragen, ohne Kontoverknüpfung gespeichert</td>
+                <td>Supabase (🇪🇺 EU)</td>
+                <td>Nicht mit Ihrem Konto verknüpft &mdash; siehe Abschnitt 5a</td>
             </tr>
             <tr>
                 <td>Lebensmittel-Suchbegriffe &amp; Barcode-Nummern</td>
@@ -204,12 +222,40 @@
                 deinstallieren.</li>
         </ul>
 
+        <h2>4c. KI-erstellte Trainings- &amp; Ernährungspläne (Premium, optional)</h2>
+        <p>
+            Als Premium-Funktion kann Pulse mithilfe von KI auf Grundlage Ihrer Einstellungen einen
+            Trainingsplan, eine Trainingsvorlage oder einen Ernährungsplan für Sie erstellen.
+        </p>
+        <ul>
+            <li><strong>Opt-in:</strong> Ein Plan wird nur erstellt, wenn Sie ihn anfordern, und nur,
+                solange KI-Coaching aktiviert ist &mdash; es gelten dieselbe Einwilligung und derselbe
+                Schalter wie für den KI-Coach (Abschnitt 7).</li>
+            <li><strong>Was an den KI-Anbieter gesendet wird:</strong> die von Ihnen gewählten
+                Einstellungen &mdash; Ziel, Erfahrungsniveau, Trainingstage pro Woche und Dauer,
+                Ausrüstung, Sportart, Körperbereiche, die nicht belastet werden sollen (z.&nbsp;B. Knie
+                oder unterer Rücken), und ob Sie mindestens 18 Jahre alt sind &mdash; sowie ggf. der Plan,
+                den Sie gerade überarbeiten, und ein von Ihnen selbst ergänzter Kurztext (bei
+                Ernährungsplänen: Ernährungspräferenzen, Kalorien- und Proteinziel, Mahlzeiten pro Tag).
+                Ihre E-Mail-Adresse und Roh-Daten aus Apple Health erhält der KI-Anbieter nicht.</li>
+            <li><strong>Verarbeitung:</strong> in derselben EU-internen Pipeline wie das KI-Coaching
+                (Abschnitt 7) &mdash; keine Drittlandübermittlung.</li>
+            <li><strong>Speicherort:</strong> Der erstellte Plan wird auf Ihrem Gerät gespeichert. Pulses
+                eigener Katalog fertiger Plan-Vorlagen liegt auf Supabase (EU) und enthält keine
+                personenbezogenen Daten.</li>
+            <li><strong>Rechtsgrundlage:</strong> ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO),
+                da Plan-Einstellungen wie zu schonende Körperbereiche Gesundheitsinformationen offenbaren
+                können.</li>
+            <li><strong>Keine medizinische Beratung:</strong> Pläne sind allgemeine Vorschläge; siehe
+                §&nbsp;7 und §&nbsp;8 der <a href="agb.html">AGB</a>.</li>
+        </ul>
+
         <h2>5. Supabase Datenspeicher</h2>
         <p>
             <strong>Speichert:</strong> Ihr Benutzerprofil und Ihre Trainingshistorie. Bei Nutzung des KI-Coachings speichert Supabase zusätzlich Ihre <strong>Chat-Nachrichten, die auf Ihrem Gerät berechneten Gesundheitsanalyse-Zusammenfassungen sowie die im Onboarding eingegebenen Gesundheitsangaben (z. B. Erkrankungen und körperliche Einschränkungen)</strong>. Dies sind besondere Kategorien von Gesundheitsdaten, die auf Grundlage Ihrer ausdrücklichen Einwilligung (Art. 9 Abs. 2 lit. a DSGVO) verarbeitet werden. <strong>Ernährungslogs werden ausschließlich auf Ihrem Gerät gespeichert und nicht zu Supabase hochgeladen.</strong>
         </p>
         <p>
-            <strong>Speicherort:</strong> 🇪🇺 Europäische Union (EU-Server)
+            <strong>Speicherort:</strong> 🇪🇺 Europäische Union (EU-Server, Frankfurt, Deutschland)
         </p>
         <p>
             <strong>Datenschutz:</strong> Ihre Daten unterliegen vollständig der DSGVO. 
@@ -222,6 +268,32 @@
             <strong>Aufbewahrung:</strong> Ihre Daten werden auf Supabase gespeichert, 
             bis Sie Ihr Konto löschen. Bei Kontolöschung werden alle Daten gelöscht.
         </p>
+
+        <h2>5a. Betriebsprotokolle &amp; anonyme Statistiken</h2>
+        <p>
+            Damit die KI-Funktionen zuverlässig, im Kostenrahmen und missbrauchssicher laufen, erfasst
+            das Backend begrenzte technische Informationen. Nichts davon enthält den Text Ihrer
+            Nachrichten, Gesundheitswerte oder Planinhalte.
+        </p>
+        <ul>
+            <li><strong>KI-Nutzungsprotokoll (mit Ihrem Konto verknüpft):</strong> Zeitpunkt, Funktion,
+                verwendetes KI-Modell, ob der Reasoning-Modus genutzt wurde, und Token-Zahlen.
+                Rechtsgrundlage: Art. 6 Abs. 1 lit. b und f DSGVO (Bereitstellung des Dienstes,
+                Kostenkontrolle, Missbrauchsabwehr). Wird mit Ihrem Konto gelöscht.</li>
+            <li><strong>KI-Fehlerprotokoll (mit Ihrem Konto verknüpft):</strong> Zeitpunkt, Funktion,
+                Modell, App-Version, Fehlerart, HTTP-Status, eine gekürzte technische Fehlermeldung und
+                die Dauer fehlgeschlagener KI-Anfragen &mdash; nie etwas, das Sie eingegeben haben.
+                Rechtsgrundlage: Art. 6 Abs. 1 lit. b und f DSGVO (Funktionsfähigkeit des Dienstes).
+                Wird mit Ihrem Konto gelöscht.</li>
+            <li><strong>Anonyme Fragenstichprobe (nicht mit Ihnen verknüpft):</strong> Um zu verstehen,
+                was den Coach gefragt wird, wird eine Stichprobe von Coaching-Fragen gespeichert &mdash;
+                mit Datum, Sprache und den vom Coach genutzten Werkzeugen, aber ohne Nutzer-ID,
+                Sitzungs-ID und Uhrzeit. Erinnerungsauszüge und Profildaten sind nicht enthalten; aus der
+                App ist kein Zugriff darauf möglich. Da diese Einträge keinem Konto zugeordnet sind,
+                können sie Ihnen nicht zugeordnet und auf Anfrage nicht gelöscht werden.</li>
+            <li><strong>Anonyme Plan-Statistik:</strong> tägliche Zähler zu Plan-Ereignissen (z.&nbsp;B.
+                wie viele Pläne begonnen oder abgeschlossen wurden) ohne jeden Personenbezug.</li>
+        </ul>
 
         <h2>6. Clerk Authentifizierung</h2>
         <p>
@@ -248,10 +320,11 @@
             <strong>Datenschutzvereinbarung:</strong> Ja, mit Standardvertragsklauseln (SCC) vorhanden.
         </p>
 
-        <h2>7. KI-Coaching (Eden AI &rarr; Nebius, EU-intern)</h2>
+        <h2>7. KI-Coaching &amp; KI-Funktionen (EU-gehostete Modelle, EU-intern)</h2>
         <p>
             <strong>Rechtsgrundlage:</strong> KI-Coaching setzt Ihre ausdrückliche Einwilligung in die
-            Verarbeitung Ihrer Gesundheitsdaten für KI-Coaching-Zwecke voraus
+            Verarbeitung Ihrer Gesundheitsdaten für KI-Coaching-Zwecke, einschließlich
+            KI-erstellter Trainings- und Ernährungspläne (Abschnitt 4c), voraus
             (Art. 9 Abs. 2 lit. a DSGVO). Diese Einwilligung wird im Onboarding eingeholt und ist
             Voraussetzung dafür, dass KI-Coaching zur Verfügung steht. Eine gesonderte Einwilligung in eine
             Drittlandübermittlung ist nicht erforderlich, da die gesamte KI-Pipeline innerhalb der EU
@@ -261,12 +334,18 @@
             bleibt unberührt.
         </p>
         <p>
-            <strong>Verarbeitungskette (Pipeline):</strong> Coaching-Anfragen laufen von einer
-            <strong>Supabase Edge Function (EU)</strong> an <strong>Eden AI</strong>
-            (Eden AI SAS, Frankreich, EU), die sie an das zugrunde liegende Sprachmodell
-            <strong>Nebius/Qwen3-235B</strong> (Nebius Group N.V., Niederlande, EU) weiterleitet. Die
-            gesamte KI-Pipeline wird innerhalb der EU betrieben &mdash; für das Coaching findet
-            <strong>keine Drittlandübermittlung</strong> statt.
+            <strong>Verarbeitungskette (Pipeline):</strong> KI-Anfragen (Coaching und Planerstellung)
+            laufen von einer <strong>Supabase Edge Function (EU)</strong> über den EU-Endpunkt von
+            <strong>Eden AI</strong> (Eden AI SAS, Frankreich, EU), einem KI-API-Aggregator. Eden AI
+            leitet sie an EU-gehostete Sprachmodelle weiter: derzeit Modelle von
+            <strong>Mistral AI</strong> (Mistral AI SAS, Frankreich, EU) sowie von <strong>Nebius</strong>
+            gehostete Modelle (Nebius Group N.V., Niederlande, EU). Für diese Funktionen werden nur
+            Modelle aus unserer Liste EU-gehosteter Modelle verwendet. Wir können Modelle und Anbieter
+            wechseln und uns auch direkt mit der EU-Schnittstelle eines Anbieters verbinden, statt über
+            Eden AI zu gehen; in jedem Fall erfolgt die Verarbeitung für diese Funktionen auf Servern in
+            der EU, und diese Seite wird entsprechend aktualisiert. Die gesamte Pipeline wird innerhalb
+            der EU betrieben &mdash; für Coaching und Planerstellung findet
+            <strong>keine Drittlandübermittlung</strong> statt. OpenAI wird nicht mehr genutzt.
         </p>
         <p>
             <strong>Pro Coaching-Anfrage an den KI-Anbieter übermittelte Daten:</strong>
@@ -285,6 +364,9 @@
                 Coaching-Kontextnotizen aus der App (ebenfalls mit pseudonymisiertem Namen)</li>
             <li><strong>Gesundheitsanalyse-Zusammenfassungen</strong> — auf Ihrem Gerät berechnete
                 Scores und Trendanalysen (keine Roh-Sensordaten wie einzelne HRV-Messwerte)</li>
+            <li>Ihr <strong>Coaching-Profil aus dem Onboarding</strong> — Hauptziel, Erfahrungsniveau,
+                bevorzugter Coaching-Stil und, falls Sie sie angegeben haben, <strong>Erkrankungen und
+                körperliche Einschränkungen</strong> (Freitext, jeweils auf 500 Zeichen begrenzt)</li>
         </ul>
         <p>
             <strong>Datensicherungsmaßnahmen:</strong>
@@ -298,8 +380,8 @@
                 Herzfrequenzmessungen) oder Ihren vollständigen Chat-Verlauf.</li>
             <li><strong>Verschlüsselung in Transit:</strong> Alle Daten werden über TLS 1.3 verschlüsselt übermittelt.</li>
             <li><strong>EU-interne Pipeline:</strong> Die Anfragen laufen über eine Supabase Edge Function
-                in der EU, die als Vermittlungsschicht zu Eden AI (Frankreich) und Nebius (Niederlande)
-                fungiert.</li>
+                in der EU, die als Vermittlungsschicht zu Eden AI (Frankreich) und den EU-gehosteten
+                Modellen (Mistral AI, Frankreich; Nebius, Niederlande) fungiert.</li>
         </ul>
         <p>
             <strong>Was nicht an den KI-Anbieter gesendet wird:</strong> Ihre E-Mail-Adresse,
@@ -308,23 +390,25 @@
             Coaching-Historie).
         </p>
         <p>
-            <strong>Speicherort:</strong> 🇪🇺 Europäische Union (Eden AI Frankreich; Nebius Niederlande)
+            <strong>Speicherort:</strong> 🇪🇺 Europäische Union (Eden AI und Mistral AI Frankreich; Nebius Niederlande)
         </p>
         <p>
             <strong>Aufbewahrung:</strong> Die Aufbewahrung der Anfragedaten richtet sich nach den
-            Datenverarbeitungsbedingungen von Eden AI bzw. Nebius. Wir finalisieren derzeit den
+            Datenverarbeitungsbedingungen von Eden AI, Mistral AI bzw. Nebius. Wir finalisieren derzeit den
             Auftragsverarbeitungsvertrag; diese Seite wird aktualisiert, sobald die Bedingungen bestätigt
             sind.
         </p>
         <p>
             <strong>Datenschutz &amp; Transfer-Mechanismus:</strong> Die Pipeline ist EU-intern, sodass
             für das Coaching keine Drittlandübermittlung entsteht. Ein Auftragsverarbeitungsvertrag mit
-            Eden AI (Art. 28 DSGVO) sowie eine Due-Diligence-Prüfung von Nebius werden vor einem breiten
-            Rollout finalisiert (<strong>Eden AI DPA + Nebius-Prüfung ausstehend</strong>).
+            Eden AI (Art. 28 DSGVO) sowie Due-Diligence-Prüfungen von Mistral AI und Nebius werden vor
+            einem breiten Rollout finalisiert
+            (<strong>Eden AI AVV + Prüfung von Mistral AI / Nebius ausstehend</strong>).
         </p>
         <p>
             <strong>Opt-out:</strong> Sie können KI Coaching in den App-Einstellungen jederzeit deaktivieren.
-            Alle Fitness-, Ernährungs- und Schlaf-Funktionen arbeiten dann offline.
+            Das Tracking von Fitness, Ernährung und Schlaf funktioniert dann weiterhin; Funktionen, die
+            KI nutzen (der Coaching-Chat und KI-erstellte Pläne), stehen dann nicht zur Verfügung.
         </p>
 
         <h2>8. Lebensmitteldatenbanken (Ernährungsfunktion)</h2>
@@ -386,7 +470,7 @@
             <tr>
                 <td><strong>Supabase</strong></td>
                 <td>Auftragsverarbeiter (Art. 28)</td>
-                <td>🇪🇺 EU (Irland)</td>
+                <td>🇪🇺 EU (Frankfurt, Deutschland)</td>
                 <td>Speicherung von Benutzerprofil, Trainings-, Coaching-Daten (Ernährungslogs bleiben auf dem Gerät)</td>
                 <td>✅ AVV unterzeichnet</td>
                 <td>N/A (EU)</td>
@@ -411,17 +495,33 @@
                 <td><strong>OpenAI</strong></td>
                 <td>Auftragsverarbeiter (KI-Coaching) — nicht mehr genutzt / Legacy</td>
                 <td>🇺🇸 USA</td>
-                <td>Entfernt: KI-Coaching nutzt OpenAI nicht mehr (EU-intern über Eden AI &rarr; Nebius)</td>
+                <td>Entfernt: KI-Coaching nutzt OpenAI nicht mehr (EU-intern über Eden AI mit EU-gehosteten Modellen)</td>
                 <td>✅ AVV unterzeichnet</td>
                 <td>SCC</td>
             </tr>
             <tr>
-                <td><strong>Eden AI</strong> (Modell: Nebius/Qwen3-235B)</td>
+                <td><strong>Eden AI</strong></td>
                 <td>Auftragsverarbeiter (KI-Aggregator)</td>
-                <td>🇫🇷 Frankreich (EU); Modell Nebius/Qwen3-235B 🇳🇱 Niederlande (EU)</td>
-                <td>Leitet KI-Coaching-Anfragen an das zugrunde liegende Modell Nebius/Qwen3-235B (Nebius Group N.V., Niederlande, EU) weiter</td>
-                <td>⏳ Eden AI DPA + Nebius-Prüfung ausstehend</td>
-                <td>EU-intern (Eden FR &rarr; Nebius NL)</td>
+                <td>🇫🇷 Frankreich (EU)</td>
+                <td>Leitet KI-Coaching- und Planerstellungs-Anfragen über seinen EU-Endpunkt an EU-gehostete Modelle weiter</td>
+                <td>⏳ Eden AI AVV ausstehend</td>
+                <td>EU-intern</td>
+            </tr>
+            <tr>
+                <td><strong>Mistral AI</strong></td>
+                <td>Auftragsverarbeiter (Sprachmodelle)</td>
+                <td>🇫🇷 Frankreich (EU)</td>
+                <td>Sprachmodelle für KI-Coaching und Planerstellung (erreicht über Eden AI oder direkt)</td>
+                <td>⏳ AVV / Prüfung ausstehend</td>
+                <td>EU-intern</td>
+            </tr>
+            <tr>
+                <td><strong>Nebius</strong></td>
+                <td>Auftragsverarbeiter (Modell-Hosting)</td>
+                <td>🇳🇱 Niederlande (EU)</td>
+                <td>Hostet Sprachmodelle für KI-Coaching und Planerstellung (erreicht über Eden AI oder direkt)</td>
+                <td>⏳ Prüfung ausstehend</td>
+                <td>EU-intern</td>
             </tr>
             <tr>
                 <td><strong>USDA FoodData Central</strong></td>
@@ -445,7 +545,7 @@
 
         <p><strong>Rollbar:</strong> Rollbar bietet keine EU-Datenresidenz an. Diese Übermittlung stützt sich daher auf Standardvertragsklauseln sowie Ihre ausdrückliche, optionale Einwilligung (Art. 6 Abs. 1 lit. a und Art. 49 Abs. 1 lit. a DSGVO) — Sie können sie jederzeit unter Profil → Datenschutz &amp; Einwilligung aktivieren oder deaktivieren. Absturzberichte enthalten ausschließlich technische Daten: Unsere App entfernt Gesundheits-, Coaching- und Ernährungsdaten gezielt, bevor überhaupt etwas an Rollbar gesendet wird, und Berichte sind standardmäßig nicht mit Ihrem Konto verknüpft.</p>
 
-        <p><strong>Auftragsverarbeitungsverträge:</strong> Alle Auftragsverarbeiter haben Auftragsverarbeitungsverträge (Art. 28 DSGVO) mit Standard Contractual Clauses (SCC) wo erforderlich unterzeichnet. Details sind auf Anfrage erhältlich.</p>
+        <p><strong>Auftragsverarbeitungsverträge:</strong> Mit den mit ✅ gekennzeichneten Auftragsverarbeitern bestehen unterzeichnete Auftragsverarbeitungsverträge (Art. 28 DSGVO), soweit erforderlich mit Standardvertragsklauseln (SCC); die mit ⏳ gekennzeichneten werden derzeit finalisiert. Details sind auf Anfrage erhältlich.</p>
 
         <h2>10. Ihre Rechte nach DSGVO</h2>
         <p>Sie haben folgende Rechte:</p>
@@ -504,7 +604,7 @@
 
         <hr style="margin: 40px 0;">
         <p style="text-align: center; color: #999; font-size: 12px;">
-            Letzte Aktualisierung: 23. Juni 2026<br>
+            Letzte Aktualisierung: 13. Oktober 2026<br>
             Version 1.0
         </p>
     </div>
