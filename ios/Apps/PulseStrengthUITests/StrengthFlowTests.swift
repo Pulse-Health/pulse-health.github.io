@@ -17,6 +17,13 @@
 // cell and the check circle cannot be found by label. They are tapped at fixed offsets inside the row, taken from
 // the layout in SetRowView (10 pt inset, 36 pt badge, flexible info column, 68 pt weight, 60 pt reps, 44 pt check;
 // 6 pt gaps): see RowZone.
+//
+// Screens that a full-screen cover hides stay in the accessibility tree, so a label can exist twice: the hub's
+// toolbar button "More" (identifier "hub-more") sits behind the active workout, whose header button has the same label
+// (identifier "active-more"). The first CI run tapped the hub's copy ("Failed to scroll to visible"), which makes
+// XCTest end the whole test. The flow now (1) finds the header's button by its identifier, (2) lets UIDriver.find prefer
+// a match that can be hit, and (3) gives every step a way back: requireActive() closes stray overlays, reopens the
+// workout from the hub, or starts a new one; ensureHub() leaves the summary or restarts the app.
 
 import XCTest
 
@@ -54,11 +61,25 @@ private enum RowFilter {
 
 @MainActor
 final class StrengthFlow: UIDriver {
-    /// True while the active-workout screen is believed to be showing; later steps skip themselves otherwise.
+    /// True while the active-workout screen is believed to be showing. A step that needs it checks, and when it is
+    /// gone brings it back (reopen from the hub, else a new workout) before it gives up and skips itself.
     private var activeWorkoutVisible = false
+    /// How often a new workout had to be started because the active screen was lost (at most 2 per run).
+    private var rebuilds = 0
+    /// True once the running workout differs from its template (exercises were added), which the 'Update template?'
+    /// alert needs.
+    private var templateDiffMade = false
+    /// What a rebuild starts: the template (phases 1 to 3) or an empty workout (phase 4).
+    private var rebuildStartsEmpty = false
+
+    /// The active header's More button. The hub's toolbar button has the same label and stays in the accessibility
+    /// tree behind the full-screen cover, hence the identifiers (Components/ActiveHeaderView.swift and
+    /// Screens/StrengthHubView.swift); the label is the fallback.
+    private static let activeMore: [Target] = [.button("active-more"), .button("More")]
 
     override func appDidRestart() {
         activeWorkoutVisible = false
+        templateDiffMade = false
     }
 
     func run() {
@@ -86,13 +107,155 @@ final class StrengthFlow: UIDriver {
         output.attachLog()
     }
 
-    /// Skips the running step when the active-workout screen is not available.
-    private func requireActive(_ what: String) -> Bool {
+    // MARK: Recovery
+
+    /// Makes sure the active-workout screen is showing before a step that needs it, and returns false (the step then
+    /// skips itself) only when it could not be brought back.
+    ///   1. Stray dialogs, alerts, sheets and the keyboard of an earlier failed step are closed (not with
+    ///      `keepOverlays`, for the steps that continue in a sheet the previous step opened on purpose).
+    ///   2. Lost screen: reopen it from the hub (the in-progress bar, or the hub's Resume button).
+    ///   3. Still lost: start a new workout (`rebuildActiveWorkout`).
+    private func requireActive(_ what: String, keepOverlays: Bool = false) -> Bool {
         if activeWorkoutVisible {
+            if !keepOverlays && overlayShowing() {
+                note("closing a dialog or sheet that was still open before '" + what + "'")
+                recoverOverlays()
+            }
+            if exists(.button("Minimise workout")) {
+                return true
+            }
+            note("the active workout screen is not showing before '" + what + "'; trying to bring it back")
+            activeWorkoutVisible = false
+        }
+        if reopenActiveWorkout() {
             return true
         }
-        skip(what + ": the active workout screen is not available (an earlier step failed)")
+        if rebuildActiveWorkout() {
+            return true
+        }
+        skip(what + ": the active workout screen is not available (an earlier step failed and it could not be restored)")
         return false
+    }
+
+    /// Opens the running workout again from the hub: the in-progress bar, else the hub's "Resume Workout" button.
+    private func reopenActiveWorkout() -> Bool {
+        let openers: [Target] = [.button("Resume workout in progress"), .button("Resume Workout")]
+        for opener in openers where isReachable(opener) {
+            tap(opener, timeout: 3, required: false)
+            if waitFor(.button("Minimise workout"), timeout: 8) != nil {
+                activeWorkoutVisible = true
+                note("brought the active workout screen back with '" + opener.label + "'")
+                return true
+            }
+        }
+        return false
+    }
+
+    /// Last resort: launches the app again (the UI-test mode starts from an empty store, so the earlier workout is
+    /// gone) and starts the template, or an empty workout in phase 4. At most twice per run.
+    private func rebuildActiveWorkout() -> Bool {
+        if rebuilds >= 2 {
+            return false
+        }
+        rebuilds += 1
+        note("rebuilding: launching the app again and starting a new workout, because an earlier step lost the active workout screen")
+        relaunch()
+        if waitFor(.button("Start Workout"), timeout: 40) == nil {
+            fail("The hub did not appear after launching the app again to rebuild the workout")
+            return false
+        }
+        let starter: Target = rebuildStartsEmpty ? .button("Start Empty Workout", .loose) : .button("Start Workout")
+        if !tap(starter) {
+            return false
+        }
+        if waitFor(.button("Minimise workout"), timeout: 20) == nil {
+            fail("The rebuilt workout did not open: no 'Minimise workout' button within 20 s")
+            return false
+        }
+        activeWorkoutVisible = true
+        return true
+    }
+
+    /// The 'Update template?' alert only appears when the workout differs from its template. The walk adds exercises
+    /// for it; after a rebuild one exercise is added here (More > Add exercise > Back squat).
+    private func ensureTemplateDiff() {
+        if templateDiffMade || rebuildStartsEmpty {
+            return
+        }
+        note("the workout was rebuilt: adding an exercise so that it differs from its template")
+        if !openMoreMenu(expecting: "Add exercise") || !tap(.button("Add exercise")) {
+            return
+        }
+        guard waitFor(.field("Search exercises"), timeout: 10) != nil else {
+            fail("The picker did not open from the More dialog: no 'Search exercises' text field within 10 s")
+            return
+        }
+        tap(.button("Back squat"))
+        if tap(.button("Add [0-9]+ exercises?", .regex)) {
+            if !waitUntilGone(.field("Search exercises"), timeout: 8) {
+                fail("The picker is still showing 8 s after tapping its 'Add N exercises' button")
+            }
+            templateDiffMade = true
+        }
+    }
+
+    /// Opens the More dialog of the active workout from the header and waits for its `action` button ("Pause
+    /// workout", "Resume workout", "Discard workout", ...). A dialog that does not show it is closed and the button
+    /// tapped once more.
+    private func openMoreMenu(expecting action: String) -> Bool {
+        for attempt in 1...2 {
+            if !tap(anyOf: StrengthFlow.activeMore, timeout: 10, required: true) {
+                return false
+            }
+            if waitFor(.button(action), timeout: 6) != nil {
+                return true
+            }
+            if attempt == 1 {
+                note("the More dialog showed no '" + action + "' button 6 s after the tap; closing it and trying once more")
+                recoverOverlays()
+            }
+        }
+        fail("The More dialog did not open or offers no '" + action + "' button (the header's More button was tapped twice)")
+        return false
+    }
+
+    /// True when no workout screen, summary or sheet covers the hub and its "Start Workout" button exists.
+    private func hubInFront() -> Bool {
+        if exists(.button("Minimise workout")) || exists(.element("Workout Complete")) {
+            return false
+        }
+        return exists(.button("Start Workout"))
+    }
+
+    /// Brings the Strength hub to the front before a step that starts from it: leaves the summary with Done, closes
+    /// stray overlays, minimises a workout screen, and as the last resort launches the app again.
+    private func ensureHub(_ what: String) {
+        if hubInFront() {
+            return
+        }
+        note("the hub is not in front before '" + what + "'; closing what covers it")
+        if exists(.element("Workout Complete")) {
+            tap(.button("Done"), timeout: 3, required: false)
+            _ = waitUntilGone(.element("Workout Complete"), timeout: 10)
+        }
+        if overlayShowing() {
+            recoverOverlays()
+        }
+        if hubInFront() {
+            return
+        }
+        if exists(.button("Minimise workout")) {
+            tap(.button("Minimise workout"), timeout: 3, required: false)
+            pause(1.0)
+        }
+        if hubInFront() {
+            return
+        }
+        note("launching the app again to get back to the hub")
+        relaunch()
+        if waitFor(.button("Start Workout"), timeout: 40) == nil {
+            fail("The hub did not appear after launching the app again: no 'Start Workout' button within 40 s")
+        }
     }
 
     // MARK: Phase 1: hub
@@ -109,11 +272,9 @@ final class StrengthFlow: UIDriver {
         }
 
         step("Scroll through the hub") {
-            for index in 1...3 {
-                app.swipeUp()
-                shot("hub-scrolled-" + String(index), settle: 0.9)
-            }
-            swipeScreenDown(times: 4)
+            // The hub is two pages long: the loop stops (and does not photograph the same page again) at its end.
+            let swipes = scrollPages(named: "hub-scrolled-", maxPages: 4)
+            swipeScreenDown(times: swipes)
         }
     }
 
@@ -121,6 +282,10 @@ final class StrengthFlow: UIDriver {
 
     private func startTemplateStep() {
         step("Start the 'Upper A · Push' template") {
+            if !isReachable(.button("Start Workout")) {
+                // Still scrolled down from the previous step.
+                swipeScreenDown(times: 4)
+            }
             if tap(.button("Start Workout")) {
                 if waitFor(.button("Minimise workout"), timeout: 20) != nil {
                     activeWorkoutVisible = true
@@ -232,8 +397,8 @@ final class StrengthFlow: UIDriver {
         }
 
         step("Open the form & instructions sheet") {
-            guard requireActive("open the form sheet") else { return }
-            // The options dialog is still open from the previous step.
+            // The options dialog is still open from the previous step, on purpose.
+            guard requireActive("open the form sheet", keepOverlays: true) else { return }
             if !tap(.button("Form & instructions")) {
                 return
             }
@@ -264,7 +429,13 @@ final class StrengthFlow: UIDriver {
         }
 
         step("Add-exercise picker: search 'row' and select two exercises") {
-            guard requireActive("use the exercise picker") else { return }
+            // The exercise list sheet is still open from the previous step, on purpose.
+            guard requireActive("use the exercise picker", keepOverlays: true) else { return }
+            if !exists(.button("Add Exercise", .loose)) && !exists(.field("Search exercises")) {
+                note("the exercise list sheet is not open; opening it again")
+                tap(.button("Edit", .loose), timeout: 5, required: false)
+                _ = waitFor(.button("Add Exercise", .loose), timeout: 8)
+            }
             if !tap(.button("Add Exercise", .loose)) {
                 return
             }
@@ -286,7 +457,12 @@ final class StrengthFlow: UIDriver {
         }
 
         step("Create-exercise sheet") {
-            guard requireActive("open the create-exercise sheet") else { return }
+            // The picker is still open from the previous step, on purpose.
+            guard requireActive("open the create-exercise sheet", keepOverlays: true) else { return }
+            if !exists(.field("Search exercises")) {
+                skip("create an exercise: the picker is not open (an earlier step failed)")
+                return
+            }
             if !tap(.button("Create", .prefix)) {
                 return
             }
@@ -310,11 +486,17 @@ final class StrengthFlow: UIDriver {
         }
 
         step("Add the selected exercises to the workout") {
-            guard requireActive("add the selected exercises") else { return }
+            // The picker is still open from the previous step, on purpose.
+            guard requireActive("add the selected exercises", keepOverlays: true) else { return }
+            if !exists(.field("Search exercises")) {
+                skip("add the selected exercises: the picker is not open (an earlier step failed)")
+                return
+            }
             shot("picker-with-created", settle: 0.8)
             if !tap(.button("Add [0-9]+ exercises?", .regex)) {
                 return
             }
+            templateDiffMade = true
             if !waitUntilGone(.field("Search exercises"), timeout: 8) {
                 fail("The picker is still showing 8 s after tapping its 'Add N exercises' button")
             }
@@ -417,11 +599,7 @@ final class StrengthFlow: UIDriver {
                     fail("The rest dock did not appear after logging a set: no 'Skip' button within 10 s")
                 }
             }
-            if !tap(.button("More")) {
-                return
-            }
-            guard waitFor(.button("Pause workout"), timeout: 10) != nil else {
-                fail("The More menu did not open: no 'Pause workout' button within 10 s")
+            if !openMoreMenu(expecting: "Pause workout") {
                 shot("more-menu-missing")
                 return
             }
@@ -432,11 +610,7 @@ final class StrengthFlow: UIDriver {
 
         step("Resume the workout") {
             guard requireActive("resume the workout") else { return }
-            if !tap(.button("More")) {
-                return
-            }
-            guard waitFor(.button("Resume workout"), timeout: 10) != nil else {
-                fail("The More menu offers no 'Resume workout': the pause did not take effect")
+            if !openMoreMenu(expecting: "Resume workout") {
                 shot("more-menu-not-paused")
                 return
             }
@@ -449,6 +623,7 @@ final class StrengthFlow: UIDriver {
     private func logEverythingStep() {
         step("Log every remaining set (tap each pending check)") {
             guard requireActive("log all sets") else { return }
+            ensureTemplateDiff()
             logAllPendingSets()
             shot("all-sets-logged", settle: 1.0)
         }
@@ -459,11 +634,22 @@ final class StrengthFlow: UIDriver {
     private func finishSteps() {
         step("Finish: the confirmation dialog") {
             guard requireActive("finish the workout") else { return }
-            if !tap(.button("Finish")) {
-                return
+            var opened = false
+            for attempt in 1...2 {
+                if !tap(.button("Finish")) {
+                    return
+                }
+                if waitFor(.button("Finish Workout"), timeout: attempt == 1 ? 6 : 10) != nil {
+                    opened = true
+                    break
+                }
+                if attempt == 1 {
+                    note("the finish dialog did not open 6 s after the first tap; closing what is open and trying once more")
+                    recoverOverlays()
+                }
             }
-            guard waitFor(.button("Finish Workout"), timeout: 10) != nil else {
-                fail("The finish dialog did not open: no 'Finish Workout' button within 10 s")
+            guard opened else {
+                fail("The finish dialog did not open: no 'Finish Workout' button after tapping 'Finish' twice")
                 shot("finish-dialog-missing")
                 return
             }
@@ -471,7 +657,13 @@ final class StrengthFlow: UIDriver {
         }
 
         step("Finish Workout: the 'Update template?' alert") {
-            guard requireActive("confirm the finish") else { return }
+            // The finish dialog is still open from the previous step, on purpose.
+            guard requireActive("confirm the finish", keepOverlays: true) else { return }
+            if !exists(.button("Finish Workout")) {
+                note("the finish dialog is not open; opening it again")
+                tap(.button("Finish"), timeout: 5, required: false)
+                _ = waitFor(.button("Finish Workout"), timeout: 6)
+            }
             if !tap(.button("Finish Workout")) {
                 return
             }
@@ -481,6 +673,10 @@ final class StrengthFlow: UIDriver {
             guard let which = waitForAny([templateAlert, summary], timeout: 20) else {
                 fail("After 'Finish Workout' neither the 'Update Template' alert nor the 'Workout Complete' summary appeared within 20 s")
                 shot("finish-no-result")
+                if exists(.button("Minimise workout")) {
+                    // The workout is still running: the later steps can use it (recoverOverlays closes what is open).
+                    activeWorkoutVisible = true
+                }
                 return
             }
             if which == 0 {
@@ -508,6 +704,10 @@ final class StrengthFlow: UIDriver {
             if !tap(.button("Done")) {
                 return
             }
+            // The hub's own elements stay in the accessibility tree behind the summary, so wait for the summary to go.
+            if !waitUntilGone(.element("Workout Complete"), timeout: 15) {
+                fail("The summary is still showing 15 s after tapping Done")
+            }
             if waitFor(.button("Start Workout"), timeout: 20) == nil {
                 fail("The hub did not come back after Done: no 'Start Workout' button within 20 s")
             }
@@ -516,18 +716,25 @@ final class StrengthFlow: UIDriver {
 
     private func hubAfterFinishSteps() {
         step("Hub after the workout: history updated", recoverOnFailure: false) {
+            ensureHub("show the hub after the workout")
             shot("hub-after-finish", settle: 1.2)
-            for index in 1...2 {
-                app.swipeUp()
-                shot("hub-after-finish-scrolled-" + String(index), settle: 0.9)
-            }
-            swipeScreenDown(times: 3)
+            let swipes = scrollPages(named: "hub-after-finish-scrolled-", maxPages: 3)
+            swipeScreenDown(times: swipes)
         }
     }
 
     private func exerciseDetailSteps() {
         step("Exercise library, then an exercise detail", recoverOnFailure: false) {
-            if !tap(.button("Exercise Library", .contains), scrollUp: true) {
+            ensureHub("open the exercise library")
+            // The row sits at the bottom of the hub: scroll until it exists, then until it can be hit.
+            let library = Target.button("Exercise Library", .contains)
+            var swipes = 0
+            while find(library) == nil && swipes < 6 {
+                app.swipeUp()
+                pause(0.5)
+                swipes += 1
+            }
+            if !tap(library, scrollUp: true) {
                 return
             }
             let bench = Target.button("Barbell bench press", .contains)
@@ -551,8 +758,12 @@ final class StrengthFlow: UIDriver {
             app.swipeUp()
             shot("exercise-detail-bottom", settle: 1.0)
             navigateBack()
-            if waitFor(bench, timeout: 10) == nil {
-                fail("Back from the exercise detail did not show the exercise library again")
+            if waitFor(bench, timeout: 6) == nil {
+                note("the back button did not return to the exercise library; trying the edge swipe")
+                edgeSwipeBack()
+                if waitFor(bench, timeout: 8) == nil {
+                    fail("Back from the exercise detail did not show the exercise library again")
+                }
             }
             shot("exercise-library-back", settle: 0.8)
         }
@@ -561,6 +772,9 @@ final class StrengthFlow: UIDriver {
     // MARK: Phase 4: empty workout
 
     private func emptyWorkoutSteps() {
+        // From here on a lost workout screen is rebuilt as an empty workout.
+        rebuildStartsEmpty = true
+
         step("Empty workout: start it from the hub", checkApp: false) {
             // A fresh launch makes this part independent of whatever the earlier steps left behind.
             relaunch()
@@ -607,7 +821,8 @@ final class StrengthFlow: UIDriver {
 
         step("Discard the workout") {
             guard requireActive("discard the workout") else { return }
-            if !tap(.button("More")) {
+            if !openMoreMenu(expecting: "Discard workout") {
+                shot("more-menu-missing")
                 return
             }
             if !tap(.button("Discard workout")) {
@@ -621,6 +836,10 @@ final class StrengthFlow: UIDriver {
             shot("discard-alert", settle: 0.8)
             tap(.button("Discard"))
             activeWorkoutVisible = false
+            // The hub's own elements stay in the accessibility tree behind the workout screen, so wait for it to go.
+            if !waitUntilGone(.button("Minimise workout"), timeout: 15) {
+                fail("The workout screen is still showing 15 s after tapping 'Discard'")
+            }
             if waitFor(.button("Start Workout"), timeout: 20) == nil {
                 fail("The hub did not come back after discarding: no 'Start Workout' button within 20 s")
             }
@@ -660,6 +879,10 @@ final class StrengthFlow: UIDriver {
 
     /// Taps one control of a set row at its fixed place inside the row (see the file comment).
     private func tapZone(_ zone: RowZone, of row: XCUIElement) -> Bool {
+        guard row.exists else {
+            fail("The set row vanished before it was tapped")
+            return false
+        }
         let frame = row.frame
         guard frame.width > 200 && frame.height > 20 else {
             fail("The set row '" + row.label + "' has an unexpected frame " + String(describing: frame))
@@ -722,12 +945,12 @@ final class StrengthFlow: UIDriver {
     /// Closes the rest dock (Skip, or Dismiss when the rest is over) so the set table keeps its full height.
     private func closeRestDock() {
         if let skipButton = find(.button("Skip")) {
-            press(skipButton)
+            press(skipButton, failIfGone: false)
             pause(0.3)
             return
         }
         if let dismissButton = find(.button("Dismiss")) {
-            press(dismissButton)
+            press(dismissButton, failIfGone: false)
             pause(0.3)
         }
     }
@@ -737,7 +960,7 @@ final class StrengthFlow: UIDriver {
             guard let previous = find(.button("Previous exercise")), previous.isEnabled else {
                 return
             }
-            press(previous)
+            press(previous, failIfGone: false)
             pause(0.4)
         }
     }
@@ -773,7 +996,7 @@ final class StrengthFlow: UIDriver {
                 break
             }
             if let next = find(.button("Next exercise")), next.isEnabled {
-                press(next)
+                press(next, failIfGone: false)
                 pause(0.5)
             } else {
                 wraps += 1

@@ -561,6 +561,11 @@ class UIDriver {
                 return
             }
         }
+        edgeSwipeBack()
+    }
+
+    /// The interactive-pop gesture: a drag from the left edge to 80 % of the width.
+    func edgeSwipeBack() {
         let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.5))
         let end = app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.5))
         start.press(forDuration: 0.1, thenDragTo: end)

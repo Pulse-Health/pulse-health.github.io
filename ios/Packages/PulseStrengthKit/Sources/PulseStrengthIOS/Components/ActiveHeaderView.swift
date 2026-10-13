@@ -100,6 +100,7 @@ public struct ActiveHeaderView: View {
         }
         .buttonStyle(PulsePlainButtonStyle())
         .accessibilityLabel("More")
+        .accessibilityIdentifier("active-more")
     }
 
     private var finishButton: some View {
