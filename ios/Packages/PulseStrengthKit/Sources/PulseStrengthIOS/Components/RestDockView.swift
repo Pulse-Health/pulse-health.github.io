@@ -76,13 +76,14 @@ public struct RestDockView: View {
     }
 
     /// Two stacked plates so each shadow is cast by the plate itself (not by the other shadow).
+    /// The design's plate is 97 % opaque (rgba(255,255,255,0.97)), like the in-progress bar.
     private var dockBackground: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(PulseTheme.card)
+                .fill(PulseTheme.card.opacity(0.97))
                 .shadow(color: Color.black.opacity(0.12), radius: 15, x: 0, y: 10)
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(PulseTheme.card)
+                .fill(PulseTheme.card.opacity(0.97))
                 .shadow(color: Color.black.opacity(0.06), radius: 1.5, x: 0, y: 1)
         }
     }

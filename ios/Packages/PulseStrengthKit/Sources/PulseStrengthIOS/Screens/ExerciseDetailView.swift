@@ -190,10 +190,12 @@ public struct ExerciseDetailView: View {
         }
     }
 
+    /// Value and trend come from the same window as the chart: the best estimate of the visible sessions and its gain
+    /// over the first one. Without a session in the window the all-time best is shown, without a trend.
     private func e1RMTile(history: ExerciseHistory, progress: ExerciseDetailProgress) -> some View {
         ExerciseDetailStatTile(
             title: "Est. 1RM",
-            value: ExerciseDetailFormat.e1RM(history.bestE1RM),
+            value: ExerciseDetailFormat.e1RM(progress.best ?? history.bestE1RM),
             detail: progress.trendText,
             detailColor: progress.direction == .up ? PulseTheme.green : PulseTheme.inkSecondary,
             detailWeight: .semibold,
@@ -334,6 +336,8 @@ private enum ExerciseDetailColors {
     static let greenWash = Color(light: 0x1B8448, dark: 0x30D158, lightAlpha: 0.12, darkAlpha: 0.18)
     /// Horizontal grid lines of the chart (rgba(142,142,147,0.25) in the design).
     static let gridLine = Color(light: 0x8E8E93, dark: 0x8E8E93, lightAlpha: 0.25, darkAlpha: 0.25)
+    /// Line, dots and fill of the chart: the system green #34C759 of the design (not the darker brand green).
+    static let chartGreen = PulseTheme.recoveryGood
 }
 
 // MARK: - Text formats
@@ -460,7 +464,31 @@ private struct ExerciseDetailAxis {
     }
 }
 
-/// Everything the chart card shows for one window: the points, the dates, the scale, the latest value and the trend.
+/// The time between two sessions: "5 d" / "3 wk" for the trend text, "5 days" / "3 weeks" for VoiceOver. Whole days
+/// below a week, rounded weeks from then on, never less than one.
+private struct ExerciseDetailSpan {
+    let short: String
+    let spoken: String
+
+    init(from start: Date, to end: Date) {
+        let days = max(1, Int((end.timeIntervalSince(start) / 86_400).rounded()))
+        if days < 7 {
+            self.short = String(days) + " d"
+            self.spoken = days == 1 ? "1 day" : String(days) + " days"
+        } else {
+            let weeks = max(1, Int((Double(days) / 7).rounded()))
+            self.short = String(weeks) + " wk"
+            self.spoken = weeks == 1 ? "1 week" : String(weeks) + " weeks"
+        }
+    }
+}
+
+/// Everything the chart card shows for one window: the points, the dates, the scale, the best value and the trend.
+///
+/// One figure runs through the tile, the chart heading and the VoiceOver text: `best`, the highest estimate of the
+/// sessions in the window, and its gain over the first session in whole kilograms (the design: "99 kg", "6 kg · 12 wk",
+/// "rising from 93 to 99 kilograms"). The span named in the texts is the time between the two sessions compared, not the
+/// length of the selected window.
 private struct ExerciseDetailProgress {
     enum Direction {
         case up
@@ -478,7 +506,8 @@ private struct ExerciseDetailProgress {
     let middleLabel: String
     let endLabel: String
     let axis: ExerciseDetailAxis
-    let latest: Double?
+    /// The highest estimate of the sessions in the window; nil without a session.
+    let best: Double?
     let direction: Direction
     /// "6 kg · 12 wk", "No change" or an en dash.
     let trendText: String
@@ -512,31 +541,38 @@ private struct ExerciseDetailProgress {
             )
         }
 
-        let weeks = max(1, Int((displayEnd.timeIntervalSince(windowStart) / 604_800).rounded()))
-        let first = visible.first?.value
-        let last = visible.last?.value
+        // The best session of the window (the earliest one on a tie) against the first one.
+        var bestPoint: E1RMPoint?
+        for point in visible {
+            if let current = bestPoint, point.value <= current.value { continue }
+            bestPoint = point
+        }
 
         var direction: Direction = .unknown
         var trendText = "–"
         var summary = "No estimated one-rep max in this range"
-        if let first, let last {
-            let delta = last - first
-            let fromText = NumberText.kg(first.rounded())
-            let toText = NumberText.kg(last.rounded())
+        if let first = visible.first, let peak = bestPoint {
+            let fromKg = first.value.rounded()
+            let toKg = peak.value.rounded()
+            let fromText = NumberText.kg(fromKg)
+            let toText = NumberText.kg(toKg)
+            // The line ends below the best when the latest session was weaker: VoiceOver is told, the heading is not.
+            var latestNote = ""
+            if let last = visible.last, last.value.rounded() < toKg {
+                latestNote = ", latest " + NumberText.kg(last.value.rounded()) + " kilograms"
+            }
             if visible.count < 2 {
                 summary = "Estimated one-rep max \(toText) kilograms"
-            } else if delta > 0.05 {
+            } else if toKg > fromKg {
+                let span = ExerciseDetailSpan(from: first.date, to: peak.date)
                 direction = .up
-                trendText = ExerciseDetailProgress.deltaText(delta, weeks: weeks)
-                summary = "Estimated one-rep max rising from \(fromText) to \(toText) kilograms over \(weeks) weeks"
-            } else if delta < -0.05 {
-                direction = .down
-                trendText = ExerciseDetailProgress.deltaText(-delta, weeks: weeks)
-                summary = "Estimated one-rep max falling from \(fromText) to \(toText) kilograms over \(weeks) weeks"
+                trendText = NumberText.kg(toKg - fromKg) + " kg · " + span.short
+                summary = "Estimated one-rep max rising from \(fromText) to \(toText) kilograms over \(span.spoken)" + latestNote
             } else {
+                let span = ExerciseDetailSpan(from: first.date, to: visible.last?.date ?? first.date)
                 direction = .flat
                 trendText = "No change"
-                summary = "Estimated one-rep max steady at \(toText) kilograms over \(weeks) weeks"
+                summary = "Estimated one-rep max steady at \(toText) kilograms over \(span.spoken)" + latestNote
             }
         }
 
@@ -547,15 +583,10 @@ private struct ExerciseDetailProgress {
         self.middleLabel = StrengthResultText.monthDay(middle, now: now)
         self.endLabel = StrengthResultText.monthDay(displayEnd, now: now)
         self.axis = ExerciseDetailAxis.make(values: visible.map { $0.value })
-        self.latest = last
+        self.best = bestPoint?.value
         self.direction = direction
         self.trendText = trendText
         self.summary = summary
-    }
-
-    private static func deltaText(_ magnitude: Double, weeks: Int) -> String {
-        let rounded = (magnitude * 10).rounded() / 10
-        return NumberText.kg(rounded) + " kg · " + String(weeks) + " wk"
     }
 
     /// "Jul 21 – Oct 13"
@@ -672,7 +703,7 @@ private struct ExerciseDetailChartCard: View {
                 Text("Estimated 1RM")
                     .font(PulseFont.subhead)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                Text(verbatim: latestText)
+                Text(verbatim: bestText)
                     .pulseNumber(28)
                     .foregroundStyle(PulseTheme.ink)
                     .lineLimit(1)
@@ -689,9 +720,10 @@ private struct ExerciseDetailChartCard: View {
         }
     }
 
-    private var latestText: String {
-        guard let latest = progress.latest else { return "–" }
-        return NumberText.kg(latest.rounded()) + " kg"
+    /// The same figure as the "Est. 1RM" tile.
+    private var bestText: String {
+        guard let best = progress.best else { return "–" }
+        return NumberText.kg(best.rounded()) + " kg"
     }
 
     // MARK: Chart
@@ -778,13 +810,13 @@ private struct ExerciseDetailChart: View {
                     x: .value("Date", point.date),
                     y: .value("Estimated 1RM", point.value)
                 )
-                .foregroundStyle(PulseTheme.green)
+                .foregroundStyle(ExerciseDetailColors.chartGreen)
                 .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
                 PointMark(
                     x: .value("Date", point.date),
                     y: .value("Estimated 1RM", point.value)
                 )
-                .foregroundStyle(PulseTheme.green)
+                .foregroundStyle(ExerciseDetailColors.chartGreen)
                 .symbolSize(symbolSize(for: point))
             }
         }
@@ -807,9 +839,9 @@ private struct ExerciseDetailChart: View {
     private var fillGradient: LinearGradient {
         LinearGradient(
             gradient: Gradient(stops: [
-                Gradient.Stop(color: PulseTheme.green.opacity(0.30), location: 0),
-                Gradient.Stop(color: PulseTheme.green.opacity(0.08), location: 0.6),
-                Gradient.Stop(color: PulseTheme.green.opacity(0), location: 1)
+                Gradient.Stop(color: ExerciseDetailColors.chartGreen.opacity(0.30), location: 0),
+                Gradient.Stop(color: ExerciseDetailColors.chartGreen.opacity(0.08), location: 0.6),
+                Gradient.Stop(color: ExerciseDetailColors.chartGreen.opacity(0), location: 1)
             ]),
             startPoint: .top,
             endPoint: .bottom

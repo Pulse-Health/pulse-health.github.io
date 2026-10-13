@@ -71,19 +71,22 @@ final class ExerciseMediaStore: @unchecked Sendable {
 public struct ExerciseMediaView: View {
     private let mediaKey: String?
     private let cornerRadius: CGFloat
+    private let animated: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    public init(mediaKey: String?, cornerRadius: CGFloat = 12) {
+    /// `animated: false` shows the static first frame, like the design's list and picker thumbnails.
+    public init(mediaKey: String?, cornerRadius: CGFloat = 12, animated: Bool = true) {
         self.mediaKey = mediaKey
         self.cornerRadius = cornerRadius
+        self.animated = animated
     }
 
     public var body: some View {
         let frames = ExerciseMediaStore.shared.frames(for: mediaKey)
         return Color.clear
             .overlay { tileContent(frames) }
-            .background(PulseTheme.cellFill)
+            .background(PulseTheme.mediaTile)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .accessibilityHidden(true)
     }
@@ -91,7 +94,7 @@ public struct ExerciseMediaView: View {
     @ViewBuilder
     private func tileContent(_ frames: ExerciseMediaFrames) -> some View {
         if let first = frames.first {
-            if let second = frames.second, !reduceMotion {
+            if let second = frames.second, !reduceMotion, animated {
                 ExerciseMediaCrossfade(first: first, second: second)
             } else {
                 ExerciseMediaFill(image: first)
@@ -140,14 +143,19 @@ private struct ExerciseMediaCrossfade: View {
     }
 }
 
+/// The design's dumbbell in grey: 36 pt (stroke 1.4) in the 60 pt tile of the exercise card, 22 pt (stroke 1.6) in
+/// the 44 pt list tiles, and no larger than the 44 pt of the form sheet's "no demo" panel in a big frame.
 private struct ExerciseMediaPlaceholder: View {
     var body: some View {
         GeometryReader { proxy in
             let side = min(proxy.size.width, proxy.size.height)
-            Image(systemName: "figure.strengthtraining.traditional")
-                .font(.system(size: max(10, side * 0.45), weight: .light))
-                .foregroundStyle(PulseTheme.inkTertiary)
-                .frame(width: proxy.size.width, height: proxy.size.height)
+            let isLargeTile = side >= 56
+            StrengthDumbbellGlyph(
+                size: isLargeTile ? min(side * 0.6, 44) : max(10, side * 0.5),
+                color: PulseTheme.inkTertiary,
+                strokeWidth: isLargeTile ? 1.4 : 1.6
+            )
+            .frame(width: proxy.size.width, height: proxy.size.height)
         }
     }
 }

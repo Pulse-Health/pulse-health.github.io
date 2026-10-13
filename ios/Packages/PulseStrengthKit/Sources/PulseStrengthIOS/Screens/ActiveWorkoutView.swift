@@ -167,7 +167,7 @@ public struct ActiveWorkoutView: View {
     private func content(_ presentation: ActiveWorkoutPresentation) -> some View {
         VStack(spacing: 0) {
             ActiveHeaderView(
-                header: presentation.header,
+                header: displayHeader(presentation.header),
                 onMinimise: onMinimise,
                 onMore: { showMoreMenu = true },
                 onFinish: { showFinishDialog = true }
@@ -183,6 +183,17 @@ public struct ActiveWorkoutView: View {
             restPhaseChanged(from: oldPhase, to: newPhase)
         }
         .animation(layoutAnimation, value: presentation.dock != nil)
+    }
+
+    /// The header as shown. While the Watch status calls for a banner (Watch not connected, Health access denied)
+    /// no heart rate is being recorded, so the design shows a dash and a still grey heart instead of the last bpm
+    /// (it keys on the status, not on whether the banner was dismissed).
+    private func displayHeader(_ header: ActiveWorkoutPresentation.Header) -> ActiveWorkoutPresentation.Header {
+        guard watchStatus != .connected else { return header }
+        var shown = header
+        shown.heartRateText = "\u{2013}"
+        shown.hasHeartRate = false
+        return shown
     }
 
     // MARK: Watch banner
@@ -201,17 +212,27 @@ public struct ActiveWorkoutView: View {
     }
 
     private func openWatchBannerTarget() {
-        let target: String
         switch watchStatus {
         case .healthDenied:
-            target = UIApplication.openSettingsURLString
+            openHealthAccess()
         case .notConnected:
-            target = "itms-watch://"
+            if let url = URL(string: "itms-watch://") {
+                UIApplication.shared.open(url)
+            }
         case .connected:
             return
         }
-        if let url = URL(string: target) {
-            UIApplication.shared.open(url)
+    }
+
+    /// Health access is not listed on the app's own page in Settings (it lives in the Health app, under Sharing >
+    /// Apps), so open the Health app first. `x-apple-health://` is a long-standing scheme that Apple does not
+    /// document: when it cannot be opened (no Health app, or the scheme was withdrawn) the app's page in Settings
+    /// is opened instead, so the button never does nothing.
+    private func openHealthAccess() {
+        guard let healthURL = URL(string: "x-apple-health://") else { return }
+        UIApplication.shared.open(healthURL, options: [:]) { (opened: Bool) in
+            guard !opened, let settingsURL = URL(string: UIApplication.openSettingsURLString) else { return }
+            UIApplication.shared.open(settingsURL)
         }
     }
 
@@ -318,17 +339,18 @@ public struct ActiveWorkoutView: View {
         .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: presentation.undoText)
     }
 
-    /// Haptic when the rest countdown reaches zero while the app is in the foreground.
+    /// Haptic when the rest countdown reaches zero while the app is in the foreground. While this screen is
+    /// minimised the root view's in-progress bar plays the same cue (`RestEndFeedback`).
     private func restPhaseChanged(
         from oldPhase: ActiveWorkoutPresentation.DockPhase?,
         to newPhase: ActiveWorkoutPresentation.DockPhase?
     ) {
-        guard oldPhase == .running, newPhase == .finished else { return }
-        guard scenePhase == .active else { return }
-        let alertsEnabled = controller.state?.settings.alertWhenRestEnds ?? true
-        guard alertsEnabled else { return }
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-        UIAccessibility.post(notification: .announcement, argument: "Rest over")
+        RestEndFeedback.playIfRestEnded(
+            from: oldPhase,
+            to: newPhase,
+            scenePhase: scenePhase,
+            alertsEnabled: controller.state?.settings.alertWhenRestEnds ?? true
+        )
     }
 
     // MARK: More menu
@@ -466,22 +488,14 @@ public struct ActiveWorkoutView: View {
         case .picker(let mode):
             sheetStyled(ExercisePickerSheet(store: store, controller: controller, mode: mode), detents: [.large])
         case .keypad(let ref, let field):
-            sheetStyled(
-                KeypadSheet(controller: controller, ref: ref, initialField: field),
-                detents: [.height(ActiveSheetHeight.keypad), .large]
-            )
+            // The keypad, set detail and rest sheets hug their content: each sets its own detents.
+            sheetStyledHugging(KeypadSheet(controller: controller, ref: ref, initialField: field))
         case .setDetail(let ref):
-            sheetStyled(
-                SetDetailSheet(controller: controller, ref: ref),
-                detents: [.height(ActiveSheetHeight.setDetail), .large]
-            )
+            sheetStyledHugging(SetDetailSheet(controller: controller, ref: ref))
         case .restSettings(let exerciseID):
-            sheetStyled(
-                RestSettingsSheet(controller: controller, exerciseID: exerciseID),
-                detents: [.height(ActiveSheetHeight.restSettings), .large]
-            )
+            sheetStyledHugging(RestSettingsSheet(controller: controller, exerciseID: exerciseID))
         case .info(let exercise):
-            sheetStyled(FormInfoSheet(exercise: exercise), detents: [.large])
+            sheetStyled(ActiveFormInfoHost(exercise: exercise, store: store), detents: [.large])
         }
     }
 
@@ -490,6 +504,14 @@ public struct ActiveWorkoutView: View {
     private func sheetStyled<Content: View>(_ content: Content, detents: Set<PresentationDetent>) -> some View {
         content
             .presentationDetents(detents)
+            .presentationDragIndicator(.hidden)
+            .presentationCornerRadius(PulseTheme.sheetRadius)
+            .presentationBackground(PulseTheme.ground)
+    }
+
+    /// The same look for a sheet that sizes itself to its content and sets its own detents.
+    private func sheetStyledHugging<Content: View>(_ content: Content) -> some View {
+        content
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(PulseTheme.sheetRadius)
             .presentationBackground(PulseTheme.ground)
@@ -511,11 +533,38 @@ public struct ActiveWorkoutView: View {
     }
 }
 
-/// Heights of the bottom sheets (the sheet can still be dragged up to the full height).
-private enum ActiveSheetHeight {
-    static let keypad: CGFloat = 650
-    static let setDetail: CGFloat = 560
-    static let restSettings: CGFloat = 420
+// MARK: - Form sheet host
+
+/// The form sheet inside a navigation stack. Its "History & records" row pushes the exercise detail screen
+/// (design: `sh.info` -> Exercise.dc.html), which has no title bar of its own: here it gets a back button
+/// ("Form") and a Done button that closes the whole sheet. Module-internal so another sheet that shows the form
+/// sheet can host it the same way.
+@MainActor
+struct ActiveFormInfoHost: View {
+    let exercise: Exercise
+    let store: StrengthStore
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var showsHistory = false
+
+    var body: some View {
+        NavigationStack {
+            FormInfoSheet(exercise: exercise, onShowHistory: { showsHistory = true })
+                .toolbar(.hidden, for: .navigationBar)
+                .navigationTitle("Form")
+                .navigationDestination(isPresented: $showsHistory) {
+                    ExerciseDetailView(exercise: exercise, store: store)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarTrailing) {
+                                Button("Done") {
+                                    dismiss()
+                                }
+                                .fontWeight(.semibold)
+                            }
+                        }
+                }
+        }
+    }
 }
 
 // MARK: - Empty state
@@ -529,9 +578,7 @@ private struct ActiveEmptyStateCard: View {
             ZStack {
                 Circle()
                     .fill(PulseTheme.greenTint)
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.system(size: 28, weight: .regular))
-                    .foregroundStyle(PulseTheme.green)
+                StrengthDumbbellGlyph(size: 30, color: PulseTheme.green, strokeWidth: 1.8)
             }
             .frame(width: 64, height: 64)
             .accessibilityHidden(true)

@@ -568,16 +568,17 @@ struct LiveMeasurement {
         return found
     }
 
-    /// Soft findings: the expanded leading / trailing content is wider than the column beside the camera, so the system
-    /// has to scale or truncate its text (the views allow it with `minimumScaleFactor`).
+    /// Soft findings: the expanded leading / trailing content is wider than the column beside the camera at its natural
+    /// size, so its text has to scale down (the leading title scales to 0.7 before anything is cut off; the layouts split
+    /// the longest labels over two lines or drop the badge so that this is enough).
     var notes: [String] {
         var found: [String] = []
         let column = LiveMetrics.expandedSideColumn
         if let size = expandedLeading, size.width > column + LiveMeasurement.tolerance {
-            found.append("expanded leading: natural width \(LiveMeasurement.points(size.width)) pt > column \(LiveMeasurement.points(column)) pt (text will scale / truncate)")
+            found.append("expanded leading: natural width \(LiveMeasurement.points(size.width)) pt > column \(LiveMeasurement.points(column)) pt (the views scale their text down before it would be cut off)")
         }
         if let size = expandedTrailing, size.width > column + LiveMeasurement.tolerance {
-            found.append("expanded trailing: natural width \(LiveMeasurement.points(size.width)) pt > column \(LiveMeasurement.points(column)) pt (text will scale / truncate)")
+            found.append("expanded trailing: natural width \(LiveMeasurement.points(size.width)) pt > column \(LiveMeasurement.points(column)) pt (the views scale their text down before it would be cut off)")
         }
         return found
     }

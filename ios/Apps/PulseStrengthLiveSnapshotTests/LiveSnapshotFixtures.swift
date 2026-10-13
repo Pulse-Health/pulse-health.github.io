@@ -1,8 +1,9 @@
 // LiveSnapshotFixtures.swift
 //
-// Test data for the Live Activity snapshot tests (LiveActivitySnapshotTests.swift): eleven scenarios, each a real
+// Test data for the Live Activity snapshot tests (LiveActivitySnapshotTests.swift): twelve scenarios, each a real
 // `WorkoutSnapshot` produced by the app's own code path (WorkoutFactory -> WorkoutReducer -> SnapshotBuilder) from the
-// demo template "Upper A · Push" / "Upper B · Pull", at a FIXED reference date, so the images are reproducible.
+// demo template "Upper A · Push" / "Upper B · Pull" (and an empty workout), at a FIXED reference date, so the images
+// are reproducible.
 //
 // Timeline convention: `reference` is "now" (the instant the views are drawn at); every action is applied N seconds
 // before it. The workout start is `reference - elapsed`.
@@ -65,6 +66,7 @@ enum LiveFixtures {
             resting(reference),
             restOverStale(reference),
             complete(reference),
+            emptyWorkout(reference),
             pausedLogging(reference),
             pausedResting(reference),
             longNamesLogging(reference),
@@ -152,6 +154,18 @@ enum LiveFixtures {
         return scenario(
             slug: "complete",
             title: "Complete \u{00B7} all sets logged \u{00B7} 118 bpm",
+            state: state, reference: reference, expected: .complete
+        )
+    }
+
+    /// "Start Empty Workout" before the first exercise is added: no set at all. The builder calls it `.complete` (nothing
+    /// is pending), but nothing was logged, so the views show "No exercises yet" and not "All sets logged".
+    private static func emptyWorkout(_ reference: Date) -> LiveScenario {
+        var state = WorkoutFactory.makeEmpty(name: "Workout", now: reference.addingTimeInterval(-95), id: id(4))
+        apply(.updateHeartRate(96), to: &state, secondsAgo: 0, reference: reference)
+        return scenario(
+            slug: "empty-workout",
+            title: "Empty workout \u{00B7} no exercises yet \u{00B7} 96 bpm",
             state: state, reference: reference, expected: .complete
         )
     }

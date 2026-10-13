@@ -22,6 +22,7 @@ public struct PulseStrengthRootView: View {
     @State private var summary: CompletedWorkout?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     public init(environment: StrengthAppEnvironment) {
         self._environment = ObservedObject(wrappedValue: environment)
@@ -122,7 +123,26 @@ public struct PulseStrengthRootView: View {
                     resumeWorkout()
                 }
             )
+            // The rest-over notification is not shown while the app is in the foreground, and the dock is not on
+            // screen while the workout is minimised: this bar is then the only thing that can tell the user.
+            .onChange(of: presentation.dock?.phase) { oldPhase, newPhase in
+                restPhaseChanged(from: oldPhase, to: newPhase)
+            }
         }
+    }
+
+    /// Haptic and announcement when the rest ends while the workout is minimised and the app is open
+    /// (the active-workout screen does the same while it is showing; the bar and that screen are never both on screen).
+    private func restPhaseChanged(
+        from oldPhase: ActiveWorkoutPresentation.DockPhase?,
+        to newPhase: ActiveWorkoutPresentation.DockPhase?
+    ) {
+        RestEndFeedback.playIfRestEnded(
+            from: oldPhase,
+            to: newPhase,
+            scenePhase: scenePhase,
+            alertsEnabled: controller.state?.settings.alertWhenRestEnds ?? true
+        )
     }
 
     // MARK: Actions

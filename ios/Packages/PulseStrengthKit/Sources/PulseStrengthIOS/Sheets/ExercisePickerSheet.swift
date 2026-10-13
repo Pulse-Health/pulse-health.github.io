@@ -37,6 +37,8 @@ public struct ExercisePickerSheet: View {
     /// Exercises created in this sheet (a fallback for lookups until the store has published them).
     @State private var createdExercises: [String: Exercise] = [:]
     @State private var showsCreateSheet = false
+    /// Set by the first tap on the bottom action, so a second tap while the sheet slides away adds nothing again.
+    @State private var didSubmit = false
     @FocusState private var searchIsFocused: Bool
 
     /// The equipment chips of the design (no "Other").
@@ -241,7 +243,7 @@ public struct ExercisePickerSheet: View {
                 .background(fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(PulsePlainButtonStyle())
-        .disabled(!enabled)
+        .disabled(!enabled || didSubmit)
         .padding(.horizontal, 16)
         .padding(.top, 8)
         .padding(.bottom, 8)
@@ -354,8 +356,10 @@ public struct ExercisePickerSheet: View {
     }
 
     private func confirm() {
+        guard !didSubmit else { return }
         let chosen = chosenExercises()
         guard !chosen.isEmpty else { return }
+        didSubmit = true
         switch mode {
         case .add:
             controller.send(.addExercises(chosen))
@@ -390,7 +394,7 @@ private struct ExercisePickerRowView: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                ExerciseMediaView(mediaKey: row.exercise.mediaKey, cornerRadius: 10)
+                ExerciseMediaView(mediaKey: row.exercise.mediaKey, cornerRadius: 10, animated: false)
                     .frame(width: 44, height: 44)
             }
             .padding(.horizontal, 16)

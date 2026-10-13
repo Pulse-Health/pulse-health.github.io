@@ -21,7 +21,7 @@ struct CoachTipView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            PulseTheme.greenTint,
+            PulseTheme.coachTipFill,
             in: RoundedRectangle(cornerRadius: PulseTheme.rowRadius, style: .continuous)
         )
         .accessibilityElement(children: .combine)

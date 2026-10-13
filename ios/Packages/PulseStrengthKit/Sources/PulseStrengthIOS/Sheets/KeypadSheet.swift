@@ -24,7 +24,8 @@ public struct KeypadSheet: View {
 
     /// The value being edited.
     @State private var field: KeypadField
-    /// The text of the edited value ("82.", "0", "12"). At most 6 characters.
+    /// The text of the edited value ("82.", "0", "12"). At most 6 characters; a weight has at most 2 decimals and
+    /// reps stay within 0...999, so the card always shows what the reducer stores.
     @State private var buffer: String
     /// True until the next key press: the first digit replaces the whole buffer.
     @State private var isFresh: Bool
@@ -57,6 +58,7 @@ public struct KeypadSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(PulseTheme.ground.ignoresSafeArea())
+        .sheetDetentsHuggingContent(titleBarHeight: 56, estimate: estimatedSheetHeight)
         .onAppear {
             if target == nil {
                 dismiss()
@@ -84,9 +86,19 @@ public struct KeypadSheet: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
             .padding(.bottom, 16)
+            .reportsSheetPanelHeight()
         } else {
             Color.clear.frame(height: 1)
         }
+    }
+
+    /// The detent height used until the panel has been measured: title bar plus panel, 584 pt with the plate row
+    /// and 526 pt without it (the system adds the bottom safe area to a `.height` detent).
+    private var estimatedSheetHeight: CGFloat {
+        if let current = target, !current.exercise.exercise.supportsPlates {
+            return 526
+        }
+        return 584
     }
 
     // MARK: Live data
@@ -278,7 +290,7 @@ public struct KeypadSheet: View {
         switch field {
         case .weight:
             next = KeypadSheet.parseNumber(buffer) + Double(direction) * exercise.weightStepKg
-            next = max(0, next)
+            next = min(WorkoutReducer.maximumWeightKg, max(0, next))
         case .reps:
             next = KeypadSheet.parseNumber(buffer) + Double(direction * exercise.repsStep)
             next = min(999, max(0, next.rounded()))
@@ -295,7 +307,7 @@ public struct KeypadSheet: View {
         case .weight:
             buffer = NumberText.kg(previous.weightKg)
         case .reps:
-            buffer = String(previous.reps)
+            buffer = String(min(999, max(0, previous.reps)))
         }
         isFresh = true
         commit()
@@ -332,7 +344,10 @@ public struct KeypadSheet: View {
     /// Plates for one side of the bar, and the note the design shows next to them.
     private static func plateInfo(weightKg: Double, barKg: Double) -> KeypadPlateInfo {
         guard let plan = PlateCalculator.plan(totalKg: weightKg, barKg: barKg) else {
-            return KeypadPlateInfo(plates: [], note: "Below the bar weight")
+            // `plan` gives nothing for a total below the bar, and also for one above the heaviest it plans for
+            // (100,000 kg), which the keypad can still produce.
+            let note = weightKg < barKg ? "Below the bar weight" : "Too many plates to show"
+            return KeypadPlateInfo(plates: [], note: note)
         }
         if plan.perSide.count > 24 {
             return KeypadPlateInfo(plates: [], note: "Too many plates to show")
@@ -417,7 +432,8 @@ public struct KeypadSheet: View {
     }
 
     /// The buffer after a key press, or nil when the key is ignored (second decimal point, decimal point on reps,
-    /// more than 6 characters).
+    /// more than 6 characters, a third decimal of a weight, reps above 999). The last two keep the card equal to the
+    /// stored value: the reducer rounds a weight to 0.01 and clamps reps to 0...999.
     private static func applying(_ key: KeypadKey, to buffer: String, isFresh: Bool, field: KeypadField) -> String? {
         switch key {
         case .delete:
@@ -432,7 +448,23 @@ public struct KeypadSheet: View {
             return buffer.contains(".") ? nil : buffer + "."
         case .digit(let digit):
             let next = (isFresh || buffer == "0") ? digit : buffer + digit
-            return next.count > 6 ? nil : next
+            if next.count > 6 {
+                return nil
+            }
+            switch field {
+            case .reps:
+                if (Int(next) ?? 0) > 999 {
+                    return nil
+                }
+            case .weight:
+                if let dot = next.firstIndex(of: ".") {
+                    let decimals = next.distance(from: dot, to: next.endIndex) - 1
+                    if decimals > 2 {
+                        return nil
+                    }
+                }
+            }
+            return next
         }
     }
 

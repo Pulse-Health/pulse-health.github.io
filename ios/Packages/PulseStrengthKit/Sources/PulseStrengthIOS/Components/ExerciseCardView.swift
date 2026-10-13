@@ -130,7 +130,7 @@ struct ExerciseCardView: View {
             .lineLimit(1)
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
-            .background(PulseTheme.blueTint, in: Capsule())
+            .background(PulseTheme.supersetFill, in: Capsule())
             .fixedSize()
             .padding(.top, 2)
             .accessibilityElement(children: .combine)

@@ -41,6 +41,7 @@ public struct SetDetailSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(PulseTheme.ground.ignoresSafeArea())
+        .sheetDetentsHuggingContent(titleBarHeight: 56, estimate: 484)
         .onAppear {
             if live == nil {
                 dismiss()
@@ -66,6 +67,7 @@ public struct SetDetailSheet: View {
             .padding(.horizontal, 16)
             .padding(.top, 12)
             .padding(.bottom, 16)
+            .reportsSheetPanelHeight()
         } else {
             Color.clear.frame(height: 1)
         }
@@ -146,7 +148,10 @@ public struct SetDetailSheet: View {
     }
 
     private func deleteSet() {
-        frozen = live
+        // Once-only: a second tap while the sheet slides away finds no set (`live` is nil) and must neither blank the
+        // frozen copy nor repeat the haptic.
+        guard let current = live else { return }
+        frozen = current
         SetDetailHaptics.deleted()
         controller.send(.deleteSet(exerciseID: ref.exerciseID, setID: ref.setID))
         dismiss()

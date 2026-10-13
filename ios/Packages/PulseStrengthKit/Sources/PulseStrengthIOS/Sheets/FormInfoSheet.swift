@@ -8,16 +8,21 @@ import PulseStrengthCore
 ///
 /// Title bar ("Form" + Done), then a scrolling page: the large looping demo (3 : 2, 16 pt radius, "Start · End"
 /// badge), the exercise name with chips for the primary muscle, the equipment and the secondary muscles, the
-/// numbered "How to" cues and the photo attribution. The demo is `ExerciseMediaView`, which pauses on the first
-/// frame when Reduce Motion is on.
+/// numbered "How to" cues, the "History & records" row and the photo attribution. The demo is `ExerciseMediaView`,
+/// which pauses on the first frame when Reduce Motion is on.
+///
+/// The "History & records" row is shown only when the presenter passes `onShowHistory`; it is the way on to the
+/// exercise detail screen, which the presenter owns (a sheet has no navigation of its own).
 @MainActor
 public struct FormInfoSheet: View {
     private let exercise: Exercise
+    private let onShowHistory: (() -> Void)?
 
     @Environment(\.dismiss) private var dismiss
 
-    public init(exercise: Exercise) {
+    public init(exercise: Exercise, onShowHistory: (() -> Void)? = nil) {
         self.exercise = exercise
+        self.onShowHistory = onShowHistory
     }
 
     // MARK: Body
@@ -31,6 +36,9 @@ public struct FormInfoSheet: View {
                     titleBlock
                     if !exercise.cues.isEmpty {
                         cuesCard
+                    }
+                    if let onShowHistory = onShowHistory {
+                        FormInfoHistoryRow(action: onShowHistory)
                     }
                     attribution
                 }
@@ -74,9 +82,7 @@ public struct FormInfoSheet: View {
         ZStack {
             PulseTheme.progressTrack
             VStack(spacing: 10) {
-                Image(systemName: "figure.strengthtraining.traditional")
-                    .font(.system(size: 44, weight: .light))
-                    .foregroundStyle(PulseTheme.inkTertiary)
+                StrengthDumbbellGlyph(size: 44, color: PulseTheme.inkTertiary, strokeWidth: 1.4)
                 Text("No form demo for this exercise yet")
                     .font(PulseFont.subhead)
                     .foregroundStyle(PulseTheme.inkSecondary)
@@ -164,6 +170,70 @@ public struct FormInfoSheet: View {
 private enum FormInfoColors {
     /// The 12 % green wash behind the primary-muscle chip and the cue numbers.
     static let greenWash = Color(light: 0x1B8448, dark: 0x30D158, lightAlpha: 0.12, darkAlpha: 0.18)
+    /// The design's #007AFF icon and its 10 % wash behind it in the "History & records" row.
+    static let historyIcon = Color(light: 0x007AFF, dark: 0x0A84FF)
+    static let historyWash = Color(light: 0x007AFF, dark: 0x0A84FF, lightAlpha: 0.10, darkAlpha: 0.24)
+}
+
+// MARK: - History row
+
+/// "History & records ›": a 56 pt white row with a 32 pt blue icon tile (Active.dc.html, `sh.info`).
+private struct FormInfoHistoryRow: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                FormInfoTrendShape()
+                    .stroke(
+                        FormInfoColors.historyIcon,
+                        style: StrokeStyle(lineWidth: 2 * 18 / 24, lineCap: .round, lineJoin: .round)
+                    )
+                    .frame(width: 18, height: 18)
+                    .frame(width: 32, height: 32)
+                    .background(FormInfoColors.historyWash, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .accessibilityHidden(true)
+                Text("History & records")
+                    .font(PulseFont.body)
+                    .foregroundStyle(PulseTheme.ink)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(PulseTheme.inkTertiary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 16)
+            .frame(maxWidth: .infinity, minHeight: 56)
+            .background(PulseTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(PulsePlainButtonStyle())
+        .accessibilityHint("Shows the records, sessions and progress of this exercise")
+    }
+}
+
+/// The trend glyph of the design (24 x 24 grid): the baseline, the rising line and its arrow head.
+private struct FormInfoTrendShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        let scale = min(rect.width, rect.height) / 24
+        let originX = rect.midX - 12 * scale
+        let originY = rect.midY - 12 * scale
+        func point(_ x: CGFloat, _ y: CGFloat) -> CGPoint {
+            CGPoint(x: originX + x * scale, y: originY + y * scale)
+        }
+        var path = Path()
+        path.move(to: point(3, 20))
+        path.addLine(to: point(21, 20))
+        path.move(to: point(4, 16))
+        path.addLine(to: point(9, 11))
+        path.addLine(to: point(13, 14))
+        path.addLine(to: point(20, 7))
+        path.move(to: point(16, 7))
+        path.addLine(to: point(20, 7))
+        path.addLine(to: point(20, 11))
+        return path
+    }
 }
 
 // MARK: - Title bar

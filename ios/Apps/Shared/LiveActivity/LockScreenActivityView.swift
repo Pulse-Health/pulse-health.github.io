@@ -5,6 +5,8 @@
 // Phases: logging (set label, - / + steppers, Log set), resting (ring, countdown, Next, -15 s / +15 s /
 // Skip rest), rest over ("Go" + Log set) and complete ("All sets logged"; a tap opens the app through
 // `.widgetURL`). While paused the clock and the rest are frozen and a "Paused" label replaces the running clock.
+// A workout without any set (started empty) is `.complete` for the builder but has nothing logged: the card shows
+// the barbell and "No exercises yet" with a hint instead of the check and "All sets logged".
 //
 // The system cuts a Live Activity off at about 160 pt, the mock-up is taller (about 230 pt in the logging
 // phase), so the logging card puts "Log set" next to the exercise title instead of below the steppers. Every
@@ -45,7 +47,7 @@ struct LockScreenHeader: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            ActivityAppBadge(size: ActivityTheme.Metrics.lockHeaderHeight, glyphSize: 14, cornerRadius: 7)
+            ActivityAppBadge(size: ActivityTheme.Metrics.lockHeaderHeight, glyphSize: 15, cornerRadius: 7)
             Text(workoutName)
                 .font(ActivityTheme.text(15, .semibold))
                 .foregroundStyle(ActivityTheme.textPrimary)
@@ -214,7 +216,8 @@ struct LockRestContent: View {
     }
 }
 
-/// Every set is logged. Tapping the activity opens the app (`.widgetURL`), where the workout is finished.
+/// Every set is logged (check, "All sets logged" and the totals), or there is no set at all (barbell, "No exercises yet"
+/// and what to do). Tapping the activity opens the app (`.widgetURL`), where the workout is finished or filled.
 struct LockCompleteContent: View {
     let state: WorkoutSnapshot
 
@@ -223,16 +226,20 @@ struct LockCompleteContent: View {
             ZStack {
                 Circle()
                     .fill(ActivityTheme.buttonGreen)
-                ActivityGlyph(kind: .check, size: 22, lineWidth: 3.2, color: Color.white)
+                if state.hasNoSets {
+                    ActivityGlyph(kind: .barbell, size: 22, lineWidth: 2.4, color: Color.white)
+                } else {
+                    ActivityGlyph(kind: .check, size: 22, lineWidth: 3.2, color: Color.white)
+                }
             }
             .frame(width: 44, height: 44)
             .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text("All sets logged")
+                Text(state.hasNoSets ? state.emptyTitle : "All sets logged")
                     .font(ActivityTheme.text(17, .semibold))
                     .foregroundStyle(ActivityTheme.textPrimary)
                     .lineLimit(1)
-                Text(state.progressLine)
+                Text(state.hasNoSets ? state.emptyHint : state.progressLine)
                     .font(ActivityTheme.text(14))
                     .foregroundStyle(ActivityTheme.lockTextSecondary)
                     .lineLimit(1)

@@ -17,6 +17,8 @@ public struct CreateExerciseSheet: View {
     @State private var muscle: MuscleGroup = .chest
     @State private var equipment: Equipment = .barbell
     @State private var tracking: TrackingKind = .weightReps
+    /// Set by the first tap on Save, so a second tap while the sheet slides away creates no second exercise.
+    @State private var didSubmit = false
     @FocusState private var nameIsFocused: Bool
 
     public init(initialName: String, onCreate: @escaping (Exercise) -> Void) {
@@ -87,7 +89,7 @@ public struct CreateExerciseSheet: View {
             sectionLabel("Primary muscle")
             ExerciseChipFlowLayout(spacing: 8) {
                 ForEach(MuscleGroup.allCases) { (group: MuscleGroup) in
-                    PulseChip(group.title, isSelected: muscle == group) {
+                    CreateExerciseChip(title: group.title, isSelected: muscle == group) {
                         muscle = group
                     }
                 }
@@ -101,7 +103,7 @@ public struct CreateExerciseSheet: View {
             sectionLabel("Equipment")
             ExerciseChipFlowLayout(spacing: 8) {
                 ForEach(Equipment.allCases) { (item: Equipment) in
-                    PulseChip(item.title, isSelected: equipment == item) {
+                    CreateExerciseChip(title: item.title, isSelected: equipment == item) {
                         equipment = item
                     }
                 }
@@ -113,7 +115,7 @@ public struct CreateExerciseSheet: View {
     private var trackingSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             sectionLabel("Track")
-            PulseSegmented(options: trackingOptions, selection: $tracking)
+            CreateExerciseTrackControl(options: trackingOptions, selection: $tracking)
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Track")
         }
@@ -144,11 +146,72 @@ public struct CreateExerciseSheet: View {
     // MARK: Actions
 
     private func save() {
+        guard !didSubmit else { return }
+        didSubmit = true
         nameIsFocused = false
         let exercise = Exercise.custom(name: name, muscle: muscle, equipment: equipment, tracking: tracking)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         onCreate(exercise)
         dismiss()
+    }
+}
+
+// MARK: - Form controls
+
+/// A muscle / equipment chip of the form: 40 pt tall with 16 pt side padding (the picker's `PulseChip` is 36 pt
+/// with 14 pt), 15 pt text, blue tint when selected (Active.dc.html, the "New exercise" sheet).
+private struct CreateExerciseChip: View {
+    let title: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 15, weight: isSelected ? .semibold : .medium))
+                .foregroundStyle(isSelected ? PulseTheme.blueText : PulseTheme.ink.opacity(0.75))
+                .padding(.horizontal, 16)
+                .frame(height: 40)
+                .background(isSelected ? PulseTheme.blueTint : PulseTheme.chipFill, in: Capsule())
+        }
+        .buttonStyle(PulsePlainButtonStyle())
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
+/// The "Track" segmented control of the form: 40 pt segments with 14 pt text in the system face, bold when
+/// selected (`PulseSegmented` is 36 pt with 15 pt rounded text).
+private struct CreateExerciseTrackControl: View {
+    let options: [(value: TrackingKind, title: String)]
+    @Binding var selection: TrackingKind
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(options.indices, id: \.self) { index in
+                segment(options[index])
+            }
+        }
+        .padding(2)
+        .background(PulseTheme.chipFill, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+    }
+
+    private func segment(_ option: (value: TrackingKind, title: String)) -> some View {
+        let isSelected = option.value == selection
+        return Button {
+            selection = option.value
+        } label: {
+            Text(option.title)
+                .font(.system(size: 14, weight: isSelected ? .bold : .medium))
+                .foregroundStyle(PulseTheme.ink)
+                .frame(maxWidth: .infinity, minHeight: 40)
+                .background(
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(isSelected ? PulseTheme.card : Color.clear)
+                        .shadow(color: Color.black.opacity(isSelected ? 0.12 : 0), radius: 4, x: 0, y: 3)
+                )
+        }
+        .buttonStyle(PulsePlainButtonStyle())
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 

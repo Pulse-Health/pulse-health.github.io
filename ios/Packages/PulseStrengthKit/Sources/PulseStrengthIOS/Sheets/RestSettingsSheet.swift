@@ -44,6 +44,7 @@ public struct RestSettingsSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(PulseTheme.ground.ignoresSafeArea())
+        .sheetDetentsHuggingContent(titleBarHeight: 56, estimate: 341)
         .onChange(of: liveAutoStart) { _, newValue in
             if autoStart != newValue {
                 autoStart = newValue
@@ -82,6 +83,7 @@ public struct RestSettingsSheet: View {
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 16)
+        .reportsSheetPanelHeight()
     }
 
     // MARK: Live data

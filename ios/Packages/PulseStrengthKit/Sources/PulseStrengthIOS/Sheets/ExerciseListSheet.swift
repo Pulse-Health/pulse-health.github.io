@@ -68,6 +68,56 @@ struct ExerciseEditorTitleBar: View {
     }
 }
 
+// MARK: - Sheets that hug their content
+
+/// The natural height of a sheet's panel (everything under the title bar), reported by `reportsSheetPanelHeight()`.
+struct SheetPanelHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+extension View {
+    /// Reports the natural height of this view (the panel of a bottom sheet) to `sheetDetentsHuggingContent`.
+    func reportsSheetPanelHeight() -> some View {
+        background(
+            GeometryReader { (proxy: GeometryProxy) in
+                Color.clear.preference(key: SheetPanelHeightKey.self, value: proxy.size.height)
+            }
+        )
+    }
+
+    /// Makes the sheet this view is the content of exactly as tall as its content (title bar plus the panel that
+    /// reports its height), like the design's bottom sheets; it can still be dragged up to the full height.
+    /// A `.height` detent is the height of the content area, the system adds the bottom safe area to it, so the
+    /// content is measured with the safe area respected. `estimate` is the height used until the panel has been measured.
+    func sheetDetentsHuggingContent(titleBarHeight: CGFloat, estimate: CGFloat) -> some View {
+        modifier(SheetHugsContentModifier(titleBarHeight: titleBarHeight, estimate: estimate))
+    }
+}
+
+private struct SheetHugsContentModifier: ViewModifier {
+    let titleBarHeight: CGFloat
+    let estimate: CGFloat
+
+    @State private var panelHeight: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .onPreferenceChange(SheetPanelHeightKey.self) { (height: CGFloat) in
+                panelHeight = height
+            }
+            .presentationDetents(detents)
+    }
+
+    private var detents: Set<PresentationDetent> {
+        let hugging: CGFloat = panelHeight > 0 ? (titleBarHeight + panelHeight).rounded(.up) : estimate
+        return [.height(hugging), .large]
+    }
+}
+
 // MARK: - Models
 
 /// One row of the list, derived from a workout exercise.
@@ -223,10 +273,8 @@ public struct ExerciseListSheet: View {
         case .info(let exercise):
             styled(FormInfoSheet(exercise: exercise), detents: [.large])
         case .restSettings(let exerciseID):
-            styled(
-                RestSettingsSheet(controller: controller, exerciseID: exerciseID),
-                detents: [.height(420), .large]
-            )
+            // The rest sheet hugs its content and sets its own detents.
+            styledHugging(RestSettingsSheet(controller: controller, exerciseID: exerciseID))
         }
     }
 
@@ -235,6 +283,14 @@ public struct ExerciseListSheet: View {
     private func styled<Content: View>(_ content: Content, detents: Set<PresentationDetent>) -> some View {
         content
             .presentationDetents(detents)
+            .presentationDragIndicator(.hidden)
+            .presentationCornerRadius(PulseTheme.sheetRadius)
+            .presentationBackground(PulseTheme.ground)
+    }
+
+    /// The same look for a sheet that sizes itself to its content and sets its own detents.
+    private func styledHugging<Content: View>(_ content: Content) -> some View {
+        content
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(PulseTheme.sheetRadius)
             .presentationBackground(PulseTheme.ground)
@@ -314,7 +370,7 @@ private struct ExerciseListRowView: View {
     private var openButton: some View {
         Button(action: onOpen) {
             HStack(spacing: 12) {
-                ExerciseMediaView(mediaKey: row.exercise.mediaKey, cornerRadius: 10)
+                ExerciseMediaView(mediaKey: row.exercise.mediaKey, cornerRadius: 10, animated: false)
                     .frame(width: 44, height: 44)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(row.exercise.name)

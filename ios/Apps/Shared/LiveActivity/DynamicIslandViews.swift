@@ -6,7 +6,11 @@
 // Compact: resting shows the draining ring and the green countdown, otherwise the barbell and the elapsed
 // time. Minimal: the ring (resting / rest over) or the barbell. Expanded: header row beside the camera
 // (badge + set label, heart rate / countdown) and the controls in the bottom region, which is kept to about
-// 88 pt so the island stays within the system's expanded height.
+// 90 pt so the island stays within the system's expanded height. The columns beside the camera are only about
+// 100 pt wide: their texts are short, split over two lines or scaled down, never cut off.
+//
+// A workout without any set (started empty, or everything removed) is `.complete` for the builder but has
+// nothing logged: it shows the barbell and "No exercises yet" instead of the check and "All sets logged".
 //
 // All views take the raw snapshot plus `isStale` and derive the phase themselves (stale + resting = rest over).
 
@@ -34,14 +38,22 @@ struct IslandCompactLeading: View {
                 track: ActivityTheme.compactTrack
             )
         case .logging:
-            ActivityGlyph(kind: .barbell, size: 20, lineWidth: 2.2, color: ActivityTheme.accent)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Strength workout")
+            barbell
         case .complete:
-            ActivityGlyph(kind: .check, size: 18, lineWidth: 2.8, color: ActivityTheme.accent)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("All sets logged")
+            if state.hasNoSets {
+                barbell
+            } else {
+                ActivityGlyph(kind: .check, size: 18, lineWidth: 2.8, color: ActivityTheme.accent)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("All sets logged")
+            }
         }
+    }
+
+    private var barbell: some View {
+        ActivityGlyph(kind: .barbell, size: 20, lineWidth: 2.2, color: ActivityTheme.accent)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Strength workout")
     }
 }
 
@@ -73,7 +85,8 @@ struct IslandCompactTrailing: View {
                 state: state,
                 size: 14,
                 weight: .semibold,
-                color: state.isPaused ? ActivityTheme.paused : ActivityTheme.textPrimary
+                color: state.isPaused ? ActivityTheme.paused : ActivityTheme.textPrimary,
+                maxWidth: ActivityTheme.Metrics.compactSlotWidth
             )
         }
     }
@@ -97,43 +110,86 @@ struct IslandMinimal: View {
                 track: ActivityTheme.compactTrack
             )
         case .logging:
-            ActivityGlyph(kind: .barbell, size: 18, lineWidth: 2.2, color: ActivityTheme.accent)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Strength workout")
+            barbell
         case .complete:
-            ActivityGlyph(kind: .check, size: 16, lineWidth: 2.8, color: ActivityTheme.accent)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("All sets logged")
+            if state.hasNoSets {
+                barbell
+            } else {
+                ActivityGlyph(kind: .check, size: 16, lineWidth: 2.8, color: ActivityTheme.accent)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("All sets logged")
+            }
         }
+    }
+
+    private var barbell: some View {
+        ActivityGlyph(kind: .barbell, size: 18, lineWidth: 2.2, color: ActivityTheme.accent)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Strength workout")
     }
 }
 
 // MARK: - Expanded: leading
 
 /// App badge and the phase title ("Rest", "Set 4 of 5", ...).
+///
+/// The column beside the camera is only about 100 pt wide and the badge takes 36 of them, so what does not fit in one
+/// line is split: a warm-up is "Set 1 of 5" with a small "Warm-up" under it, a paused rest "Rest" with a small amber
+/// "Paused" (the countdown beside the camera is amber too), and the long titles of a finished or empty workout drop the
+/// badge. The title scales down (to 0.7) before it would be cut off.
 struct IslandExpandedLeading: View {
     let state: WorkoutSnapshot
     let isStale: Bool
     /// Snapshot tests only (nil in production): the instant the views are drawn at.
     @Environment(\.activityStaticNow) private var staticNow
 
-    private var title: String {
+    private struct Heading {
+        var title: String
+        var caption: String? = nil
+        var captionColor: Color = ActivityTheme.islandTextSecondary
+        var showsBadge: Bool = true
+    }
+
+    private var heading: Heading {
         switch state.displayPhase(isStale: isStale, staticNow: staticNow) {
-        case .resting: return state.isPaused ? "Rest \u{00B7} paused" : "Rest"
-        case .restOver: return "Rest over"
-        case .logging: return state.setLabel
-        case .complete: return "All sets logged"
+        case .resting:
+            if state.isPaused {
+                return Heading(title: "Rest", caption: "Paused", captionColor: ActivityTheme.paused)
+            }
+            return Heading(title: "Rest")
+        case .restOver:
+            return Heading(title: "Rest over")
+        case .logging:
+            if state.isWarmupLabel {
+                return Heading(title: state.setPositionLabel, caption: "Warm-up")
+            }
+            return Heading(title: state.setLabel)
+        case .complete:
+            return Heading(title: state.hasNoSets ? state.emptyTitle : "All sets logged", showsBadge: false)
         }
     }
 
     var body: some View {
+        let shown = heading
         HStack(spacing: 8) {
-            ActivityAppBadge(size: 28, glyphSize: 16, cornerRadius: 8)
-            Text(title)
-                .font(ActivityTheme.text(15, .semibold))
-                .foregroundStyle(ActivityTheme.textPrimary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
+            if shown.showsBadge {
+                ActivityAppBadge(size: 28, glyphSize: 16, cornerRadius: 8)
+            }
+            VStack(alignment: .leading, spacing: 0) {
+                Text(shown.title)
+                    .font(ActivityTheme.text(15, .semibold))
+                    .foregroundStyle(ActivityTheme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if let caption = shown.caption {
+                    Text(caption)
+                        .font(ActivityTheme.text(11, .semibold))
+                        .foregroundStyle(shown.captionColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+            }
+            .accessibilityElement(children: .combine)
         }
     }
 }
@@ -169,7 +225,7 @@ struct IslandExpandedTrailing: View {
     @ViewBuilder
     private var clock: some View {
         if state.isPaused {
-            ActivityPausedLabel(size: 15, detail: state.frozenElapsedText)
+            ActivityPausedLabel(size: 15, detail: state.frozenElapsedText, stacked: true)
         } else if let bpm = state.heartRate {
             ActivityHeartRateLabel(bpm: bpm, size: 15, color: ActivityTheme.islandTextSecondary)
         } else {
@@ -286,7 +342,8 @@ struct IslandRestBottom: View {
     }
 }
 
-/// Every set is logged: workout name and totals. Tapping the island opens the app (`.widgetURL`).
+/// Every set is logged: workout name and totals; a workout without sets: its name and what to do about it.
+/// Tapping the island opens the app (`.widgetURL`).
 struct IslandCompleteBottom: View {
     let state: WorkoutSnapshot
     let workoutName: String
@@ -298,7 +355,7 @@ struct IslandCompleteBottom: View {
                 .foregroundStyle(ActivityTheme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
-            Text(state.progressLine)
+            Text(state.hasNoSets ? state.emptyHint : state.progressLine)
                 .font(ActivityTheme.text(14))
                 .foregroundStyle(ActivityTheme.islandTextSecondary)
                 .lineLimit(1)

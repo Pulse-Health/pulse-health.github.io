@@ -124,7 +124,7 @@ final class LiveActivitySnapshotTests: XCTestCase {
     /// The fixtures really are the states they claim to be (so an image never silently shows the wrong phase).
     func testFixturesMatchIntendedPhases() throws {
         let scenarios = LiveFixtures.all()
-        XCTAssertEqual(scenarios.count, 11)
+        XCTAssertEqual(scenarios.count, 12)
         XCTAssertEqual(Set(scenarios.map { $0.slug }).count, scenarios.count, "slugs must be unique")
 
         for scenario in scenarios {
@@ -171,6 +171,16 @@ final class LiveActivitySnapshotTests: XCTestCase {
         XCTAssertEqual(complete.phase, .complete)
         XCTAssertEqual(complete.loggedSets, complete.totalSets)
         XCTAssertTrue(complete.progressLine.hasPrefix("20 of 20 sets"), complete.progressLine)
+        XCTAssertFalse(complete.hasNoSets, "a workout with sets is complete, not empty")
+
+        let empty = try fixture("empty-workout").snapshot
+        XCTAssertEqual(empty.phase, .complete, "the builder has no pending set to target")
+        XCTAssertEqual(empty.totalSets, 0)
+        XCTAssertTrue(empty.hasNoSets, "no set: the views must not claim All sets logged")
+        XCTAssertEqual(empty.emptyTitle, "No exercises yet")
+        var exercisesWithoutSets = empty
+        exercisesWithoutSets.exerciseCount = 2
+        XCTAssertEqual(exercisesWithoutSets.emptyTitle, "No sets yet")
 
         let pausedLogging = try fixture("paused-logging").snapshot
         XCTAssertTrue(pausedLogging.isPaused)
@@ -181,6 +191,10 @@ final class LiveActivitySnapshotTests: XCTestCase {
 
         let longNames = try fixture("long-names-logging").snapshot
         XCTAssertEqual(longNames.setLabel, "Warm-up \u{00B7} Set 1 of 5")
+        XCTAssertTrue(longNames.isWarmupLabel)
+        XCTAssertEqual(longNames.setPositionLabel, "Set 1 of 5", "the island splits the warm-up prefix off")
+        XCTAssertFalse(logging.isWarmupLabel)
+        XCTAssertEqual(logging.setPositionLabel, "Set 3 of 5")
 
         let longSession = try fixture("long-session-logging")
         XCTAssertEqual(longSession.now.timeIntervalSince(longSession.snapshot.activeStart), 4325, accuracy: 0.001)

@@ -34,8 +34,10 @@ private enum HubEditorTarget: Identifiable {
 /// templates, muscle recovery, recent workouts, this week and the exercise library.
 ///
 /// It lives inside the navigation stack of `PulseStrengthRootView`. Starting a workout is delegated to
-/// `onStart` (nil = empty workout); while a workout runs the primary button reads "Resume Workout" and calls
-/// `onResume`, and starting another workout is refused with an alert (the running one would be lost).
+/// `onStart` (nil = empty workout). The recommended template is the next one in the rotation of the templates
+/// (the one after the most recently performed). While a workout runs, the card and the template screen of THAT
+/// workout's template read "Resume Workout" and call `onResume`; starting any other workout is refused with an
+/// alert (the running one would be lost) that offers to resume.
 @MainActor
 public struct StrengthHubView: View {
     @ObservedObject private var store: StrengthStore
@@ -124,22 +126,35 @@ public struct StrengthHubView: View {
                 .font(.system(size: 20, weight: .regular))
         }
         .accessibilityLabel("More")
+        .accessibilityIdentifier("hub-more")
     }
 
     // MARK: Recommended card
 
+    /// The template of today's card and of the "next up" tag: the one after the most recently performed template
+    /// in the list (a rotation), the first one while none has been performed yet.
+    private var recommendedTemplate: WorkoutTemplate? {
+        HubRotation.next(in: store.templates)
+    }
+
+    /// True while the running workout was started from `template` (an empty workout or another template: false).
+    private func isRunning(_ template: WorkoutTemplate) -> Bool {
+        controller.state?.templateID == template.id
+    }
+
     @ViewBuilder
     private func recommendedCard(now: Date) -> some View {
-        if let template = store.templates.first {
+        if let template = recommendedTemplate {
+            let runsThis = isRunning(template)
             HubRecommendedCard(
                 template: template,
                 subtitle: recommendedSubtitle(template, now: now),
                 readiness: HubMuscles.readiness(controller.recovery),
                 chips: HubMuscles.chips(for: template, recovery: controller.recovery),
                 coach: HubCoach.message(template: template, store: store, recovery: controller.recovery),
-                primaryTitle: controller.state == nil ? "Start Workout" : "Resume Workout",
+                primaryTitle: runsThis ? "Resume Workout" : "Start Workout",
                 onPrimary: {
-                    primaryAction(template)
+                    primaryAction(template, runsThis: runsThis)
                 },
                 onEdit: {
                     editor = .template(template.id)
@@ -156,8 +171,10 @@ public struct StrengthHubView: View {
         return HubFormat.templateSubtitle(template, suffix: suffix)
     }
 
-    private func primaryAction(_ template: WorkoutTemplate) {
-        if controller.state != nil {
+    /// Resumes the running workout when it is this template's; otherwise starts it, which only warns while another
+    /// workout runs (see `requestStart`).
+    private func primaryAction(_ template: WorkoutTemplate, runsThis: Bool) {
+        if runsThis {
             onResume()
         } else {
             requestStart(template)
@@ -214,7 +231,7 @@ public struct StrengthHubView: View {
     }
 
     private func templateButton(_ template: WorkoutTemplate) -> some View {
-        let isNext = template.id == store.templates.first?.id
+        let isNext = template.id == recommendedTemplate?.id
         let subtitle = HubFormat.templateSubtitle(template, suffix: isNext ? "next up" : nil)
         return Button {
             route = .template(template.id)
@@ -343,17 +360,21 @@ public struct StrengthHubView: View {
         case .templates:
             HubTemplateListView(
                 store: store,
+                controller: controller,
                 onStart: { (template: WorkoutTemplate) in
                     requestStart(template)
-                }
+                },
+                onResume: onResume
             )
         case .template(let templateID):
             HubTemplateDetailView(
                 store: store,
+                controller: controller,
                 templateID: templateID,
                 onStart: { (template: WorkoutTemplate) in
                     requestStart(template)
-                }
+                },
+                onResume: onResume
             )
         case .history:
             HubHistoryListView(store: store)
@@ -375,7 +396,9 @@ public struct StrengthHubView: View {
 
     // MARK: Starting
 
-    /// Starts a workout from `template` (nil = empty) unless one is already running; then it only warns.
+    /// Starts a workout from `template` (nil = empty) unless one is already running; then it only warns. This alert
+    /// belongs to the hub itself: the pushed template screens host their own alert, because a presentation of a view
+    /// that a pushed screen covers does not show.
     private func requestStart(_ template: WorkoutTemplate?) {
         if controller.state != nil {
             showsBusyAlert = true
@@ -386,8 +409,7 @@ public struct StrengthHubView: View {
     }
 
     private var busyMessage: String {
-        let name = controller.state?.name ?? "your current workout"
-        return "Finish or discard \(name) before starting another workout."
+        HubFormat.busyMessage(controller.state?.name)
     }
 }
 
@@ -840,8 +862,6 @@ private extension View {
 // MARK: - Text and number helpers
 
 private enum HubFormat {
-    private static let months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-
     static func exercises(_ count: Int) -> String {
         count == 1 ? "1 exercise" : "\(count) exercises"
     }
@@ -855,13 +875,21 @@ private enum HubFormat {
         return text
     }
 
-    /// "Oct 8, 18:10" (24-hour clock, English month names, no locale dependence).
+    /// "Oct 8, 18:10" (24-hour clock, English month names, no locale dependence). Month and day come from the
+    /// Gregorian calendar the month names belong to, like every other date of the exercise and summary screens,
+    /// not from the user's calendar (a Persian or Islamic month number would index the wrong name).
     static func dateTime(_ date: Date) -> String {
-        let parts = Calendar.current.dateComponents([.month, .day, .hour, .minute], from: date)
+        let parts = StrengthResultText.calendar.dateComponents([.month, .day, .hour, .minute], from: date)
         let monthIndex = min(max((parts.month ?? 1) - 1, 0), 11)
         let day = parts.day ?? 1
         let time = twoDigits(parts.hour ?? 0) + ":" + twoDigits(parts.minute ?? 0)
-        return months[monthIndex] + " " + String(day) + ", " + time
+        return StrengthResultText.monthNames[monthIndex] + " " + String(day) + ", " + time
+    }
+
+    /// The alert text while another workout runs.
+    static func busyMessage(_ workoutName: String?) -> String {
+        let name = workoutName ?? "your current workout"
+        return "Finish or discard \(name) before starting another workout."
     }
 
     /// "52m" (the design shows minutes only, "61m" for 1 h 1 min).
@@ -960,6 +988,27 @@ private enum HubFormat {
     }
 }
 
+// MARK: - Recommendation
+
+private enum HubRotation {
+    /// The template to do next: the one after the most recently performed template in the list, wrapping around
+    /// (Upper A, Lower A, Upper B, then Upper A again). Without a performed template it is the first one; a single
+    /// template recommends itself.
+    static func next(in templates: [WorkoutTemplate]) -> WorkoutTemplate? {
+        guard !templates.isEmpty else { return nil }
+        var latestIndex: Int?
+        var latestDate = Date.distantPast
+        for (index, template) in templates.enumerated() {
+            if let date = template.lastPerformed, date > latestDate {
+                latestDate = date
+                latestIndex = index
+            }
+        }
+        guard let last = latestIndex else { return templates[0] }
+        return templates[(last + 1) % templates.count]
+    }
+}
+
 // MARK: - Muscle helpers
 
 private enum HubMuscles {
@@ -1053,6 +1102,19 @@ private enum HubMuscles {
         }
         return first.title
     }
+
+    /// True when `sentenceSubject(_:)` takes "are": two groups, or one group whose name is a plural noun
+    /// ("Legs are recovered", "Chest is recovered").
+    static func isPlural(_ muscles: [MuscleGroup]) -> Bool {
+        if muscles.count > 1 { return true }
+        guard let only = muscles.first else { return false }
+        switch only {
+        case .shoulders, .arms, .legs:
+            return true
+        case .chest, .back, .core:
+            return false
+        }
+    }
 }
 
 // MARK: - Coach note
@@ -1077,9 +1139,9 @@ private enum HubCoach {
         if lead.isEmpty { return nil }
         let tired = lead.filter { HubMuscles.percent($0, recovery) < 60 }
         if tired.isEmpty {
-            return HubMuscles.sentenceSubject(lead) + (lead.count == 1 ? " is recovered." : " are recovered.")
+            return HubMuscles.sentenceSubject(lead) + (HubMuscles.isPlural(lead) ? " are recovered." : " is recovered.")
         }
-        return HubMuscles.sentenceSubject(tired) + (tired.count == 1 ? " is still recovering." : " are still recovering.")
+        return HubMuscles.sentenceSubject(tired) + (HubMuscles.isPlural(tired) ? " are still recovering." : " is still recovering.")
     }
 
     /// The first weight exercise with a history: the lightest weight on its last working set that beats the best estimated 1RM.
@@ -1237,6 +1299,8 @@ private struct HubExerciseLibraryView: View {
 private struct HubTemplateListRow: View {
     let template: WorkoutTemplate
     let now: Date
+    /// True for the template the hub recommends ("next up").
+    let isNext: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -1267,11 +1331,14 @@ private struct HubTemplateListRow: View {
     }
 
     private var subtitle: String {
-        var suffix: String?
+        var suffixes: [String] = []
         if let last = template.lastPerformed {
-            suffix = "last done " + HubFormat.daysAgo(last, now: now)
+            suffixes.append("last done " + HubFormat.daysAgo(last, now: now))
         }
-        return HubFormat.templateSubtitle(template, suffix: suffix)
+        if isNext {
+            suffixes.append("next up")
+        }
+        return HubFormat.templateSubtitle(template, suffix: suffixes.isEmpty ? nil : suffixes.joined(separator: " · "))
     }
 
     private var exerciseNames: String {
@@ -1283,23 +1350,39 @@ private struct HubTemplateListRow: View {
 @MainActor
 private struct HubTemplateListView: View {
     @ObservedObject var store: StrengthStore
+    let controller: WorkoutController
     let onStart: (WorkoutTemplate) -> Void
+    let onResume: () -> Void
     @State var showsNewTemplate = false
 
-    init(store: StrengthStore, onStart: @escaping (WorkoutTemplate) -> Void) {
+    init(
+        store: StrengthStore,
+        controller: WorkoutController,
+        onStart: @escaping (WorkoutTemplate) -> Void,
+        onResume: @escaping () -> Void
+    ) {
         self._store = ObservedObject(wrappedValue: store)
+        self.controller = controller
         self.onStart = onStart
+        self.onResume = onResume
     }
 
     var body: some View {
         let now = Date()
+        let nextID = HubRotation.next(in: store.templates)?.id
         return ScrollView {
             VStack(spacing: 8) {
                 ForEach(store.templates) { template in
                     NavigationLink {
-                        HubTemplateDetailView(store: store, templateID: template.id, onStart: onStart)
+                        HubTemplateDetailView(
+                            store: store,
+                            controller: controller,
+                            templateID: template.id,
+                            onStart: onStart,
+                            onResume: onResume
+                        )
                     } label: {
-                        HubTemplateListRow(template: template, now: now)
+                        HubTemplateListRow(template: template, now: now, isNext: template.id == nextID)
                     }
                     .buttonStyle(PulsePlainButtonStyle())
                 }
@@ -1323,18 +1406,31 @@ private struct HubTemplateListView: View {
     }
 }
 
-/// A template at a glance: its exercises (each opens the exercise detail) and the Start button.
+/// A template at a glance: its exercises (each opens the exercise detail) and the Start button. While a workout
+/// runs the button reads "Resume Workout" for that workout's own template; for any other template it explains with
+/// an alert of this screen (the hub's alert sits under this pushed screen and would not show).
 @MainActor
 private struct HubTemplateDetailView: View {
     @ObservedObject var store: StrengthStore
+    @ObservedObject var controller: WorkoutController
     let templateID: UUID
     let onStart: (WorkoutTemplate) -> Void
+    let onResume: () -> Void
     @State var showsEditor = false
+    @State var showsBusyAlert = false
 
-    init(store: StrengthStore, templateID: UUID, onStart: @escaping (WorkoutTemplate) -> Void) {
+    init(
+        store: StrengthStore,
+        controller: WorkoutController,
+        templateID: UUID,
+        onStart: @escaping (WorkoutTemplate) -> Void,
+        onResume: @escaping () -> Void
+    ) {
         self._store = ObservedObject(wrappedValue: store)
+        self._controller = ObservedObject(wrappedValue: controller)
         self.templateID = templateID
         self.onStart = onStart
+        self.onResume = onResume
     }
 
     private var template: WorkoutTemplate? {
@@ -1356,6 +1452,14 @@ private struct HubTemplateDetailView: View {
             }
             .sheet(isPresented: $showsEditor) {
                 HubTemplateEditorSheet(store: store, template: template)
+            }
+            .alert("Workout in progress", isPresented: $showsBusyAlert) {
+                Button("Resume") {
+                    onResume()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(HubFormat.busyMessage(controller.state?.name))
             }
     }
 
@@ -1452,10 +1556,18 @@ private struct HubTemplateDetailView: View {
     }
 
     private func startBar(_ template: WorkoutTemplate) -> some View {
-        Button {
-            onStart(template)
+        let isBusy = controller.state != nil
+        let runsThis = controller.state?.templateID == template.id
+        return Button {
+            if runsThis {
+                onResume()
+            } else if isBusy {
+                showsBusyAlert = true
+            } else {
+                onStart(template)
+            }
         } label: {
-            Text("Start Workout")
+            Text(runsThis ? "Resume Workout" : "Start Workout")
         }
         .buttonStyle(PulsePrimaryButtonStyle())
         .padding(.horizontal, PulseTheme.screenInset)

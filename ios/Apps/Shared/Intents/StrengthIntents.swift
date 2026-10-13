@@ -13,6 +13,12 @@
 // into a `WorkoutAction` and hand it to `WorkoutCommandBus`, whose handler the app installs when
 // `StrengthAppEnvironment` starts (see ARCHITECTURE.md 5.4). In the extension process no handler is ever
 // installed, which is fine because `perform()` does not run there.
+//
+// None of the four intents is meant to be run by a person: each only makes sense as a button of the running
+// Live Activity (Log set even takes raw UUID strings). They therefore set `static var isDiscoverable: Bool { false }`
+// (AppIntent, iOS 17.0+): Siri, Spotlight and the Shortcuts app do not list them, while the app and widgets (the
+// Live Activity and Dynamic Island buttons) can still run them. There is no AppShortcutsProvider, which would need
+// the property to be true.
 
 #if os(iOS)
 import AppIntents
@@ -38,6 +44,7 @@ struct LogSetIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Log set"
     static var description: IntentDescription? = IntentDescription("Logs the shown set of the running strength workout.")
     static var openAppWhenRun: Bool { false }
+    static var isDiscoverable: Bool { false }
 
     /// `UUID` string of the exercise entry (`WorkoutSnapshot.targetExerciseID`).
     @Parameter(title: "Exercise ID", default: "")
@@ -72,6 +79,7 @@ struct NudgeSetIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Adjust set"
     static var description: IntentDescription? = IntentDescription("Changes the weight or reps of the next set by one step.")
     static var openAppWhenRun: Bool { false }
+    static var isDiscoverable: Bool { false }
 
     /// Number of weight steps to add (negative to subtract).
     @Parameter(title: "Weight steps", default: 0)
@@ -101,6 +109,7 @@ struct AdjustRestIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Adjust rest"
     static var description: IntentDescription? = IntentDescription("Adds or removes seconds on the running rest timer.")
     static var openAppWhenRun: Bool { false }
+    static var isDiscoverable: Bool { false }
 
     /// Seconds to add to the rest timer (negative to subtract).
     @Parameter(title: "Seconds", default: 0)
@@ -125,6 +134,7 @@ struct SkipRestIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Skip rest"
     static var description: IntentDescription? = IntentDescription("Ends the rest timer of the running strength workout.")
     static var openAppWhenRun: Bool { false }
+    static var isDiscoverable: Bool { false }
 
     init() {}
 

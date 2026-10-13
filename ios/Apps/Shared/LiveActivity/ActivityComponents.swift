@@ -88,7 +88,38 @@ extension WorkoutSnapshot {
     var repsNoun: String {
         repsUnit == "sec" ? "seconds" : "reps"
     }
+
+    /// True when the workout has no set at all (started empty, or every exercise or set was removed). The builder reports
+    /// `.complete` for it, because there is no pending set, but nothing was logged: the views must not say "All sets logged".
+    var hasNoSets: Bool {
+        totalSets == 0
+    }
+
+    /// "No exercises yet" for a workout without exercises, "No sets yet" for one whose exercises have no set left.
+    var emptyTitle: String {
+        exerciseCount == 0 ? "No exercises yet" : "No sets yet"
+    }
+
+    /// What to do about an empty workout.
+    var emptyHint: String {
+        exerciseCount == 0 ? "Add exercises in Pulse Strength" : "Add sets in Pulse Strength"
+    }
+
+    /// True when the target set is a warm-up (`setLabel` is "Warm-up · Set 1 of 5").
+    var isWarmupLabel: Bool {
+        setLabel.hasPrefix(warmupLabelPrefix)
+    }
+
+    /// `setLabel` without the warm-up prefix: "Set 1 of 5" for "Warm-up · Set 1 of 5". Narrow places (the island's
+    /// leading column) show "Warm-up" on a line of its own.
+    var setPositionLabel: String {
+        guard isWarmupLabel else { return setLabel }
+        return String(setLabel.dropFirst(warmupLabelPrefix.count))
+    }
 }
+
+/// What `SnapshotBuilder` puts in front of the position of a warm-up set.
+private let warmupLabelPrefix = "Warm-up \u{00B7} "
 
 // MARK: - Glyphs
 
@@ -197,9 +228,12 @@ struct ActivityHeartRateLabel: View {
 // MARK: - Paused label
 
 /// "Paused" with a pause glyph, optionally followed by the frozen clock ("Paused · 24:18").
+/// With `stacked` (and a `detail`) the label is narrow: the pause glyph and the clock on one line, the word "Paused" under
+/// them in a small size ("Paused · 24:18" is about 120 pt wide, the island's trailing column only about 100 pt).
 struct ActivityPausedLabel: View {
     var size: CGFloat = 14
     var detail: String? = nil
+    var stacked: Bool = false
 
     private var title: String {
         if let detail = detail { return "Paused \u{00B7} " + detail }
@@ -212,16 +246,38 @@ struct ActivityPausedLabel: View {
     }
 
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "pause.fill")
-                .font(.system(size: size * 0.7, weight: .bold))
-            Text(title)
-                .font(ActivityTheme.number(size, .semibold))
-                .lineLimit(1)
+        content
+            .foregroundStyle(ActivityTheme.paused)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(spokenTitle)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if stacked, let detail = detail {
+            VStack(alignment: .trailing, spacing: 0) {
+                HStack(spacing: 4) {
+                    Image(systemName: "pause.fill")
+                        .font(.system(size: size * 0.7, weight: .bold))
+                    Text(detail)
+                        .font(ActivityTheme.number(size, .semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                Text("Paused")
+                    .font(ActivityTheme.text(11, .semibold))
+                    .lineLimit(1)
+            }
+        } else {
+            HStack(spacing: 4) {
+                Image(systemName: "pause.fill")
+                    .font(.system(size: size * 0.7, weight: .bold))
+                Text(title)
+                    .font(ActivityTheme.number(size, .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
         }
-        .foregroundStyle(ActivityTheme.paused)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(spokenTitle)
     }
 }
 
@@ -233,6 +289,8 @@ struct ActivityElapsedText: View {
     var size: CGFloat = 15
     var weight: Font.Weight = .regular
     var color: Color
+    /// Upper bound of the reserved width (the compact island slot); the clock scales down inside it. nil: no bound.
+    var maxWidth: CGFloat? = nil
     /// Snapshot tests only (nil in production): draw the clock at this instant instead of a live timer.
     @Environment(\.activityStaticNow) private var staticNow
 
@@ -251,6 +309,12 @@ struct ActivityElapsedText: View {
         return (staticNow ?? Date()).timeIntervalSince(state.activeStart) >= 3300
     }
 
+    private var reservedWidth: CGFloat {
+        let width = ActivityTheme.clockWidth(fontSize: size, hasHours: hasHours)
+        guard let limit = maxWidth else { return width }
+        return min(width, limit)
+    }
+
     var body: some View {
         label
             .font(ActivityTheme.number(size, weight))
@@ -259,7 +323,7 @@ struct ActivityElapsedText: View {
             .multilineTextAlignment(.trailing)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
-            .frame(width: ActivityTheme.clockWidth(fontSize: size, hasHours: hasHours), alignment: .trailing)
+            .frame(width: reservedWidth, alignment: .trailing)
     }
 }
 

@@ -136,26 +136,33 @@ enum ActivityTheme {
     enum Metrics {
         // Lock Screen: the system cuts a Live Activity off at about 160 pt, so the rows are
         // tighter than the design mock-up (which is taller) while keeping every control and string.
+        // Controls and the header badge have the design's sizes (stepper pill and Log set 48, round - / + buttons 40,
+        // badge 26); both the logging card (10 + 26 + 8 + 48 + 6 + 48 + 12) and the rest card (10 + 26 + 8 + 56 + 6 + 40 + 12)
+        // come to 158 pt.
         static let lockSideInset: CGFloat = 16
         static let lockTopInset: CGFloat = 10
         static let lockBottomInset: CGFloat = 12
         static let lockSectionSpacing: CGFloat = 8
         static let lockRowSpacing: CGFloat = 6
-        static let lockHeaderHeight: CGFloat = 24
+        static let lockHeaderHeight: CGFloat = 26
         static let lockRestButtonHeight: CGFloat = 40
-        static let lockControlHeight: CGFloat = 44
+        static let lockControlHeight: CGFloat = 48
         static let lockRingDiameter: CGFloat = 56
 
-        // Dynamic Island, expanded bottom region (about 88 pt of room below the camera row).
+        // Dynamic Island, expanded bottom region: 94 pt below the camera row while logging, 88 pt while resting (the whole
+        // island is about 149 / 147 pt in the snapshot harness; the system allows 160 pt). The design's 48 pt controls
+        // do not fit there, so the steppers are 44 pt (round buttons 36) and Log set 40 pt.
         static let islandBottomTopInset: CGFloat = 4
         static let islandRowSpacing: CGFloat = 6
         static let islandRestButtonHeight: CGFloat = 38
-        static let islandControlHeight: CGFloat = 40
-        static let islandLogButtonHeight: CGFloat = 36
+        static let islandControlHeight: CGFloat = 44
+        static let islandLogButtonHeight: CGFloat = 40
 
         // Compact and minimal
         static let compactRingDiameter: CGFloat = 22
         static let compactRingLineWidth: CGFloat = 3
+        /// Width of a compact leading / trailing slot (HIG: 52.33 pt on a 393 pt wide iPhone); the elapsed clock with hours is squeezed into it.
+        static let compactSlotWidth: CGFloat = 52
     }
 }
 

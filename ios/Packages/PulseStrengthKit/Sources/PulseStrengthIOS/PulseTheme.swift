@@ -36,6 +36,8 @@ public enum PulseTheme {
     public static let cellFill = Color(light: 0xF2F2F7, dark: 0x2C2C2E)
     /// A pending-set cell sitting on a tinted (done) row.
     public static let cellOnTint = Color(light: 0xFFFFFF, dark: 0x3A3A3C)
+    /// Background of an exercise media tile (the design's #F4F4F7 behind the demo frames and the placeholder glyph).
+    public static let mediaTile = Color(light: 0xF4F4F7, dark: 0x2C2C2E)
     public static let chipFill = Color(light: 0x767680, dark: 0x767680, lightAlpha: 0.12, darkAlpha: 0.24)
     public static let separator = Color(light: 0x3C3C43, dark: 0x545458, lightAlpha: 0.18, darkAlpha: 0.65)
 
@@ -49,11 +51,15 @@ public enum PulseTheme {
     /// Green text on grey fills (higher contrast than `green`).
     public static let greenText = Color(light: 0x146638, dark: 0x30D158)
     public static let greenTint = Color(light: 0x1B8448, dark: 0x30D158, lightAlpha: 0.10, darkAlpha: 0.18)
+    /// The lighter green wash behind the coach tip (the design's rgba(27,132,72,0.08)).
+    public static let coachTipFill = Color(light: 0x1B8448, dark: 0x30D158, lightAlpha: 0.08, darkAlpha: 0.18)
     /// Text / icon colour on a `green` fill.
     public static let onGreen = Color(light: 0xFFFFFF, dark: 0x000000)
     public static let blue = Color(light: 0x0066D6, dark: 0x0A84FF)
     public static let blueText = Color(light: 0x0057B8, dark: 0x64D2FF)
     public static let blueTint = Color(light: 0x007AFF, dark: 0x0A84FF, lightAlpha: 0.15, darkAlpha: 0.28)
+    /// The superset pill's wash (the design's rgba(0,122,255,0.12)); `blueTint` is the stronger picker-chip value.
+    public static let supersetFill = Color(light: 0x007AFF, dark: 0x0A84FF, lightAlpha: 0.12, darkAlpha: 0.28)
     public static let destructive = Color(light: 0xD70015, dark: 0xFF453A)
     public static let heart = Color(light: 0xFF3B30, dark: 0xFF453A)
 
@@ -242,6 +248,9 @@ public struct PulseSegmented<Value: Hashable>: View {
                         .font(PulseFont.number(15, isSelected ? .bold : .medium))
                         .foregroundStyle(PulseTheme.ink)
                         .frame(maxWidth: .infinity, minHeight: 36)
+                        // An unselected segment only paints a clear fill, which has no hit area: without this
+                        // shape a tap beside the digit would not reach the button.
+                        .contentShape(Rectangle())
                         .background(
                             RoundedRectangle(cornerRadius: 7, style: .continuous)
                                 .fill(isSelected ? PulseTheme.card : Color.clear)
