@@ -95,6 +95,25 @@ public final class WorkoutController: ObservableObject {
         engine.pendingCommands
     }
 
+    /// Mirror: when the oldest unacknowledged edit stops being shown (nil without one); call `expirePending()` then, because a
+    /// command the phone never received produces no envelope that would drop it.
+    public var nextPendingExpiry: Date? {
+        engine.nextPendingExpiry
+    }
+
+    /// Mirror: drops the unacknowledged edits that are older than their lifetime and shows the phone's last state with the rest on
+    /// top. Returns true when an edit was dropped (ask the phone for its state then). See `WorkoutEngine.expirePending()`.
+    @discardableResult
+    public func expirePending() -> Bool {
+        engine.expirePending()
+    }
+
+    /// Mirror: the transport holds the command in its guaranteed queue (`transferUserInfo`): keep showing its edit for
+    /// `SyncReconciler.queuedPendingLifetime`. See `WorkoutEngine.markQueued(commandID:)`.
+    public func markQueued(commandID: UUID) {
+        engine.markQueued(commandID: commandID)
+    }
+
     /// Mirror: the revision of the last phone state adopted for the workout in progress (the phone's, not the Watch's own).
     public var authoritativeRevision: Int? {
         engine.authoritativeRevision

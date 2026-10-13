@@ -139,13 +139,30 @@ public struct RemoteCommand: Codable, Hashable, Sendable, Identifiable {
     /// `transferUserInfo` while the Watch was out of reach) cannot act on the next workout. An older payload without this
     /// entry decodes to nil.
     public var workoutID: UUID?
+    /// Which launch of the sending mirror made the command (one id per `WorkoutEngine` instance). Together with `sequence` it lets
+    /// the phone recognise a command that was overtaken by a newer edit of the same value: the Watch's two channels
+    /// (`sendMessage`, `transferUserInfo`) have no common order. nil for a sender that does not number its commands (an older
+    /// Watch app, the Live Activity); an older payload without this entry decodes to nil.
+    public var senderID: UUID?
+    /// The command's position among the commands of `senderID` (1, 2, 3, ...); nil together with `senderID`.
+    public var sequence: Int?
 
-    public init(id: UUID = UUID(), action: WorkoutAction, origin: ActionOrigin, issuedAt: Date = Date(), workoutID: UUID? = nil) {
+    public init(
+        id: UUID = UUID(),
+        action: WorkoutAction,
+        origin: ActionOrigin,
+        issuedAt: Date = Date(),
+        workoutID: UUID? = nil,
+        senderID: UUID? = nil,
+        sequence: Int? = nil
+    ) {
         self.id = id
         self.action = action
         self.origin = origin
         self.issuedAt = issuedAt
         self.workoutID = workoutID
+        self.senderID = senderID
+        self.sequence = sequence
     }
 }
 
@@ -162,6 +179,11 @@ public struct SyncEnvelope: Codable, Hashable, Sendable {
     /// Ids of the most recent commands the phone has dealt with (applied, dropped as duplicates or found to be no-ops), oldest
     /// first. The Watch removes these from the edits it still shows on top of `state`. Empty in an older payload.
     public var ackedCommandIDs: [UUID]
+    /// True for an envelope that was decoded from a payload without the `ackedCommandIDs` entry: it comes from a phone build that
+    /// does not acknowledge commands at all, so the Watch must not wait for acknowledgements that will never come (the mirror
+    /// then lets the phone's state win, as it did before acknowledgements existed). Every envelope made by this code, including
+    /// one with an empty list, writes the entry and is not legacy. Not part of the payload and not part of equality.
+    public private(set) var isFromLegacyPhone: Bool = false
 
     public init(state: WorkoutState?, endedWorkoutID: UUID? = nil, sentAt: Date = Date(), ackedCommandIDs: [UUID] = []) {
         self.state = state
@@ -174,13 +196,28 @@ public struct SyncEnvelope: Codable, Hashable, Sendable {
         case state, endedWorkoutID, sentAt, ackedCommandIDs
     }
 
-    /// Reads an envelope; a payload written before acknowledgements existed has no `ackedCommandIDs` and decodes to `[]`.
+    /// Reads an envelope; a payload written before acknowledgements existed has no `ackedCommandIDs`: it decodes to `[]` and
+    /// is marked `isFromLegacyPhone`.
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         state = try container.decodeIfPresent(WorkoutState.self, forKey: .state)
         endedWorkoutID = try container.decodeIfPresent(UUID.self, forKey: .endedWorkoutID)
         sentAt = try container.decode(Date.self, forKey: .sentAt)
-        ackedCommandIDs = try container.decodeIfPresent([UUID].self, forKey: .ackedCommandIDs) ?? []
+        let acknowledged = try container.decodeIfPresent([UUID].self, forKey: .ackedCommandIDs)
+        ackedCommandIDs = acknowledged ?? []
+        isFromLegacyPhone = acknowledged == nil
+    }
+
+    public static func == (lhs: SyncEnvelope, rhs: SyncEnvelope) -> Bool {
+        lhs.state == rhs.state && lhs.endedWorkoutID == rhs.endedWorkoutID && lhs.sentAt == rhs.sentAt
+            && lhs.ackedCommandIDs == rhs.ackedCommandIDs
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(state)
+        hasher.combine(endedWorkoutID)
+        hasher.combine(sentAt)
+        hasher.combine(ackedCommandIDs)
     }
 }
 

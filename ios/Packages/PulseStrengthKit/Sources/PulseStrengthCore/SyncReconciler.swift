@@ -14,6 +14,21 @@ public enum SyncReconciler {
     /// How long the Watch keeps showing an edit the phone has not acknowledged (15 seconds, by the Watch's clock).
     public static let pendingLifetime: TimeInterval = 15
 
+    /// How long the Watch keeps showing an edit whose command the transport holds in its guaranteed queue (`transferUserInfo`, used
+    /// while the phone is out of reach): the command is delivered whenever the phone is back, which can be much later than
+    /// `pendingLifetime`, so the short lifetime would make a set the user logged vanish from the Watch while the phone is away. Two
+    /// hours is longer than a workout; it only bounds the time a command that the system queue lost is shown.
+    public static let queuedPendingLifetime: TimeInterval = 2 * 60 * 60
+
+    /// An envelope for ANOTHER workout than the one the Watch shows is ignored when it was sent up to this long (120 seconds, by the
+    /// phone's clock) before the newest envelope the Watch applied: it is a late or replayed message of an earlier workout. Older
+    /// ones are adopted, so a phone clock that was set back far cannot lock the Watch out of the phone's new workouts.
+    public static let staleEnvelopeWindow: TimeInterval = 120
+
+    /// A command that reaches the phone up to this long (120 seconds) after the Watch stamped it acts at the time of the tap (the
+    /// Watch showed the rest from then on); an older or future stamp (clocks differ, a long outage) is not trusted.
+    public static let lateCommandWindow: TimeInterval = 120
+
     /// How many unacknowledged edits the Watch keeps; when more pile up the oldest is forgotten.
     public static let pendingCapacity = 64
 
@@ -49,14 +64,28 @@ public enum SyncReconciler {
         return incoming.revision >= authoritativeRevision
     }
 
-    /// The edits that are still unacknowledged at `now`: not in `acknowledged` and not older than `pendingLifetime`.
+    /// The edits that are still unacknowledged at `now`: not in `acknowledged` and not older than their lifetime.
     ///
-    /// The order of `pending` is kept. An edit issued after `now` (the Watch's clock moved backwards) counts as new.
-    public static func remainingPending(_ pending: [RemoteCommand], acknowledged: [UUID], now: Date) -> [RemoteCommand] {
+    /// The lifetime is `pendingLifetime`, or `queuedPendingLifetime` for the commands in `queued` (the ones the transport holds in
+    /// its guaranteed queue). The order of `pending` is kept. An edit issued after `now` (the Watch's clock moved backwards)
+    /// counts as new.
+    public static func remainingPending(
+        _ pending: [RemoteCommand],
+        acknowledged: [UUID],
+        now: Date,
+        queued: Set<UUID> = []
+    ) -> [RemoteCommand] {
         let acknowledgedIDs = Set(acknowledged)
         return pending.filter { command in
-            !acknowledgedIDs.contains(command.id) && now.timeIntervalSince(command.issuedAt) <= pendingLifetime
+            !acknowledgedIDs.contains(command.id)
+                && now.timeIntervalSince(command.issuedAt) <= lifetime(of: command, queued: queued)
         }
+    }
+
+    /// How long the Watch shows the unacknowledged edit made by `command`: `queuedPendingLifetime` when it is in `queued`, else
+    /// `pendingLifetime`.
+    public static func lifetime(of command: RemoteCommand, queued: Set<UUID>) -> TimeInterval {
+        queued.contains(command.id) ? queuedPendingLifetime : pendingLifetime
     }
 
     /// The state the mirror shows: the phone's `authoritative` state with the unacknowledged `pending` edits replayed on top, in

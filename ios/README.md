@@ -176,8 +176,9 @@ after the first run.
 7. Live Activity buttons are App Intents compiled into app and extension; they call `WorkoutCommandBus`, whose handler the
    app installs when `StrengthAppEnvironment` starts (the app waits up to 3 s for a background launch).
 8. Phone and Watch exchange `SyncEnvelope`s / `RemoteCommand`s over WatchConnectivity. The Watch applies its taps at once and the
-   phone acknowledges every command in its next envelope (duplicates are dropped by command id); the Watch shows the phone's
-   state with its unacknowledged taps on top ("Sync protocol" in `ARCHITECTURE.md` 3.4).
+   phone acknowledges every command in its next envelope (duplicates are dropped by command id, also across a phone relaunch);
+   the Watch shows the phone's state with its unacknowledged taps on top, orders late envelopes and expires a lost tap on its
+   own timer ("Sync protocol" in `ARCHITECTURE.md` 3.4).
 9. Clock-driven UI uses `TimelineView`; the Live Activity uses `Text(timerInterval:)` and a stale date, because a widget cannot tick.
 10. Contracts, file by file: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 

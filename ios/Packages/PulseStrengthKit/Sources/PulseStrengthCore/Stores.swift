@@ -16,6 +16,7 @@ public final class FileStrengthPersistence: @unchecked Sendable {
         static let history = "history.json"
         static let customExercises = "custom-exercises.json"
         static let personalBests = "personal-bests.json"
+        static let acknowledgedCommands = "acknowledged-commands.json"
     }
 
     /// Stores files in `directory` (created when needed).
@@ -56,6 +57,22 @@ public final class FileStrengthPersistence: @unchecked Sendable {
             return
         }
         try write(state, to: FileName.activeWorkout)
+    }
+
+    // MARK: Acknowledged commands
+
+    /// The ids of the Watch commands the phone dealt with, oldest first: at most `SyncReconciler.acknowledgedMemory` of them (empty
+    /// when there is no file or it is unreadable). They let a relaunched phone drop a command the Watch redelivers and acknowledge
+    /// the commands it applied before it was relaunched.
+    public func loadAcknowledgedCommands() -> [UUID] {
+        guard let data = read(FileName.acknowledgedCommands) else { return [] }
+        let ids = (try? StrengthJSON.makeDecoder().decode([UUID].self, from: data)) ?? []
+        return Array(ids.suffix(SyncReconciler.acknowledgedMemory))
+    }
+
+    /// Replaces the remembered command ids; only the most recent `SyncReconciler.acknowledgedMemory` are kept (about 10 KB).
+    public func saveAcknowledgedCommands(_ ids: [UUID]) throws {
+        try write(Array(ids.suffix(SyncReconciler.acknowledgedMemory)), to: FileName.acknowledgedCommands)
     }
 
     // MARK: Templates

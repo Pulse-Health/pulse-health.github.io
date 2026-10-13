@@ -4,6 +4,7 @@
 
 # SwiftPM / Xcode build products
 .build/
+.build-shim/
 .swiftpm/
 DerivedData/
 build/

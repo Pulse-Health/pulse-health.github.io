@@ -16,14 +16,22 @@ private func decodeSyncMessage(_ payload: [String: Any]) -> SyncMessage? {
 
 /// Sends `payload` with `sendMessage` while the phone is reachable and falls back to `transferUserInfo`
 /// (queued, delivered later, in order) when it is not, or when the immediate send fails. A message is never dropped.
-private func deliverReliably(_ payload: [String: Any], over session: WCSession) {
-    if session.activationState == .activated && session.isReachable {
+///
+/// While earlier messages still wait in the `transferUserInfo` queue, this one joins that queue even if the phone is reachable
+/// again: a `sendMessage` would overtake the older, still queued ones. (A `sendMessage` that fails later moves to the queue by
+/// itself, so one tap can still be overtaken by the next; the phone orders absolute edits by their sequence numbers.)
+///
+/// Returns true when the message went into the `transferUserInfo` queue right away: the system keeps it until the phone gets it.
+@discardableResult
+private func deliverReliably(_ payload: [String: Any], over session: WCSession) -> Bool {
+    if session.activationState == .activated && session.isReachable && session.outstandingUserInfoTransfers.isEmpty {
         session.sendMessage(payload, replyHandler: nil, errorHandler: { (_: Error) in
             _ = session.transferUserInfo(payload)
         })
-    } else {
-        _ = session.transferUserInfo(payload)
+        return false
     }
+    _ = session.transferUserInfo(payload)
+    return true
 }
 
 /// Best-effort send for perishable data (heart rate, state requests): only while the phone is reachable, never queued.
@@ -41,9 +49,12 @@ private func deliverIfReachable(_ payload: [String: Any], over session: WCSessio
 ///   `WorkoutController.receive(_: SyncEnvelope)`.
 /// * Watch -> phone: as a `WorkoutSideEffect` the client sends every `RemoteCommand` the mirror controller issues for an
 ///   action the Watch applied locally (`commandIssued`, once per command). Commands and `watchSession` messages use
-///   `sendMessage` while the phone is reachable and `transferUserInfo` otherwise, so they are never lost (the phone drops a
-///   command it receives twice); heart-rate samples (at most one every 5 s) and state requests are sent only while the phone
-///   is reachable.
+///   `sendMessage` while the phone is reachable (and no older message waits in the `transferUserInfo` queue) and
+///   `transferUserInfo` otherwise, so they are never lost (the phone drops a command it receives twice). A command that went
+///   into the `transferUserInfo` queue is reported to the controller (`markQueued`), which then keeps showing its edit while the
+///   phone is away; for the others a timer asks the controller to drop an edit the phone never acknowledged after 15 s, and asks
+///   the phone for its state. Heart-rate samples (at most one every 5 s) and state requests are sent only while the phone is
+///   reachable.
 /// * It tracks the phone's reachability and asks the phone for the current state whenever the session activates or the
 ///   phone becomes reachable.
 ///
@@ -64,6 +75,8 @@ public final class WatchConnectivityClient: NSObject, WCSessionDelegate, Workout
     private var lastHeartRateSent: Date?
     /// Messages that were produced before the session finished activating; sent right after activation.
     private var pendingMessages: [SyncMessage] = []
+    /// The timer that drops an unacknowledged edit when its lifetime is over (see `scheduleExpiryCheck`).
+    private var expiryTask: Task<Void, Never>?
 
     private let heartRateInterval: TimeInterval = 5
     private let pendingLimit = 200
@@ -126,22 +139,25 @@ public final class WatchConnectivityClient: NSObject, WCSessionDelegate, Workout
         sendReliably(.watchSession(isRecording: isRecording))
     }
 
-    private func sendReliably(_ message: SyncMessage) {
-        guard WCSession.isSupported() else { return }
+    /// Sends `message` reliably. Returns true when it went into the system's `transferUserInfo` queue (the phone is out of reach).
+    @discardableResult
+    private func sendReliably(_ message: SyncMessage) -> Bool {
+        guard WCSession.isSupported() else { return false }
         let session = WCSession.default
         guard session.activationState == .activated else {
             pendingMessages.append(message)
             if pendingMessages.count > pendingLimit {
                 pendingMessages.removeFirst(pendingMessages.count - pendingLimit)
             }
-            return
+            return false
         }
-        transmit(message, over: session)
+        return transmit(message, over: session)
     }
 
-    private func transmit(_ message: SyncMessage, over session: WCSession) {
-        guard let payload = try? SyncCodec.encode(message) else { return }
-        deliverReliably(payload, over: session)
+    @discardableResult
+    private func transmit(_ message: SyncMessage, over session: WCSession) -> Bool {
+        guard let payload = try? SyncCodec.encode(message) else { return false }
+        return deliverReliably(payload, over: session)
     }
 
     private func flushPendingMessages(over session: WCSession) {
@@ -162,11 +178,41 @@ public final class WatchConnectivityClient: NSObject, WCSessionDelegate, Workout
     public func commandIssued(_ command: RemoteCommand) {
         // The controller makes one command per edit made on the Watch (never for heart-rate samples, which have their own
         // throttled channel, and never for envelopes from the phone) and keeps it until the phone acknowledges it.
-        sendReliably(.command(command))
+        if sendReliably(.command(command)) {
+            // The system queue delivers it whenever the phone is back: keep showing the edit for much longer than 15 seconds.
+            controller?.markQueued(commandID: command.id)
+        }
+        scheduleExpiryCheck()
     }
 
     public func workoutEnded(_ state: WorkoutState, completed: CompletedWorkout?) {
         lastHeartRateSent = nil
+    }
+
+    // MARK: Lost commands
+
+    /// Wakes up when the oldest unacknowledged edit is due to expire and lets the controller drop it. A command the phone never
+    /// received makes the phone change nothing and send nothing, so no envelope would ever remove the edit from the screen.
+    private func scheduleExpiryCheck() {
+        guard expiryTask == nil, let due = controller?.nextPendingExpiry else { return }
+        let seconds = min(max(1, due.timeIntervalSinceNow + 0.5), 86_400)
+        expiryTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            self?.expiryCheckFired()
+        }
+    }
+
+    private func expiryCheckFired() {
+        expiryTask = nil
+        guard let controller = controller else { return }
+        if controller.expirePending(), WCSession.isSupported() {
+            // A dropped edit may have reached the phone after all (its acknowledgement was lost): ask what the phone has.
+            let session = WCSession.default
+            if session.activationState == .activated {
+                askPhoneForState(over: session)
+            }
+        }
+        scheduleExpiryCheck()
     }
 
     // MARK: Inbound (main actor)

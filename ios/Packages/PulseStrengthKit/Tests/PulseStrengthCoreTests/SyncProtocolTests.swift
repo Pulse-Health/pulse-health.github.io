@@ -932,7 +932,9 @@ final class SyncProtocolScenarioTests: XCTestCase {
             XCTAssertNil(peer.state)
             var later = state
             later.revision += 5
-            peer.engine.receive(SyncEnvelope(state: later, sentAt: SvcSyncFix.at(2)))
+            // A late message was sent BEFORE the notice (it overtook it or was delayed); one sent after the notice is the phone
+            // restoring the workout, see SyncEnvelopeOrderTests.testR6_*.
+            peer.engine.receive(SyncEnvelope(state: later, sentAt: SvcSyncFix.at(0.5)))
             XCTAssertNil(peer.state, "an ended workout is not revived by a late state")
         }
     }
