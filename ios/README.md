@@ -145,6 +145,10 @@ each test log, the number of PNGs per suite and their file names (also saved as 
 warning annotation; the log of its step then usually shows a compile error of the test code. The UI flow keeps going after a
 failed step, so open `ui-flow-log.txt` first: it names the steps that failed, with the screenshot taken at that point.
 
+* **`matrix` job:** a short second tour (`StrengthTourTests`, 14 screenshots, about 3 minutes) on four simulators in parallel: `dark` (dark mode), `xxl` (accessibility-extra-large text), `se` (iPhone SE 3rd generation, 375 x 667 pt) and `ios17` (oldest installed iOS 17+ runtime). A simulator the runner lacks prints `SKIPPED: <reason>`; the entry still succeeds.
+* **Artifact `strength-matrix-<name>`** (14 days): `tour-<name>-NN-*.png`, `tour-<name>-layout.txt` (frames of header, navigator, card and rest dock, `pageScrolls`, `LAYOUT VIOLATION` lines), `tour-<name>-flow-log.txt`, `simulator-settings.txt`, `digest.txt` (also printed at the end of the job log).
+* The tour belongs to the `PulseStrengthUITests` scheme, so `visual` runs it once more with the defaults (`tour-default-*` in `strength-screens`).
+
 **Run it locally** (macOS, Xcode 16; the UI flow needs the software keyboard, so disconnect the hardware keyboard in the
 Simulator, I/O > Keyboard):
 
