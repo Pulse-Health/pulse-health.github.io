@@ -204,6 +204,8 @@ private struct CreateExerciseTrackControl: View {
                 .font(.system(size: 14, weight: isSelected ? .bold : .medium))
                 .foregroundStyle(PulseTheme.ink)
                 .frame(maxWidth: .infinity, minHeight: 40)
+                // An unselected segment only paints a clear fill, which has no hit area: the whole segment is the target.
+                .contentShape(Rectangle())
                 .background(
                     RoundedRectangle(cornerRadius: 7, style: .continuous)
                         .fill(isSelected ? PulseTheme.card : Color.clear)

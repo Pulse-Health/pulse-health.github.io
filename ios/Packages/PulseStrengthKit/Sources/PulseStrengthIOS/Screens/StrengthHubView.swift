@@ -1299,7 +1299,7 @@ private struct HubExerciseLibraryView: View {
 private struct HubTemplateListRow: View {
     let template: WorkoutTemplate
     let now: Date
-    /// True for the template the hub recommends ("next up").
+    /// True for the template the hub recommends: it gets a "Next up" pill after its name.
     let isNext: Bool
 
     var body: some View {
@@ -1308,14 +1308,30 @@ private struct HubTemplateListRow: View {
                 StrengthDumbbellGlyph(size: 18, color: HubColor.blue, strokeWidth: 2)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(template.name)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    Text(template.name)
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(PulseTheme.ink)
+                        .lineLimit(1)
+                    if isNext {
+                        // A pill of its own (like the "PR" pill of a recent workout) so the tag is never cut off
+                        // at the end of the subtitle; the name gives way first.
+                        Text("Next up")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(PulseTheme.greenText)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(PulseTheme.greenTint, in: Capsule())
+                            .fixedSize()
+                            .layoutPriority(1)
+                    }
+                }
+                // "6 exercises · about 55 min · last done 5 days ago" wraps to a second line when it does not fit
+                // (a narrow phone, a larger text size) instead of losing its end.
                 Text(subtitle)
                     .font(PulseFont.caption)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(exerciseNames)
                     .font(PulseFont.caption)
                     .foregroundStyle(PulseTheme.inkTertiary)
@@ -1331,14 +1347,11 @@ private struct HubTemplateListRow: View {
     }
 
     private var subtitle: String {
-        var suffixes: [String] = []
+        var suffix: String?
         if let last = template.lastPerformed {
-            suffixes.append("last done " + HubFormat.daysAgo(last, now: now))
+            suffix = "last done " + HubFormat.daysAgo(last, now: now)
         }
-        if isNext {
-            suffixes.append("next up")
-        }
-        return HubFormat.templateSubtitle(template, suffix: suffixes.isEmpty ? nil : suffixes.joined(separator: " · "))
+        return HubFormat.templateSubtitle(template, suffix: suffix)
     }
 
     private var exerciseNames: String {

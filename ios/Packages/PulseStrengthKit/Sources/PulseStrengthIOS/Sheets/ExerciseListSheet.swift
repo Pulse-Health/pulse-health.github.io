@@ -271,7 +271,8 @@ public struct ExerciseListSheet: View {
         case .picker(let mode):
             styled(ExercisePickerSheet(store: store, controller: controller, mode: mode), detents: [.large])
         case .info(let exercise):
-            styled(FormInfoSheet(exercise: exercise), detents: [.large])
+            // The same host as the workout card's form sheet: it adds the "History & records" row.
+            styled(ActiveFormInfoHost(exercise: exercise, store: store), detents: [.large])
         case .restSettings(let exerciseID):
             // The rest sheet hugs its content and sets its own detents.
             styledHugging(RestSettingsSheet(controller: controller, exerciseID: exerciseID))

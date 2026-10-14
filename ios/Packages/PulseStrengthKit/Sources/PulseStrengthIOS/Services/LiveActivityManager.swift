@@ -73,7 +73,7 @@ final class LiveActivityManager: WorkoutSideEffect {
     func workoutEnded(_ state: WorkoutState, completed: CompletedWorkout?) {
         lastQueuedSnapshot = nil
         lastQueuedAt = nil
-        let finalSnapshot = SnapshotBuilder.make(from: state, now: Date())
+        let finalSnapshot = Self.fittingActivity(SnapshotBuilder.make(from: state, now: Date()))
         let finalContent = ActivityContent(state: finalSnapshot, staleDate: nil)
         enqueue { [weak self] in
             guard let self = self else { return }
@@ -131,7 +131,7 @@ final class LiveActivityManager: WorkoutSideEffect {
         }
 
         do {
-            let attributes = WorkoutActivityAttributes(workoutID: workoutID, workoutName: workoutName)
+            let attributes = WorkoutActivityAttributes(workoutID: workoutID, workoutName: Self.clamped(workoutName))
             _ = try WorkoutActivity.request(attributes: attributes, content: content, pushType: nil)
             attachedWorkoutID = workoutID
         } catch {
@@ -196,7 +196,47 @@ final class LiveActivityManager: WorkoutSideEffect {
     }
 
     private static func makeContent(state: WorkoutState, snapshot: WorkoutSnapshot) -> ActivityContent<WorkoutSnapshot> {
-        ActivityContent(state: snapshot, staleDate: staleDate(for: state))
+        ActivityContent(state: fittingActivity(snapshot), staleDate: staleDate(for: state))
+    }
+
+    // MARK: Size limit
+
+    /// ActivityKit accepts at most 4 KB for the attributes and the content state together. Everything in the snapshot is short
+    /// except the workout and exercise names, which come from text fields without a limit, so these are bounded.
+    /// 60 scalars are at most 240 bytes (UTF-8) per name, four names in all (the workout name is in the attributes as well).
+    private static let maximumNameScalars = 60
+
+    /// `text` itself when it has at most `maximumNameScalars` Unicode scalars, else its start (whole characters, so no
+    /// emoji or accent is cut in half; a single character of more scalars than the limit is cut) followed by "…".
+    private static func clamped(_ text: String) -> String {
+        let limit = maximumNameScalars
+        if text.unicodeScalars.dropFirst(limit).isEmpty {
+            return text
+        }
+        var result = ""
+        var used = 0
+        for character in text {
+            let size = character.unicodeScalars.count
+            if used + size > limit {
+                break
+            }
+            result.append(character)
+            used += size
+        }
+        if result.isEmpty {
+            result = String(text.unicodeScalars.prefix(limit))
+        }
+        return result + "…"
+    }
+
+    /// The snapshot as it goes to ActivityKit: `snapshot` with the names bounded. The queued snapshot that is compared
+    /// with the next one stays the full one.
+    private static func fittingActivity(_ snapshot: WorkoutSnapshot) -> WorkoutSnapshot {
+        var fitting = snapshot
+        fitting.workoutName = clamped(snapshot.workoutName)
+        fitting.exerciseName = clamped(snapshot.exerciseName)
+        fitting.nextExerciseName = snapshot.nextExerciseName.map { Self.clamped($0) }
+        return fitting
     }
 }
 #endif

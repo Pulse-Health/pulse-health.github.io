@@ -74,6 +74,13 @@ public final class WorkoutEngine {
     /// treats a finish. Meaningless before the first workout ended.
     public private(set) var lastEndDiscarded = false
 
+    /// Mirror: when the phone sent the envelope that ended the workout that ended most recently (the phone's clock). It is the
+    /// moment the phone ended the workout, which can be long before the Watch learned of it (the phone finished while the link
+    /// was down), so the Watch ends its Health workout then and not when the notice arrived. Set before `onUpdate` and the
+    /// effects' `workoutEnded` run, like `lastEndDiscarded`. nil when the workout ended here (`finish`, `discard`, every
+    /// authority end); an envelope that was ignored (a stale notice) does not set it.
+    public private(set) var lastEndNoticeSentAt: Date?
+
     /// Mirror: the edits shown on top of the phone's state that the phone has not acknowledged yet, oldest first (empty for an
     /// authority).
     public var pendingCommands: [RemoteCommand] { pending }
@@ -546,7 +553,7 @@ public final class WorkoutEngine {
             // before the state last adopted for this workout is a stale context that was read again (the Watch re-reads the
             // last delivered one whenever it wakes, and it can lag behind a message): the workout started after it was written.
             if let mark = authoritative, mark.workoutID == previous.id, envelope.sentAt < mark.sentAt { return }
-            end(previous, completed: nil, remembering: false, discarded: unlogged)
+            end(previous, completed: nil, remembering: false, noticeSentAt: envelope.sentAt, discarded: unlogged)
             return
         }
         var discarded = envelope.discarded
@@ -611,7 +618,8 @@ public final class WorkoutEngine {
     /// Ends the workout. With `unsavedBecause` (the finished workout could not be written to the history) the active-workout file
     /// is left alone: it still holds the workout's sets and is the only copy on disk. With `remembering` false the workout's id
     /// is not added to the ended workouts, so a later state for it is not ignored. `noticeSentAt` is when the phone's end notice
-    /// was sent (nil: the workout ended here, nothing sent later revives it). `discarded` is how it ended (`lastEndDiscarded`);
+    /// was sent (nil: the workout ended here, nothing sent later revives it); it is also what `lastEndNoticeSentAt` reports, and it
+    /// is given for the legacy "no workout" notice too, which is not remembered. `discarded` is how it ended (`lastEndDiscarded`);
     /// nil: it was discarded exactly when there is no `completed` workout.
     private func end(
         _ previous: WorkoutState,
@@ -622,6 +630,7 @@ public final class WorkoutEngine {
         discarded: Bool? = nil
     ) {
         lastEndDiscarded = discarded ?? (completed == nil)
+        lastEndNoticeSentAt = noticeSentAt
         state = nil
         setPending([])
         authoritative = nil

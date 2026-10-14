@@ -125,6 +125,12 @@ public final class WorkoutController: ObservableObject {
         engine.lastEndDiscarded
     }
 
+    /// Mirror: when the phone sent the end notice that ended the workout that ended last (nil: it ended on this side). Read it
+    /// from `WorkoutSideEffect.workoutEnded` like `lastEndDiscarded`. See `WorkoutEngine.lastEndNoticeSentAt`.
+    public var lastEndNoticeSentAt: Date? {
+        engine.lastEndNoticeSentAt
+    }
+
     /// The active-workout screen model for `now`; nil without a workout.
     public func presentation(now: Date) -> ActiveWorkoutPresentation? {
         engine.presentation(now: now)

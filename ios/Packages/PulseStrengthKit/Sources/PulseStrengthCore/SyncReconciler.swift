@@ -98,4 +98,34 @@ public enum SyncReconciler {
         }
         return result
     }
+
+    // MARK: Health session (the Watch's HKWorkoutSession)
+
+    /// How much earlier than the moment it processes the end the phone's end time must lie (5 seconds) before the Watch ends its
+    /// Health workout then: with the link up the notice arrives about a second after the phone sent it, and the Watch's own
+    /// moment is as good.
+    public static let healthEndTolerance: TimeInterval = 5
+
+    /// When the Watch's Health workout ends. The phone ended the workout at `requested` (its end notice's `sentAt`), the Watch
+    /// processes the end at `processedAt`; the two differ by the outage when the phone finished while the link was down, and
+    /// Health must not record that wait as workout time. `start` is the start of the Health workout.
+    ///
+    /// `requested` is used when it is more than `healthEndTolerance` before `processedAt` and after `start`; in every other case
+    /// (no phone time, a notice within the tolerance, a phone clock in the future, an end that would not come after the start, an
+    /// unknown start) the answer is `processedAt`, so an implausible stamp never shortens or breaks the workout.
+    public static func healthWorkoutEnd(requested: Date?, processedAt: Date, start: Date?) -> Date {
+        guard let requested, let start else { return processedAt }
+        guard requested > start, processedAt.timeIntervalSince(requested) > healthEndTolerance else { return processedAt }
+        return requested
+    }
+
+    /// Whether an end notice (an envelope without a state that names the ended workout) received while the Watch shows no workout
+    /// belongs to a Health session that no workout has claimed yet, for instance one the system kept alive after the Watch app
+    /// crashed. The notice belongs to it when the phone sent it after the session began: the phone had no workout then, so the
+    /// workout the session records was over. A notice sent before the session began is an older workout's (the Watch re-reads the
+    /// last delivered context whenever it wakes) and says nothing about the session; neither does a session of unknown start.
+    public static func endNotice(sentAt: Date, settlesSessionStartedAt sessionStart: Date?) -> Bool {
+        guard let sessionStart else { return false }
+        return sentAt > sessionStart
+    }
 }

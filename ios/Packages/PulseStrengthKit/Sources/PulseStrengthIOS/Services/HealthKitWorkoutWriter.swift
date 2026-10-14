@@ -55,6 +55,20 @@ private func hkAddMetadata(_ metadata: [String: Any], to builder: HKWorkoutBuild
     }
 }
 
+private func hkAddWorkoutEvents(_ events: [HKWorkoutEvent], to builder: HKWorkoutBuilder) async throws {
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        builder.addWorkoutEvents(events) { (success: Bool, error: Error?) in
+            if let error = error {
+                continuation.resume(throwing: error)
+            } else if success {
+                continuation.resume()
+            } else {
+                continuation.resume(throwing: HealthWriteError.rejected)
+            }
+        }
+    }
+}
+
 private func hkEndCollection(of builder: HKWorkoutBuilder, at end: Date) async throws {
     try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
         builder.endCollection(withEnd: end) { (success: Bool, error: Error?) in
@@ -69,15 +83,17 @@ private func hkEndCollection(of builder: HKWorkoutBuilder, at end: Date) async t
     }
 }
 
+/// Finishes the workout. A completion without an error is a success even when the `HKWorkout` is nil: HealthKit documents
+/// that result as "finishing the workout succeeded but the workout sample is not available because the device is locked".
+/// Treating it as a failure would discard the builder of a saved workout and, without a record that it was saved, write it
+/// to Health a second time.
 private func hkFinishWorkout(of builder: HKWorkoutBuilder) async throws {
     try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-        builder.finishWorkout { (workout: HKWorkout?, error: Error?) in
+        builder.finishWorkout { (_: HKWorkout?, error: Error?) in
             if let error = error {
                 continuation.resume(throwing: error)
-            } else if workout != nil {
-                continuation.resume()
             } else {
-                continuation.resume(throwing: HealthWriteError.rejected)
+                continuation.resume()
             }
         }
     }
@@ -92,6 +108,9 @@ private func hkFinishWorkout(of builder: HKWorkoutBuilder) async throws {
 /// be written the workout is kept and restored on the next launch, and finishing it again records it by its id), and
 /// HealthKit does not merge two workouts that carry the same `HKMetadataKeyExternalUUID`. So the writer keeps the ids of the
 /// workouts it has saved (the last 64, in `UserDefaults`, so they survive a relaunch) and skips a workout it already saved.
+///
+/// The phone does not know when a pause happened, only how long the pauses took in total, so a workout that was paused gets one
+/// pause / resume event pair of that total length: Health's duration is the app's duration without the pauses, as on the Watch.
 @MainActor
 final class HealthKitWorkoutWriter: WorkoutSideEffect {
     /// `UserDefaults` key of the saved workout ids (an array of `UUID` strings, oldest first).
@@ -164,15 +183,17 @@ final class HealthKitWorkoutWriter: WorkoutSideEffect {
         let start = state.startedAt
         // HealthKit rejects a workout that ends before it starts.
         let end = max(completed.finishedAt, start.addingTimeInterval(1))
+        let activeSeconds = completed.durationSeconds
         Task { [weak self] in
             guard let self = self else { return }
-            await self.write(store: store, workoutID: workoutID, start: start, end: end)
+            await self.write(store: store, workoutID: workoutID, start: start, end: end, activeSeconds: activeSeconds)
         }
     }
 
     // MARK: Writing
 
-    private func write(store: HKHealthStore, workoutID: UUID, start: Date, end: Date) async {
+    /// `activeSeconds` is the workout's duration without the pauses (`CompletedWorkout.durationSeconds`).
+    private func write(store: HKHealthStore, workoutID: UUID, start: Date, end: Date, activeSeconds: Int) async {
         defer { writing.remove(workoutID) }
         refreshAuthorizationStatus()
         guard store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized else { return }
@@ -193,6 +214,14 @@ final class HealthKitWorkoutWriter: WorkoutSideEffect {
             } catch {
                 ServiceLog.error("Health workout metadata could not be added: \(error.localizedDescription)")
             }
+            if let pauseEvents = Self.pauseEvents(start: start, end: end, activeSeconds: activeSeconds) {
+                do {
+                    try await hkAddWorkoutEvents(pauseEvents, to: builder)
+                } catch {
+                    // Without the events Health shows the whole span, pauses included; the workout is still saved.
+                    ServiceLog.error("Health workout pause could not be added: \(error.localizedDescription)")
+                }
+            }
             try await hkEndCollection(of: builder, at: end)
             try await hkFinishWorkout(of: builder)
             markSaved(workoutID)
@@ -200,6 +229,24 @@ final class HealthKitWorkoutWriter: WorkoutSideEffect {
             builder.discardWorkout()
             ServiceLog.error("Health workout could not be saved: \(error.localizedDescription)")
         }
+    }
+
+    /// A pause and a resume event that leave `activeSeconds` of `start ... end` active, so that Health's duration of the
+    /// workout equals the app's (`HKWorkout.duration` is the time between start and end that is not paused). nil when the
+    /// workout was not paused (less than a second of difference) or has no active time to put the pause around.
+    ///
+    /// The phone does not record when the pauses happened (the builder gets no samples), only their total matters here:
+    /// one pause of the total length, in the middle of the active time, strictly between `start` and `end`.
+    private static func pauseEvents(start: Date, end: Date, activeSeconds: Int) -> [HKWorkoutEvent]? {
+        let span = end.timeIntervalSince(start)
+        let paused = span - Double(activeSeconds)
+        guard paused >= 1, activeSeconds >= 1 else { return nil }
+        let pauseAt = start.addingTimeInterval(Double(activeSeconds) / 2)
+        let resumeAt = min(pauseAt.addingTimeInterval(paused), end)
+        return [
+            HKWorkoutEvent(type: .pause, dateInterval: DateInterval(start: pauseAt, duration: 0), metadata: nil),
+            HKWorkoutEvent(type: .resume, dateInterval: DateInterval(start: resumeAt, duration: 0), metadata: nil)
+        ]
     }
 
     // MARK: Saved workout ids
