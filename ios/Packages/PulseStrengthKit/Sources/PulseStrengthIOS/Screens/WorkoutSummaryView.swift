@@ -62,13 +62,13 @@ public struct WorkoutSummaryView: View {
     private var headerBlock: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Workout Complete")
-                .font(PulseFont.largeTitle)
                 .tracking(0.37)
+                .pulseFont(34, .bold, relativeTo: .largeTitle)
                 .foregroundStyle(PulseTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
             Text(verbatim: subtitle)
-                .font(PulseFont.subhead)
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -203,7 +203,7 @@ private struct WorkoutSummarySectionTitle: View {
 
     var body: some View {
         Text(verbatim: text)
-            .font(PulseFont.headline)
+            .pulseFont(17, .semibold, relativeTo: .headline)
             .foregroundStyle(PulseTheme.ink)
             .accessibilityAddTraits(.isHeader)
     }
@@ -235,27 +235,51 @@ private struct WorkoutSummaryRecordsCard: View {
 private struct WorkoutSummaryRecordRow: View {
     let record: PersonalRecord
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        HStack(spacing: 14) {
-            trophy
-            VStack(alignment: .leading, spacing: 2) {
-                Text("New personal record")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(PulseTheme.prText)
-                Text(verbatim: record.exerciseName)
-                    .font(PulseFont.headline)
-                    .foregroundStyle(PulseTheme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(verbatim: detailText)
-                    .pulseNumber(15, .regular)
-                    .foregroundStyle(PulseTheme.ink.opacity(0.76))
-                    .fixedSize(horizontal: false, vertical: true)
+        rowContent
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityText)
+    }
+
+    /// Trophy, text and gain in one row; with the accessibility sizes the text gets the full width and the gain
+    /// moves beside the trophy.
+    @ViewBuilder
+    private var rowContent: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 14) {
+                    trophy
+                    gain
+                }
+                textColumn
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            gain
+        } else {
+            HStack(spacing: 14) {
+                trophy
+                textColumn
+                gain
+            }
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityText)
+    }
+
+    private var textColumn: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("New personal record")
+                .pulseFont(12, .semibold, relativeTo: .footnote)
+                .foregroundStyle(PulseTheme.prText)
+            Text(verbatim: record.exerciseName)
+                .pulseFont(17, .semibold, relativeTo: .headline)
+                .foregroundStyle(PulseTheme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(verbatim: detailText)
+                .pulseNumber(15, .regular, relativeTo: .subheadline)
+                .foregroundStyle(PulseTheme.ink.opacity(0.76))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var trophy: some View {
@@ -278,9 +302,9 @@ private struct WorkoutSummaryRecordRow: View {
         if let gainKg {
             HStack(spacing: 3) {
                 Image(systemName: "arrow.up")
-                    .font(.system(size: 12, weight: .heavy))
+                    .pulseFont(12, .heavy, relativeTo: .footnote)
                 Text(verbatim: NumberText.kg(gainKg) + " kg")
-                    .pulseNumber(13, .semibold)
+                    .pulseNumber(13, .semibold, relativeTo: .footnote)
             }
             .foregroundStyle(PulseTheme.green)
         }
@@ -356,13 +380,23 @@ private struct WorkoutSummaryTile: Identifiable {
 private struct WorkoutSummaryStatsCard: View {
     let tiles: [WorkoutSummaryTile]
 
-    private static let columns = 3
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// Three figures per row at the default text size (and below), as designed. Bigger text gives each figure more room:
+    /// two per row, and one per row with the accessibility sizes.
+    private var columns: Int {
+        if dynamicTypeSize <= .large {
+            return 3
+        }
+        return dynamicTypeSize.isAccessibilitySize ? 1 : 2
+    }
 
     private var rows: [[WorkoutSummaryTile]] {
+        let columns = self.columns
         var result: [[WorkoutSummaryTile]] = []
         var index = 0
         while index < tiles.count {
-            let end = min(index + WorkoutSummaryStatsCard.columns, tiles.count)
+            let end = min(index + columns, tiles.count)
             result.append(Array(tiles[index..<end]))
             index = end
         }
@@ -371,13 +405,14 @@ private struct WorkoutSummaryStatsCard: View {
 
     var body: some View {
         let rows = self.rows
+        let columns = self.columns
         return VStack(spacing: 10) {
             ForEach(rows.indices, id: \.self) { rowIndex in
                 VStack(spacing: 10) {
                     if rowIndex > 0 {
                         StrengthHairline()
                     }
-                    WorkoutSummaryTileRow(tiles: rows[rowIndex], columns: WorkoutSummaryStatsCard.columns)
+                    WorkoutSummaryTileRow(tiles: rows[rowIndex], columns: columns)
                 }
             }
         }
@@ -412,12 +447,12 @@ private struct WorkoutSummaryTileView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(verbatim: tile.title)
-                .font(PulseFont.caption)
+                .pulseFont(12, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.inkSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
             Text(verbatim: tile.value)
-                .pulseNumber(20, .semibold)
+                .pulseNumber(20, .semibold, relativeTo: .title3)
                 .foregroundStyle(PulseTheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -442,31 +477,71 @@ private struct WorkoutSummaryTileView: View {
 private struct WorkoutSummaryExerciseRow: View {
     let exercise: CompletedExercise
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    /// One line for the name as designed; it wraps instead of truncating when the user chose bigger text.
+    private var nameLineLimit: Int? {
+        dynamicTypeSize > .large ? nil : 1
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            ExerciseMediaView(mediaKey: exercise.mediaKey, cornerRadius: 10)
-                .frame(width: 44, height: 44)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: exercise.name)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(1)
-                Text(verbatim: setsLine)
-                    .pulseNumber(12, .regular)
-                    .foregroundStyle(PulseTheme.inkSecondary)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
+        rowContent
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(minHeight: 64)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(accessibilityText)
+    }
+
+    /// Picture, text and PR tag in one row; with the accessibility sizes the tag moves into the text column.
+    @ViewBuilder
+    private var rowContent: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            HStack(alignment: .top, spacing: 12) {
+                mediaTile
+                VStack(alignment: .leading, spacing: 4) {
+                    nameText
+                    if exercise.isPersonalRecord {
+                        StrengthPRChip(horizontal: 8, vertical: 3)
+                    }
+                    setsText
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            if exercise.isPersonalRecord {
-                StrengthPRChip(horizontal: 8, vertical: 3)
+        } else {
+            HStack(spacing: 12) {
+                mediaTile
+                VStack(alignment: .leading, spacing: 2) {
+                    nameText
+                    setsText
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if exercise.isPersonalRecord {
+                    StrengthPRChip(horizontal: 8, vertical: 3)
+                }
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(minHeight: 64)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityText)
+    }
+
+    private var mediaTile: some View {
+        ExerciseMediaView(mediaKey: exercise.mediaKey, cornerRadius: 10)
+            .frame(width: 44, height: 44)
+    }
+
+    private var nameText: some View {
+        Text(verbatim: exercise.name)
+            .pulseFont(15, .semibold, relativeTo: .subheadline)
+            .foregroundStyle(PulseTheme.ink)
+            .lineLimit(nameLineLimit)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var setsText: some View {
+        Text(verbatim: setsLine)
+            .pulseNumber(12, .regular, relativeTo: .footnote)
+            .foregroundStyle(PulseTheme.inkSecondary)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var setsLine: String {
@@ -496,11 +571,11 @@ private struct WorkoutSummaryMuscleRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(verbatim: muscle.title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .pulseFont(12, .semibold, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.ink)
                 Spacer(minLength: 8)
                 Text(verbatim: setsText)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
             }
             bar
