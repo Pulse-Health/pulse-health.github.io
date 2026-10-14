@@ -2,10 +2,9 @@
 
 The strength-workout feature of Pulse for iPhone, Apple Watch, the Lock Screen (Live Activity) and
 the Dynamic Island. It implements the design canvas "Pulse Gym & Strength"
-(<https://claude.ai/artifact/M24e88tBek3xkMcwaPAepp>). The design source files are in
-`/tmp/claude-0/-home-user-pulse-health-github-io/454103a4-1a20-5eb6-93ba-38895136941b/scratchpad/cv/project/`
-(`Active.dc.html` is the reference for behaviour: its `<script>` is the logic to port; the markup is the
-reference for layout, sizes, colours and copy).
+(<https://claude.ai/artifact/M24e88tBek3xkMcwaPAepp>). The design source files (the HTML boards of that canvas, which are not part of this repository)
+were the reference while building: `Active.dc.html` for behaviour (its `<script>` is the logic that the reducer and presenter port), the markup for
+layout, sizes, colours and copy.
 
 The Pulse app repository is not available to this build, so the feature is a self-contained Swift
 package (`PulseStrengthKit`) plus a host Xcode project (XcodeGen spec) that runs it standalone. The
@@ -17,7 +16,9 @@ integration seams are protocols and plain closures (see "Integration with the Pu
 ios/
   ARCHITECTURE.md            this file
   README.md                  setup, capabilities, verification status
-  project.yml                XcodeGen spec: app, widget extension, watch app
+  project.yml                XcodeGen spec: app, widget extension, watch app, visual-test targets, schemes
+  PulseStrength.xcodeproj/   generated from project.yml and committed (open it in Xcode; regenerate only after editing project.yml)
+  Config/Signing.xcconfig    DEVELOPMENT_TEAM and PULSE_APP_BUNDLE_ID (optional git-ignored Signing.local.xcconfig overrides them)
   Packages/PulseStrengthKit/
     Package.swift
     Sources/
@@ -33,6 +34,9 @@ ios/
     Shared/Intents/          App Intents (LiveActivityIntent) compiled into BOTH the app and the widget extension
     Shared/LiveActivity/     Lock Screen + Dynamic Island views, compiled into the widget extension
     PulseStrengthWatch/      watchOS app (entry point, Info.plist, entitlements, assets)
+    PulseStrengthUITests/            UI test: walks the iPhone app in the simulator (screenshots)
+    PulseStrengthLiveSnapshotTests/  draws the Lock Screen and Dynamic Island views into PNG files
+    PulseStrengthWatchSnapshotTests/ draws the Watch pages into PNG files
 ```
 
 ## 2. Platform and tooling
@@ -645,6 +649,6 @@ phone ends the workout.
 `project.yml` (XcodeGen) defines targets PulseStrength (iOS app, embeds the widget extension and the Watch app; sources `Apps/PulseStrength` + `Apps/Shared/Intents`), PulseStrengthWidgets
 (app-extension; sources `Apps/PulseStrengthWidgets` + `Apps/Shared/Intents` + `Apps/Shared/LiveActivity`), PulseStrengthWatch (watchOS app) with the package products as dependencies, entitlements and Info.plist properties from 5.1, schemes. `Apps/*` contains the `@main` entry points, plists, entitlements,
 asset catalogs (AccentColor, placeholder AppIcon). `.github/workflows/strength-ios.yml`: Linux job (`swift test`, with and without `-Xswiftc -DPULSE_COMBINE_SHIM`) and a macOS job
-(`swift test` of the package on macOS, `xcodegen generate`, `xcodebuild build` of the iOS and watchOS schemes for the simulators with `CODE_SIGNING_ALLOWED=NO`). `README.md`
+(`swift test` of the package on macOS, `xcodegen generate` plus a check that the committed `PulseStrength.xcodeproj` is unchanged, `xcodebuild build` of the iOS and watchOS schemes for the simulators with `CODE_SIGNING_ALLOWED=NO`). `README.md`
 documents setup, what is verified and what is not, integration with the Pulse app (replace `RecoveryProvider`, the App Group id, the bundle ids, the media source), and the
 public-domain attribution of the form photos (Free Exercise DB, Unlicense).

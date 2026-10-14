@@ -6,7 +6,7 @@ import PulseStrengthCore
 import PulseStrengthActivity
 
 /// Everything the strength feature needs at runtime, created once and shared by the screens:
-/// persistence (App Group container), the store, the workout controller (the phone is the authority),
+/// persistence (Application Support, or the App Group container when the app is entitled), the store, the workout controller (the phone is the authority),
 /// the platform services (Live Activity, notifications, HealthKit, Watch bridge) and the Watch status.
 ///
 /// `StrengthAppEnvironment.shared` is created lazily on the main actor. Touching it early (for example
@@ -25,7 +25,7 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// Apple Watch state worth telling the user about; the root view publishes it as `\.watchStatus`.
     @Published public var watchStatus: WatchStatus
 
-    /// The live environment of the running app (App Group persistence, demo data when the store is empty).
+    /// The live environment of the running app (persistence in Application Support or the App Group container, demo data when the store is empty).
     public static let shared: StrengthAppEnvironment = StrengthAppEnvironment.live()
 
     private init(
@@ -46,8 +46,8 @@ public final class StrengthAppEnvironment: ObservableObject {
 
     // MARK: Live
 
-    /// Builds the environment of the running app: App Group persistence (falling back to
-    /// Application Support/PulseStrength), the platform services, the command-bus handler for the Live Activity
+    /// Builds the environment of the running app: persistence in the App Group container when the app is
+    /// entitled to one, otherwise in Application Support/PulseStrength (the standalone build), the platform services, the command-bus handler for the Live Activity
     /// buttons, and restores a workout that was running when the app was last closed.
     public static func live(seedDemoData: Bool = true) -> StrengthAppEnvironment {
         let persistence = makeLivePersistence()

@@ -1,7 +1,7 @@
 # XcodeGen spec for the Pulse Strength host project (https://github.com/yonaskolb/XcodeGen, 2.38 or newer).
 #
 # PulseStrength.xcodeproj is generated from this file and COMMITTED, so Xcode can open it directly. After changing this file run
-#   brew install xcodegen      # CI pins XcodeGen 2.46.0; the same version gives byte-identical output
+#   brew install xcodegen      # then check `xcodegen --version`: CI pins 2.46.0, another version may write a different project
 #   xcodegen generate
 # and commit the regenerated project (the `apple` CI job fails when the committed project is out of date).
 #

@@ -29,6 +29,8 @@ ios/
   README.md                  this file
   ARCHITECTURE.md            build contract: models, reducer, presenter, services, Apple targets (read this next)
   project.yml                XcodeGen spec: iOS app, widget extension, Watch app, three visual-test targets, schemes
+  PulseStrength.xcodeproj/   generated from project.yml and COMMITTED: open this in Xcode (run xcodegen only after editing project.yml)
+  Config/Signing.xcconfig    DEVELOPMENT_TEAM and PULSE_APP_BUNDLE_ID (optional git-ignored Signing.local.xcconfig overrides them)
   Packages/PulseStrengthKit/ Swift package (swift-tools-version 5.9, iOS 17 / watchOS 10 / macOS 14)
     Sources/
       PulseStrengthCore/       Foundation only: models, reducer, presenter, controller, store, sync, exercise library
@@ -39,7 +41,7 @@ ios/
     Tests/PulseStrengthCoreTests/
   Apps/
     PulseStrength/           iOS host app: @main entry point, Info.plist, entitlements, assets
-    PulseStrengthWidgets/    widget extension: @main WidgetBundle, Info.plist, entitlements
+    PulseStrengthWidgets/    widget extension: @main WidgetBundle, Info.plist
     PulseStrengthWatch/      watchOS app: @main entry point, Info.plist, entitlements, assets
     Shared/Intents/          App Intents behind the Live Activity buttons (compiled into the app AND the extension)
     Shared/LiveActivity/     Lock Screen and Dynamic Island views (compiled into the extension)
@@ -55,13 +57,16 @@ Intents inside a package would need `AppIntentsPackage` plumbing that only exist
 
 ## Requirements
 
-* **Xcode 16** (macOS 14.5 or later). The code is written to also build with Xcode 15.4, Swift 5 language mode.
+* **Xcode 16 or newer**, on a macOS version that Xcode supports. Use an Xcode that knows your devices' OS: an iPhone / Apple Watch on
+  iOS 26 / watchOS 26 needs Xcode 26. CI builds the committed project with Xcode 16.4 and with Xcode 26.6 (simulators; Xcode 26 also for
+  the device SDKs without signing); newer Xcode versions have not been tried. Swift 5 language mode; the code is written to also build
+  with Xcode 15.4.
 * **A paid Apple Developer Program team to run on a real iPhone / Apple Watch.** The app uses HealthKit and time-sensitive
   notifications; Apple's free personal teams may not be able to provision those (not tried). The simulators need no account.
 * iOS 17 / watchOS 10 or later on the simulator or the device. The Dynamic Island needs an iPhone 14 Pro or newer
   (or such a simulator); the Lock Screen presentation works on every iPhone with iOS 17.
 * **XcodeGen is not needed to open or run the project**: `PulseStrength.xcodeproj` is generated from `project.yml` and
-  committed. You only need XcodeGen 2.46.0 (`brew install xcodegen`) after changing `project.yml`.
+  committed. You only need XcodeGen after changing `project.yml` (see "Regenerating the project").
 * To run only the Core tests: any Swift 5.9+ toolchain on Linux or macOS (CI uses `swift:6.1` on Linux).
 
 ## Quick start in Xcode
@@ -69,24 +74,33 @@ Intents inside a package would need `AppIntentsPackage` plumbing that only exist
 1. Open **`ios/PulseStrength.xcodeproj`** (`open ios/PulseStrength.xcodeproj`). Xcode resolves the local package
    `Packages/PulseStrengthKit` by itself.
 2. **Simulator**: pick the **PulseStrength** scheme and any iPhone simulator, press Run. No signing needed.
-3. **Real iPhone**: open `Config/Signing.xcconfig` (it is in the Xcode navigator) and set `DEVELOPMENT_TEAM` to your 10-character
-   Team ID (developer.apple.com > Account > Membership details). Change `PULSE_APP_BUNDLE_ID` to an id you own if
-   `health.pulse.strength` is not yours (the widget gets `.widgets`, the Watch app `.watchkitapp`). To keep your values out of
-   git, create `Config/Signing.local.xcconfig` with the same two lines instead; it is git-ignored. Alternatively pick the team in
-   *Signing & Capabilities* for the three targets; Xcode then writes it into the project file.
-4. On the iPhone enable *Settings > Privacy & Security > Developer Mode*, connect it, choose it as the run destination and press
-   Run (first install: trust your developer profile in *Settings > General > VPN & Device Management*). Allow Health and
-   Notifications when the app asks.
+3. **Real iPhone**: set your team and, if `health.pulse.strength` is not yours, your own bundle id. The safe way that keeps your values
+   out of git: create the git-ignored file `ios/Config/Signing.local.xcconfig` (in Terminal, not through Xcode; it is not shown in the
+   navigator) with
+   ```sh
+   printf 'DEVELOPMENT_TEAM = ABCDE12345\nPULSE_APP_BUNDLE_ID = com.yourcompany.pulsestrength\n' > ios/Config/Signing.local.xcconfig
+   ```
+   (`DEVELOPMENT_TEAM` is your 10-character Team ID: developer.apple.com > Account > Membership details; the widget gets the id with
+   `.widgets`, the Watch app with `.watchkitapp`). You can also edit the tracked `Config/Signing.xcconfig` (it is in the Xcode
+   navigator), but then the change shows up in `git status`. Do not type a bundle id into Xcode's *Bundle Identifier* field (it would
+   override the derived ids of one target only), and prefer not to pick the team in *Signing & Capabilities*: Xcode would write it into
+   `PulseStrength.xcodeproj/project.pbxproj` for that target only, and a committed project that differs from `project.yml` fails the CI
+   check (`git checkout -- ios/PulseStrength.xcodeproj` undoes it).
+4. Connect the iPhone by cable, unlock it, tap *Trust*, and choose it as the run destination (the first connection can take a minute
+   while Xcode prepares the device). Then enable *Settings > Privacy & Security > Developer Mode* on the iPhone (the entry only
+   appears after the iPhone has been connected to Xcode once; the iPhone restarts and asks you to confirm). Press Run. First install:
+   trust your developer profile in *Settings > General > VPN & Device Management*. Allow Health and Notifications when the app asks.
 5. **Apple Watch**: with a paired Watch the Watch app installs together with the iPhone app (or from the iPhone's Watch app >
-   Available Apps). To run it directly, choose the **PulseStrengthWatch** scheme and the Watch as destination. Enable Developer
-   Mode on the Watch as well.
+   Available Apps). Enable Developer Mode on the Watch too (Watch: *Settings > Privacy & Security > Developer Mode*, or the iPhone's Watch
+   app > *Privacy & Security > Developer Mode*); it only appears after the paired iPhone is connected to Xcode with Developer Mode on. To
+   run the Watch app directly, choose the **PulseStrengthWatch** scheme and the Watch as destination.
 
 ### Simulator notes
 
 * The first launch seeds demo templates and history (see [Placeholders](#placeholders-to-replace)).
 * Start a workout from the hub. To see the Live Activity, lock the simulator (Device > Lock, Cmd-L) while a workout runs;
   use an iPhone 14 Pro or newer simulator to see the Dynamic Island as well.
-* For the Watch app, use a simulator pair (iPhone + Apple Watch, created in Xcode > Window > Devices and Simulators),
+* For the Watch app, use a simulator pair (iPhone + Apple Watch, created in Xcode > Window > Devices and Simulators, Shift-Cmd-2),
   run the **PulseStrengthWatch** scheme on the Watch simulator, then start a workout on the paired iPhone simulator.
   The simulator has no real heart-rate sensor; Watch heart rate needs a real Watch.
 
@@ -99,7 +113,7 @@ uses **no App Group** (its data lives in Application Support; the Live Activity 
 ### Regenerating the project (only after editing `project.yml`)
 
 ```sh
-brew install xcodegen          # CI uses 2.46.0; the same version gives identical output
+brew install xcodegen          # then check `xcodegen --version`: CI pins 2.46.0; another version may write a different project file
 cd ios && xcodegen generate    # rewrites PulseStrength.xcodeproj; commit the result
 ```
 
@@ -143,7 +157,7 @@ configuration, `CODE_SIGNING_ALLOWED=NO` and `-parallel-testing-enabled NO`.
 | Scheme (target) | What it produces | Files in the artifact |
 | --- | --- | --- |
 | `PulseStrengthLiveSnapshots` (`PulseStrengthLiveSnapshotTests`, no host app) | Lock Screen card, Dynamic Island compact / minimal / expanded in 12 workout states, plus contact sheets | `live-NN-*.png` (about 57), `live-measurements.txt` (sizes and limit violations) |
-| `PulseStrengthUITests` (`PulseStrengthUITests`) | One long walk through the iPhone app in demo mode (`-PulseUITest`): hub, active workout, keypad, sheets, rest timer, undo, finish, summary, exercise library | `ui-NN-*.png` (about 70), `ui-flow-log.txt` (OK / FAILED / SKIPPED per step) |
+| `PulseStrengthUITests` (`PulseStrengthUITests`) | One long walk through the iPhone app in demo mode (`-PulseUITest`): hub, active workout, keypad, sheets, rest timer, undo, finish, summary, exercise library | `ui-NN-*.png` (55), `ui-flow-log.txt` (OK / FAILED / SKIPPED per step) |
 | `PulseStrengthWatchSnapshots` (`PulseStrengthWatchSnapshotTests`, no host app) | The Watch pages at 45 mm and at 40 / 41 / 44 / 49 mm, plus experimental root-view shots | `watch-NN-*.png` (44), `watch-manifest.txt` (a `BLANK` line marks an image that came out empty) |
 
 The tests write their files to the directory in `SCREENSHOT_DIR`; the workflow passes it as `TEST_RUNNER_SCREENSHOT_DIR`
@@ -153,6 +167,8 @@ The tests write their files to the directory in `SCREENSHOT_DIR`; the workflow p
 
 * **`strength-screens`** (kept 14 days): all PNGs and text files above, `digest.txt`, `logs/` (the xcodebuild logs) and
   `results/` (summaries of the `.xcresult` bundles, where Xcode 16's `xcresulttool` can read them).
+* **`generated-xcodeproj`** (kept 7 days, job `apple`): the freshly generated `PulseStrength.xcodeproj` and `project.yml`, to update the committed
+  project without installing XcodeGen. The `apple` job also uploads `strength-ios-logs` (14 days, the xcodebuild / swift test logs).
 * **`strength-xcresults`** (kept 3 days): the zipped `.xcresult` bundles (`ui`, `live`, `watch`). They hold every test
   attachment and are only needed when the PNGs and logs do not explain a failure.
 
@@ -251,8 +267,9 @@ The seams are plain protocols and closures:
 * **Watch.** Link `PulseStrengthWatchUI` into the Pulse Watch app, use `WatchRootView(environment: WatchEnvironment.shared)` and
   `WatchAppDelegate` (`@WKApplicationDelegateAdaptor`), as `Apps/PulseStrengthWatch` does.
 
-Note that this repository also serves the pulse-health.github.io site. If GitHub Pages publishes from the branch root,
-the files under `ios/` are served too; move the folder to its own repository before using it for a product.
+Note that this repository also serves the pulse-health.github.io site. The root `_config.yml` excludes `ios/` from the GitHub Pages
+build, so these files are not published on the website, but everyone who can read the repository can read them; move the folder to its
+own repository before using it for a product (then delete the `exclude` entry).
 
 ## Capabilities needed
 

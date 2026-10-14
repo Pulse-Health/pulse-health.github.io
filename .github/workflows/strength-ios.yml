@@ -1,10 +1,13 @@
 # Pulse Strength (ios/): builds and tests the Swift package on Linux and compiles the Apple-only code on macOS.
 #
 #   core-linux  PulseStrengthCore on Linux (swift build / swift test, with and without the Combine shim).
-#   apple       XcodeGen -> PulseStrength.xcodeproj, package tests on macOS, xcodebuild of the iOS app (which also builds
-#               the widget extension and the embedded Watch app) and of the Watch scheme, both for the simulators and
-#               without code signing. This job is the first real compile of the iOS UI, the Live Activity and the Watch
-#               code; see ios/README.md, "Verification status".
+#   apple       XcodeGen 2.46.0 -> PulseStrength.xcodeproj, a check that the COMMITTED ios/PulseStrength.xcodeproj matches
+#               project.yml, package tests on macOS, xcodebuild of the iOS app (which also builds the widget extension and
+#               the embedded Watch app) and of the Watch scheme, both for the simulators and without code signing (Xcode
+#               16). Uploads the generated project as artifact `generated-xcodeproj`; see ios/README.md, "Verification status".
+#   xcode26     The committed Xcode project, built with the newest Xcode 26 (macos-26 image) for the iOS and watchOS
+#               simulators AND for the iOS / watchOS devices without code signing, plus the package tests: what a user
+#               who opens the project in a current Xcode gets.
 #   visual      Screenshots of the running UI, in parallel with `apple`: XcodeGen, then the Lock Screen / Dynamic Island snapshot
 #               test and the iPhone UI flow test on an iPhone simulator and the Watch snapshot test on a watchOS simulator.
 #               Uploads the PNGs, logs and result summaries as artifact `strength-screens` (14 days) and the zipped .xcresult
@@ -155,21 +158,23 @@ jobs:
           xcodebuild -list -project PulseStrength.xcodeproj | tee "$LOG_DIR/xcodebuild-list.log"
           cp PulseStrength.xcodeproj/project.pbxproj "$LOG_DIR/project.pbxproj"
 
-      # PulseStrength.xcodeproj is committed so Xcode can open it without XcodeGen; this fails when project.yml changed
-      # and the committed project was not regenerated. (Skipped while the project is not committed yet.)
+      # PulseStrength.xcodeproj is committed so Xcode can open it without XcodeGen; this fails when it is missing from git or
+      # when project.yml changed and the committed project was not regenerated.
       - name: Committed Xcode project is up to date
         id: project-sync
         continue-on-error: true
         working-directory: ios
         run: |
           if ! git ls-files --error-unmatch PulseStrength.xcodeproj/project.pbxproj >/dev/null 2>&1; then
-            echo "PulseStrength.xcodeproj is not committed yet: nothing to compare."
-            exit 0
+            echo "::error::ios/PulseStrength.xcodeproj is not committed: run 'xcodegen generate' (XcodeGen 2.46.0) in ios/ and commit the result."
+            exit 1
           fi
-          if [ -z "$(git status --porcelain -- PulseStrength.xcodeproj)" ]; then
+          changes="$(git status --porcelain -- PulseStrength.xcodeproj)"
+          if [ -z "$changes" ]; then
             echo "The committed PulseStrength.xcodeproj matches project.yml."
             exit 0
           fi
+          echo "$changes" | head -n 40
           git --no-pager diff --stat -- PulseStrength.xcodeproj | tail -n 40
           if [ "${XCODEGEN_VERSION:-}" != "2.46.0" ]; then
             echo "::warning::XcodeGen ${XCODEGEN_VERSION:-unknown} is not the pinned 2.46.0; the difference may only be a version difference."
@@ -182,7 +187,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: generated-xcodeproj
-          path: ios/PulseStrength.xcodeproj/
+          path: |
+            ios/PulseStrength.xcodeproj
+            ios/project.yml
           if-no-files-found: ignore
           retention-days: 7
 
@@ -282,6 +289,93 @@ jobs:
   #   strength-screens   (artifact, 14 days)  ui-*.png (iPhone UI flow), live-*.png (Lock Screen / Dynamic Island), watch-*.png,
   #                      ui-flow-log.txt, live-measurements.txt, watch-manifest.txt, digest.txt, logs/, results/
   #   strength-xcresults (artifact, 3 days)   the zipped .xcresult bundles
+  # What a user gets who opens the committed project in a current Xcode: no XcodeGen, the newest Xcode 26 of the runner image,
+  # simulator AND device SDKs (signing off), package tests with that Swift toolchain.
+  xcode26:
+    name: xcode26
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      LOG_DIR: ${{ github.workspace }}/build-logs
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode and runtimes
+        run: |
+          mkdir -p "$LOG_DIR"
+          xcodebuild -version
+          swift --version
+          xcrun simctl list runtimes
+          git ls-files ios/PulseStrength.xcodeproj | head -n 20
+
+      - name: Build the iOS app for the iOS Simulator (committed project)
+        id: ios-sim
+        continue-on-error: true
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -project PulseStrength.xcodeproj -scheme PulseStrength -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$LOG_DIR/ios-simulator.log" | tail -n 5
+
+      - name: Build the iOS app for an iPhone (device SDK, signing off; embeds the Watch app and the widget)
+        id: ios-device
+        continue-on-error: true
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -project PulseStrength.xcodeproj -scheme PulseStrength -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$LOG_DIR/ios-device.log" | tail -n 5
+
+      - name: Build the Watch app for the watchOS Simulator and for an Apple Watch
+        id: watch
+        continue-on-error: true
+        working-directory: ios
+        run: |
+          set -o pipefail
+          xcodebuild -project PulseStrength.xcodeproj -scheme PulseStrengthWatch -destination 'generic/platform=watchOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$LOG_DIR/watch-simulator.log" | tail -n 5
+          xcodebuild -project PulseStrength.xcodeproj -scheme PulseStrengthWatch -destination 'generic/platform=watchOS' \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$LOG_DIR/watch-device.log" | tail -n 5
+
+      - name: Test the package on macOS
+        id: package-tests
+        continue-on-error: true
+        working-directory: ios/Packages/PulseStrengthKit
+        run: |
+          set -o pipefail
+          swift test 2>&1 | tee "$LOG_DIR/swift-test.log" | tail -n 8
+
+      - name: Error digest
+        if: always()
+        run: |
+          for f in ios-simulator ios-device watch-simulator watch-device swift-test; do
+            log="$LOG_DIR/$f.log"
+            [ -f "$log" ] || continue
+            echo "===== $f: $(grep -E 'BUILD (SUCCEEDED|FAILED)|Executed [0-9]+ tests' "$log" | tail -n 2 | tr '\n' ' ')"
+            grep -E "error:" "$log" | sed -E 's#^/Users/runner/work/[^/]+/[^/]+/##' | sort -u | head -n 60 || true
+          done
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strength-xcode26-logs
+          path: build-logs/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Gate
+        if: always()
+        run: |
+          status=0
+          for outcome in "${{ steps.ios-sim.outcome }}" "${{ steps.ios-device.outcome }}" "${{ steps.watch.outcome }}" "${{ steps.package-tests.outcome }}"; do
+            if [ "$outcome" != "success" ]; then status=1; fi
+          done
+          exit $status
+
   visual:
     name: visual
     runs-on: macos-15
