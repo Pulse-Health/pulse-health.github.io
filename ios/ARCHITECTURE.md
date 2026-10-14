@@ -303,6 +303,7 @@ public final class WorkoutController: ObservableObject {
     public var pendingCommands: [RemoteCommand] { get }              // mirror: edits shown on top of the phone's state that are not acknowledged yet
     public var authoritativeRevision: Int? { get }                   // mirror: revision of the last phone state adopted for the running workout
     public var lastEndDiscarded: Bool { get }                        // how the workout that ended last ended (true = thrown away); set before the effects' workoutEnded run, which on a mirror always get completed == nil
+    public var lastEndNoticeSentAt: Date? { get }                    // mirror: when the phone sent the envelope that ended that workout (nil: it ended on this side); set before workoutEnded too
     public var nextPendingExpiry: Date? { get }                      // mirror: when the oldest unacknowledged edit stops being shown (nil: none)
     @discardableResult public func expirePending() -> Bool           // mirror: drop the edits past their lifetime, show the phone's last state + the rest; true when one was dropped
     public func markQueued(commandID: UUID)                          // mirror: the transport queued this command (transferUserInfo): keep its edit for queuedPendingLifetime
@@ -389,7 +390,11 @@ can arrive out of order or be coalesced by `updateApplicationContext`. The Watch
 `finish` with no logged set (the engine discards that) are `true`, a recorded finish is `false`. The mirror stores the outcome in `lastEndDiscarded` before it
 tells the effects. A notice that does not say (an older phone build, the legacy "no workout" notice, a ghost workout whose own end the Watch never heard: the
 flag then belongs to another workout) counts as a discard when the Watch's copy has no logged set, the phone's own rule for a finish. The Watch uses it to save
-the Health workout (`false`) or throw it away (`true`, no summary page).
+the Health workout (`false`) or throw it away (`true`, no summary page). `lastEndNoticeSentAt` says WHEN the phone ended it (the `sentAt` of the envelope that ended
+the workout here, the legacy "no workout" notice and a ghost's revealing notice included; an ignored notice sets nothing): a Watch that learns of the end late (the phone
+finished while the link was down) ends its Health workout then (`SyncReconciler.healthWorkoutEnd`) and builds its summary for that time. An end notice that reaches a Watch
+with NO workout ends nothing in the engine and tells no effect (it only remembers the id); the Watch environment sees it through the client's `onEnvelope` hook and decides about
+a Health session nobody claimed with `SyncReconciler.endNotice(sentAt:settlesSessionStartedAt:)` (5.5).
 
 Known limits: a command redelivered after more than 256 later commands would run again (`SeenCommands` and the saved acknowledgements hold 256 ids); a
 command that reaches the phone after the Watch dropped it (15 s, or the queued lifetime) is still applied and shows up with the next envelope; cumulative
@@ -420,7 +425,7 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
-  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 682 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 697 (the controller and
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 700 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 716 (the controller and
   store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
   phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
   40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice. `SyncHardeningTests.swift` holds one
@@ -431,7 +436,9 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
   (`markQueued`, the expiry timer): the Watch never goes back to an older workout, equals the phone even when no last envelope comes, and no command runs
   twice across a relaunch. `SyncWatchHealthTests.swift` covers the end outcome (`SyncEnvelope.discarded`, `lastEndDiscarded`: what the phone says for a discard, a
   finish and an empty finish, what the Watch concludes when the notice does not say, ghost workouts, the codec and older payloads) and a stale "no workout"
-  notice after a workout was adopted.
+  notice after a workout was adopted. `SyncWatchHealth2Tests.swift` covers when the phone ended the workout (`lastEndNoticeSentAt`: late, legacy and ghost notices,
+  ignored notices, workouts that ended on the Watch itself, the controller forwards) with the Health end time rule (`SyncReconciler.healthWorkoutEnd`), and the rule
+  that decides whether an end notice received without a workout belongs to a Health session nobody claimed (`SyncReconciler.endNotice(sentAt:settlesSessionStartedAt:)`).
 * Apple-only files cannot be compiled on Linux: they are syntax-checked with `swiftc -parse`, then reviewed adversarially against the
   iOS 17 / watchOS 10 SDK APIs. The README states plainly that the Apple targets have not been built in Xcode.
 
@@ -591,22 +598,40 @@ rate with beat, volume, sets). Idle state ("Start a workout on your iPhone"), su
 phone ends the workout.
 
 *Health session lifecycle (`WatchEnvironment` owns the rules, `WatchWorkoutSession` the HealthKit calls).*
-* Save or discard. `WatchWorkoutSession.end(save: Bool = true)`: `true` ends the collection and `finishWorkout`s (saved to Health), `false` calls
-  `HKWorkoutBuilder.discardWorkout()` (nothing reaches Health; a discard wins when the session is already ending). `handleWorkoutEnded` passes
+* Save or discard. `WatchWorkoutSession.end(save: Bool = true, endDate: Date? = nil)`: `true` ends the collection and `finishWorkout`s (saved to Health), `false` calls
+  `HKWorkoutBuilder.discardWorkout()` (nothing reaches Health; a discard wins when the session is already ending, unless a start is queued behind it: a call while a
+  restart is queued is about the QUEUED session, so it only cancels the start and never decides how the ending session is finalized). `handleWorkoutEnded` passes
   `save: !controller.lastEndDiscarded`, so a workout the user discarded on the phone, or finished with nothing logged, is not saved by the Watch, and no
   "Workout Complete" page is built for it. The phone writes no Health workout itself while the Watch records (`usedWatch`), so a finish is always saved by exactly one side.
   The 45 s check for a phone-launched session that never receives a workout ends it with `save: false`; a builder that cannot start collecting is discarded too.
+  End time. `handleWorkoutEnded` also passes `endDate: controller.lastEndNoticeSentAt` (when the phone ended the workout), and the session ends the Health collection
+  there when `SyncReconciler.healthWorkoutEnd` accepts it (more than 5 s before the Watch's own moment, after the session's start): a finish while the link was down
+  does not stretch Health's duration, which matches the summary's. If HealthKit refuses the earlier end, the collection ends at the Watch's own moment instead, so the
+  workout is saved either way.
 * One session per workout. `WatchEnvironment` remembers which workout the session records (`sessionWorkoutID`; nil for a session started by a phone launch
   before its workout arrived, which the first state claims). A state of ANOTHER workout (the end notice of the first was lost: `updateApplicationContext` keeps
   only the latest value) ends the old session first (saved when the Watch saw a logged set) and the new session is queued behind it.
   `WatchAppDelegate.applicationDidBecomeActive` runs the same reconciliation, so a start that failed in the background (for example `errorBackgroundWorkoutSessionNotAllowed`) is
   retried in the foreground. A session never runs without a workout: the end of the workout, the replacement and the 45 s check all end it.
+  A workout whose session the Watch ended with a save is remembered (the last 8 ids, in `UserDefaults`): when the phone restores it (its history write failed and the next
+  launch restored it) it gets NO second session, which would save an overlapping Health workout when it is finished again. A session that ends by itself while the
+  workout runs (another app takes the workout session, or HealthKit fails it) has saved what it recorded (`WatchWorkoutSession.onEndedByItself`): the session the next
+  `applicationDidBecomeActive` starts for the same workout begins now, not at the workout's start, so the two Health workouts do not overlap.
 * Pause. The environment forwards `state.isPaused` of every published state to `WatchWorkoutSession.setPaused(_:)`, which pauses / resumes the
   `HKWorkoutSession` (a pause that arrives before the session runs is applied when it does), so Health's duration, heart rate and energy leave out the pauses
-  like the app's own duration does.
+  like the app's own duration does. The session remembers the phone's last pause state (`phonePaused`) even when it equalled the session's, so a session recovered
+  after a crash takes the phone's state (reported while it was being recovered) instead of the one it had when the app crashed, and applies it once it is in hand. The
+  delegate's `running` and `paused` reports re-apply the wanted state, so a pause or a resume that was skipped because the session had not changed state yet is applied
+  as soon as it has.
 * Crash recovery. `WatchAppDelegate.handleActiveWorkoutRecovery()` (watchOS 7) calls `WatchWorkoutSession.recover()`: `HKHealthStore.recoverActiveWorkoutSession`
   returns the surviving session, the Watch attaches a new data source and the delegates, and the phone is asked for the workout. Without a workout after 45 s the
-  recovered session is ended and saved (it recorded a real workout before the crash).
+  recovered session is ended and saved (it recorded a real workout before the crash), unless the phone's end notice says its workout was discarded: a notice that
+  reached the Watch while it had no workout (the answer to `requestState`) is kept by the environment and decides when the check fires, or at once if the session is in
+  hand. It counts only when it was sent after the session began (`SyncReconciler.endNotice(sentAt:settlesSessionStartedAt:)`; the start is `HKWorkoutSession.startDate`):
+  an older notice is an earlier workout's (the Watch re-reads the last delivered context whenever it wakes). A notice that does not say (`discarded == nil`) leaves the
+  save, and a finished one ends the saved session at the phone's time. The check keeps the more conservative decision: the phone launching the app while the recovered
+  session runs does not turn the pending save into a discard. Known limit: the notice names the workout that ended LAST; if the phone also started and discarded a
+  later workout before the Watch recovered, its flag decides for the recovered one.
 
 ### 5.6 Project, CI, docs
 
