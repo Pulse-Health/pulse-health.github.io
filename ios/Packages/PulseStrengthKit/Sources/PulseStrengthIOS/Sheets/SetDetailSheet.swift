@@ -41,6 +41,7 @@ public struct SetDetailSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(PulseTheme.ground.ignoresSafeArea())
+        .dynamicTypeSize(PulseDynamicType.screenRange)
         .sheetDetentsHuggingContent(titleBarHeight: 56, estimate: 484)
         .onAppear {
             if live == nil {
@@ -98,7 +99,7 @@ public struct SetDetailSheet: View {
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(PulseFont.footnote)
+            .pulseFont(13, relativeTo: .footnote)
             .foregroundStyle(PulseTheme.inkSecondary)
             .padding(.leading, 4)
             .accessibilityAddTraits(.isHeader)
@@ -124,9 +125,9 @@ public struct SetDetailSheet: View {
         Button(action: deleteSet) {
             HStack(spacing: 8) {
                 Image(systemName: "trash")
-                    .font(.system(size: 17, weight: .regular))
+                    .pulseFont(17, .regular, relativeTo: .body)
                 Text("Delete Set")
-                    .font(PulseFont.body)
+                    .pulseFont(17, relativeTo: .body)
             }
             .foregroundStyle(PulseTheme.destructive)
             .frame(maxWidth: .infinity, minHeight: 52)
@@ -186,29 +187,65 @@ private struct SetDetailHeader: View {
     let title: String
     let onDone: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            stackedBar
+        } else {
+            centredBar
+        }
+    }
+
+    /// The design's bar: the title centred (one line, two above the default text size), "Done" at the right.
+    private var centredBar: some View {
         ZStack {
             Text(verbatim: title)
-                .font(PulseFont.headline)
+                .pulseFont(17, .semibold, relativeTo: .headline)
                 .foregroundStyle(PulseTheme.ink)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize > .large ? 2 : 1)
                 .minimumScaleFactor(0.8)
                 .padding(.horizontal, 70)
                 .accessibilityAddTraits(.isHeader)
             HStack {
                 Spacer(minLength: 0)
-                Button(action: onDone) {
-                    Text("Done")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(PulseTheme.green)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PulsePlainButtonStyle())
+                doneButton
             }
         }
-        .frame(height: 56)
+        .frame(minHeight: 56)
         .padding(.horizontal, 16)
+        .reportsSheetTitleBarHeight()
+    }
+
+    /// Accessibility text sizes: "Done" on its own line, the title under it, so they cannot overlap.
+    private var stackedBar: some View {
+        VStack(spacing: 2) {
+            HStack {
+                Spacer(minLength: 0)
+                doneButton
+            }
+            Text(verbatim: title)
+                .pulseFont(17, .semibold, relativeTo: .headline)
+                .foregroundStyle(PulseTheme.ink)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .frame(minHeight: 56)
+        .reportsSheetTitleBarHeight()
+    }
+
+    private var doneButton: some View {
+        Button(action: onDone) {
+            Text("Done")
+                .pulseFont(17, .semibold, relativeTo: .headline)
+                .foregroundStyle(PulseTheme.green)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PulsePlainButtonStyle())
     }
 }
 
@@ -221,6 +258,9 @@ private struct SetDetailTypeRow: View {
     let showsDivider: Bool
     let action: () -> Void
 
+    /// The badge (32 pt at the default text size) grows with the letter in it.
+    @PulseScaled(32, relativeTo: .subheadline) private var badgeSide: CGFloat
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
@@ -228,12 +268,12 @@ private struct SetDetailTypeRow: View {
                 texts
                 Spacer(minLength: 0)
                 Image(systemName: "checkmark")
-                    .font(.system(size: 15, weight: .bold))
+                    .pulseFont(15, .bold, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.green)
                     .opacity(isSelected ? 1 : 0)
             }
             .padding(.horizontal, 16)
-            .frame(height: 56)
+            .frame(minHeight: 56)
             .contentShape(Rectangle())
         }
         .buttonStyle(PulsePlainButtonStyle())
@@ -250,21 +290,23 @@ private struct SetDetailTypeRow: View {
 
     private var badge: some View {
         Text(verbatim: type.badge)
-            .font(.system(size: 15, weight: .bold))
+            .pulseFont(15, .bold, relativeTo: .subheadline)
             .foregroundStyle(type.badgeForeground)
-            .frame(width: 32, height: 32)
+            .frame(width: badgeSide, height: badgeSide)
             .background(type.badgeBackground, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private var texts: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(verbatim: type.title)
-                .font(PulseFont.body)
+                .pulseFont(17, relativeTo: .body)
                 .foregroundStyle(PulseTheme.ink)
             Text(verbatim: explanation)
-                .font(PulseFont.caption)
+                .pulseFont(12, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.inkSecondary)
         }
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.vertical, 8)
     }
 
     private var explanation: String {
@@ -324,7 +366,7 @@ private struct SetDetailRIRControl: View {
             onPick(option.value)
         } label: {
             Text(verbatim: option.title)
-                .font(PulseFont.number(15, isOn ? .bold : .medium))
+                .pulseFont(15, isOn ? .bold : .medium, design: .rounded, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.ink)
                 .frame(maxWidth: .infinity, minHeight: 40)
                 .background(segmentBackground(isOn))

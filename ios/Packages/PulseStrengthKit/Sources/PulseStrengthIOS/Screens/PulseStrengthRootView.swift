@@ -57,6 +57,9 @@ public struct PulseStrengthRootView: View {
         }
         .environment(\.watchStatus, environment.watchStatus)
         .tint(PulseTheme.green)
+        // The whole app follows the user's text size up to accessibility3 (its screens scroll); the dense screens
+        // (the active workout cover, the in-progress bar) narrow this range below.
+        .dynamicTypeSize(PulseDynamicType.screenRange)
         .onOpenURL { (url: URL) in
             handleURL(url)
         }
@@ -80,6 +83,8 @@ public struct PulseStrengthRootView: View {
         )
         .environment(\.watchStatus, environment.watchStatus)
         .tint(PulseTheme.green)
+        // The workout screen, its keypad and the rest dock cannot scroll as a page: their text stops growing at xxxLarge.
+        .dynamicTypeSize(PulseDynamicType.activeWorkoutRange)
     }
 
     private func summaryCover(_ workout: CompletedWorkout) -> some View {
@@ -90,6 +95,7 @@ public struct PulseStrengthRootView: View {
             }
         )
         .tint(PulseTheme.green)
+        .dynamicTypeSize(PulseDynamicType.screenRange)
     }
 
     // MARK: In-progress bar
@@ -108,6 +114,8 @@ public struct PulseStrengthRootView: View {
             TimelineView(.periodic(from: Date(), by: 1)) { context in
                 progressBar(now: context.date)
             }
+            // A floating bar above the hub: it keeps a fixed height, so its text stops growing at xxxLarge.
+            .dynamicTypeSize(PulseDynamicType.activeWorkoutRange)
             .padding(.horizontal, 14)
             .padding(.bottom, 8)
             .transition(.move(edge: .bottom).combined(with: .opacity))

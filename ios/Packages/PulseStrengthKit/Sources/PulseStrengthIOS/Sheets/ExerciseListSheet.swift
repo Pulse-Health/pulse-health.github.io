@@ -14,6 +14,8 @@ struct ExerciseEditorTitleBar: View {
     let trailingTitle: String?
     let trailingAction: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     init(
         title: String,
         leadingTitle: String? = nil,
@@ -29,26 +31,55 @@ struct ExerciseEditorTitleBar: View {
     }
 
     var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            stackedBar
+        } else {
+            centredBar
+        }
+    }
+
+    /// The design's bar: the title centred, a button at each side. At least 56 pt tall; it only grows when the text does.
+    private var centredBar: some View {
         ZStack {
             Text(title)
-                .font(PulseFont.headline)
+                .pulseFont(17, .semibold, relativeTo: .headline)
                 .foregroundStyle(PulseTheme.ink)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize > .large ? 2 : 1)
                 .minimumScaleFactor(0.8)
                 .padding(.horizontal, 88)
                 .accessibilityAddTraits(.isHeader)
-            HStack(spacing: 0) {
-                if let leadingTitle = leadingTitle {
-                    barButton(leadingTitle, weight: .regular, alignment: .leading, action: leadingAction)
-                }
-                Spacer(minLength: 0)
-                if let trailingTitle = trailingTitle {
-                    barButton(trailingTitle, weight: .semibold, alignment: .trailing, action: trailingAction)
-                }
-            }
+            buttonRow
         }
         .padding(.horizontal, 16)
-        .frame(height: 56)
+        .frame(minHeight: 56)
+    }
+
+    /// Accessibility text sizes: the buttons on one line, the title (any number of lines) under them, so nothing overlaps.
+    private var stackedBar: some View {
+        VStack(spacing: 2) {
+            buttonRow
+            Text(title)
+                .pulseFont(17, .semibold, relativeTo: .headline)
+                .foregroundStyle(PulseTheme.ink)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .frame(minHeight: 56)
+    }
+
+    private var buttonRow: some View {
+        HStack(spacing: 0) {
+            if let leadingTitle = leadingTitle {
+                barButton(leadingTitle, weight: .regular, alignment: .leading, action: leadingAction)
+            }
+            Spacer(minLength: 0)
+            if let trailingTitle = trailingTitle {
+                barButton(trailingTitle, weight: .semibold, alignment: .trailing, action: trailingAction)
+            }
+        }
     }
 
     private func barButton(
@@ -59,7 +90,7 @@ struct ExerciseEditorTitleBar: View {
     ) -> some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 17, weight: weight))
+                .pulseFont(17, weight, relativeTo: .body)
                 .foregroundStyle(PulseTheme.green)
                 .frame(minWidth: 44, minHeight: 44, alignment: alignment)
                 .contentShape(Rectangle())
@@ -79,6 +110,16 @@ struct SheetPanelHeightKey: PreferenceKey {
     }
 }
 
+/// The height of a sheet's title bar, reported by `reportsSheetTitleBarHeight()`. The bar is at least 56 pt but grows
+/// with the text size, and the detent has to follow it.
+struct SheetTitleBarHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 extension View {
     /// Reports the natural height of this view (the panel of a bottom sheet) to `sheetDetentsHuggingContent`.
     func reportsSheetPanelHeight() -> some View {
@@ -89,10 +130,21 @@ extension View {
         )
     }
 
+    /// Reports the height of this view (the title bar of a bottom sheet) to `sheetDetentsHuggingContent`.
+    func reportsSheetTitleBarHeight() -> some View {
+        background(
+            GeometryReader { (proxy: GeometryProxy) in
+                Color.clear.preference(key: SheetTitleBarHeightKey.self, value: proxy.size.height)
+            }
+        )
+    }
+
     /// Makes the sheet this view is the content of exactly as tall as its content (title bar plus the panel that
     /// reports its height), like the design's bottom sheets; it can still be dragged up to the full height.
     /// A `.height` detent is the height of the content area, the system adds the bottom safe area to it, so the
     /// content is measured with the safe area respected. `estimate` is the height used until the panel has been measured.
+    /// `titleBarHeight` is the title bar at the default text size; a bar that reports a taller one with
+    /// `reportsSheetTitleBarHeight()` (larger text) wins.
     func sheetDetentsHuggingContent(titleBarHeight: CGFloat, estimate: CGFloat) -> some View {
         modifier(SheetHugsContentModifier(titleBarHeight: titleBarHeight, estimate: estimate))
     }
@@ -103,17 +155,22 @@ private struct SheetHugsContentModifier: ViewModifier {
     let estimate: CGFloat
 
     @State private var panelHeight: CGFloat = 0
+    @State private var measuredTitleBarHeight: CGFloat = 0
 
     func body(content: Content) -> some View {
         content
             .onPreferenceChange(SheetPanelHeightKey.self) { (height: CGFloat) in
                 panelHeight = height
             }
+            .onPreferenceChange(SheetTitleBarHeightKey.self) { (height: CGFloat) in
+                measuredTitleBarHeight = height
+            }
             .presentationDetents(detents)
     }
 
     private var detents: Set<PresentationDetent> {
-        let hugging: CGFloat = panelHeight > 0 ? (titleBarHeight + panelHeight).rounded(.up) : estimate
+        let barHeight: CGFloat = max(titleBarHeight, measuredTitleBarHeight)
+        let hugging: CGFloat = panelHeight > 0 ? (barHeight + panelHeight).rounded(.up) : estimate
         return [.height(hugging), .large]
     }
 }
@@ -187,6 +244,7 @@ public struct ExerciseListSheet: View {
             addExerciseButton
         }
         .background(PulseTheme.ground.ignoresSafeArea())
+        .dynamicTypeSize(PulseDynamicType.screenRange)
         .exerciseOptionsDialog(
             controller: controller,
             exerciseID: $optionsExerciseID,
@@ -211,8 +269,9 @@ public struct ExerciseListSheet: View {
         let noun = count == 1 ? "exercise" : "exercises"
         let text = "\(count) \(noun) · Drag the handle to reorder. Superset exercises alternate their sets."
         return Text(text)
-            .font(PulseFont.footnote)
+            .pulseFont(13, relativeTo: .footnote)
             .foregroundStyle(PulseTheme.inkSecondary)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.bottom, 10)
@@ -253,7 +312,7 @@ public struct ExerciseListSheet: View {
         } label: {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
-                    .font(.system(size: 16, weight: .bold))
+                    .pulseFont(16, .bold, relativeTo: .subheadline)
                 Text("Add Exercise")
             }
         }
@@ -360,12 +419,14 @@ private struct ExerciseListRowView: View {
     let onOpen: () -> Void
     let onOptions: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         HStack(spacing: 4) {
             openButton
             optionsButton
         }
-        .frame(height: 64)
+        .frame(minHeight: 64)
     }
 
     private var openButton: some View {
@@ -375,14 +436,15 @@ private struct ExerciseListRowView: View {
                     .frame(width: 44, height: 44)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(row.exercise.name)
-                        .font(.system(size: 15, weight: .semibold))
+                        .pulseFont(15, .semibold, relativeTo: .subheadline)
                         .foregroundStyle(PulseTheme.ink)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize > .large ? 2 : 1)
                     Text(row.subtitle)
-                        .font(PulseFont.caption)
+                        .pulseFont(12, relativeTo: .footnote)
                         .foregroundStyle(PulseTheme.inkSecondary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize > .large ? 3 : 1)
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
@@ -397,9 +459,9 @@ private struct ExerciseListRowView: View {
     private var optionsButton: some View {
         Button(action: onOptions) {
             Image(systemName: "ellipsis.circle")
-                .font(.system(size: 22, weight: .regular))
+                .pulseFont(22, .regular, relativeTo: .title2)
                 .foregroundStyle(PulseTheme.green)
-                .frame(width: 40, height: 44)
+                .frame(minWidth: 40, minHeight: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PulsePlainButtonStyle())

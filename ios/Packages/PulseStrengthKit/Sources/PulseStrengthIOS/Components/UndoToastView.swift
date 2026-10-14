@@ -18,17 +18,17 @@ public struct UndoToastView: View {
     public var body: some View {
         HStack(spacing: 12) {
             Text(text)
-                .font(.system(size: 15))
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(Color.white)
-                .lineLimit(1)
+                .pulseLineLimit(1, whenLarger: 2)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Button(action: onUndo) {
                 Text("Undo")
-                    .font(.system(size: 15, weight: .semibold))
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.toastAction)
                     .padding(.horizontal, 12)
-                    .frame(height: 44)
+                    .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
                     .contentShape(Rectangle())
             }
             .buttonStyle(PulsePlainButtonStyle())
@@ -36,7 +36,7 @@ public struct UndoToastView: View {
         }
         .padding(.leading, 16)
         .padding(.trailing, 6)
-        .frame(height: 48)
+        .pulseScaledFrame(minHeight: 48, relativeTo: PulseDynamicType.controlHeightStyle)
         .background(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(PulseTheme.toastFill.opacity(0.96))

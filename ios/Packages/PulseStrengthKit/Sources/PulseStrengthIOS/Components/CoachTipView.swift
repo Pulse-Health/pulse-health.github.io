@@ -8,6 +8,10 @@ import PulseStrengthCore
 struct CoachTipView: View {
     let text: String
 
+    /// The 13 pt tip text, its 18 pt icon (the stroke follows the icon) grow with Dynamic Type; both equal the design at the default size.
+    @PulseScaled(13, relativeTo: .footnote) private var textSize: CGFloat
+    @PulseScaled(18, relativeTo: .footnote) private var iconSize: CGFloat
+
     init(text: String) {
         self.text = text
     }
@@ -31,9 +35,9 @@ struct CoachTipView: View {
         ExerciseCardCoachIcon()
             .stroke(
                 PulseTheme.green,
-                style: StrokeStyle(lineWidth: 1.9 * 18 / 24, lineCap: .round, lineJoin: .round)
+                style: StrokeStyle(lineWidth: 1.9 * iconSize / 24, lineCap: .round, lineJoin: .round)
             )
-            .frame(width: 18, height: 18)
+            .frame(width: iconSize, height: iconSize)
             .padding(.top, 1)
             .accessibilityHidden(true)
     }
@@ -41,7 +45,7 @@ struct CoachTipView: View {
     private var tipText: some View {
         let label: Text = Text("Coach · ").fontWeight(.semibold) + Text(verbatim: text)
         return label
-            .font(.system(size: 13))
+            .font(.system(size: textSize))
             .foregroundStyle(PulseTheme.ink)
             .lineSpacing(2)
             .fixedSize(horizontal: false, vertical: true)

@@ -111,10 +111,135 @@ public enum PulseFont {
     }
 }
 
+// MARK: - Dynamic Type
+
+/// Dynamic Type ranges of the Pulse screens.
+public enum PulseDynamicType {
+    /// The DENSE screens (active workout, keypad, rest dock, the floating in-progress bar): they cannot scroll as a page,
+    /// so their text may grow up to xxxLarge (the biggest non-accessibility size) and the layout still fits one screen.
+    public static let activeWorkoutRange: ClosedRange<DynamicTypeSize> = DynamicTypeSize.xSmall...DynamicTypeSize.xxxLarge
+
+    /// Scrollable screens and sheets: every size up to accessibility3 (the content scrolls, nothing is clipped).
+    public static let screenRange: ClosedRange<DynamicTypeSize> = DynamicTypeSize.xSmall...DynamicTypeSize.accessibility3
+
+    /// The text style control HEIGHTS (44 pt buttons, 36 pt chips, 48 pt rows) are scaled with: the slowest growing style, so
+    /// a control grows with its label but a big label does not make it enormous. At the default size the factor is exactly 1.
+    static let controlHeightStyle: Font.TextStyle = .largeTitle
+}
+
+/// A design number (font size, icon frame, column width, padding) that grows with Dynamic Type like the given text style,
+/// and equals `value` at the default (large) size. For views that need the scaled number itself: `Text` concatenation,
+/// shapes, paddings, `Font` values.
+///
+///     @PulseScaled(13, relativeTo: .footnote) private var tipSize: CGFloat
+///     ... Text(...).font(.system(size: tipSize))
+@propertyWrapper
+public struct PulseScaled: DynamicProperty {
+    @ScaledMetric private var scaled: CGFloat
+
+    public init(_ value: CGFloat, relativeTo style: Font.TextStyle = .body) {
+        self._scaled = ScaledMetric(wrappedValue: value, relativeTo: style)
+    }
+
+    public var wrappedValue: CGFloat { scaled }
+}
+
+/// Sets a system font whose size is a design size scaled like a text style.
+private struct PulseScaledFontModifier: ViewModifier {
+    @ScaledMetric private var size: CGFloat
+    private let weight: Font.Weight
+    private let design: Font.Design
+
+    init(size: CGFloat, weight: Font.Weight, design: Font.Design, style: Font.TextStyle) {
+        self._size = ScaledMetric(wrappedValue: size, relativeTo: style)
+        self.weight = weight
+        self.design = design
+    }
+
+    func body(content: Content) -> some View {
+        content.font(.system(size: size, weight: weight, design: design))
+    }
+}
+
+/// `frame(minHeight:)` with a design height scaled like a text style. It grows with bigger text but never drops below the
+/// design height at the smaller sizes (tap targets stay at least 44 pt).
+private struct PulseScaledMinHeightModifier: ViewModifier {
+    @ScaledMetric private var scaledHeight: CGFloat
+    private let designHeight: CGFloat
+
+    init(minHeight: CGFloat, style: Font.TextStyle) {
+        self._scaledHeight = ScaledMetric(wrappedValue: minHeight, relativeTo: style)
+        self.designHeight = minHeight
+    }
+
+    func body(content: Content) -> some View {
+        content.frame(minHeight: max(designHeight, scaledHeight))
+    }
+}
+
+/// A line limit that is `normal` at the default text size (and below) and `larger` above it.
+private struct PulseLargerTextLineLimitModifier: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private let normal: Int
+    private let larger: Int
+
+    init(normal: Int, larger: Int) {
+        self.normal = normal
+        self.larger = larger
+    }
+
+    func body(content: Content) -> some View {
+        content.lineLimit(dynamicTypeSize > .large ? larger : normal)
+    }
+}
+
+/// `minimumScaleFactor(factor)` at the larger text sizes only; at the default size and below the text is never scaled
+/// (a factor of 1), so the design is untouched.
+private struct PulseLargerTextShrinkModifier: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    private let factor: CGFloat
+
+    init(factor: CGFloat) {
+        self.factor = factor
+    }
+
+    func body(content: Content) -> some View {
+        content.minimumScaleFactor(dynamicTypeSize > .large ? factor : 1)
+    }
+}
+
 public extension View {
-    /// Rounded, monospaced-digit figure text.
-    func pulseNumber(_ size: CGFloat, _ weight: Font.Weight = .bold) -> some View {
-        self.font(PulseFont.number(size, weight)).monospacedDigit()
+    /// A fixed design size that grows with Dynamic Type (identical at the default size). `style` = the text style it scales like.
+    func pulseFont(
+        _ size: CGFloat,
+        _ weight: Font.Weight = .regular,
+        design: Font.Design = .default,
+        relativeTo style: Font.TextStyle = .body
+    ) -> some View {
+        self.modifier(PulseScaledFontModifier(size: size, weight: weight, design: design, style: style))
+    }
+
+    /// Rounded, monospaced-digit figure text that grows with Dynamic Type (identical at the default size).
+    func pulseNumber(_ size: CGFloat, _ weight: Font.Weight = .bold, relativeTo style: Font.TextStyle = .body) -> some View {
+        self.modifier(PulseScaledFontModifier(size: size, weight: weight, design: .rounded, style: style)).monospacedDigit()
+    }
+
+    /// Scales a design length (a fixed row or control height that contains text) like Dynamic Type: `frame(minHeight: scaled)`
+    /// (equal to `minHeight` at the default size, larger with bigger text, never smaller than `minHeight`).
+    func pulseScaledFrame(minHeight: CGFloat, relativeTo style: Font.TextStyle = .body) -> some View {
+        self.modifier(PulseScaledMinHeightModifier(minHeight: minHeight, style: style))
+    }
+
+    /// `lineLimit(normal)` at the default text size and below, `lineLimit(larger)` at the larger sizes: a title stays on one
+    /// line as designed but wraps instead of truncating when the user chose bigger text.
+    func pulseLineLimit(_ normal: Int, whenLarger larger: Int) -> some View {
+        self.modifier(PulseLargerTextLineLimitModifier(normal: normal, larger: larger))
+    }
+
+    /// Lets a text shrink down to `factor` of its size to fit its line, only while the user has chosen bigger text than the
+    /// default (the design at the default size is not touched).
+    func pulseShrinkWhenLarger(_ factor: CGFloat) -> some View {
+        self.modifier(PulseLargerTextShrinkModifier(factor: factor))
     }
 
     /// White card with the design's soft shadow.
@@ -149,42 +274,43 @@ public extension SetType {
 
 // MARK: - Button styles
 
-/// Full-width green call to action (52 pt, radius 14).
+/// Full-width green call to action (52 pt, radius 14). The label and the minimum height grow with Dynamic Type.
 public struct PulsePrimaryButtonStyle: ButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(PulseFont.headline)
+            .pulseFont(17, .semibold, relativeTo: .headline)
             .foregroundStyle(PulseTheme.onGreen)
-            .frame(maxWidth: .infinity, minHeight: 52)
+            .frame(maxWidth: .infinity)
+            .pulseScaledFrame(minHeight: 52, relativeTo: PulseDynamicType.controlHeightStyle)
             .background(PulseTheme.green, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             .opacity(configuration.isPressed ? 0.8 : 1)
     }
 }
 
-/// Grey tinted button with green text ("Add Set", stepper buttons).
+/// Grey tinted button with green text ("Add Set", stepper buttons). The label and the minimum height grow with Dynamic Type.
 public struct PulseTintButtonStyle: ButtonStyle {
     public var radius: CGFloat
     public init(radius: CGFloat = PulseTheme.rowRadius) { self.radius = radius }
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .semibold))
+            .pulseFont(15, .semibold, relativeTo: .subheadline)
             .foregroundStyle(PulseTheme.greenText)
-            .frame(minHeight: 44)
+            .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
             .background(PulseTheme.cellFill, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
 
-/// The blue "Finish" pill.
+/// The blue "Finish" pill. The label and the minimum height grow with Dynamic Type.
 public struct PulsePillButtonStyle: ButtonStyle {
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .semibold))
+            .pulseFont(15, .semibold, relativeTo: .subheadline)
             .foregroundStyle(Color.white)
             .padding(.horizontal, 16)
-            .frame(minHeight: 44)
+            .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
             .background(PulseTheme.blue, in: Capsule())
             .opacity(configuration.isPressed ? 0.8 : 1)
     }
@@ -206,6 +332,9 @@ public struct PulseChip: View {
     public var isSelected: Bool
     public var action: () -> Void
 
+    @PulseScaled(15, relativeTo: .subheadline) private var textSize: CGFloat
+    @PulseScaled(36, relativeTo: PulseDynamicType.controlHeightStyle) private var chipHeight: CGFloat
+
     public init(_ title: String, isSelected: Bool, action: @escaping () -> Void) {
         self.title = title
         self.isSelected = isSelected
@@ -215,10 +344,10 @@ public struct PulseChip: View {
     public var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 15, weight: isSelected ? .semibold : .medium))
+                .font(.system(size: textSize, weight: isSelected ? .semibold : .medium))
                 .foregroundStyle(isSelected ? PulseTheme.blueText : PulseTheme.ink.opacity(0.75))
                 .padding(.horizontal, 14)
-                .frame(minHeight: 36)
+                .frame(minHeight: max(36, chipHeight))
                 .background(isSelected ? PulseTheme.blueTint : PulseTheme.chipFill, in: Capsule())
         }
         .buttonStyle(PulsePlainButtonStyle())
@@ -230,6 +359,9 @@ public struct PulseChip: View {
 public struct PulseSegmented<Value: Hashable>: View {
     public var options: [(value: Value, title: String)]
     @Binding public var selection: Value
+
+    @PulseScaled(15, relativeTo: .subheadline) private var textSize: CGFloat
+    @PulseScaled(36, relativeTo: PulseDynamicType.controlHeightStyle) private var segmentHeight: CGFloat
 
     public init(options: [(value: Value, title: String)], selection: Binding<Value>) {
         self.options = options
@@ -245,9 +377,9 @@ public struct PulseSegmented<Value: Hashable>: View {
                     selection = option.value
                 } label: {
                     Text(option.title)
-                        .font(PulseFont.number(15, isSelected ? .bold : .medium))
+                        .font(PulseFont.number(textSize, isSelected ? .bold : .medium))
                         .foregroundStyle(PulseTheme.ink)
-                        .frame(maxWidth: .infinity, minHeight: 36)
+                        .frame(maxWidth: .infinity, minHeight: max(36, segmentHeight))
                         // An unselected segment only paints a clear fill, which has no hit area: without this
                         // shape a tap beside the digit would not reach the button.
                         .contentShape(Rectangle())

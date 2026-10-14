@@ -71,6 +71,9 @@ public struct WorkoutInProgressBar: View {
             content
         }
         .buttonStyle(PulsePlainButtonStyle())
+        // The bar floats over the screens (it is always visible while a workout runs): like the workout screen it
+        // stops growing at xxxLarge, so it never takes over the screen.
+        .dynamicTypeSize(PulseDynamicType.activeWorkoutRange)
         .accessibilityLabel("Resume workout in progress")
         .accessibilityValue(presentation.header.title + ", " + subtitle)
     }
@@ -85,33 +88,21 @@ public struct WorkoutInProgressBar: View {
         }
         .padding(.leading, 12)
         .padding(.trailing, 10)
-        .frame(height: 64)
+        .pulseScaledFrame(minHeight: 64, relativeTo: PulseDynamicType.controlHeightStyle)
         .background(barBackground)
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private var labels: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(presentation.header.title)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(PulseTheme.ink)
-                .lineLimit(1)
-            Text(subtitle)
-                .font(PulseFont.number(12, .regular))
-                .monospacedDigit()
-                .foregroundStyle(PulseTheme.inkSecondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        WorkoutBarLabels(title: presentation.header.title, subtitle: subtitle)
     }
 
     private var resumePill: some View {
         Text("Resume")
-            .font(.system(size: 15, weight: .semibold))
+            .pulseFont(15, .semibold, relativeTo: .subheadline)
             .foregroundStyle(PulseTheme.onGreen)
             .padding(.horizontal, 16)
-            .frame(height: 44)
+            .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
             .background(PulseTheme.green, in: Capsule())
     }
 
@@ -136,6 +127,40 @@ public struct WorkoutInProgressBar: View {
         parts.append(presentation.header.clockText)
         parts.append(presentation.header.setsText + " sets")
         return parts.joined(separator: " · ")
+    }
+}
+
+// MARK: - Labels
+
+/// Workout title and the "Exercise 1 of 6 · 24:18 · 7 of 19 sets" line. A separate view so that its scaled size reads the
+/// Dynamic Type range the bar applies to its content.
+private struct WorkoutBarLabels: View {
+    let title: String
+    let subtitle: String
+
+    /// The subtitle's 12 pt rounded figures grow with Dynamic Type.
+    @PulseScaled(12, relativeTo: .footnote) private var subtitleSize: CGFloat
+
+    init(title: String, subtitle: String) {
+        self.title = title
+        self.subtitle = subtitle
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(title)
+                .pulseFont(15, .semibold, relativeTo: .subheadline)
+                .foregroundStyle(PulseTheme.ink)
+                .pulseLineLimit(1, whenLarger: 2)
+            Text(subtitle)
+                .font(PulseFont.number(subtitleSize, .regular))
+                .monospacedDigit()
+                .foregroundStyle(PulseTheme.inkSecondary)
+                .pulseLineLimit(1, whenLarger: 2)
+                .minimumScaleFactor(0.8)
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

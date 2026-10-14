@@ -58,6 +58,7 @@ public struct KeypadSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(PulseTheme.ground.ignoresSafeArea())
+        .dynamicTypeSize(PulseDynamicType.activeWorkoutRange)
         .sheetDetentsHuggingContent(titleBarHeight: 56, estimate: estimatedSheetHeight)
         .onAppear {
             if target == nil {
@@ -240,14 +241,7 @@ public struct KeypadSheet: View {
         return Button {
             useLast(current)
         } label: {
-            Text(verbatim: useLastText(current, previous))
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(PulseTheme.greenText)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .padding(.horizontal, 8)
-                .frame(maxWidth: .infinity, minHeight: 48)
-                .background(PulseTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            KeypadUseLastLabel(text: useLastText(current, previous))
         }
         .buttonStyle(PulsePlainButtonStyle())
         .disabled(previous == nil)
@@ -318,27 +312,11 @@ public struct KeypadSheet: View {
     private func plateRow(_ current: KeypadTarget) -> some View {
         let barKg = current.exercise.exercise.barKg
         let info = KeypadSheet.plateInfo(weightKg: current.set.weightKg, barKg: barKg)
-        return HStack(alignment: .center, spacing: 10) {
-            Text(verbatim: NumberText.kg(barKg) + " kg bar · each side")
-                .font(PulseFont.footnote)
-                .foregroundStyle(PulseTheme.inkSecondary)
-                .frame(width: 84, alignment: .leading)
-            KeypadPlateFlowLayout(spacing: 6, lineSpacing: 6) {
-                ForEach(Array(info.plates.enumerated()), id: \.offset) { pair in
-                    KeypadPlateChip(plate: pair.element)
-                }
-                if !info.note.isEmpty {
-                    Text(verbatim: info.note)
-                        .font(PulseFont.footnote)
-                        .foregroundStyle(PulseTheme.inkSecondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(minHeight: 46)
-        .padding(.horizontal, 4)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(KeypadSheet.plateSpeech(info, barKg: barKg))
+        return KeypadPlateRow(
+            barKg: barKg,
+            info: info,
+            speech: KeypadSheet.plateSpeech(info, barKg: barKg)
+        )
     }
 
     /// Plates for one side of the bar, and the note the design shows next to them.
@@ -394,7 +372,7 @@ public struct KeypadSheet: View {
         } label: {
             keyLabel(key)
                 .frame(maxWidth: .infinity)
-                .frame(height: 52)
+                .frame(minHeight: 52)
                 .background(PulseTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(PulsePlainButtonStyle())
@@ -408,15 +386,15 @@ public struct KeypadSheet: View {
         switch key {
         case .digit(let digit):
             Text(verbatim: digit)
-                .pulseNumber(26, .medium)
+                .pulseNumber(26, .medium, relativeTo: .title)
                 .foregroundStyle(PulseTheme.ink)
         case .decimal:
             Text(verbatim: ".")
-                .pulseNumber(26, .medium)
+                .pulseNumber(26, .medium, relativeTo: .title)
                 .foregroundStyle(PulseTheme.ink)
         case .delete:
             Image(systemName: "delete.left")
-                .font(.system(size: 22, weight: .regular))
+                .pulseFont(22, .regular, relativeTo: .title2)
                 .foregroundStyle(PulseTheme.ink)
         }
     }
@@ -607,12 +585,14 @@ private struct KeypadSheetHeader: View {
     let title: String
     let onDone: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         ZStack {
             Text(verbatim: title)
-                .font(PulseFont.headline)
+                .pulseFont(17, .semibold, relativeTo: .headline)
                 .foregroundStyle(PulseTheme.ink)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize > .large ? 2 : 1)
                 .minimumScaleFactor(0.8)
                 .padding(.horizontal, 70)
                 .accessibilityAddTraits(.isHeader)
@@ -620,7 +600,7 @@ private struct KeypadSheetHeader: View {
                 Spacer(minLength: 0)
                 Button(action: onDone) {
                     Text("Done")
-                        .font(.system(size: 17, weight: .semibold))
+                        .pulseFont(17, .semibold, relativeTo: .headline)
                         .foregroundStyle(PulseTheme.green)
                         .frame(minWidth: 44, minHeight: 44)
                         .contentShape(Rectangle())
@@ -628,8 +608,9 @@ private struct KeypadSheetHeader: View {
                 .buttonStyle(PulsePlainButtonStyle())
             }
         }
-        .frame(height: 56)
+        .frame(minHeight: 56)
         .padding(.horizontal, 16)
+        .reportsSheetTitleBarHeight()
     }
 }
 
@@ -645,19 +626,23 @@ private struct KeypadValueCard: View {
     let accessibilityValueText: String
     let action: () -> Void
 
+    /// The two text lines of the card (16 pt and 38 pt at the default text size) grow with their text.
+    @PulseScaled(16, relativeTo: .footnote) private var labelHeight: CGFloat
+    @PulseScaled(38, relativeTo: .largeTitle) private var numberHeight: CGFloat
+
     var body: some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: label)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                    .frame(height: 16, alignment: .leading)
+                    .frame(height: labelHeight, alignment: .leading)
                 Text(verbatim: text)
-                    .pulseNumber(32, .bold)
+                    .pulseNumber(32, .bold, relativeTo: .largeTitle)
                     .foregroundStyle(PulseTheme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
-                    .frame(height: 38, alignment: .leading)
+                    .frame(height: numberHeight, alignment: .leading)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -706,7 +691,7 @@ private struct KeypadStepButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 18, weight: .bold))
+                .pulseFont(18, .bold, relativeTo: .body)
                 .foregroundStyle(PulseTheme.greenText)
                 .frame(width: 64, height: 48)
                 .background(PulseTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -721,16 +706,78 @@ private struct KeypadStepButton: View {
 /// One plate as a coloured disc with its weight (sizes and colours of the design).
 private struct KeypadPlateChip: View {
     let plate: Double
+    /// The disc grows with the figure inside it (24 to 44 pt at the default text size).
+    @PulseScaled private var diameter: CGFloat
+
+    init(plate: Double) {
+        self.plate = plate
+        self._diameter = PulseScaled(KeypadPlateLook.diameter(plate), relativeTo: .caption2)
+    }
 
     var body: some View {
-        let diameter = KeypadPlateLook.diameter(plate)
+        let side = diameter
         return Text(verbatim: NumberText.kg(plate))
-            .pulseNumber(11, .bold)
+            .pulseNumber(11, .bold, relativeTo: .caption2)
             .foregroundStyle(KeypadPlateLook.foreground(plate))
             .lineLimit(1)
             .minimumScaleFactor(0.6)
-            .frame(width: diameter, height: diameter)
+            .frame(width: side, height: side)
             .background(KeypadPlateLook.fill(plate), in: Circle())
+    }
+}
+
+/// "20 kg bar · each side" and the plates for one side. The label column (84 pt at the default text size) grows with
+/// the text, so the label keeps its two lines.
+private struct KeypadPlateRow: View {
+    let barKg: Double
+    let info: KeypadPlateInfo
+    let speech: String
+
+    @PulseScaled(84, relativeTo: .footnote) private var labelWidth: CGFloat
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text(verbatim: NumberText.kg(barKg) + " kg bar · each side")
+                .pulseFont(13, relativeTo: .footnote)
+                .foregroundStyle(PulseTheme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: labelWidth, alignment: .leading)
+            KeypadPlateFlowLayout(spacing: 6, lineSpacing: 6) {
+                ForEach(Array(info.plates.enumerated()), id: \.offset) { pair in
+                    KeypadPlateChip(plate: pair.element)
+                }
+                if !info.note.isEmpty {
+                    Text(verbatim: info.note)
+                        .pulseFont(13, relativeTo: .footnote)
+                        .foregroundStyle(PulseTheme.inkSecondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(minHeight: 46)
+        .padding(.horizontal, 4)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(speech)
+    }
+}
+
+/// The text of the "Use last" button: one line at the default size (shrinking a little if it must), two above it.
+private struct KeypadUseLastLabel: View {
+    let text: String
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    var body: some View {
+        Text(verbatim: text)
+            .pulseFont(15, .semibold, relativeTo: .subheadline)
+            .foregroundStyle(PulseTheme.greenText)
+            .lineLimit(dynamicTypeSize > .large ? 2 : 1)
+            .minimumScaleFactor(0.8)
+            .multilineTextAlignment(.center)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity, minHeight: 48)
+            .background(PulseTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 }
 
@@ -779,6 +826,7 @@ private struct KeypadPlateFlowLayout: Layout {
 
     struct Arrangement {
         var origins: [CGPoint]
+        var sizes: [CGSize]
         var size: CGSize
     }
 
@@ -790,19 +838,22 @@ private struct KeypadPlateFlowLayout: Layout {
         let arrangement = arrange(width: bounds.width, subviews: subviews)
         for index in subviews.indices {
             let origin = arrangement.origins[index]
+            let itemSize = arrangement.sizes[index]
             subviews[index].place(
                 at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y),
                 anchor: .topLeading,
-                proposal: .unspecified
+                proposal: ProposedViewSize(width: itemSize.width, height: itemSize.height)
             )
         }
     }
 
     private func arrange(width: CGFloat?, subviews: Subviews) -> Arrangement {
         let limit: CGFloat = width ?? CGFloat.infinity
+        // A text wider than the row (large text sizes) is measured at the row width and wraps there.
+        let measuring = ProposedViewSize(width: width, height: nil)
         var sizes: [CGSize] = []
         for subview in subviews {
-            sizes.append(subview.sizeThatFits(.unspecified))
+            sizes.append(subview.sizeThatFits(measuring))
         }
 
         var rows: [[Int]] = []
@@ -842,7 +893,7 @@ private struct KeypadPlateFlowLayout: Layout {
                 y += lineSpacing
             }
         }
-        return Arrangement(origins: origins, size: CGSize(width: usedWidth, height: y))
+        return Arrangement(origins: origins, sizes: sizes, size: CGSize(width: usedWidth, height: y))
     }
 }
 #endif

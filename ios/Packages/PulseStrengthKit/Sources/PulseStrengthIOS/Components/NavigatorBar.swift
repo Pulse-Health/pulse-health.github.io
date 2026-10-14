@@ -9,6 +9,9 @@ public struct NavigatorBar: View {
     public var onNext: () -> Void
     public var onEdit: () -> Void
 
+    /// The "1 / 6" figures (17 pt rounded) grow with Dynamic Type.
+    @PulseScaled(17, relativeTo: .body) private var positionSize: CGFloat
+
     public init(
         navigator: ActiveWorkoutPresentation.Navigator,
         onPrevious: @escaping () -> Void,
@@ -47,14 +50,14 @@ public struct NavigatorBar: View {
                 action: onNext
             )
         }
-        .frame(height: 44)
+        .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
         .background(PulseTheme.chipFill, in: Capsule())
     }
 
     private func arrowButton(systemName: String, label: String, isEnabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 17, weight: .bold))
+                .pulseFont(17, .bold, relativeTo: .body)
                 .foregroundStyle(PulseTheme.green)
                 .frame(width: 48, height: 44)
                 .contentShape(Rectangle())
@@ -70,10 +73,10 @@ public struct NavigatorBar: View {
             Text("\(navigator.position)")
                 .foregroundStyle(PulseTheme.ink)
             Text(" / \(navigator.total)")
-                .font(PulseFont.number(17, .medium))
+                .font(PulseFont.number(positionSize, .medium))
                 .foregroundStyle(PulseTheme.inkSecondary)
         }
-        .font(PulseFont.number(17, .semibold))
+        .font(PulseFont.number(positionSize, .semibold))
         .monospacedDigit()
         .frame(minWidth: 62)
         .accessibilityElement(children: .ignore)
@@ -86,13 +89,13 @@ public struct NavigatorBar: View {
         Button(action: onEdit) {
             HStack(spacing: 8) {
                 Image(systemName: "line.3.horizontal")
-                    .font(.system(size: 15, weight: .bold))
+                    .pulseFont(15, .bold, relativeTo: .subheadline)
                 Text("Edit")
-                    .font(.system(size: 17, weight: .semibold))
+                    .pulseFont(17, .semibold, relativeTo: .headline)
             }
             .foregroundStyle(PulseTheme.greenText)
             .padding(.horizontal, 16)
-            .frame(height: 44)
+            .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
             .background(PulseTheme.chipFill, in: Capsule())
             .contentShape(Capsule())
         }

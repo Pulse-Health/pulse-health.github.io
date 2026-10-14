@@ -89,6 +89,10 @@ public struct ActiveWorkoutView: View {
             groundLayer
             clockedScreen(snapshot: snapshot)
         }
+        // The workout screen is dense and cannot scroll as a page: its text follows Dynamic Type up to xxxLarge and
+        // the layout adapts (the sets list is the only part that scrolls). Applied to the screen itself, inside the
+        // sheet modifier below, so the sheets (which set their own range) are not capped by it.
+        .dynamicTypeSize(PulseDynamicType.activeWorkoutRange)
         // The dock and the lists sit at fixed distances from the physical bottom edge (as in the design);
         // the keyboard still pushes the content up.
         .ignoresSafeArea(.container, edges: .bottom)
@@ -174,10 +178,11 @@ public struct ActiveWorkoutView: View {
             )
             watchBanner
             mainArea(presentation)
+                // The toast floats over the bottom of the main area, just above the dock (whatever height the dock has).
+                .overlay(alignment: .bottom) {
+                    toastLayer(presentation)
+                }
             dockArea(presentation.dock)
-        }
-        .overlay(alignment: .bottom) {
-            toastLayer(presentation)
         }
         .onChange(of: presentation.dock?.phase) { oldPhase, newPhase in
             restPhaseChanged(from: oldPhase, to: newPhase)
@@ -320,11 +325,11 @@ public struct ActiveWorkoutView: View {
         return .move(edge: .bottom).combined(with: .opacity)
     }
 
-    /// Distance of the toast from the bottom edge of the screen: above the dock (and its
-    /// "Reps left" row when that is showing), or near the bottom without a dock.
+    /// Distance of the toast from the bottom edge of the main area. The main area ends where the dock starts, so with a
+    /// dock the toast sits 10 pt above it (the dock may be taller than at the default text size, with its "Reps left" row,
+    /// or with the buttons stacked); without a dock it is 34 pt above the bottom edge of the screen.
     private func toastBottomInset(_ dock: ActiveWorkoutPresentation.Dock?) -> CGFloat {
-        guard let dock = dock else { return 34 }
-        return dock.showsRIR ? 158 : 108
+        dock == nil ? 34 : 10
     }
 
     private func toastLayer(_ presentation: ActiveWorkoutPresentation) -> some View {
@@ -584,12 +589,12 @@ private struct ActiveEmptyStateCard: View {
             .accessibilityHidden(true)
 
             Text("No exercises yet")
-                .font(.system(size: 20, weight: .bold))
+                .pulseFont(20, .bold, relativeTo: .title3)
                 .foregroundStyle(PulseTheme.ink)
                 .accessibilityAddTraits(.isHeader)
 
             Text("Add an exercise from the library, or create your own, to start logging sets.")
-                .font(PulseFont.subhead)
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
@@ -597,13 +602,13 @@ private struct ActiveEmptyStateCard: View {
             Button(action: onAdd) {
                 HStack(spacing: 8) {
                     Image(systemName: "plus")
-                        .font(.system(size: 15, weight: .bold))
+                        .pulseFont(15, .bold, relativeTo: .subheadline)
                     Text("Add Exercise")
-                        .font(.system(size: 17, weight: .semibold))
+                        .pulseFont(17, .semibold, relativeTo: .headline)
                 }
                 .foregroundStyle(PulseTheme.onGreen)
                 .padding(.horizontal, 24)
-                .frame(height: 48)
+                .pulseScaledFrame(minHeight: 48, relativeTo: PulseDynamicType.controlHeightStyle)
                 .background(PulseTheme.green, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             }
             .buttonStyle(PulsePlainButtonStyle())

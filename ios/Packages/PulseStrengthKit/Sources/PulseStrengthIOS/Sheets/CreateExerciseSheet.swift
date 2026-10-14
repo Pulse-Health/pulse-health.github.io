@@ -43,6 +43,7 @@ public struct CreateExerciseSheet: View {
             .scrollDismissesKeyboard(.interactively)
         }
         .background(PulseTheme.ground.ignoresSafeArea())
+        .dynamicTypeSize(PulseDynamicType.screenRange)
         .presentationDetents([.large])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(PulseTheme.sheetRadius)
@@ -69,7 +70,7 @@ public struct CreateExerciseSheet: View {
         VStack(alignment: .leading, spacing: 6) {
             sectionLabel("Name")
             TextField("e.g. Landmine press", text: $name)
-                .font(PulseFont.body)
+                .pulseFont(17, relativeTo: .body)
                 .foregroundStyle(PulseTheme.ink)
                 .focused($nameIsFocused)
                 .submitLabel(.done)
@@ -78,7 +79,7 @@ public struct CreateExerciseSheet: View {
                     nameIsFocused = false
                 }
                 .padding(.horizontal, 16)
-                .frame(height: 48)
+                .frame(minHeight: 48)
                 .background(PulseTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .accessibilityLabel("Name")
         }
@@ -123,7 +124,7 @@ public struct CreateExerciseSheet: View {
 
     private var footnote: some View {
         Text("Custom exercises are saved to your library and can be added to any workout.")
-            .font(PulseFont.footnote)
+            .pulseFont(13, relativeTo: .footnote)
             .foregroundStyle(PulseTheme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 4)
@@ -131,7 +132,7 @@ public struct CreateExerciseSheet: View {
 
     private func sectionLabel(_ text: String) -> some View {
         Text(text)
-            .font(PulseFont.footnote)
+            .pulseFont(13, relativeTo: .footnote)
             .foregroundStyle(PulseTheme.inkSecondary)
             .padding(.leading, 4)
             .accessibilityAddTraits(.isHeader)
@@ -168,10 +169,10 @@ private struct CreateExerciseChip: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 15, weight: isSelected ? .semibold : .medium))
+                .pulseFont(15, isSelected ? .semibold : .medium, relativeTo: .subheadline)
                 .foregroundStyle(isSelected ? PulseTheme.blueText : PulseTheme.ink.opacity(0.75))
                 .padding(.horizontal, 16)
-                .frame(height: 40)
+                .frame(minHeight: 40)
                 .background(isSelected ? PulseTheme.blueTint : PulseTheme.chipFill, in: Capsule())
         }
         .buttonStyle(PulsePlainButtonStyle())
@@ -185,14 +186,33 @@ private struct CreateExerciseTrackControl: View {
     let options: [(value: TrackingKind, title: String)]
     @Binding var selection: TrackingKind
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(options.indices, id: \.self) { index in
-                segment(options[index])
+        segments
+            .padding(2)
+            .background(PulseTheme.chipFill, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+    }
+
+    /// The three segments side by side; one under the other at accessibility text sizes, where they could not hold
+    /// their titles.
+    @ViewBuilder
+    private var segments: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(spacing: 0) {
+                ForEach(options.indices, id: \.self) { index in
+                    segment(options[index])
+                }
             }
+        } else {
+            HStack(spacing: 0) {
+                ForEach(options.indices, id: \.self) { index in
+                    segment(options[index])
+                }
+            }
+            // Segments whose title wraps stay as tall as the tallest one.
+            .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(2)
-        .background(PulseTheme.chipFill, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     private func segment(_ option: (value: TrackingKind, title: String)) -> some View {
@@ -201,9 +221,12 @@ private struct CreateExerciseTrackControl: View {
             selection = option.value
         } label: {
             Text(option.title)
-                .font(.system(size: 14, weight: isSelected ? .bold : .medium))
+                .pulseFont(14, isSelected ? .bold : .medium, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.ink)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 4)
                 .frame(maxWidth: .infinity, minHeight: 40)
+                .frame(maxHeight: .infinity)
                 // An unselected segment only paints a clear fill, which has no hit area: the whole segment is the target.
                 .contentShape(Rectangle())
                 .background(

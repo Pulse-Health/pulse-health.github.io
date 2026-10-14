@@ -16,6 +16,7 @@ public struct RestSettingsSheet: View {
     private let exerciseID: UUID
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Local copies of the two switches, kept in step with the workout settings in both directions.
     @State private var autoStart: Bool
@@ -44,6 +45,7 @@ public struct RestSettingsSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(PulseTheme.ground.ignoresSafeArea())
+        .dynamicTypeSize(PulseDynamicType.screenRange)
         .sheetDetentsHuggingContent(titleBarHeight: 56, estimate: 341)
         .onChange(of: liveAutoStart) { _, newValue in
             if autoStart != newValue {
@@ -71,10 +73,11 @@ public struct RestSettingsSheet: View {
         VStack(alignment: .leading, spacing: 12) {
             if let entry = resolved {
                 Text(verbatim: "Rest after each set · " + entry.exercise.name)
-                    .font(PulseFont.footnote)
+                    .pulseFont(13, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
                     .padding(.leading, 4)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize > .large ? 6 : 2)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityAddTraits(.isHeader)
                 presetGrid(entry)
             }
@@ -104,25 +107,11 @@ public struct RestSettingsSheet: View {
 
     // MARK: Presets
 
-    private static let presetRows: [[Int]] = [
-        [0, 30, 45, 60, 90],
-        [120, 150, 180, 240, 300]
-    ]
-
     private func presetGrid(_ entry: WorkoutExercise) -> some View {
-        VStack(spacing: 8) {
-            ForEach(0..<RestSettingsSheet.presetRows.count, id: \.self) { rowIndex in
-                HStack(spacing: 8) {
-                    ForEach(RestSettingsSheet.presetRows[rowIndex], id: \.self) { (seconds: Int) in
-                        RestSettingsPresetButton(
-                            seconds: seconds,
-                            isSelected: entry.restSeconds == seconds,
-                            action: { selectPreset(seconds, for: entry) }
-                        )
-                    }
-                }
-            }
-        }
+        RestSettingsPresetGrid(
+            selectedSeconds: entry.restSeconds,
+            onSelect: { (seconds: Int) in selectPreset(seconds, for: entry) }
+        )
     }
 
     private func selectPreset(_ seconds: Int, for entry: WorkoutExercise) {
@@ -170,26 +159,104 @@ private enum RestSettingsHaptics {
 private struct RestSettingsHeader: View {
     let onDone: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            stackedBar
+        } else {
+            centredBar
+        }
+    }
+
+    /// The design's bar: the title centred, "Done" at the right.
+    private var centredBar: some View {
         ZStack {
             Text("Rest Timer")
-                .font(PulseFont.headline)
+                .pulseFont(17, .semibold, relativeTo: .headline)
                 .foregroundStyle(PulseTheme.ink)
                 .accessibilityAddTraits(.isHeader)
             HStack {
                 Spacer(minLength: 0)
-                Button(action: onDone) {
-                    Text("Done")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(PulseTheme.green)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PulsePlainButtonStyle())
+                doneButton
             }
         }
-        .frame(height: 56)
+        .frame(minHeight: 56)
         .padding(.horizontal, 16)
+        .reportsSheetTitleBarHeight()
+    }
+
+    /// Accessibility text sizes: "Done" on its own line, the title under it, so they cannot overlap.
+    private var stackedBar: some View {
+        VStack(spacing: 2) {
+            HStack {
+                Spacer(minLength: 0)
+                doneButton
+            }
+            Text("Rest Timer")
+                .pulseFont(17, .semibold, relativeTo: .headline)
+                .foregroundStyle(PulseTheme.ink)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .frame(minHeight: 56)
+        .reportsSheetTitleBarHeight()
+    }
+
+    private var doneButton: some View {
+        Button(action: onDone) {
+            Text("Done")
+                .pulseFont(17, .semibold, relativeTo: .headline)
+                .foregroundStyle(PulseTheme.green)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PulsePlainButtonStyle())
+    }
+}
+
+// MARK: - Preset grid
+
+/// The ten presets: two rows of five (Off, 0:30 ... 5:00); at accessibility text sizes five rows of two, so a button
+/// is wide enough for its time.
+private struct RestSettingsPresetGrid: View {
+    let selectedSeconds: Int
+    let onSelect: (Int) -> Void
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private static let presets: [Int] = [0, 30, 45, 60, 90, 120, 150, 180, 240, 300]
+
+    private var rows: [[Int]] {
+        let columns = dynamicTypeSize.isAccessibilitySize ? 2 : 5
+        var result: [[Int]] = []
+        var start = 0
+        while start < RestSettingsPresetGrid.presets.count {
+            let end = min(start + columns, RestSettingsPresetGrid.presets.count)
+            result.append(Array(RestSettingsPresetGrid.presets[start..<end]))
+            start = end
+        }
+        return result
+    }
+
+    var body: some View {
+        let grid = rows
+        return VStack(spacing: 8) {
+            ForEach(0..<grid.count, id: \.self) { rowIndex in
+                HStack(spacing: 8) {
+                    ForEach(grid[rowIndex], id: \.self) { (seconds: Int) in
+                        RestSettingsPresetButton(
+                            seconds: seconds,
+                            isSelected: selectedSeconds == seconds,
+                            action: { onSelect(seconds) }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -204,12 +271,12 @@ private struct RestSettingsPresetButton: View {
     var body: some View {
         Button(action: action) {
             Text(verbatim: NumberText.rest(seconds: seconds))
-                .pulseNumber(17, .semibold)
+                .pulseNumber(17, .semibold, relativeTo: .body)
                 .foregroundStyle(isSelected ? PulseTheme.onGreen : PulseTheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity)
-                .frame(height: 48)
+                .frame(minHeight: 48)
                 .background(
                     isSelected ? PulseTheme.green : PulseTheme.card,
                     in: RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -252,12 +319,13 @@ private struct RestSettingsToggleRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(verbatim: title)
-                    .font(PulseFont.body)
+                    .pulseFont(17, relativeTo: .body)
                     .foregroundStyle(PulseTheme.ink)
                 Text(verbatim: subtitle)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
             }
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityHidden(true)
             Toggle(accessibilityTitle, isOn: $isOn)

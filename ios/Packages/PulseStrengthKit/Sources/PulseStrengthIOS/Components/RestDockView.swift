@@ -15,6 +15,20 @@ public struct RestDockView: View {
     public var onSelectRIR: (Int) -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    // Design sizes that grow with Dynamic Type; each equals the design value at the default size.
+    /// The big countdown figures (30 pt rounded).
+    @PulseScaled(30, relativeTo: .largeTitle) private var countdownSize: CGFloat
+    /// The "-15" / "+15" / "Skip" label size, and the widths of the two fixed-width buttons.
+    @PulseScaled(15, relativeTo: .subheadline) private var buttonTextSize: CGFloat
+    @PulseScaled(46, relativeTo: .subheadline) private var adjustWidth: CGFloat
+    @PulseScaled(58, relativeTo: .subheadline) private var skipWidth: CGFloat
+    /// The ring: 44 pt circle inside a 52 pt frame (it grows with the countdown figures it sits next to).
+    @PulseScaled(44, relativeTo: .largeTitle) private var ringDiameter: CGFloat
+    @PulseScaled(52, relativeTo: .largeTitle) private var ringFrame: CGFloat
+    /// Width of the "Reps left" caption (54 pt).
+    @PulseScaled(54, relativeTo: .footnote) private var repsLabelWidth: CGFloat
 
     public init(
         dock: ActiveWorkoutPresentation.Dock,
@@ -54,14 +68,7 @@ public struct RestDockView: View {
 
     public var body: some View {
         VStack(spacing: 10) {
-            HStack(spacing: 12) {
-                countdownBlock
-                if isFinished {
-                    dismissButton
-                } else {
-                    adjustButtons
-                }
-            }
+            mainRows
             if dock.showsRIR {
                 rirRow
             }
@@ -88,6 +95,45 @@ public struct RestDockView: View {
         }
     }
 
+    // MARK: Main rows
+
+    /// The design: countdown block and buttons on one line. With bigger text the line may be too narrow for both
+    /// (the buttons grow with the text): then the buttons move under the countdown and share the full width.
+    /// At the default size and below the single line is always used.
+    @ViewBuilder
+    private var mainRows: some View {
+        if dynamicTypeSize > .large {
+            ViewThatFits(in: .horizontal) {
+                singleRow
+                stackedRows
+            }
+        } else {
+            singleRow
+        }
+    }
+
+    private var singleRow: some View {
+        HStack(spacing: 12) {
+            countdownBlock
+            if isFinished {
+                dismissButton(fills: false)
+            } else {
+                adjustButtons(fills: false)
+            }
+        }
+    }
+
+    private var stackedRows: some View {
+        VStack(spacing: 10) {
+            countdownBlock
+            if isFinished {
+                dismissButton(fills: true)
+            } else {
+                adjustButtons(fills: true)
+            }
+        }
+    }
+
     // MARK: Ring and countdown
 
     private var countdownBlock: some View {
@@ -95,11 +141,11 @@ public struct RestDockView: View {
             ring
             VStack(alignment: .leading, spacing: 0) {
                 Text(labelText)
-                    .font(.system(size: 12, weight: .semibold))
+                    .pulseFont(12, .semibold, relativeTo: .footnote)
                     .foregroundStyle(labelColor)
                     .lineLimit(1)
                 Text(dock.remainingText)
-                    .font(PulseFont.number(30, .bold))
+                    .font(PulseFont.number(countdownSize, .bold))
                     .monospacedDigit()
                     .tracking(-0.5)
                     .foregroundStyle(PulseTheme.ink)
@@ -125,11 +171,11 @@ public struct RestDockView: View {
                     .rotationEffect(.degrees(-90))
             }
             Image(systemName: "timer")
-                .font(.system(size: 18, weight: .semibold))
+                .pulseFont(18, .semibold, relativeTo: .largeTitle)
                 .foregroundStyle(ringColor)
         }
-        .frame(width: 44, height: 44)
-        .frame(width: 52, height: 52)
+        .frame(width: ringDiameter, height: ringDiameter)
+        .frame(width: ringFrame, height: ringFrame)
         .animation(reduceMotion ? nil : .linear(duration: 1), value: ringFraction)
     }
 
@@ -154,49 +200,77 @@ public struct RestDockView: View {
 
     // MARK: Buttons
 
-    private var adjustButtons: some View {
+    /// `fills`: the buttons share the full width of their own line (stacked layout); otherwise they keep the design's
+    /// widths (46 / 46 / 58 pt, scaled with the text).
+    private func adjustButtons(fills: Bool) -> some View {
         HStack(spacing: 6) {
-            adjustButton(title: "\u{2212}15", seconds: -15, label: "Subtract 15 seconds")
-            adjustButton(title: "+15", seconds: 15, label: "Add 15 seconds")
-            skipButton
+            adjustButton(title: "\u{2212}15", seconds: -15, label: "Subtract 15 seconds", fills: fills)
+            adjustButton(title: "+15", seconds: 15, label: "Add 15 seconds", fills: fills)
+            skipButton(fills: fills)
         }
     }
 
-    private func adjustButton(title: String, seconds: Int, label: String) -> some View {
+    /// The 44 pt tall (scaled) box of a dock button: a fixed width, or the full width of the line.
+    @ViewBuilder
+    private func buttonBox<Content: View>(_ content: Content, width: CGFloat?, fills: Bool) -> some View {
+        if fills {
+            content
+                .frame(maxWidth: .infinity)
+                .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
+        } else if let width = width {
+            content
+                .frame(width: width)
+                .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
+        } else {
+            content
+                .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
+        }
+    }
+
+    private func adjustButton(title: String, seconds: Int, label: String, fills: Bool) -> some View {
         Button {
             onAdjust(seconds)
         } label: {
-            Text(title)
-                .font(PulseFont.number(15, .semibold))
-                .monospacedDigit()
-                .foregroundStyle(PulseTheme.ink)
-                .frame(width: 46, height: 44)
-                .background(PulseTheme.cellFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            buttonBox(
+                Text(title)
+                    .font(PulseFont.number(buttonTextSize, .semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(PulseTheme.ink),
+                width: max(46, adjustWidth),
+                fills: fills
+            )
+            .background(PulseTheme.cellFill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(PulsePlainButtonStyle())
         .accessibilityLabel(label)
     }
 
-    private var skipButton: some View {
+    private func skipButton(fills: Bool) -> some View {
         Button(action: onSkip) {
-            Text("Skip")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(PulseTheme.onGreen)
-                .frame(width: 58, height: 44)
-                .background(PulseTheme.green, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            buttonBox(
+                Text("Skip")
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
+                    .foregroundStyle(PulseTheme.onGreen),
+                width: max(58, skipWidth),
+                fills: fills
+            )
+            .background(PulseTheme.green, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(PulsePlainButtonStyle())
         .accessibilityHint("Skips the rest timer")
     }
 
-    private var dismissButton: some View {
+    private func dismissButton(fills: Bool) -> some View {
         Button(action: onSkip) {
-            Text("Dismiss")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(PulseTheme.onGreen)
-                .padding(.horizontal, 16)
-                .frame(height: 44)
-                .background(PulseTheme.green, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            buttonBox(
+                Text("Dismiss")
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
+                    .foregroundStyle(PulseTheme.onGreen)
+                    .padding(.horizontal, 16),
+                width: nil,
+                fills: fills
+            )
+            .background(PulseTheme.green, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         }
         .buttonStyle(PulsePlainButtonStyle())
     }
@@ -213,9 +287,11 @@ public struct RestDockView: View {
     private var rirRow: some View {
         HStack(spacing: 8) {
             Text("Reps left")
-                .font(.system(size: 12))
+                .pulseFont(12, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.inkSecondary)
-                .frame(width: 54, alignment: .leading)
+                .lineLimit(1)
+                .pulseShrinkWhenLarger(0.8)
+                .frame(width: repsLabelWidth, alignment: .leading)
             PulseSegmented(options: RestDockView.rirOptions, selection: rirBinding)
                 .accessibilityElement(children: .contain)
                 .accessibilityLabel("Reps in reserve")

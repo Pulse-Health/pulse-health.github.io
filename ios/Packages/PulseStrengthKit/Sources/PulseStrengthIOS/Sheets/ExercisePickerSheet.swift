@@ -29,6 +29,7 @@ public struct ExercisePickerSheet: View {
     private let mode: PickerMode
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var query: String = ""
     @State private var muscle: MuscleGroup? = nil
     @State private var equipment: Equipment? = nil
@@ -68,6 +69,7 @@ public struct ExercisePickerSheet: View {
             actionBar
         }
         .background(PulseTheme.ground.ignoresSafeArea())
+        .dynamicTypeSize(PulseDynamicType.screenRange)
         .sheet(isPresented: $showsCreateSheet) {
             CreateExerciseSheet(initialName: trimmedQuery) { (exercise: Exercise) in
                 handleCreated(exercise)
@@ -80,11 +82,11 @@ public struct ExercisePickerSheet: View {
     private var searchField: some View {
         HStack(spacing: 6) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 15, weight: .semibold))
+                .pulseFont(15, .semibold, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
                 .accessibilityHidden(true)
             TextField("Search", text: $query)
-                .font(PulseFont.body)
+                .pulseFont(17, relativeTo: .body)
                 .foregroundStyle(PulseTheme.ink)
                 .focused($searchIsFocused)
                 .submitLabel(.search)
@@ -99,9 +101,9 @@ public struct ExercisePickerSheet: View {
                     query = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 16, weight: .regular))
+                        .pulseFont(16, .regular, relativeTo: .subheadline)
                         .foregroundStyle(PulseTheme.inkSecondary)
-                        .frame(width: 36, height: 40)
+                        .frame(minWidth: 36, minHeight: 40)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PulsePlainButtonStyle())
@@ -110,7 +112,7 @@ public struct ExercisePickerSheet: View {
             }
         }
         .padding(.horizontal, 8)
-        .frame(height: 40)
+        .frame(minHeight: 40)
         .background(PulseTheme.chipFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .padding(.horizontal, 16)
     }
@@ -152,7 +154,7 @@ public struct ExercisePickerSheet: View {
     private func countLabel(_ count: Int) -> some View {
         let noun = count == 1 ? "exercise" : "exercises"
         return Text("\(count) \(noun)")
-            .font(PulseFont.caption)
+            .pulseFont(12, relativeTo: .footnote)
             .foregroundStyle(PulseTheme.inkSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
@@ -168,7 +170,7 @@ public struct ExercisePickerSheet: View {
                 resultsCard(rows)
                 if rows.isEmpty {
                     Text("No exercise matches. Create it as a custom exercise.")
-                        .font(PulseFont.subhead)
+                        .pulseFont(15, relativeTo: .subheadline)
                         .foregroundStyle(PulseTheme.inkSecondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
@@ -199,20 +201,14 @@ public struct ExercisePickerSheet: View {
             showsCreateSheet = true
         } label: {
             HStack(spacing: 12) {
-                ZStack {
-                    Circle()
-                        .fill(PulseTheme.green)
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .heavy))
-                        .foregroundStyle(PulseTheme.onGreen)
-                }
-                .frame(width: 24, height: 24)
-                .accessibilityHidden(true)
+                ExercisePickerPlusMark()
+                    .accessibilityHidden(true)
                 Text(createTitle)
-                    .font(PulseFont.headline)
+                    .pulseFont(17, .semibold, relativeTo: .headline)
                     .foregroundStyle(PulseTheme.greenText)
-                    .lineLimit(2)
+                    .lineLimit(dynamicTypeSize > .large ? 4 : 2)
                     .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 16)
@@ -235,10 +231,13 @@ public struct ExercisePickerSheet: View {
             confirm()
         } label: {
             Text(actionTitle)
-                .font(PulseFont.headline)
+                .pulseFont(17, .semibold, relativeTo: .headline)
                 .foregroundStyle(foreground)
-                .lineLimit(1)
+                .lineLimit(dynamicTypeSize > .large ? 3 : 1)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, 16)
+                .padding(.vertical, 8)
                 .frame(maxWidth: .infinity, minHeight: 52)
                 .background(fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
@@ -379,20 +378,25 @@ private struct ExercisePickerRowView: View {
     let row: ExercisePickerRowModel
     let onTap: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The selection circle (24 pt at the default text size) grows with the text beside it.
+    @PulseScaled(24, relativeTo: .footnote) private var markSide: CGFloat
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
                 selectionMark
                 VStack(alignment: .leading, spacing: 2) {
                     Text(row.exercise.name)
-                        .font(PulseFont.body)
+                        .pulseFont(17, relativeTo: .body)
                         .foregroundStyle(PulseTheme.ink)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize > .large ? 3 : 1)
                     Text(row.subtitle)
-                        .font(PulseFont.caption)
+                        .pulseFont(12, relativeTo: .footnote)
                         .foregroundStyle(PulseTheme.inkSecondary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize > .large ? 3 : 1)
                 }
+                .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
                 ExerciseMediaView(mediaKey: row.exercise.mediaKey, cornerRadius: 10, animated: false)
                     .frame(width: 44, height: 44)
@@ -423,12 +427,28 @@ private struct ExercisePickerRowView: View {
             Circle()
                 .strokeBorder(row.isSelected ? PulseTheme.green : PulseTheme.inkTertiary, lineWidth: 2)
             Image(systemName: "checkmark")
-                .font(.system(size: 13, weight: .heavy))
+                .pulseFont(13, .heavy, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.onGreen)
                 .opacity(row.isSelected ? 1 : 0)
         }
-        .frame(width: 24, height: 24)
+        .frame(width: markSide, height: markSide)
         .accessibilityHidden(true)
+    }
+}
+
+/// The green plus disc of the "Create ..." row (24 pt at the default text size, it grows with the text).
+private struct ExercisePickerPlusMark: View {
+    @PulseScaled(24, relativeTo: .footnote) private var side: CGFloat
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(PulseTheme.green)
+            Image(systemName: "plus")
+                .pulseFont(13, .heavy, relativeTo: .footnote)
+                .foregroundStyle(PulseTheme.onGreen)
+        }
+        .frame(width: side, height: side)
     }
 }
 #endif

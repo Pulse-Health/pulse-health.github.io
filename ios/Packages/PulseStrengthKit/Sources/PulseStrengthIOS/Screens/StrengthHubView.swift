@@ -49,6 +49,8 @@ public struct StrengthHubView: View {
     @State private var editor: HubEditorTarget?
     @State private var showsBusyAlert = false
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     public init(
         environment: StrengthAppEnvironment,
         onStart: @escaping (WorkoutTemplate?) -> Void,
@@ -199,16 +201,18 @@ public struct StrengthHubView: View {
                 .foregroundStyle(PulseTheme.green)
             VStack(alignment: .leading, spacing: 0) {
                 Text("Start Empty Workout")
-                    .font(.system(size: 17, weight: .semibold))
+                    .pulseFont(17, .semibold, relativeTo: .headline)
                     .foregroundStyle(PulseTheme.ink)
                 Text("Add exercises as you go")
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
             }
             Spacer(minLength: 8)
             HubChevron()
         }
         .padding(.horizontal, 16)
+        // Only matters with larger text: at the default size the 56 pt minimum below is the taller of the two.
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         .hubRowBackground()
         .contentShape(Rectangle())
@@ -268,8 +272,12 @@ public struct StrengthHubView: View {
         }
     }
 
+    /// Two columns as designed; a single column at the accessibility text sizes, where a card no longer fits half the width.
     private var recoveryColumns: [GridItem] {
-        [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
+        if dynamicTypeSize.isAccessibilitySize {
+            return [GridItem(.flexible(), spacing: 12)]
+        }
+        return [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)]
     }
 
     // MARK: Recent workouts
@@ -329,17 +337,18 @@ public struct StrengthHubView: View {
             }
             VStack(alignment: .leading, spacing: 0) {
                 Text("Exercise Library")
-                    .font(PulseFont.body)
+                    .pulseFont(17, relativeTo: .body)
                     .foregroundStyle(PulseTheme.ink)
                 Text(libraryCaption)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
             }
             Spacer(minLength: 8)
             HubChevron()
         }
         .padding(.horizontal, 16)
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         .hubRowBackground()
         .contentShape(Rectangle())
@@ -431,6 +440,9 @@ private struct HubRecommendedCard: View {
     let onPrimary: () -> Void
     let onEdit: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @PulseScaled(7, relativeTo: .footnote) private var dotSize: CGFloat
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
@@ -451,43 +463,64 @@ private struct HubRecommendedCard: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Today · Recommended")
-                    .font(PulseFont.subhead)
-                    .foregroundStyle(PulseTheme.inkSecondary)
-                Text(template.name)
-                    .pulseNumber(28)
-                    .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                Text(subtitle)
-                    .font(PulseFont.caption)
-                    .foregroundStyle(PulseTheme.inkSecondary)
-                    .lineLimit(2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        HubAdaptiveStack(alignment: .center, spacing: 12, stackedSpacing: 10) {
+            headerTexts
+                .frame(maxWidth: .infinity, alignment: .leading)
             HubReadinessRing(percent: readiness)
         }
     }
 
+    private var headerTexts: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Today · Recommended")
+                .pulseFont(15, relativeTo: .subheadline)
+                .foregroundStyle(PulseTheme.inkSecondary)
+            Text(template.name)
+                .pulseNumber(28, relativeTo: .largeTitle)
+                .foregroundStyle(PulseTheme.ink)
+                .hubLineLimit(1, whenLarger: 3)
+                .minimumScaleFactor(0.6)
+            Text(subtitle)
+                .pulseFont(12, relativeTo: .footnote)
+                .foregroundStyle(PulseTheme.inkSecondary)
+                .hubLineLimit(2, whenLarger: nil)
+        }
+    }
+
+    /// One row of chips as designed; at larger text sizes the chips wrap onto further lines instead of being cut off.
+    @ViewBuilder
     private var chipRow: some View {
-        HStack(spacing: 6) {
-            ForEach(chips) { chip in
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(chip.color)
-                        .frame(width: 7, height: 7)
-                    Text(chip.title)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(PulseTheme.ink)
-                        .lineLimit(1)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(PulseTheme.cellFill, in: Capsule())
+        if dynamicTypeSize > .large {
+            HubChipFlowLayout(spacing: 6, lineSpacing: 6) {
+                chipViews
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack(spacing: 6) {
+                chipViews
             }
         }
+    }
+
+    private var chipViews: some View {
+        ForEach(chips) { chip in
+            chipView(chip)
+        }
+    }
+
+    private func chipView(_ chip: HubMuscleChip) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(chip.color)
+                .frame(width: dotSize, height: dotSize)
+            Text(chip.title)
+                .pulseFont(12, .semibold, relativeTo: .footnote)
+                .foregroundStyle(PulseTheme.ink)
+                .hubLineLimit(1, whenLarger: nil)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
+        .background(PulseTheme.cellFill, in: Capsule())
     }
 
     private var thumbnails: some View {
@@ -502,7 +535,7 @@ private struct HubRecommendedCard: View {
     private func coachNote(_ text: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "brain.head.profile")
-                .font(.system(size: 16, weight: .semibold))
+                .pulseFont(16, .semibold, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.green)
                 .padding(.top, 1)
                 .accessibilityHidden(true)
@@ -515,14 +548,8 @@ private struct HubRecommendedCard: View {
         .background(HubColor.greenWash, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
-    private func coachText(_ text: String) -> Text {
-        let label = Text("Coach · ")
-            .font(.system(size: 13, weight: .semibold))
-            .foregroundColor(PulseTheme.ink)
-        let message = Text(text)
-            .font(.system(size: 13))
-            .foregroundColor(PulseTheme.ink)
-        return label + message
+    private func coachText(_ text: String) -> some View {
+        HubCoachText(text: text)
     }
 
     private var actions: some View {
@@ -531,9 +558,13 @@ private struct HubRecommendedCard: View {
                 HStack(spacing: 8) {
                     StrengthDumbbellGlyph(size: 18, color: PulseTheme.onGreen, strokeWidth: 2.2)
                     Text(primaryTitle)
-                        .font(.system(size: 17, weight: .semibold))
+                        .pulseFont(17, .semibold, relativeTo: .headline)
                         .foregroundStyle(PulseTheme.onGreen)
+                        .multilineTextAlignment(.center)
                 }
+                // Padding that only shows once larger text makes the label taller than the 50 pt minimum below.
+                .padding(.horizontal, 8)
+                .padding(.vertical, 12)
                 .frame(maxWidth: .infinity, minHeight: 50)
                 .background(PulseTheme.green, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
@@ -551,27 +582,49 @@ private struct HubRecommendedCard: View {
     }
 }
 
-/// The 56 pt readiness ring: the mean recovery of all muscle groups, coloured by level.
+/// "Coach · message" as one run of text (the label semibold, the message regular); both grow with Dynamic Type.
+/// A `Text` concatenation needs real `Font` values, hence the scaled size here instead of `pulseFont`.
+private struct HubCoachText: View {
+    let text: String
+
+    @PulseScaled(13, relativeTo: .footnote) private var size: CGFloat
+
+    var body: some View {
+        let label = Text("Coach · ")
+            .font(.system(size: size, weight: .semibold))
+            .foregroundColor(PulseTheme.ink)
+        let message = Text(text)
+            .font(.system(size: size))
+            .foregroundColor(PulseTheme.ink)
+        return label + message
+    }
+}
+
+/// The 56 pt readiness ring: the mean recovery of all muscle groups, coloured by level. The ring, its stroke and the
+/// figure inside grow together (the same text style), so the figure always fits.
 private struct HubReadinessRing: View {
     let percent: Int
+
+    @PulseScaled(48, relativeTo: .title3) private var ringSize: CGFloat
+    @PulseScaled(6, relativeTo: .title3) private var lineWidth: CGFloat
 
     var body: some View {
         VStack(spacing: 2) {
             ZStack {
                 Circle()
-                    .stroke(PulseTheme.progressTrack, lineWidth: 6)
+                    .stroke(PulseTheme.progressTrack, lineWidth: lineWidth)
                 Circle()
                     .trim(from: 0, to: CGFloat(percent) / 100)
-                    .stroke(HubMuscles.color(percent), style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                    .stroke(HubMuscles.color(percent), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                 Text("\(percent)")
-                    .pulseNumber(18)
+                    .pulseNumber(18, relativeTo: .title3)
                     .foregroundStyle(PulseTheme.ink)
             }
-            .frame(width: 48, height: 48)
+            .frame(width: ringSize, height: ringSize)
             .padding(4)
             Text(HubMuscles.readinessTitle(percent))
-                .font(PulseFont.caption2)
+                .pulseFont(11, relativeTo: .caption2)
                 .foregroundStyle(PulseTheme.inkSecondary)
         }
         .accessibilityElement(children: .ignore)
@@ -593,13 +646,13 @@ private struct HubTemplateRow: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(template.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
                 Text(subtitle)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
             }
             Spacer(minLength: 8)
             HubChevron()
@@ -620,7 +673,7 @@ private struct HubNewTemplateRow: View {
                     .foregroundStyle(PulseTheme.green)
             }
             Text("New Template")
-                .font(.system(size: 15, weight: .semibold))
+                .pulseFont(15, .semibold, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.greenText)
             Spacer(minLength: 8)
         }
@@ -634,6 +687,8 @@ private struct HubNewTemplateRow: View {
 private struct HubWorkoutRow: View {
     let workout: CompletedWorkout
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         HStack(spacing: 12) {
             HubIconBox(fill: HubColor.blueFill) {
@@ -642,36 +697,52 @@ private struct HubWorkoutRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     Text(workout.name)
-                        .font(.system(size: 15, weight: .semibold))
+                        .pulseFont(15, .semibold, relativeTo: .subheadline)
                         .foregroundStyle(PulseTheme.ink)
-                        .lineLimit(1)
+                        .hubLineLimit(1, whenLarger: nil)
                     if !workout.personalRecords.isEmpty {
                         Text("\(workout.personalRecords.count) PR")
-                            .font(.system(size: 11, weight: .bold))
+                            .pulseFont(11, .bold, relativeTo: .caption2)
                             .foregroundStyle(PulseTheme.prText)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2)
                             .background(PulseTheme.prFill, in: Capsule())
+                            .fixedSize()
                     }
                 }
                 Text(HubFormat.dateTime(workout.startedAt))
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
+                if dynamicTypeSize.isAccessibilitySize {
+                    // No room for a column of figures on the right: they follow the date, under the name.
+                    volumeText
+                    durationText
+                }
             }
             Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(HubFormat.volume(workout.volumeKg))
-                    .pulseNumber(12, .semibold)
-                    .foregroundStyle(PulseTheme.ink)
-                Text(HubFormat.duration(seconds: workout.durationSeconds))
-                    .font(PulseFont.caption)
-                    .foregroundStyle(PulseTheme.inkSecondary)
+            if !dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .trailing, spacing: 2) {
+                    volumeText
+                    durationText
+                }
             }
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         .hubRowBackground()
         .contentShape(Rectangle())
+    }
+
+    private var volumeText: some View {
+        Text(HubFormat.volume(workout.volumeKg))
+            .pulseNumber(12, .semibold, relativeTo: .footnote)
+            .foregroundStyle(PulseTheme.ink)
+    }
+
+    private var durationText: some View {
+        Text(HubFormat.duration(seconds: workout.durationSeconds))
+            .pulseFont(12, relativeTo: .footnote)
+            .foregroundStyle(PulseTheme.inkSecondary)
     }
 }
 
@@ -682,11 +753,11 @@ private struct HubRecoveryCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.system(size: 12, weight: .semibold))
+                .pulseFont(12, .semibold, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.ink)
             HubBar(fraction: Double(percent) / 100, color: HubMuscles.color(percent))
             Text("\(percent)%")
-                .pulseNumber(11, .regular)
+                .pulseNumber(11, .regular, relativeTo: .caption2)
                 .foregroundStyle(PulseTheme.inkSecondary)
         }
         .padding(12)
@@ -706,13 +777,25 @@ private struct HubStat: Identifiable {
 }
 
 /// One row of figures: small caption over a 20 pt rounded value, thin dividers between the columns.
+/// At the accessibility text sizes the columns no longer fit side by side and are stacked, one figure per line.
 private struct HubStatRow: View {
     let stats: [HubStat]
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    @ViewBuilder
     var body: some View {
-        HStack(spacing: 16) {
-            ForEach(Array(stats.enumerated()), id: \.element.id) { pair in
-                column(pair.element, showsDivider: pair.offset > 0)
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 12) {
+                ForEach(stats) { stat in
+                    column(stat, showsDivider: false)
+                }
+            }
+        } else {
+            HStack(spacing: 16) {
+                ForEach(Array(stats.enumerated()), id: \.element.id) { pair in
+                    column(pair.element, showsDivider: pair.offset > 0)
+                }
             }
         }
     }
@@ -720,11 +803,11 @@ private struct HubStatRow: View {
     private func column(_ stat: HubStat, showsDivider: Bool) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(stat.title)
-                .font(PulseFont.caption)
+                .pulseFont(12, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.inkSecondary)
-                .lineLimit(1)
+                .hubLineLimit(1, whenLarger: 2)
             Text(stat.value)
-                .pulseNumber(20, .semibold)
+                .pulseNumber(20, .semibold, relativeTo: .title3)
                 .foregroundStyle(PulseTheme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -764,29 +847,52 @@ private struct HubWeekCard: View {
 
 // MARK: - Small building blocks
 
+/// A section title with an optional action ("See All") at the trailing edge. At the accessibility text sizes the
+/// action moves under the title (two long texts do not fit one line).
 private struct HubSectionHeader: View {
     let title: String
     var actionTitle: String? = nil
     var action: () -> Void = {}
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    @ViewBuilder
     var body: some View {
-        HStack {
-            Text(title)
-                .font(PulseFont.headline)
-                .foregroundStyle(PulseTheme.ink)
-                .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 8)
-            if let actionTitle = actionTitle {
-                Button(action: action) {
-                    Text(actionTitle)
-                        .font(PulseFont.caption)
-                        .foregroundStyle(PulseTheme.blue)
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 0) {
+                titleText
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let actionTitle = actionTitle {
+                    actionButton(actionTitle)
                 }
-                .padding(.vertical, -11)
+            }
+        } else {
+            HStack {
+                titleText
+                Spacer(minLength: 8)
+                if let actionTitle = actionTitle {
+                    actionButton(actionTitle)
+                }
             }
         }
+    }
+
+    private var titleText: some View {
+        Text(title)
+            .pulseFont(17, .semibold, relativeTo: .headline)
+            .foregroundStyle(PulseTheme.ink)
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func actionButton(_ actionTitle: String) -> some View {
+        Button(action: action) {
+            Text(actionTitle)
+                .pulseFont(12, relativeTo: .footnote)
+                .foregroundStyle(PulseTheme.blue)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .padding(.vertical, -11)
     }
 }
 
@@ -834,6 +940,113 @@ private struct HubBar: View {
     }
 }
 
+/// An `HStack` that becomes a `VStack` at the accessibility text sizes, where side-by-side columns no longer fit.
+/// At every other size it is exactly `HStack(alignment:spacing:)`.
+private struct HubAdaptiveStack<Content: View>: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    private let alignment: VerticalAlignment
+    private let spacing: CGFloat
+    private let stackedAlignment: HorizontalAlignment
+    private let stackedSpacing: CGFloat
+    private let content: Content
+
+    init(
+        alignment: VerticalAlignment = .center,
+        spacing: CGFloat,
+        stackedAlignment: HorizontalAlignment = .leading,
+        stackedSpacing: CGFloat,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.alignment = alignment
+        self.spacing = spacing
+        self.stackedAlignment = stackedAlignment
+        self.stackedSpacing = stackedSpacing
+        self.content = content()
+    }
+
+    @ViewBuilder
+    var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: stackedAlignment, spacing: stackedSpacing) {
+                content
+            }
+        } else {
+            HStack(alignment: alignment, spacing: spacing) {
+                content
+            }
+        }
+    }
+}
+
+/// `lineLimit(normal)` at the default text size and below, `lineLimit(larger)` above it: a title stays on one line
+/// as designed but wraps instead of being truncated once the user chose bigger text (nil = no limit).
+private struct HubLineLimitModifier: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    let normal: Int?
+    let larger: Int?
+
+    func body(content: Content) -> some View {
+        content.lineLimit(dynamicTypeSize > .large ? larger : normal)
+    }
+}
+
+/// Chips that wrap onto further lines (the muscle chips of the recommended card at larger text sizes).
+private struct HubChipFlowLayout: Layout {
+    var spacing: CGFloat = 6
+    var lineSpacing: CGFloat = 6
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? CGFloat.infinity
+        return arrange(subviews: subviews, maxWidth: maxWidth).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = arrange(subviews: subviews, maxWidth: bounds.width)
+        for index in subviews.indices {
+            let origin = result.origins[index]
+            let size = result.sizes[index]
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: size.width, height: size.height)
+            )
+        }
+    }
+
+    private func arrange(
+        subviews: Subviews,
+        maxWidth: CGFloat
+    ) -> (origins: [CGPoint], sizes: [CGSize], size: CGSize) {
+        var origins: [CGPoint] = []
+        var sizes: [CGSize] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var widest: CGFloat = 0
+        for subview in subviews {
+            var size = subview.sizeThatFits(ProposedViewSize.unspecified)
+            if size.width > maxWidth {
+                // A chip wider than the line wraps its own text instead of running out of the card.
+                size = subview.sizeThatFits(ProposedViewSize(width: maxWidth, height: nil))
+            }
+            if x > 0 && x + size.width > maxWidth {
+                x = 0
+                y += rowHeight + lineSpacing
+                rowHeight = 0
+            }
+            origins.append(CGPoint(x: x, y: y))
+            sizes.append(size)
+            x += size.width
+            widest = max(widest, x)
+            x += spacing
+            rowHeight = max(rowHeight, size.height)
+        }
+        return (origins, sizes, CGSize(width: widest, height: y + rowHeight))
+    }
+}
+
 private enum HubColor {
     static let blue = Color(light: 0x007AFF, dark: 0x0A84FF)
     static let blueFill = Color(light: 0x007AFF, dark: 0x0A84FF, lightAlpha: 0.10, darkAlpha: 0.20)
@@ -844,6 +1057,11 @@ private extension View {
     /// White 12 pt row / card background of the hub lists.
     func hubRowBackground() -> some View {
         self.background(PulseTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    /// `lineLimit(normal)` at the default text size and below, `lineLimit(larger)` above it (nil = no limit).
+    func hubLineLimit(_ normal: Int?, whenLarger larger: Int?) -> some View {
+        self.modifier(HubLineLimitModifier(normal: normal, larger: larger))
     }
 
     /// A hairline above the view (not drawn for the first row of a list).
@@ -1183,18 +1401,20 @@ private struct HubExerciseRow: View {
                 .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
                 Text(exercise.muscle.title + " · " + exercise.equipment.title)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
             }
             Spacer(minLength: 8)
             HubChevron()
         }
         .padding(.horizontal, 12)
+        // Only matters with larger text: at the default size the 64 pt minimum below is the taller of the two.
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
         .contentShape(Rectangle())
     }
@@ -1270,7 +1490,7 @@ private struct HubExerciseLibraryView: View {
         let items = results
         if items.isEmpty {
             Text("No exercises found")
-                .font(PulseFont.subhead)
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
                 .padding(.top, 24)
         } else {
@@ -1310,14 +1530,14 @@ private struct HubTemplateListRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     Text(template.name)
-                        .font(.system(size: 15, weight: .semibold))
+                        .pulseFont(15, .semibold, relativeTo: .subheadline)
                         .foregroundStyle(PulseTheme.ink)
-                        .lineLimit(1)
+                        .hubLineLimit(1, whenLarger: nil)
                     if isNext {
                         // A pill of its own (like the "PR" pill of a recent workout) so the tag is never cut off
                         // at the end of the subtitle; the name gives way first.
                         Text("Next up")
-                            .font(.system(size: 11, weight: .bold))
+                            .pulseFont(11, .bold, relativeTo: .caption2)
                             .foregroundStyle(PulseTheme.greenText)
                             .padding(.horizontal, 7)
                             .padding(.vertical, 2)
@@ -1329,13 +1549,13 @@ private struct HubTemplateListRow: View {
                 // "6 exercises · about 55 min · last done 5 days ago" wraps to a second line when it does not fit
                 // (a narrow phone, a larger text size) instead of losing its end.
                 Text(subtitle)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Text(exerciseNames)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkTertiary)
-                    .lineLimit(2)
+                    .hubLineLimit(2, whenLarger: 4)
             }
             Spacer(minLength: 8)
             HubChevron()
@@ -1482,7 +1702,7 @@ private struct HubTemplateDetailView: View {
             content(template)
         } else {
             Text("This template is no longer available.")
-                .font(PulseFont.subhead)
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -1510,10 +1730,10 @@ private struct HubTemplateDetailView: View {
         }
         return VStack(alignment: .leading, spacing: 4) {
             Text(template.name)
-                .pulseNumber(28)
+                .pulseNumber(28, relativeTo: .largeTitle)
                 .foregroundStyle(PulseTheme.ink)
             Text(HubFormat.templateSubtitle(template, suffix: suffix))
-                .font(PulseFont.subhead)
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1523,7 +1743,7 @@ private struct HubTemplateDetailView: View {
     private func entriesCard(_ template: WorkoutTemplate) -> some View {
         if template.entries.isEmpty {
             Text("This template has no exercises yet. Tap Edit to add some.")
-                .font(PulseFont.subhead)
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
         } else {
             VStack(spacing: 0) {
@@ -1552,18 +1772,20 @@ private struct HubTemplateDetailView: View {
                 .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.exercise.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
                 Text(HubFormat.planSummary(entry))
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
             }
             Spacer(minLength: 8)
             HubChevron()
         }
         .padding(.horizontal, 12)
+        // Only matters with larger text: at the default size the 64 pt minimum below is the taller of the two.
+        .padding(.vertical, 8)
         .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
         .contentShape(Rectangle())
     }
@@ -1600,13 +1822,13 @@ private struct HubEditorEntryRow: View {
                 .frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.exercise.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
                 Text(HubFormat.planSummary(entry))
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
             }
         }
     }
@@ -1777,17 +1999,17 @@ private struct HubExerciseChooserSheet: View {
                 .frame(width: 40, height: 40)
             VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
                 Text(exercise.muscle.title + " · " + exercise.equipment.title)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
             }
             Spacer(minLength: 8)
             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 22))
+                .pulseFont(22, relativeTo: .title2)
                 .foregroundStyle(isSelected ? PulseTheme.green : PulseTheme.inkTertiary)
         }
         .contentShape(Rectangle())
@@ -1840,7 +2062,7 @@ private struct HubHistoryListView: View {
                 }
                 if store.history.isEmpty {
                     Text("Finished workouts appear here.")
-                        .font(PulseFont.subhead)
+                        .pulseFont(15, relativeTo: .subheadline)
                         .foregroundStyle(PulseTheme.inkSecondary)
                         .padding(.top, 24)
                 }
@@ -1860,6 +2082,8 @@ private struct HubHistoryListView: View {
 private struct HubWorkoutDetailView: View {
     @ObservedObject var store: StrengthStore
     let workoutID: UUID
+
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     init(store: StrengthStore, workoutID: UUID) {
         self._store = ObservedObject(wrappedValue: store)
@@ -1883,7 +2107,7 @@ private struct HubWorkoutDetailView: View {
             content(workout)
         } else {
             Text("This workout is no longer available.")
-                .font(PulseFont.subhead)
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -1909,10 +2133,10 @@ private struct HubWorkoutDetailView: View {
     private func header(_ workout: CompletedWorkout) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(workout.name)
-                .pulseNumber(28)
+                .pulseNumber(28, relativeTo: .largeTitle)
                 .foregroundStyle(PulseTheme.ink)
             Text(HubFormat.dateTime(workout.startedAt) + " · " + HubFormat.duration(seconds: workout.durationSeconds))
-                .font(PulseFont.subhead)
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -1956,14 +2180,14 @@ private struct HubWorkoutDetailView: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text("New personal record")
-                    .font(.system(size: 12, weight: .semibold))
+                    .pulseFont(12, .semibold, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.prText)
                 Text(record.exerciseName)
-                    .font(PulseFont.headline)
+                    .pulseFont(17, .semibold, relativeTo: .headline)
                     .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(2)
+                    .hubLineLimit(2, whenLarger: nil)
                 Text(recordText(record))
-                    .pulseNumber(15, .regular)
+                    .pulseNumber(15, .regular, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.inkSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -2012,22 +2236,21 @@ private struct HubWorkoutDetailView: View {
                 .frame(width: 44, height: 44)
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
-                    .font(.system(size: 15, weight: .semibold))
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(1)
+                    .hubLineLimit(1, whenLarger: nil)
+                if item.isPersonalRecord && dynamicTypeSize.isAccessibilitySize {
+                    // The trailing edge is too narrow for the pill at these sizes: it sits under the name.
+                    personalRecordPill
+                }
                 Text(HubFormat.setsText(item.sets, tracking: item.tracking))
-                    .pulseNumber(12, .regular)
+                    .pulseNumber(12, .regular, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                    .lineLimit(2)
+                    .hubLineLimit(2, whenLarger: nil)
             }
             Spacer(minLength: 8)
-            if item.isPersonalRecord {
-                Text("PR")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(PulseTheme.prText)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(PulseTheme.prFill, in: Capsule())
+            if item.isPersonalRecord && !dynamicTypeSize.isAccessibilitySize {
+                personalRecordPill
             }
             if showsChevron {
                 HubChevron()
@@ -2037,6 +2260,16 @@ private struct HubWorkoutDetailView: View {
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
         .contentShape(Rectangle())
+    }
+
+    private var personalRecordPill: some View {
+        Text("PR")
+            .pulseFont(11, .bold, relativeTo: .caption2)
+            .foregroundStyle(PulseTheme.prText)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(PulseTheme.prFill, in: Capsule())
+            .fixedSize()
     }
 
     @ViewBuilder
@@ -2050,11 +2283,11 @@ private struct HubWorkoutDetailView: View {
                         VStack(spacing: 6) {
                             HStack {
                                 Text(item.muscle.title)
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .pulseFont(12, .semibold, relativeTo: .footnote)
                                     .foregroundStyle(PulseTheme.ink)
                                 Spacer(minLength: 8)
                                 Text(item.sets == 1 ? "1 set" : "\(item.sets) sets")
-                                    .font(PulseFont.caption)
+                                    .pulseFont(12, relativeTo: .footnote)
                                     .foregroundStyle(PulseTheme.inkSecondary)
                             }
                             HubBar(fraction: Double(item.sets) / Double(most), color: PulseTheme.progress)
@@ -2077,6 +2310,8 @@ private struct HubWorkoutDetailView: View {
 private struct HubRecoveryView: View {
     let recovery: RecoveryProvider
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
@@ -2098,18 +2333,7 @@ private struct HubRecoveryView: View {
     private func row(_ muscle: MuscleGroup) -> some View {
         let percent = HubMuscles.percent(muscle, recovery)
         return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text(muscle.title)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(PulseTheme.ink)
-                Spacer(minLength: 8)
-                Text(HubMuscles.levelTitle(percent))
-                    .font(PulseFont.caption)
-                    .foregroundStyle(PulseTheme.inkSecondary)
-                Text("\(percent)%")
-                    .pulseNumber(15, .semibold)
-                    .foregroundStyle(PulseTheme.ink)
-            }
+            rowTitle(muscle, percent: percent)
             HubBar(fraction: Double(percent) / 100, color: HubMuscles.color(percent))
         }
         .padding(.horizontal, 16)
@@ -2118,6 +2342,47 @@ private struct HubRecoveryView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(muscle.title + " recovery")
         .accessibilityValue("\(percent) percent, " + HubMuscles.levelTitle(percent))
+    }
+
+    /// Name, level and percentage on one line; at the accessibility text sizes the level and the percentage
+    /// move to a second line under the name.
+    @ViewBuilder
+    private func rowTitle(_ muscle: MuscleGroup, percent: Int) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 4) {
+                muscleName(muscle)
+                HStack(spacing: 8) {
+                    levelText(percent)
+                    Spacer(minLength: 8)
+                    percentText(percent)
+                }
+            }
+        } else {
+            HStack(spacing: 8) {
+                muscleName(muscle)
+                Spacer(minLength: 8)
+                levelText(percent)
+                percentText(percent)
+            }
+        }
+    }
+
+    private func muscleName(_ muscle: MuscleGroup) -> some View {
+        Text(muscle.title)
+            .pulseFont(15, .semibold, relativeTo: .subheadline)
+            .foregroundStyle(PulseTheme.ink)
+    }
+
+    private func levelText(_ percent: Int) -> some View {
+        Text(HubMuscles.levelTitle(percent))
+            .pulseFont(12, relativeTo: .footnote)
+            .foregroundStyle(PulseTheme.inkSecondary)
+    }
+
+    private func percentText(_ percent: Int) -> some View {
+        Text("\(percent)%")
+            .pulseNumber(15, .semibold, relativeTo: .subheadline)
+            .foregroundStyle(PulseTheme.ink)
     }
 }
 #endif

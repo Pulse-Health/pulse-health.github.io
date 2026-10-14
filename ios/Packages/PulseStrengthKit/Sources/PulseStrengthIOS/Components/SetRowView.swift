@@ -2,7 +2,7 @@
 import SwiftUI
 import PulseStrengthCore
 
-/// One set of the exercise card (Active.dc.html `sets` rows): 48 pt tall, 10 pt radius.
+/// One set of the exercise card (Active.dc.html `sets` rows): at least 48 pt tall (it grows when the text does), 10 pt radius.
 ///
 /// Columns: type badge (36 pt) | previous + PR / RIR tags (flexible) | weight cell (68 pt) | reps cell (60 pt) |
 /// check circle (44 pt tap target, flush with the row's trailing edge).
@@ -41,7 +41,7 @@ struct SetRowView: View {
             checkButton
         }
         .padding(.leading, 10)
-        .frame(height: 48)
+        .frame(minHeight: 48)
         .background(rowFill, in: rowShape)
         .overlay {
             if row.isNext {
@@ -79,7 +79,7 @@ struct SetRowView: View {
     private var typeBadge: some View {
         Button(action: onOpenDetail) {
             Text(row.number)
-                .font(.system(size: 15, weight: .bold))
+                .pulseFont(15, .bold, relativeTo: .subheadline)
                 .foregroundStyle(row.type.badgeForeground)
                 .frame(width: 36, height: 36)
                 .background(
@@ -95,7 +95,7 @@ struct SetRowView: View {
     private var infoColumn: some View {
         VStack(alignment: .leading, spacing: 1) {
             Text(row.previousText)
-                .pulseNumber(13, .regular)
+                .pulseNumber(13, .regular, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.inkSecondary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
@@ -117,19 +117,20 @@ struct SetRowView: View {
             }
             if let rirText = row.rirText {
                 Text(rirText)
-                    .font(.system(size: 11, weight: .semibold))
+                    .pulseFont(11, .semibold, relativeTo: .caption2)
                     .foregroundStyle(PulseTheme.ink.opacity(0.75))
             }
         }
         .lineLimit(1)
+        .pulseShrinkWhenLarger(0.8)
     }
 
     private var personalRecordTag: some View {
         HStack(spacing: 2) {
             Image(systemName: "trophy")
-                .font(.system(size: 9, weight: .bold))
+                .pulseFont(9, .bold, relativeTo: .caption2)
             Text("PR")
-                .font(.system(size: 11, weight: .bold))
+                .pulseFont(11, .bold, relativeTo: .caption2)
         }
         .foregroundStyle(PulseTheme.prText)
     }
@@ -158,17 +159,20 @@ struct SetRowView: View {
         .buttonStyle(PulsePlainButtonStyle())
     }
 
-    /// A 40 pt tall value cell inside a 44 pt tall tap target.
+    /// A value cell (at least 40 pt tall) inside a tap target (at least 44 pt tall). The column widths stay fixed so the
+    /// columns line up with the table header; a long figure shrinks (`minimumScaleFactor`) instead of overflowing.
     private func valueCell(_ text: String, width: CGFloat) -> some View {
         Text(text)
-            .pulseNumber(18, .semibold)
+            .pulseNumber(18, .semibold, relativeTo: .body)
             .foregroundStyle(PulseTheme.ink)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             .padding(.horizontal, 4)
-            .frame(width: width, height: 40)
+            .frame(width: width)
+            .frame(minHeight: 40)
             .background(cellFill, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .frame(width: width, height: 44)
+            .frame(width: width)
+            .frame(minHeight: 44)
             .contentShape(Rectangle())
     }
 

@@ -49,6 +49,7 @@ public struct FormInfoSheet: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(PulseTheme.ground.ignoresSafeArea())
+        .dynamicTypeSize(PulseDynamicType.screenRange)
     }
 
     // MARK: Demo
@@ -84,7 +85,7 @@ public struct FormInfoSheet: View {
             VStack(spacing: 10) {
                 StrengthDumbbellGlyph(size: 44, color: PulseTheme.inkTertiary, strokeWidth: 1.4)
                 Text("No form demo for this exercise yet")
-                    .font(PulseFont.subhead)
+                    .pulseFont(15, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.inkSecondary)
                     .multilineTextAlignment(.center)
             }
@@ -96,7 +97,7 @@ public struct FormInfoSheet: View {
     private var startEndBadge: some View {
         if hasMedia {
             Text("Start · End")
-                .font(.system(size: 12, weight: .semibold))
+                .pulseFont(12, .semibold, relativeTo: .footnote)
                 .foregroundStyle(Color.white)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 4)
@@ -117,7 +118,7 @@ public struct FormInfoSheet: View {
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(verbatim: exercise.name)
-                .font(PulseFont.title)
+                .pulseFont(22, .bold, relativeTo: .title2)
                 .foregroundStyle(PulseTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
@@ -142,7 +143,7 @@ public struct FormInfoSheet: View {
     private var cuesCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("How to")
-                .font(PulseFont.headline)
+                .pulseFont(17, .semibold, relativeTo: .headline)
                 .foregroundStyle(PulseTheme.ink)
                 .accessibilityAddTraits(.isHeader)
             ForEach(Array(exercise.cues.enumerated()), id: \.offset) { pair in
@@ -159,7 +160,7 @@ public struct FormInfoSheet: View {
 
     private var attribution: some View {
         Text("Demo photos: Free Exercise DB (public domain).")
-            .font(PulseFont.caption2)
+            .pulseFont(11, relativeTo: .caption2)
             .foregroundStyle(PulseTheme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)
     }
@@ -181,29 +182,34 @@ private enum FormInfoColors {
 private struct FormInfoHistoryRow: View {
     let action: () -> Void
 
+    /// The icon tile (32 pt) and its glyph (18 pt) at the default text size; both grow with the text beside them.
+    @PulseScaled(32, relativeTo: .body) private var tileSide: CGFloat
+    @PulseScaled(18, relativeTo: .body) private var glyphSide: CGFloat
+
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
                 FormInfoTrendShape()
                     .stroke(
                         FormInfoColors.historyIcon,
-                        style: StrokeStyle(lineWidth: 2 * 18 / 24, lineCap: .round, lineJoin: .round)
+                        style: StrokeStyle(lineWidth: 2 * glyphSide / 24, lineCap: .round, lineJoin: .round)
                     )
-                    .frame(width: 18, height: 18)
-                    .frame(width: 32, height: 32)
+                    .frame(width: glyphSide, height: glyphSide)
+                    .frame(width: tileSide, height: tileSide)
                     .background(FormInfoColors.historyWash, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .accessibilityHidden(true)
                 Text("History & records")
-                    .font(PulseFont.body)
+                    .pulseFont(17, relativeTo: .body)
                     .foregroundStyle(PulseTheme.ink)
-                    .lineLimit(1)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 14, weight: .bold))
+                    .pulseFont(14, .bold, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkTertiary)
                     .accessibilityHidden(true)
             }
             .padding(.horizontal, 16)
+            .padding(.vertical, 8)
             .frame(maxWidth: .infinity, minHeight: 56)
             .background(PulseTheme.card, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -241,26 +247,58 @@ private struct FormInfoTrendShape: Shape {
 private struct FormInfoHeader: View {
     let onDone: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     var body: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            stackedBar
+        } else {
+            centredBar
+        }
+    }
+
+    /// The design's bar: the title centred, "Done" at the right.
+    private var centredBar: some View {
         ZStack {
             Text("Form")
-                .font(PulseFont.headline)
+                .pulseFont(17, .semibold, relativeTo: .headline)
                 .foregroundStyle(PulseTheme.ink)
                 .accessibilityAddTraits(.isHeader)
             HStack {
                 Spacer(minLength: 0)
-                Button(action: onDone) {
-                    Text("Done")
-                        .font(.system(size: 17, weight: .semibold))
-                        .foregroundStyle(PulseTheme.green)
-                        .frame(minWidth: 44, minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PulsePlainButtonStyle())
+                doneButton
             }
         }
-        .frame(height: 56)
+        .frame(minHeight: 56)
         .padding(.horizontal, 16)
+    }
+
+    /// Accessibility text sizes: "Done" on its own line, the title under it, so they cannot overlap.
+    private var stackedBar: some View {
+        VStack(spacing: 2) {
+            HStack {
+                Spacer(minLength: 0)
+                doneButton
+            }
+            Text("Form")
+                .pulseFont(17, .semibold, relativeTo: .headline)
+                .foregroundStyle(PulseTheme.ink)
+                .accessibilityAddTraits(.isHeader)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+        .frame(minHeight: 56)
+    }
+
+    private var doneButton: some View {
+        Button(action: onDone) {
+            Text("Done")
+                .pulseFont(17, .semibold, relativeTo: .headline)
+                .foregroundStyle(PulseTheme.green)
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PulsePlainButtonStyle())
     }
 }
 
@@ -273,9 +311,9 @@ private struct FormInfoChip: View {
 
     var body: some View {
         Text(verbatim: text)
-            .font(.system(size: 13, weight: isPrimary ? .semibold : .regular))
+            .pulseFont(13, isPrimary ? .semibold : .regular, relativeTo: .footnote)
             .foregroundStyle(isPrimary ? PulseTheme.greenText : PulseTheme.ink.opacity(0.8))
-            .lineLimit(1)
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background(fill, in: Capsule())
@@ -293,15 +331,18 @@ private struct FormInfoCueRow: View {
     let number: Int
     let text: String
 
+    /// The number badge (24 pt at the default text size) grows with the number in it.
+    @PulseScaled(24, relativeTo: .footnote) private var badgeSide: CGFloat
+
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Text(verbatim: String(number))
-                .pulseNumber(13, .bold)
+                .pulseNumber(13, .bold, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.greenText)
-                .frame(width: 24, height: 24)
+                .frame(width: badgeSide, height: badgeSide)
                 .background(FormInfoColors.greenWash, in: Circle())
             Text(verbatim: text)
-                .font(PulseFont.subhead)
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.ink)
                 .lineSpacing(3)
                 .fixedSize(horizontal: false, vertical: true)
@@ -326,6 +367,7 @@ private struct FormInfoChipFlowLayout: Layout {
 
     struct Arrangement {
         var origins: [CGPoint]
+        var sizes: [CGSize]
         var size: CGSize
     }
 
@@ -337,19 +379,22 @@ private struct FormInfoChipFlowLayout: Layout {
         let arrangement = arrange(width: bounds.width, subviews: subviews)
         for index in subviews.indices {
             let origin = arrangement.origins[index]
+            let itemSize = arrangement.sizes[index]
             subviews[index].place(
                 at: CGPoint(x: bounds.minX + origin.x, y: bounds.minY + origin.y),
                 anchor: .topLeading,
-                proposal: .unspecified
+                proposal: ProposedViewSize(width: itemSize.width, height: itemSize.height)
             )
         }
     }
 
     private func arrange(width: CGFloat?, subviews: Subviews) -> Arrangement {
         let limit: CGFloat = width ?? CGFloat.infinity
+        // A chip wider than the row (large text sizes) is measured at the row width and wraps there.
+        let measuring = ProposedViewSize(width: width, height: nil)
         var sizes: [CGSize] = []
         for subview in subviews {
-            sizes.append(subview.sizeThatFits(.unspecified))
+            sizes.append(subview.sizeThatFits(measuring))
         }
 
         var origins = [CGPoint](repeating: .zero, count: sizes.count)
@@ -370,7 +415,7 @@ private struct FormInfoChipFlowLayout: Layout {
             x += spacing
             rowHeight = max(rowHeight, itemSize.height)
         }
-        return Arrangement(origins: origins, size: CGSize(width: usedWidth, height: y + rowHeight))
+        return Arrangement(origins: origins, sizes: sizes, size: CGSize(width: usedWidth, height: y + rowHeight))
     }
 }
 #endif

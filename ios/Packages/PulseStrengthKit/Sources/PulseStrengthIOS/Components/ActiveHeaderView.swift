@@ -12,6 +12,10 @@ public struct ActiveHeaderView: View {
     public var onMore: () -> Void
     public var onFinish: () -> Void
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    /// The running clock (15 pt rounded) grows like the other body-sized text.
+    @PulseScaled(15, relativeTo: .subheadline) private var clockSize: CGFloat
+
     public init(
         header: ActiveWorkoutPresentation.Header,
         onMinimise: @escaping () -> Void,
@@ -62,7 +66,7 @@ public struct ActiveHeaderView: View {
     private var minimiseButton: some View {
         Button(action: onMinimise) {
             Image(systemName: "chevron.down")
-                .font(.system(size: 17, weight: .bold))
+                .pulseFont(17, .bold, relativeTo: .body)
                 .foregroundStyle(PulseTheme.green)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
@@ -75,14 +79,17 @@ public struct ActiveHeaderView: View {
     private var titleBlock: some View {
         VStack(spacing: 1) {
             Text(header.title)
-                .font(.system(size: 17, weight: .semibold))
+                .pulseFont(17, .semibold, relativeTo: .headline)
                 .foregroundStyle(PulseTheme.ink)
-                .lineLimit(1)
+                .pulseLineLimit(1, whenLarger: 2)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             Text(header.clockText)
-                .font(PulseFont.number(15, .regular))
+                .font(PulseFont.number(clockSize, .regular))
                 .monospacedDigit()
                 .foregroundStyle(header.isPaused ? ActiveHeaderView.pausedClock : PulseTheme.inkSecondary)
                 .lineLimit(1)
+                .pulseShrinkWhenLarger(0.7)
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
@@ -93,7 +100,7 @@ public struct ActiveHeaderView: View {
     private var moreButton: some View {
         Button(action: onMore) {
             Image(systemName: "ellipsis.circle")
-                .font(.system(size: 22, weight: .regular))
+                .pulseFont(22, .regular, relativeTo: .title2)
                 .foregroundStyle(PulseTheme.green)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
@@ -113,33 +120,73 @@ public struct ActiveHeaderView: View {
     // MARK: Stats row
 
     private var statsRow: some View {
+        statsLayout
+            .frame(minHeight: 30)
+    }
+
+    /// One line (the design). With bigger text the three figures may not fit next to each other: then the heart rate
+    /// moves to a second line instead of truncating. At the default size and below the single line is always used.
+    @ViewBuilder
+    private var statsLayout: some View {
+        if dynamicTypeSize > .large {
+            ViewThatFits(in: .horizontal) {
+                statsSingleLine
+                statsTwoLines
+            }
+        } else {
+            statsSingleLine
+        }
+    }
+
+    private var statsSingleLine: some View {
         HStack(spacing: 0) {
-            statItem(label: "Volume", value: header.volumeText, unit: "kg")
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Volume")
-                .accessibilityValue(header.volumeText + " kilograms")
+            volumeItem
             Spacer(minLength: 8)
-            statItem(label: "Sets", value: header.setsText, unit: nil)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("Sets logged")
-                .accessibilityValue(header.setsText)
+            setsItem
             Spacer(minLength: 8)
             heartItem
         }
-        .frame(height: 30)
+    }
+
+    private var statsTwoLines: some View {
+        VStack(spacing: 2) {
+            HStack(spacing: 0) {
+                volumeItem
+                Spacer(minLength: 8)
+                setsItem
+            }
+            HStack(spacing: 0) {
+                Spacer(minLength: 8)
+                heartItem
+            }
+        }
+    }
+
+    private var volumeItem: some View {
+        statItem(label: "Volume", value: header.volumeText, unit: "kg")
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Volume")
+            .accessibilityValue(header.volumeText + " kilograms")
+    }
+
+    private var setsItem: some View {
+        statItem(label: "Sets", value: header.setsText, unit: nil)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Sets logged")
+            .accessibilityValue(header.setsText)
     }
 
     private func statItem(label: String, value: String, unit: String?) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 3) {
             Text(label)
-                .font(PulseFont.caption)
+                .pulseFont(12, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.inkSecondary)
             Text(value)
-                .pulseNumber(15, .bold)
+                .pulseNumber(15, .bold, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.ink)
             if let unit = unit {
                 Text(unit)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
             }
         }
@@ -150,10 +197,10 @@ public struct ActiveHeaderView: View {
         HStack(spacing: 5) {
             ActiveHeartBeat(isBeating: header.hasHeartRate)
             Text(header.heartRateText)
-                .pulseNumber(15, .bold)
+                .pulseNumber(15, .bold, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.ink)
             Text("bpm")
-                .font(PulseFont.caption)
+                .pulseFont(12, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.inkSecondary)
         }
         .lineLimit(1)
@@ -171,6 +218,13 @@ private struct ActiveHeartBeat: View {
     let isBeating: Bool
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The glyph (11 pt) and its frame (12 pt) grow with the text next to it.
+    @PulseScaled(11, relativeTo: .caption2) private var glyphSize: CGFloat
+    @PulseScaled(12, relativeTo: .caption2) private var glyphFrame: CGFloat
+
+    init(isBeating: Bool) {
+        self.isBeating = isBeating
+    }
 
     var body: some View {
         if isBeating && !reduceMotion {
@@ -184,10 +238,10 @@ private struct ActiveHeartBeat: View {
 
     private func heart(scale: CGFloat) -> some View {
         Image(systemName: "heart.fill")
-            .font(.system(size: 11, weight: .regular))
+            .font(.system(size: glyphSize, weight: .regular))
             .foregroundStyle(isBeating ? PulseTheme.heart : PulseTheme.inkTertiary)
             .scaleEffect(scale)
-            .frame(width: 12, height: 12)
+            .frame(width: glyphFrame, height: glyphFrame)
     }
 
     /// One beat per second: up over 150 ms, back over 150 ms, then rest.

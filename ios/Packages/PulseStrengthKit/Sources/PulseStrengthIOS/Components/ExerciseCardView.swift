@@ -76,7 +76,7 @@ struct ExerciseCardView: View {
 
     private var expandBadge: some View {
         Image(systemName: "arrow.up.left.and.arrow.down.right")
-            .font(.system(size: 8, weight: .bold))
+            .pulseFont(8, .bold, relativeTo: .caption2)
             .foregroundStyle(Color.white)
             .frame(width: 18, height: 18)
             .background(Color.black.opacity(0.55), in: Circle())
@@ -86,10 +86,11 @@ struct ExerciseCardView: View {
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(verbatim: card.exercise.name)
-                .font(.system(size: 20, weight: .bold))
                 .tracking(0.2)
+                .pulseFont(20, .bold, relativeTo: .title3)
                 .foregroundStyle(PulseTheme.ink)
-                .lineLimit(2)
+                .pulseLineLimit(2, whenLarger: 3)
+                .pulseShrinkWhenLarger(0.8)
                 .fixedSize(horizontal: false, vertical: true)
             recoveryLine
             supersetPill
@@ -104,10 +105,11 @@ struct ExerciseCardView: View {
                 .fill(PulseTheme.recoveryColor(card.recoveryLevel))
                 .frame(width: 8, height: 8)
             Text(verbatim: recoveryText)
-                .font(.system(size: 15))
+                .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
-                .lineLimit(1)
+                .pulseLineLimit(1, whenLarger: 2)
                 .minimumScaleFactor(0.85)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
     }
@@ -122,9 +124,9 @@ struct ExerciseCardView: View {
         if let label = card.supersetLabel {
             HStack(spacing: 5) {
                 Image(systemName: "link")
-                    .font(.system(size: 11, weight: .bold))
+                    .pulseFont(11, .bold, relativeTo: .caption2)
                 Text(verbatim: label)
-                    .font(.system(size: 12, weight: .semibold))
+                    .pulseFont(12, .semibold, relativeTo: .footnote)
             }
             .foregroundStyle(PulseTheme.blueText)
             .lineLimit(1)
@@ -143,7 +145,7 @@ struct ExerciseCardView: View {
             actions.showOptions(card.exerciseID)
         } label: {
             Image(systemName: "ellipsis.circle")
-                .font(.system(size: 22, weight: .regular))
+                .pulseFont(22, .regular, relativeTo: .title2)
                 .foregroundStyle(PulseTheme.green)
                 .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
@@ -170,7 +172,7 @@ struct ExerciseCardView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .bold))
+                    .pulseFont(14, .bold, relativeTo: .subheadline)
                 Text("Add Set")
             }
             .frame(maxWidth: .infinity)
@@ -185,9 +187,9 @@ struct ExerciseCardView: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: "timer")
-                    .font(.system(size: 16, weight: .semibold))
+                    .pulseFont(16, .semibold, relativeTo: .subheadline)
                 Text(verbatim: card.restText)
-                    .pulseNumber(15, .semibold)
+                    .pulseNumber(15, .semibold, relativeTo: .subheadline)
             }
             .padding(.horizontal, 14)
         }
@@ -201,7 +203,7 @@ struct ExerciseCardView: View {
             toggleNote()
         } label: {
             Image(systemName: "pencil")
-                .font(.system(size: 16, weight: .semibold))
+                .pulseFont(16, .semibold, relativeTo: .subheadline)
                 .frame(width: 44)
         }
         .buttonStyle(ExerciseCardControlStyle(fill: noteButtonFill))
@@ -298,12 +300,12 @@ private struct ExerciseCardNoteField: View {
 
     var body: some View {
         TextField("Add a note, e.g. seat height 4", text: $draft)
-            .font(.system(size: 17))
+            .pulseFont(17, relativeTo: .body)
             .foregroundStyle(PulseTheme.ink)
             .submitLabel(.done)
             .focused(isFocused)
             .padding(.horizontal, 12)
-            .frame(height: 44)
+            .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
             .background(PulseTheme.cellFill, in: RoundedRectangle(cornerRadius: PulseTheme.rowRadius, style: .continuous))
             .onSubmit {
                 commit()
@@ -347,12 +349,12 @@ private struct ExerciseCardNoteLine: View {
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "pencil")
-                .font(.system(size: 12, weight: .semibold))
+                .pulseFont(12, .semibold, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.inkSecondary)
                 .padding(.top, 2)
                 .accessibilityHidden(true)
             Text(verbatim: text)
-                .font(.system(size: 13))
+                .pulseFont(13, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.ink.opacity(0.75))
                 .lineSpacing(2)
                 .lineLimit(3)
@@ -373,9 +375,9 @@ private struct ExerciseCardControlStyle: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 15, weight: .semibold))
+            .pulseFont(15, .semibold, relativeTo: .subheadline)
             .foregroundStyle(PulseTheme.greenText)
-            .frame(minHeight: 44)
+            .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
             .background(fill, in: RoundedRectangle(cornerRadius: PulseTheme.rowRadius, style: .continuous))
             .opacity(configuration.isPressed ? 0.7 : 1)
     }

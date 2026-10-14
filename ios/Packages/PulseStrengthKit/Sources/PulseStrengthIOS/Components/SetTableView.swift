@@ -65,7 +65,8 @@ struct SetTableView: View {
 
 // MARK: - Column titles
 
-/// "SET  PREVIOUS  KG  REPS" in 11 pt semibold caps. The columns use the same geometry as `SetRowView`
+/// "SET  PREVIOUS  KG  REPS" in 11 pt semibold caps (the text grows with Dynamic Type, a long title shrinks to its column).
+/// The columns use the same geometry as `SetRowView`
 /// (10 pt leading inset, 36 / flexible / 68 / 60 pt columns, 44 pt check column) so every title sits over its cells.
 private struct SetTableColumnHeader: View {
     let weightTitle: String
@@ -85,17 +86,18 @@ private struct SetTableColumnHeader: View {
                 .frame(width: 44, height: 16)
         }
         .padding(.leading, 10)
-        .frame(height: 16)
+        .frame(minHeight: 16)
         .accessibilityHidden(true)
     }
 
     private func title(_ text: String) -> some View {
         Text(verbatim: text)
-            .font(.system(size: 11, weight: .semibold))
             .tracking(0.4)
+            .pulseFont(11, .semibold, relativeTo: .caption2)
             .textCase(.uppercase)
             .foregroundStyle(PulseTheme.inkSecondary)
             .lineLimit(1)
+            .pulseShrinkWhenLarger(0.7)
     }
 }
 #endif

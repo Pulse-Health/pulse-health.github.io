@@ -53,34 +53,35 @@ public struct WatchBannerView: View {
     private func banner(_ copy: Copy) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 18, weight: .semibold))
+                .pulseFont(18, .semibold, relativeTo: .footnote)
                 .foregroundStyle(WatchBannerView.warning)
                 .frame(width: 20, height: 20)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
                 Text(copy.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .pulseFont(13, .semibold, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.ink)
                 Text(copy.message)
-                    .font(PulseFont.caption)
+                    .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
+            // Both lines wrap (never truncate) when the text is bigger.
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .combine)
             Button(action: onAction) {
                 Text(copy.button)
-                    .font(.system(size: 15, weight: .semibold))
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
                     .foregroundStyle(PulseTheme.blue)
                     .padding(.horizontal, 6)
-                    .frame(height: 44)
+                    .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
                     .contentShape(Rectangle())
             }
             .buttonStyle(PulsePlainButtonStyle())
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .bold))
+                    .pulseFont(13, .bold, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
