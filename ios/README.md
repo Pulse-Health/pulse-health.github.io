@@ -56,48 +56,59 @@ Intents inside a package would need `AppIntentsPackage` plumbing that only exist
 ## Requirements
 
 * **Xcode 16** (macOS 14.5 or later). The code is written to also build with Xcode 15.4, Swift 5 language mode.
-* **XcodeGen 2.38 or newer**: `brew install xcodegen`. `project.yml` pins the Xcode 15.3 project format
-  (`options.projectFormat`), because XcodeGen 2.45+ would otherwise write the Xcode 16 format, which Xcode 15.4 cannot open.
+* **A paid Apple Developer Program team to run on a real iPhone / Apple Watch.** The app uses HealthKit and time-sensitive
+  notifications; Apple's free personal teams may not be able to provision those (not tried). The simulators need no account.
 * iOS 17 / watchOS 10 or later on the simulator or the device. The Dynamic Island needs an iPhone 14 Pro or newer
   (or such a simulator); the Lock Screen presentation works on every iPhone with iOS 17.
+* **XcodeGen is not needed to open or run the project**: `PulseStrength.xcodeproj` is generated from `project.yml` and
+  committed. You only need XcodeGen 2.46.0 (`brew install xcodegen`) after changing `project.yml`.
 * To run only the Core tests: any Swift 5.9+ toolchain on Linux or macOS (CI uses `swift:6.1` on Linux).
 
-## Generate the project and run it
+## Quick start in Xcode
+
+1. Open **`ios/PulseStrength.xcodeproj`** (`open ios/PulseStrength.xcodeproj`). Xcode resolves the local package
+   `Packages/PulseStrengthKit` by itself.
+2. **Simulator**: pick the **PulseStrength** scheme and any iPhone simulator, press Run. No signing needed.
+3. **Real iPhone**: open `Config/Signing.xcconfig` (it is in the Xcode navigator) and set `DEVELOPMENT_TEAM` to your 10-character
+   Team ID (developer.apple.com > Account > Membership details). Change `PULSE_APP_BUNDLE_ID` to an id you own if
+   `health.pulse.strength` is not yours (the widget gets `.widgets`, the Watch app `.watchkitapp`). To keep your values out of
+   git, create `Config/Signing.local.xcconfig` with the same two lines instead; it is git-ignored. Alternatively pick the team in
+   *Signing & Capabilities* for the three targets; Xcode then writes it into the project file.
+4. On the iPhone enable *Settings > Privacy & Security > Developer Mode*, connect it, choose it as the run destination and press
+   Run (first install: trust your developer profile in *Settings > General > VPN & Device Management*). Allow Health and
+   Notifications when the app asks.
+5. **Apple Watch**: with a paired Watch the Watch app installs together with the iPhone app (or from the iPhone's Watch app >
+   Available Apps). To run it directly, choose the **PulseStrengthWatch** scheme and the Watch as destination. Enable Developer
+   Mode on the Watch as well.
+
+### Simulator notes
+
+* The first launch seeds demo templates and history (see [Placeholders](#placeholders-to-replace)).
+* Start a workout from the hub. To see the Live Activity, lock the simulator (Device > Lock, Cmd-L) while a workout runs;
+  use an iPhone 14 Pro or newer simulator to see the Dynamic Island as well.
+* For the Watch app, use a simulator pair (iPhone + Apple Watch, created in Xcode > Window > Devices and Simulators),
+  run the **PulseStrengthWatch** scheme on the Watch simulator, then start a workout on the paired iPhone simulator.
+  The simulator has no real heart-rate sensor; Watch heart rate needs a real Watch.
+
+### Capabilities and signing
+
+The iOS app and the Watch app declare **HealthKit**; the iOS app also declares **Time Sensitive Notifications**; Live Activities need
+only the `NSSupportsLiveActivities` Info.plist key. With automatic signing Xcode registers these capabilities for your team. The app
+uses **no App Group** (its data lives in Application Support; the Live Activity buttons run inside the app process).
+
+### Regenerating the project (only after editing `project.yml`)
 
 ```sh
-cd ios
-xcodegen generate            # writes PulseStrength.xcodeproj (git-ignored; regenerate after changing project.yml)
-open PulseStrength.xcodeproj
+brew install xcodegen          # CI uses 2.46.0; the same version gives identical output
+cd ios && xcodegen generate    # rewrites PulseStrength.xcodeproj; commit the result
 ```
 
-### Simulator
-
-1. Pick the **PulseStrength** scheme and an iPhone simulator, then Run. The scheme builds the app, the widget extension
-   and the Watch app (the iOS app embeds both).
-2. The first launch seeds demo templates and history (see [Placeholders](#placeholders-to-replace)).
-3. Start a workout from the hub. To see the Live Activity, lock the simulator (Device > Lock, Cmd-L) while a workout runs;
-   use an iPhone 14 Pro or newer simulator to see the Dynamic Island as well.
-4. For the Watch app, use a simulator pair (iPhone + Apple Watch, created in Xcode > Window > Devices and Simulators),
-   run the **PulseStrengthWatch** scheme on the Watch simulator, then start a workout on the paired iPhone simulator.
-   The simulator has no real heart-rate sensor; Watch heart rate needs a real Watch.
-
-### Real device
-
-1. Put your Apple Developer team id into `DEVELOPMENT_TEAM` in `project.yml` (`settings.base`; the three targets inherit it)
-   and run `xcodegen generate` again. A team picked only in Xcode's Signing & Capabilities tab is lost on the next generate.
-2. Change `PULSE_APP_BUNDLE_ID` (`project.yml`) to an id you own; the widget (`.widgets`) and Watch (`.watchkitapp`)
-   ids derive from it. Register the App Group id from [Placeholders](#placeholders-to-replace) for your team.
-3. Enable Developer Mode on the iPhone and the Watch, select the PulseStrength scheme and the iPhone, Run. The Watch app
-   installs through the companion app; allow Health access on both devices when asked.
-4. The entitlements need capabilities that a free personal team may not be able to provision (HealthKit, App Groups, Time
-   Sensitive Notifications). If Xcode refuses to sign with a free team, remove the offending entry from the `.entitlements`
-   file for local experiments: without App Groups the app stores its data in Application Support (the Live Activity
-   buttons still reach the app); without the time-sensitive entitlement the rest alert may be delivered as an ordinary notification.
+The `apple` CI job regenerates the project and fails when the committed `PulseStrength.xcodeproj` differs.
 
 ### Command-line build without code signing (what CI does)
 
 ```sh
-cd ios && xcodegen generate
+cd ios
 xcodebuild -project PulseStrength.xcodeproj -scheme PulseStrength \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 xcodebuild -project PulseStrength.xcodeproj -scheme PulseStrengthWatch \
@@ -160,7 +171,7 @@ failed step, so open `ui-flow-log.txt` first: it names the steps that failed, wi
 Simulator, I/O > Keyboard):
 
 ```sh
-cd ios && xcodegen generate
+cd ios
 mkdir -p /tmp/pulse-screens
 TEST_RUNNER_SCREENSHOT_DIR=/tmp/pulse-screens xcodebuild test -project PulseStrength.xcodeproj \
   -scheme PulseStrengthLiveSnapshots -configuration Debug \
@@ -182,7 +193,7 @@ after the first run.
 4. `SnapshotBuilder` produces the compact `WorkoutSnapshot` that drives the Live Activity and the Watch.
 5. Platform services are `WorkoutSideEffect`s: Live Activity manager, rest notification, HealthKit writer, Watch bridge (iOS);
    WatchConnectivity client and `HKWorkoutSession` (watchOS). `PulseServices` registers the iOS set.
-6. Data lives as JSON files in the App Group container (`FileStrengthPersistence`); `StrengthStore` holds templates, history,
+6. Data lives as JSON files in the app's Application Support folder (`FileStrengthPersistence`; an App Group container is used when the entitlement is added); `StrengthStore` holds templates, history,
    custom exercises and personal bests.
 7. Live Activity buttons are App Intents compiled into app and extension; they call `WorkoutCommandBus`, whose handler the
    app installs when `StrengthAppEnvironment` starts (the app waits up to 3 s for a background launch).
@@ -199,11 +210,11 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 
 | Placeholder | Value | Where to change it |
 | --- | --- | --- |
-| Bundle ids | `health.pulse.strength`, `.widgets`, `.watchkitapp` | `PULSE_APP_BUNDLE_ID` in `project.yml` (the Watch `Info.plist` reads it for `WKCompanionAppBundleIdentifier`) |
+| Bundle ids | `health.pulse.strength`, `.widgets`, `.watchkitapp` | `PULSE_APP_BUNDLE_ID` in `Config/Signing.xcconfig` (the Watch `Info.plist` reads it for `WKCompanionAppBundleIdentifier`) |
 | Notification id | `health.pulse.strength.rest` | `StrengthConfig.restNotificationID` (Core); only a label, it does not have to match the bundle id |
-| App Group | `group.health.pulse.strength` | `StrengthConfig.appGroupID` (Core), `Apps/PulseStrength/PulseStrength.entitlements`, `Apps/PulseStrengthWidgets/PulseStrengthWidgets.entitlements`; register the group in the developer portal |
+| App Group | `group.health.pulse.strength` (not used by this standalone build: no entitlement) | `StrengthConfig.appGroupID` (Core); when sharing data with the Pulse app add the App Groups capability to the app (and the widget) and use the same id |
 | URL scheme | `pulse-strength://workout` | `StrengthConfig.urlScheme` / `workoutURL` and `CFBundleURLTypes` in `Apps/PulseStrength/Info.plist` |
-| Team | empty | `DEVELOPMENT_TEAM` in `project.yml` |
+| Team | empty | `DEVELOPMENT_TEAM` in `Config/Signing.xcconfig` (or `Config/Signing.local.xcconfig`) |
 | Names, version | "Pulse Strength", 1.0.0 (1) | `CFBundleDisplayName` in the three `Info.plist` files, `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `project.yml` |
 | Permission texts | Health usage descriptions | `NSHealthShareUsageDescription` / `NSHealthUpdateUsageDescription` in the iOS and Watch `Info.plist` files |
 | App icon | generated green dumbbell | `Apps/PulseStrength/Assets.xcassets/AppIcon.appiconset/AppIcon.png` and the same in `Apps/PulseStrengthWatch` (1024 x 1024, opaque) |
@@ -247,9 +258,9 @@ the files under `ios/` are served too; move the folder to its own repository bef
 
 | Target | Capability / setting |
 | --- | --- |
-| iOS app | HealthKit (reads heart rate and active energy, writes workouts); App Groups; Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); the notification permission is requested at runtime by `PulseServices.requestPermissions()`; URL type `pulse-strength`. No background mode is declared because none is needed. |
-| Widget extension | App Groups; `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
-| Watch app | HealthKit; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). The Watch does not use the App Group (it keeps no files). |
+| iOS app | HealthKit (reads heart rate and active energy, writes workouts); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); the notification permission is requested at runtime by `PulseServices.requestPermissions()`; URL type `pulse-strength`. No background mode is declared because none is needed. |
+| Widget extension | No capability; `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
+| Watch app | HealthKit; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). |
 
 ## Exercise photos
 
@@ -303,7 +314,7 @@ CI and the simulators cannot show any of these, and none of them has been tried:
 
 * **Live Activity buttons**: "Log set", the -/+ steppers, -15 s / +15 s / Skip from the Lock Screen and the Dynamic Island, including
   the case where the app was suspended or terminated and the intent launches it in the background (command-bus hand-over within 3 s,
-  state restored from the App Group), the "Go" state after the stale date, and the paused presentation.
+  state restored from disk), the "Go" state after the stale date, and the paused presentation.
 * **Watch heart rate**: the `HKWorkoutSession` / `HKLiveWorkoutBuilder` on a real Watch, the first samples after the phone launches the
   Watch app with `startWatchApp(with:)`, the throttled stream to the phone (the header and the Live Activity), the Health permission flow,
   and the workout saved by the Watch when `usedWatch` is true.

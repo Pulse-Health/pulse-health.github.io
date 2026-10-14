@@ -126,10 +126,26 @@ jobs:
           swift --version
           xcrun simctl list runtimes
 
-      - name: Install XcodeGen
+      # XcodeGen is pinned so that the committed PulseStrength.xcodeproj can be compared with a fresh generate.
+      - name: Install XcodeGen 2.46.0
         run: |
-          brew install xcodegen
+          VERSION=2.46.0
+          DIST="$RUNNER_TEMP/xcodegen-dist"
+          mkdir -p "$DIST"
+          BIN=""
+          if curl -fsSL -o "$RUNNER_TEMP/xcodegen.zip" "https://github.com/yonaskolb/XcodeGen/releases/download/${VERSION}/xcodegen.zip" \
+             && unzip -q -o "$RUNNER_TEMP/xcodegen.zip" -d "$DIST"; then
+            BIN="$(find "$DIST" -type f -name xcodegen -path '*/bin/*' | head -n 1)"
+          fi
+          if [ -n "$BIN" ] && chmod +x "$BIN" && "$BIN" --version >/dev/null 2>&1; then
+            echo "$(dirname "$BIN")" >> "$GITHUB_PATH"
+            export PATH="$(dirname "$BIN"):$PATH"
+          else
+            echo "::warning::Could not run the XcodeGen ${VERSION} release binary, using Homebrew's version instead"
+            brew install xcodegen
+          fi
           xcodegen --version
+          echo "XCODEGEN_VERSION=$(xcodegen --version | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)" >> "$GITHUB_ENV"
 
       - name: Generate the Xcode project
         id: generate
@@ -138,6 +154,37 @@ jobs:
           "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodegen.log" xcodegen generate
           xcodebuild -list -project PulseStrength.xcodeproj | tee "$LOG_DIR/xcodebuild-list.log"
           cp PulseStrength.xcodeproj/project.pbxproj "$LOG_DIR/project.pbxproj"
+
+      # PulseStrength.xcodeproj is committed so Xcode can open it without XcodeGen; this fails when project.yml changed
+      # and the committed project was not regenerated. (Skipped while the project is not committed yet.)
+      - name: Committed Xcode project is up to date
+        id: project-sync
+        continue-on-error: true
+        working-directory: ios
+        run: |
+          if ! git ls-files --error-unmatch PulseStrength.xcodeproj/project.pbxproj >/dev/null 2>&1; then
+            echo "PulseStrength.xcodeproj is not committed yet: nothing to compare."
+            exit 0
+          fi
+          if [ -z "$(git status --porcelain -- PulseStrength.xcodeproj)" ]; then
+            echo "The committed PulseStrength.xcodeproj matches project.yml."
+            exit 0
+          fi
+          git --no-pager diff --stat -- PulseStrength.xcodeproj | tail -n 40
+          if [ "${XCODEGEN_VERSION:-}" != "2.46.0" ]; then
+            echo "::warning::XcodeGen ${XCODEGEN_VERSION:-unknown} is not the pinned 2.46.0; the difference may only be a version difference."
+          fi
+          echo "::error::ios/PulseStrength.xcodeproj is out of date: run 'xcodegen generate' (XcodeGen 2.46.0) in ios/ and commit the result."
+          exit 1
+
+      - name: Upload the generated Xcode project
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-xcodeproj
+          path: ios/PulseStrength.xcodeproj/
+          if-no-files-found: ignore
+          retention-days: 7
 
       # The compile steps run first and never stop the job, so a single run reports every failure; the final gate fails the job.
       - name: Build the iOS app (iOS Simulator; includes the widget extension and the Watch app)
@@ -205,6 +252,7 @@ jobs:
             echo "| Step | Result |"
             echo "| --- | --- |"
             echo "| xcodegen generate | ${{ steps.generate.outcome }} |"
+            echo "| committed Xcode project up to date | ${{ steps.project-sync.outcome }} |"
             echo "| xcodebuild PulseStrength (iOS Simulator) | ${{ steps.ios-build.outcome }} |"
             echo "| xcodebuild PulseStrengthWatch (watchOS Simulator) | ${{ steps.watch-build.outcome }} |"
             echo "| swift test (macOS) | ${{ steps.package-tests.outcome }} |"
@@ -223,7 +271,7 @@ jobs:
         if: always()
         run: |
           status=0
-          for outcome in "${{ steps.generate.outcome }}" "${{ steps.ios-build.outcome }}" "${{ steps.watch-build.outcome }}" "${{ steps.package-tests.outcome }}"; do
+          for outcome in "${{ steps.generate.outcome }}" "${{ steps.project-sync.outcome }}" "${{ steps.ios-build.outcome }}" "${{ steps.watch-build.outcome }}" "${{ steps.package-tests.outcome }}"; do
             if [ "$outcome" != "success" ]; then status=1; fi
           done
           exit $status

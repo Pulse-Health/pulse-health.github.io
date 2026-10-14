@@ -1,7 +1,9 @@
 # XcodeGen spec for the Pulse Strength host project (https://github.com/yonaskolb/XcodeGen, 2.38 or newer).
 #
-#   brew install xcodegen
-#   xcodegen generate          # writes PulseStrength.xcodeproj (git-ignored) next to this file
+# PulseStrength.xcodeproj is generated from this file and COMMITTED, so Xcode can open it directly. After changing this file run
+#   brew install xcodegen      # CI pins XcodeGen 2.46.0; the same version gives byte-identical output
+#   xcodegen generate
+# and commit the regenerated project (the `apple` CI job fails when the committed project is out of date).
 #
 # Targets
 #   PulseStrength          iOS app (embeds the widget extension and the Watch app)
@@ -19,8 +21,9 @@
 # CODE_SIGN_ENTITLEMENTS below); this spec does not use XcodeGen's `info:` / `entitlements:` generators, so there is
 # exactly one source of truth for them.
 #
-# Placeholders to replace when this moves into the Pulse app (see README.md): PULSE_APP_BUNDLE_ID, DEVELOPMENT_TEAM and
-# the App Group (group.health.pulse.strength: the two iOS .entitlements files and StrengthConfig.appGroupID).
+# Signing: DEVELOPMENT_TEAM and PULSE_APP_BUNDLE_ID live in Config/Signing.xcconfig (optionally overridden by the git-ignored
+# Config/Signing.local.xcconfig); every target inherits them. Placeholders to replace when this moves into the Pulse app (see README.md):
+# those two values. The app uses no App Group: its data lives in Application Support.
 
 name: PulseStrength
 
@@ -38,6 +41,7 @@ options:
   generateEmptyDirectories: false
 
 fileGroups:
+  - Config/Signing.xcconfig
   - README.md
   - ARCHITECTURE.md
   - project.yml
@@ -46,17 +50,18 @@ packages:
   PulseStrengthKit:
     path: Packages/PulseStrengthKit
 
+# PULSE_APP_BUNDLE_ID (the widget and the Watch app derive their ids from it; the Watch Info.plist reads it for
+# WKCompanionAppBundleIdentifier) and DEVELOPMENT_TEAM come from this file.
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
+
 settings:
   base:
-    # One place for the bundle id: the widget and the Watch app derive theirs from it, and the Watch Info.plist reads
-    # it for WKCompanionAppBundleIdentifier.
-    PULSE_APP_BUNDLE_ID: health.pulse.strength
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     CODE_SIGN_STYLE: Automatic
-    # Set your Apple Developer team id here to run on a device (all three targets inherit it).
-    DEVELOPMENT_TEAM: ""
     ENABLE_PREVIEWS: "YES"
     GENERATE_INFOPLIST_FILE: "NO"
 
@@ -105,7 +110,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).widgets
         INFOPLIST_FILE: Apps/PulseStrengthWidgets/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Apps/PulseStrengthWidgets/PulseStrengthWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: "YES"
 

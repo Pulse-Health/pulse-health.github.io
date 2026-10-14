@@ -454,12 +454,12 @@ conservative, documented SwiftUI/ActivityKit/HealthKit/WatchConnectivity code fo
 ### 5.1 Identifiers and capabilities
 
 * Bundle ids: app `health.pulse.strength`, widget extension `health.pulse.strength.widgets`, watch app `health.pulse.strength.watchkitapp`.
-  App Group `group.health.pulse.strength` (`StrengthConfig.appGroupID`); URL scheme `pulse-strength`. All are placeholders to replace.
-* iOS app: HealthKit (read heart rate; share workouts and active energy), App Groups, Push-less Live Activities
+  `StrengthConfig.appGroupID` = `group.health.pulse.strength` is reserved for sharing data with the Pulse app (the standalone build declares no App Group); URL scheme `pulse-strength`. The bundle id and the team live in `Config/Signing.xcconfig`. All are placeholders to replace.
+* iOS app: HealthKit (read heart rate; share workouts and active energy), Push-less Live Activities
   (`NSSupportsLiveActivities` = YES, `NSSupportsLiveActivitiesFrequentUpdates` = YES), `NSHealthShareUsageDescription`,
   `NSHealthUpdateUsageDescription`, URL type for the scheme, Notifications (time-sensitive rest alert).
 * Watch app: HealthKit, `WKBackgroundModes` = `workout-processing`, `WKCompanionAppBundleIdentifier` = the iOS bundle id, usage descriptions.
-* Widget extension: App Groups (`NSSupportsLiveActivities` is read from the host app); `NSExtension` point `com.apple.widgetkit-extension`.
+* Widget extension: no capability (`NSSupportsLiveActivities` is read from the host app); `NSExtension` point `com.apple.widgetkit-extension`.
 
 ### 5.2 Design tokens
 `Sources/PulseStrengthIOS/PulseTheme.swift` is written and is the only source of colours, fonts, card/button/chip/segmented styles for

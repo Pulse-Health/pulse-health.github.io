@@ -3,7 +3,8 @@ import Foundation
 /// Identifiers shared by the app, the widget extension, the App Intents and the Watch app.
 /// Replace the placeholders with the Pulse team's real values when integrating.
 public enum StrengthConfig {
-    /// App Group shared by the iOS app, the widget extension and the Live Activity intents.
+    /// App Group reserved for sharing data with the Pulse app. The standalone host app declares no App Group (its data lives in
+    /// Application Support); adding the capability to the app makes `StrengthAppEnvironment.live` use the group container.
     public static let appGroupID = "group.health.pulse.strength"
     /// URL scheme used by the Live Activity to open the running workout.
     public static let urlScheme = "pulse-strength"
