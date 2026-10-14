@@ -18,6 +18,10 @@ are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-ap
 > anything that needs real hardware (Live Activity buttons, Watch heart rate and WatchConnectivity, notifications):
 > see [Verification status](#verification-status).
 
+> **Repository note.** This directory lives in the `pulse-health.github.io` website repository, which GitHub Pages publishes from
+> the repository root. The root `_config.yml` excludes `ios/` from that build, so these files are not served on the website.
+> If the project later moves to its own repository, delete the `exclude` entry.
+
 ## Layout
 
 ```
