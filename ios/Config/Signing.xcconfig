@@ -1,0 +1,15 @@
+// Signing and identifiers of the Pulse Strength host app. This is the one place to edit before running on a device:
+//
+//   DEVELOPMENT_TEAM    your 10-character Apple Developer Team ID (developer.apple.com > Account > Membership details)
+//   PULSE_APP_BUNDLE_ID the iOS app's bundle id; the widget (.widgets) and the Watch app (.watchkitapp) derive theirs from it
+//
+// To keep your values out of git, put them in Signing.local.xcconfig next to this file (git-ignored) instead of editing
+// this one, e.g.:
+//
+//   DEVELOPMENT_TEAM = ABCDE12345
+//   PULSE_APP_BUNDLE_ID = com.yourcompany.pulsestrength
+
+PULSE_APP_BUNDLE_ID = health.pulse.strength
+DEVELOPMENT_TEAM =
+
+#include? "Signing.local.xcconfig"
