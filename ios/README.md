@@ -10,10 +10,13 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux. The Apple-only code (iOS UI, Watch,
-> Live Activity) was written **without access to the Apple SDKs** and has not been opened in Xcode by its authors.
-> The GitHub Actions workflow `strength-ios` compiles it for real. See [Verification status](#verification-status)
-> before trusting any of it.
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (700 tests, 716 with the Combine
+> stand-in). The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow
+> `strength-ios` has compiled it with Xcode 16 for the iOS and watchOS simulators, run a 30-step UI flow through the real
+> iPhone app, rendered the Lock Screen, Dynamic Island and Watch screens, and re-run the app in dark mode, at large text
+> sizes and on an iPhone SE. Several rounds of adversarial review fixed what they found. What has **not** been tried is
+> anything that needs real hardware (Live Activity buttons, Watch heart rate and WatchConnectivity, notifications):
+> see [Verification status](#verification-status).
 
 ## Layout
 
@@ -254,22 +257,41 @@ above allows without touching the rest of the feature.
 
 ## Verification status
 
-* **Core (`PulseStrengthCore`)**: unit-tested on Linux (`swift test`, with and without the Combine shim, the `core-linux` CI job).
-  It contains the reducer, presenter, snapshot and summary builders, persistence, sync codec, exercise library and sample data.
-* **Apple-only code** (iOS screens and sheets, services, Watch app, Live Activity and intents, the three entry points,
-  `project.yml`, plists, entitlements, asset catalogs): written **without access to the Apple SDKs**. These files were
-  syntax-checked with `swiftc -parse` on Linux and reviewed by hand against the iOS 17 / watchOS 10 APIs, and nothing
-  more: no type check, no build, no run. `project.yml` was written against the XcodeGen documentation and source but
-  XcodeGen itself was never run on it. The first real compile happens in the `apple` job of the `strength-ios` workflow
-  (`xcodegen generate`, `swift test` on macOS, `xcodebuild` of the iOS and watchOS schemes for the simulators).
-  Expect to fix compiler errors and generator issues on the first run; the job uploads the full logs as an artifact and
-  prints the unique `error:` lines when a step fails.
-* **Visual tests** (the three test targets under `Apps/` and the `visual` job, see [Screenshots in CI](#screenshots-in-ci)):
-  written under the same conditions and not compiled or run by their authors. They are not part of the `PulseStrength` and
-  `PulseStrengthWatch` schemes, so a problem in them cannot break the `apple` job. What the screens look like and how the
-  app behaves at runtime is only known once someone has looked at the `strength-screens` artifact.
-* **CI status: see the latest run of strength-ios** (<https://github.com/Pulse-Health/pulse-health.github.io/actions/workflows/strength-ios.yml>).
-  This README does not claim a result; update this line only once the `apple` job has been seen green.
+State at the last commit of this branch; the numbers come from the `strength-ios` workflow
+(<https://github.com/Pulse-Health/pulse-health.github.io/actions/workflows/strength-ios.yml>), whose jobs were all green on it.
+
+**Verified**
+
+* **Core (`PulseStrengthCore`)**: 700 unit tests (716 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
+  reducer, presenter, snapshot and summary builders, persistence, the phone <-> Watch sync protocol (acknowledgements, optimistic
+  replay, delivery fuzzing with dropped, duplicated and reordered messages), exercise library and sample data.
+* **Compiles**: `xcodegen generate`, then `xcodebuild` of the iOS app (with the widget extension and the embedded Watch app) and of the
+  Watch scheme for the simulators, without code signing (job `apple`). Xcode 16, deployment targets iOS 17.0 / watchOS 10.0, Swift 5 mode.
+* **Runs in a simulator** (job `visual`, artifact `strength-screens`): a 30-step XCUITest flow through the real app (start a workout, log
+  sets, keypad, set detail, rest settings, options, form info, exercise list, picker with search and multi-select, create exercise,
+  navigator, superset, undo, rest dock, pause/resume, finish, update-template alert, summary, history, exercise library and detail, empty
+  workout, discard) with 55 screenshots; snapshot tests that render the Lock Screen and Dynamic Island (compact, minimal, expanded) for
+  every phase and the Watch screens on five case sizes. The screenshots were compared with the design boards.
+* **Dark mode, large text, small phone** (job `matrix`): the same tour on an iPhone 16 Pro in dark mode, at accessibility-extra-large text,
+  and on an iPhone SE (3rd generation, 375 x 667 pt). On the SE the workout screen fits without page scrolling (only the set list scrolls
+  inside the card) and nothing leaves the screen. Text follows Dynamic Type on every screen; the dense workout screen and the keypad are
+  capped at `xxxLarge` so they keep fitting.
+* **Reviews**: adversarial multi-lens reviews (API cross-checks, SwiftUI / ActivityKit / HealthKit / WatchConnectivity correctness,
+  concurrency, end-to-end sync traces, design parity, project and CI) each followed by an independent skeptic that tried to refute
+  every finding; the confirmed ones were fixed with regression tests where the logic is in Core. The Watch Health session code was
+  also run against a fake HealthKit in a scratch harness.
+
+**Not verified** (be careful before shipping)
+
+* Anything on real hardware, see below. The simulator cannot show Live Activity buttons, Dynamic Island on a device, WatchConnectivity,
+  Watch heart rate, HealthKit writes, or the rest notification. The Lock Screen and Dynamic Island screens are the SwiftUI views rendered
+  directly (the same code the widget uses), not the system's presentation.
+* The oldest runtime is not covered: the CI runner only offers iOS 18.5 and iOS 26.2 simulators, so the iOS 17.0 deployment target is
+  compile-checked (the build enforces API availability) but has never been run on an iOS 17 runtime.
+* The Watch app was rendered (snapshot tests) but not driven in a watchOS simulator; its Health session logic is covered by unit tests of
+  the Core rules and a stub harness, not by a real session.
+* VoiceOver, Reduce Motion and the landscape / iPad layouts were not exercised. Bundle ids, team, App Group and the exercise photos are
+  placeholders / public-domain stand-ins, see [Placeholders to replace](#placeholders-to-replace).
 
 ### Must be tested on real hardware
 
@@ -284,5 +306,5 @@ CI and the simulators cannot show any of these, and none of them has been tried:
 * **Rest notification**: the time-sensitive local notification at the end of the rest with the app in the background and the phone
   locked, its cancellation on skip, pause, finish and discard, the haptic when the rest ends in the foreground, and the Watch haptic.
 * Also worth a pass on a device: WatchConnectivity reachability and the "Watch not connected" / "Health access denied" banners,
-  a workout written to Health by the phone when no Watch is used, Dynamic Island layouts on a 14 Pro or newer, Dark Mode,
-  Dynamic Type and VoiceOver in the active-workout screen, and Reduce Motion (form demos, heart beat).
+  a workout written to Health by the phone when no Watch is used, Dynamic Island layouts on a 14 Pro or newer,
+  VoiceOver in the active-workout screen, and Reduce Motion (form demos, heart beat).

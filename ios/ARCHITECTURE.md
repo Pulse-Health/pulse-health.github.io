@@ -439,8 +439,9 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
   notice after a workout was adopted. `SyncWatchHealth2Tests.swift` covers when the phone ended the workout (`lastEndNoticeSentAt`: late, legacy and ghost notices,
   ignored notices, workouts that ended on the Watch itself, the controller forwards) with the Health end time rule (`SyncReconciler.healthWorkoutEnd`), and the rule
   that decides whether an end notice received without a workout belongs to a Health session nobody claimed (`SyncReconciler.endNotice(sentAt:settlesSessionStartedAt:)`).
-* Apple-only files cannot be compiled on Linux: they are syntax-checked with `swiftc -parse`, then reviewed adversarially against the
-  iOS 17 / watchOS 10 SDK APIs. The README states plainly that the Apple targets have not been built in Xcode.
+* Apple-only files cannot be compiled on Linux: they are syntax-checked with `swiftc -parse` while writing, reviewed adversarially against the
+  iOS 17 / watchOS 10 SDK APIs, and compiled and exercised by the macOS CI jobs (`apple`, `visual`, `matrix`). The README's "Verification status"
+  lists what is verified and what needs real hardware.
 
 
 ## 5. Apple targets contract
@@ -464,7 +465,13 @@ conservative, documented SwiftUI/ActivityKit/HealthKit/WatchConnectivity code fo
 `Sources/PulseStrengthIOS/PulseTheme.swift` is written and is the only source of colours, fonts, card/button/chip/segmented styles for
 iOS views (`PulseTheme.*`, `PulseFont.*`, `.pulseCard()`, `.pulseNumber(size)`, `PulsePrimaryButtonStyle`, `PulseTintButtonStyle`,
 `PulsePillButtonStyle`, `PulsePlainButtonStyle`, `PulseChip`, `PulseSegmented`, `SetType.badgeBackground/Foreground`). Extend it only by
-adding to it in your own file via extensions. Light values equal the design; dark values are provided. Watch and widget targets have their
+adding to it in your own file via extensions.
+
+*Dynamic Type.* Text sizes are design sizes that grow with the user's text size and are identical at the default size: use
+`.pulseFont(size, weight, design:, relativeTo:)` and `.pulseNumber(size, weight, relativeTo:)` instead of a fixed `Font.system(size:)`;
+`@PulseScaled` (a `@ScaledMetric` wrapper) gives the scaled number itself (Text concatenation, shapes, charts); `.pulseScaledFrame(minHeight:)`
+replaces fixed heights that contain text; `PulseDynamicType.screenRange` (up to accessibility3) caps every screen and
+`PulseDynamicType.activeWorkoutRange` (up to xxxLarge) caps the dense workout screen, the rest dock and the keypad. Icon glyph sizes inside fixed frames stay fixed. Light values equal the design; dark values are provided. Watch and widget targets have their
 own small theme file (same hex values; the Watch and the Live Activity are always dark).
 
 ### 5.3 iOS screens and sheets: files and exact public initializers (`Sources/PulseStrengthIOS/`)
