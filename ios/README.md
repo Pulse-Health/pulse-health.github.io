@@ -97,7 +97,7 @@ Intents inside a package would need `AppIntentsPackage` plumbing that only exist
 
 ### Simulator notes
 
-* The first launch seeds demo templates and history (see [Placeholders](#placeholders-to-replace)).
+* A fresh install starts empty (no demo workouts, no invented records). Create a template or start an empty workout from the hub; the UI-test mode `-PulseUITest` and the SwiftUI previews use demo data (see [Placeholders](#placeholders-to-replace)).
 * Start a workout from the hub. To see the Live Activity, lock the simulator (Device > Lock, Cmd-L) while a workout runs;
   use an iPhone 14 Pro or newer simulator to see the Dynamic Island as well.
 * For the Watch app, use a simulator pair (iPhone + Apple Watch, created in Xcode > Window > Devices and Simulators, Shift-Cmd-2),
@@ -235,8 +235,8 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | Names, version | "Pulse Strength", 1.0.0 (1) | `CFBundleDisplayName` in the three `Info.plist` files, `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `project.yml` |
 | Permission texts | Health usage descriptions | `NSHealthShareUsageDescription` / `NSHealthUpdateUsageDescription` in the iOS and Watch `Info.plist` files |
 | App icon | generated green dumbbell | `Apps/PulseStrength/Assets.xcassets/AppIcon.appiconset/AppIcon.png` and the same in `Apps/PulseStrengthWatch` (1024 x 1024, opaque) |
-| Accent colour | green `#1B8448` | `AccentColor.colorset` in both asset catalogs |
-| Demo data | templates and history seeded on first launch | `StrengthAppEnvironment.live(seedDemoData:)`; the host app uses the default `true` through `StrengthAppEnvironment.shared` |
+| Accent colour | green: `PulseTheme.green` (`#187A42` light, `#30D158` dark) tints the app's own controls; the system fallback tint `#1B8448` is `AccentColor.colorset` in both asset catalogs | `PulseTheme.swift`, `AccentColor.colorset` |
+| Demo data | demo templates, five invented workouts and personal bests, used by previews and the UI tests only | `StrengthAppEnvironment.preview(withActiveWorkout:)` seeds it; `StrengthAppEnvironment.live(seedDemoData:)` defaults to `false`, so the running app starts empty |
 | Muscle recovery | fixed demo percentages | `DemoRecovery.provider`, see below |
 
 ## Integrating with the Pulse app
@@ -279,17 +279,30 @@ own repository before using it for a product (then delete the `exclude` entry).
 
 | Target | Capability / setting |
 | --- | --- |
-| iOS app | HealthKit (reads heart rate and active energy, writes workouts; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
+| iOS app | HealthKit (writes workouts and reads nothing during a workout: the heart rate arrives from the Watch over WatchConnectivity; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
 | Widget extension | No capability; `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
 | Watch app | HealthKit; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). |
+
+### Privacy manifests
+
+`Apps/PulseStrength/PrivacyInfo.xcprivacy` and `Apps/PulseStrengthWatch/PrivacyInfo.xcprivacy` are bundled into the iPhone and Watch apps (App Store Connect
+rejects an upload that uses a required-reason API without one). Both declare `UserDefaults` (reason `CA92.1`: the app reads and writes only its own
+values, such as the ids of the workouts already saved to Health), no tracking and no collected data types, because nothing leaves the device. Update
+them when the app gains network code, an SDK, or another required-reason API (file timestamps, disk space, system boot time, active keyboards). The
+widget extension uses none of these APIs. XcodeGen 2.46.0 adds the files to the project; run `xcodegen generate` after changing them and commit the
+regenerated project (on Linux set `USER`, otherwise XcodeGen stops before it writes anything).
 
 ## Exercise photos
 
 The form-demo frames in `Packages/PulseStrengthKit/Sources/PulseStrengthIOS/Resources/ExerciseMedia` come from the
-[Free Exercise DB](https://github.com/yuhonas/free-exercise-db), released under the Unlicense (public domain): 25
-exercises, two frames each. The app shows the line "Demo photos: Free Exercise DB (public domain)." in the form sheets.
-They are demo material: the real Pulse app may prefer licensed GIFs or video with a consistent look, which the media seam
-above allows without touching the rest of the feature.
+[Free Exercise DB](https://github.com/yuhonas/free-exercise-db): 25 exercises, two frames each. The app shows the line
+"Demo photos from the Free Exercise DB." in the form sheets.
+
+**These photos are placeholders, not cleared media.** The database is released under the Unlicense, but its README does not say where
+its images come from or under which licence they may be used, so "public domain" cannot be claimed for them. The photos show
+identifiable people in a commercial gym, and some show brand marks. Replace them with your own or properly licensed photos, GIFs or
+video before any TestFlight or App Store build (the media seam above allows that without touching the rest of the feature), and
+remember that the current files also remain in the git history of this public repository.
 
 ## Walkthrough after onboarding
 
@@ -360,7 +373,7 @@ State at the last commit of this branch; the numbers come from the `strength-ios
 * The Watch app was rendered (snapshot tests) but not driven in a watchOS simulator; its Health session logic is covered by unit tests of
   the Core rules and a stub harness, not by a real session.
 * VoiceOver, Reduce Motion and the landscape / iPad layouts were not exercised. Bundle ids, team, App Group and the exercise photos are
-  placeholders / public-domain stand-ins, see [Placeholders to replace](#placeholders-to-replace).
+  placeholders / stand-ins (the photos have no cleared licence), see [Placeholders to replace](#placeholders-to-replace) and [Exercise photos](#exercise-photos).
 
 ### Must be tested on real hardware
 

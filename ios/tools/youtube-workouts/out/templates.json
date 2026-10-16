@@ -104,12 +104,7 @@
           "muscle": "Legs",
           "name": "Romanian deadlift",
           "previousBestE1RM": 0.0,
-          "previousSets": [
-            {
-              "reps": 8,
-              "weightKg": 70.0
-            }
-          ],
+          "previousSets": [],
           "secondary": "Glutes · Lower back",
           "tracking": "weightReps"
         },
@@ -155,12 +150,7 @@
           "muscle": "Legs",
           "name": "Leg extension",
           "previousBestE1RM": 0.0,
-          "previousSets": [
-            {
-              "reps": 12,
-              "weightKg": 45.0
-            }
-          ],
+          "previousSets": [],
           "secondary": "Quads",
           "tracking": "weightReps"
         },
@@ -280,12 +270,7 @@
           "muscle": "Legs",
           "name": "Standing calf raise",
           "previousBestE1RM": 0.0,
-          "previousSets": [
-            {
-              "reps": 12,
-              "weightKg": 60.0
-            }
-          ],
+          "previousSets": [],
           "secondary": "Calves",
           "tracking": "weightReps"
         },
@@ -342,12 +327,7 @@
           "muscle": "Legs",
           "name": "Lying leg curl",
           "previousBestE1RM": 0.0,
-          "previousSets": [
-            {
-              "reps": 12,
-              "weightKg": 35.0
-            }
-          ],
+          "previousSets": [],
           "secondary": "Hamstrings",
           "tracking": "weightReps"
         },
@@ -437,12 +417,7 @@
           "muscle": "Legs",
           "name": "Romanian deadlift",
           "previousBestE1RM": 0.0,
-          "previousSets": [
-            {
-              "reps": 8,
-              "weightKg": 70.0
-            }
-          ],
+          "previousSets": [],
           "secondary": "Glutes · Lower back",
           "tracking": "weightReps"
         },
@@ -488,12 +463,7 @@
           "muscle": "Legs",
           "name": "Leg extension",
           "previousBestE1RM": 0.0,
-          "previousSets": [
-            {
-              "reps": 12,
-              "weightKg": 45.0
-            }
-          ],
+          "previousSets": [],
           "secondary": "Quads",
           "tracking": "weightReps"
         },
@@ -575,12 +545,7 @@
           "muscle": "Legs",
           "name": "Standing calf raise",
           "previousBestE1RM": 0.0,
-          "previousSets": [
-            {
-              "reps": 12,
-              "weightKg": 60.0
-            }
-          ],
+          "previousSets": [],
           "secondary": "Calves",
           "tracking": "weightReps"
         },
@@ -635,12 +600,7 @@
           "muscle": "Back",
           "name": "Lat pulldown",
           "previousBestE1RM": 0.0,
-          "previousSets": [
-            {
-              "reps": 10,
-              "weightKg": 55.0
-            }
-          ],
+          "previousSets": [],
           "secondary": "Biceps · Mid back",
           "tracking": "weightReps"
         },
@@ -727,12 +687,7 @@
           "muscle": "Back",
           "name": "Seated cable row",
           "previousBestE1RM": 0.0,
-          "previousSets": [
-            {
-              "reps": 10,
-              "weightKg": 50.0
-            }
-          ],
+          "previousSets": [],
           "secondary": "Biceps · Lats",
           "tracking": "weightReps"
         },
@@ -950,29 +905,8 @@
           "mediaKey": "bench",
           "muscle": "Chest",
           "name": "Barbell bench press",
-          "previousBestE1RM": 99.0,
-          "previousSets": [
-            {
-              "reps": 8,
-              "weightKg": 50.0
-            },
-            {
-              "reps": 5,
-              "weightKg": 70.0
-            },
-            {
-              "reps": 6,
-              "weightKg": 80.0
-            },
-            {
-              "reps": 6,
-              "weightKg": 80.0
-            },
-            {
-              "reps": 5,
-              "weightKg": 80.0
-            }
-          ],
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
           "secondary": "Shoulders · Triceps",
           "tracking": "weightReps"
         },
