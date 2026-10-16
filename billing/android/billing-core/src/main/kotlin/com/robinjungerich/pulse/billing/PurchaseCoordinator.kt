@@ -135,7 +135,7 @@ class PurchaseCoordinator(
                 idempotencyKey = newIdempotencyKey(),
             )
         } catch (e: BillingError) {
-            _state.value = whenStartFailed(e)
+            whenStartFailed(e)
             return
         }
 
@@ -175,7 +175,7 @@ class PurchaseCoordinator(
     /**
      * The sheet reported success (or there was nothing to collect), but the `invoice.paid` webhook may not have
      * arrived yet. A failed attempt counts as "not yet": the user has paid, so a flaky connection must not turn the
-     * flow into an error.
+     * flow into an error. Only a lost session ends it as a failure.
      */
     private suspend fun confirm() {
         _state.value = PurchaseState.Confirming
@@ -183,7 +183,12 @@ class PurchaseCoordinator(
             delay(wait)
             val entitlement = try {
                 api.sync().entitlement
-            } catch (_: BillingError) {
+            } catch (e: BillingError) {
+                // Without a session nothing will work any more; any other problem may be gone with the next attempt.
+                if (e is BillingError.Api && e.isUnauthorized) {
+                    _state.value = PurchaseState.Failed(e.toFailure())
+                    return
+                }
                 null
             }
             if (entitlement?.premium == true) {
@@ -194,20 +199,26 @@ class PurchaseCoordinator(
         _state.value = PurchaseState.PendingActivation
     }
 
-    private suspend fun whenStartFailed(error: BillingError): PurchaseState {
-        if (error !is BillingError.Api) return PurchaseState.Failed(error.toFailure())
-        return when (error.code) {
-            ErrorCode.CONSENT_REQUIRED -> PurchaseState.Failed(PurchaseFailure.ConsentRequired)
-            ErrorCode.PURCHASE_NOT_AVAILABLE -> PurchaseState.Unavailable(reason = null)
-            // The user simply already has Premium.
-            ErrorCode.ALREADY_SUBSCRIBED -> try {
-                val entitlement = api.sync().entitlement
-                if (entitlement.premium) PurchaseState.Activated(entitlement) else PurchaseState.Failed(error.toFailure())
-            } catch (e: BillingError) {
-                PurchaseState.Failed(e.toFailure())
+    private suspend fun whenStartFailed(error: BillingError) {
+        if (error is BillingError.Api) {
+            when (error.code) {
+                ErrorCode.CONSENT_REQUIRED -> {
+                    _state.value = PurchaseState.Failed(PurchaseFailure.ConsentRequired)
+                    return
+                }
+                ErrorCode.PURCHASE_NOT_AVAILABLE -> {
+                    _state.value = PurchaseState.Unavailable(reason = null)
+                    return
+                }
+                // The user simply already has Premium: the sync tells.
+                ErrorCode.ALREADY_SUBSCRIBED -> {
+                    confirm()
+                    return
+                }
+                else -> Unit
             }
-            else -> PurchaseState.Failed(error.toFailure())
         }
+        _state.value = PurchaseState.Failed(error.toFailure())
     }
 
     /** Moves to [next] unless a flow is in flight. */

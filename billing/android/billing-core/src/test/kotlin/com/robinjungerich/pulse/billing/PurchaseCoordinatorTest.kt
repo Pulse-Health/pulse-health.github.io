@@ -183,7 +183,7 @@ class PurchaseCoordinatorTest {
         assertTrue(presenter.sessions.isEmpty())
         assertEquals(
             listOf(PurchaseState.Preparing, PurchaseState.Confirming, PurchaseState.Activated(premium)),
-            states.drop(2),
+            states.drop(1),
         )
     }
 
@@ -306,14 +306,28 @@ class PurchaseCoordinatorTest {
     }
 
     @Test
-    fun alreadySubscribedWithoutPremiumAfterTheSyncFails() = runTest {
+    fun alreadySubscribedWithoutPremiumYetPollsLikeAnyPaymentAndEndsPending() = runTest {
         loadReadyOffers()
         api.startResults += Result.failure(apiError(ErrorCode.ALREADY_SUBSCRIBED, 409))
-        api.syncResults += Result.success(response(notPremium))
+        repeat(6) { api.syncResults += Result.success(response(notPremium)) }
 
         coordinator.purchase("premium_monthly", consentGiven = true)
 
-        assertEquals(PurchaseState.Failed(PurchaseFailure.Server(ErrorCode.ALREADY_SUBSCRIBED, 409)), coordinator.state.value)
+        assertEquals(PurchaseState.PendingActivation, coordinator.state.value)
+        assertEquals(6, api.syncCalls)
+    }
+
+    @Test
+    fun aLostSessionWhileConfirmingFailsAsUnauthorized() = runTest {
+        loadReadyOffers()
+        api.startResults += Result.success(subscription())
+        api.syncResults += Result.success(response(notPremium))
+        api.syncResults += Result.failure(apiError(ErrorCode.UNAUTHORIZED, 401))
+
+        coordinator.purchase("premium_monthly", consentGiven = true)
+
+        assertEquals(PurchaseState.Failed(PurchaseFailure.Server(ErrorCode.UNAUTHORIZED, 401)), coordinator.state.value)
+        assertEquals(2, api.syncCalls)
     }
 
     @Test

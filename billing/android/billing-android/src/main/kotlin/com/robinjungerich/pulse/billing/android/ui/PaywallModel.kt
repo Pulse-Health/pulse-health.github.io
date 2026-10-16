@@ -4,6 +4,7 @@
 
 package com.robinjungerich.pulse.billing.android.ui
 
+import com.robinjungerich.pulse.billing.BillingFormat
 import com.robinjungerich.pulse.billing.BillingStrings
 import com.robinjungerich.pulse.billing.Offers
 import com.robinjungerich.pulse.billing.Plan
@@ -83,7 +84,7 @@ internal fun paywallModel(state: PurchaseState, offers: Offers?, strings: Billin
 }
 
 internal fun planItem(plan: Plan, strings: BillingStrings): PlanItem {
-    val priceLine = strings.priceLine(PriceFormatter.format(plan, strings.locale), plan)
+    val priceLine = strings.priceLine(BillingFormat.price(plan, strings.locale), plan)
     return PlanItem(
         id = plan.id,
         title = strings.planTitle(plan),

@@ -44,6 +44,26 @@ class PaywallModelTest {
     }
 
     @Test
+    fun aZeroDecimalCurrencyIsShownWithoutDecimals() {
+        val yen = offers(plans = listOf(plan(currency = "jpy", unitAmount = 500)))
+
+        val model = plans(paywallModel(PurchaseState.Ready(yen), yen, en))
+
+        val price = model.items.single().priceLine
+        assertTrue(price, price.endsWith("500 / month"))
+        assertFalse(price, price.contains('.'))
+    }
+
+    @Test
+    fun aThreeDecimalCurrencyIsShownWithThreeDecimals() {
+        val dinar = offers(plans = listOf(plan(currency = "kwd", unitAmount = 1500)))
+
+        val model = plans(paywallModel(PurchaseState.Ready(dinar), dinar, en))
+
+        assertTrue(model.items.single().priceLine, model.items.single().priceLine.endsWith("1.500 / month"))
+    }
+
+    @Test
     fun aTrialShowsTheBadgeAndTheTrialNote() {
         val item = planItem(plan(trialDays = 7), en)
 
