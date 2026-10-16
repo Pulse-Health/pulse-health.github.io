@@ -1,0 +1,29 @@
+Pulse Strength ist ein fokussierter Tracker für Krafttraining im Gym. Vorlage wählen oder leer starten, jeden Satz in Sekunden eintragen, pünktlich pausieren und zusehen, wie deine Gewichte steigen.
+
+SCHNELL EINTRAGEN
+• Übersichtliche Satztabelle mit deinen letzten Ergebnissen neben jedem Satz
+• Zahlenblock mit schnellen −/+-Schritten und Scheibenrechner für Langhantel-Übungen
+• Aufwärm-, Drop- und Satz-bis-zum-Versagen, Wiederholungen in Reserve, Notizen und Supersätze
+• Rückgängig für eine entfernte Übung oder einen gelöschten Satz
+
+PÜNKTLICH PAUSIEREN
+• Der Pausentimer startet nach jedem Satz automatisch; 15 Sekunden mehr oder weniger oder überspringen
+• Steuere das Training vom Sperrbildschirm: Die Benachrichtigung zeigt deinen nächsten Satz mit Schaltflächen für „Satz loggen“ und die Pause
+• Ton und Vibration melden das Pausenende, auch wenn die App im Hintergrund ist
+
+BESTLEISTUNGEN KNACKEN
+• Persönliche Rekorde werden im Moment des Satzes markiert, basierend auf deinem geschätzten Einwiederholungsmaximum
+• Ein Coach-Tipp zeigt, mit welchem Gewicht du im letzten Satz deine Bestleistung schlägst
+• Übungsverlauf mit Diagramm des geschätzten 1RM, besten Sätzen und Rekorden
+• Zusammenfassung nach jedem Training: Volumen, Sätze pro Muskelgruppe und neue PRs
+
+EINGEBAUTE ÜBUNGSBIBLIOTHEK
+• 36 Übungen mit Anleitung und Fotos zur Ausführung, dazu deine eigenen Übungen
+• Die Muskel-Erholung zeigt, welche Muskelgruppen bereit sind, basierend auf deinem eigenen Training
+
+PRIVAT VON GRUND AUF
+• Funktioniert komplett offline: kein Konto, keine Werbung, kein Tracking und keine Internet-Berechtigung
+• Deine Trainings bleiben auf deinem Handy (und in deiner Android-Sicherung, falls du eine nutzt)
+• Optional Health Connect: Speichere abgeschlossene Trainings als Krafttrainings-Einheiten. Pulse Strength schreibt nur nach Health Connect und liest nie deine Gesundheitsdaten
+
+Gewichte werden in Kilogramm angegeben.

@@ -1,9 +1,20 @@
-# Pulse Strength for Android (android/): builds and tests the pure Kotlin core and compiles the phone app and the Wear OS app.
+# Pulse Strength (android/): verifies the Kotlin core and the Compose app, builds the release bundle and, on request, uploads it to Google Play.
 #
-#   build   :core unit tests, :app and :wear debug builds, lint, the JVM / Robolectric unit tests of the app modules.
-#           Uploads the debug APKs and the lint / test reports as artifacts (14 days).
+#   verify         Unit tests of :core (JUnit), :app (Robolectric: Compose UI, services, widgets) and :wear (tiles, complications), Android
+#                  lint, debug builds of the phone and the watch app. Uploads the test reports, the lint reports and the rendered UI
+#                  screenshots (artifact `android-screens`, 14 days). Runs on every pull request / push that touches android/ or widgets/.
+#   release-build  Release bundle (.aab) and APK with R8 shrinking, signed when the signing secrets exist (unsigned otherwise, which is
+#                  fine for checking that the release build works). Also fails when the merged manifest asks for the INTERNET permission:
+#                  the privacy policy and the Play data-safety answers promise an offline app. Uploads the bundle, the R8 mapping file
+#                  (needed to read crash stack traces) and the merged manifest. Runs on tags `android-v*` and on demand.
+#   deploy         Uploads the signed bundle to Google Play (track chosen at dispatch, default `internal`). Runs on tags `android-v*` or when
+#                  started by hand with "deploy". Uses the `google-play` environment: configure required reviewers there if a person
+#                  should approve every upload. See android/RELEASING.md for the secrets and the one-time Play Console setup.
 #
-# Nothing here runs on a device or an emulator; see android/README.md, "Verification status".
+# Secrets (repository or `google-play` environment):
+#   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD   the upload key (base64 of the .jks file)
+#   PLAY_SERVICE_ACCOUNT_JSON                                                                    JSON key of the Play API service account
+# Variable (optional): ANDROID_VERSION_CODE_OFFSET  added to the run number to make the Play versionCode (default 0).
 
 name: strength-android
 
@@ -19,7 +30,24 @@ on:
       - 'android/**'
       - 'widgets/**'
       - '.github/workflows/strength-android.yml'
+    tags:
+      - 'android-v*'
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Upload the signed bundle to Google Play'
+        type: boolean
+        default: false
+      track:
+        description: 'Play track'
+        type: choice
+        options: [internal, alpha, beta, production]
+        default: internal
+      status:
+        description: 'Release status (use draft until the app has been published once)'
+        type: choice
+        options: [draft, completed, inProgress]
+        default: draft
 
 permissions:
   contents: read
@@ -28,9 +56,12 @@ concurrency:
   group: strength-android-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  GRADLE_OPTS: -Dorg.gradle.daemon=false
+
 jobs:
-  build:
-    name: build
+  verify:
+    name: verify
     runs-on: ubuntu-latest
     timeout-minutes: 60
     defaults:
@@ -42,31 +73,36 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
-      - name: Android SDK (platform 36)
+      - name: Validate the Gradle wrapper (checksum of android/gradle/wrapper/gradle-wrapper.jar)
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Android SDK packages (platform 37 and build-tools 36 are what the build compiles against)
         run: |
-          set -euo pipefail
-          SDK="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$SDK/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" > /dev/null
-          echo "sdk.dir=$SDK" > local.properties
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;36.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Core tests
-        run: ./gradlew :core:test --stacktrace
+      - name: Unit tests, lint, debug builds (phone and watch)
+        run: ./gradlew :core:test :app:testDebugUnitTest :wear:testDebugUnitTest :app:lintDebug :wear:lintDebug :app:assembleDebug :wear:assembleDebug
 
-      - name: Build the phone and the watch app
-        run: ./gradlew :app:assembleDebug :wear:assembleDebug --stacktrace
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-reports
+          path: |
+            android/core/build/reports/tests
+            android/app/build/reports/tests
+            android/wear/build/reports/tests
+            android/app/build/reports/lint-results-debug.html
+            android/wear/build/reports/lint-results-debug.html
+          retention-days: 14
+          if-no-files-found: ignore
 
-      - name: Unit tests of the app modules
-        run: ./gradlew :app:testDebugUnitTest :wear:testDebugUnitTest --stacktrace
-
-      - name: Lint
-        run: ./gradlew :app:lintDebug :wear:lintDebug --stacktrace
-
-      - name: Upload APKs
+      - name: Upload the debug APKs
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -77,14 +113,124 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
-      - name: Upload reports
+      - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: strength-android-reports
-          path: |
-            android/**/build/reports/lint-results-*.html
-            android/**/build/reports/tests/**
-            android/**/build/test-results/**
+          name: android-screens
+          path: android/app/build/screens
           retention-days: 14
           if-no-files-found: ignore
+
+  release-build:
+    name: release-build
+    needs: verify
+    if: startsWith(github.ref, 'refs/tags/android-v') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: android
+    outputs:
+      signed: ${{ steps.keystore.outputs.signed }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Validate the Gradle wrapper (checksum of android/gradle/wrapper/gradle-wrapper.jar)
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Android SDK packages (platform 37 and build-tools 36 are what the build compiles against)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;36.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Version
+        id: version
+        run: |
+          code=$(( ${{ github.run_number }} + ${{ vars.ANDROID_VERSION_CODE_OFFSET || 0 }} ))
+          echo "code=$code" >> "$GITHUB_OUTPUT"
+          if [[ "${GITHUB_REF}" == refs/tags/android-v* ]]; then
+            echo "name=${GITHUB_REF#refs/tags/android-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=$(grep -E '^pulse.versionName=' gradle.properties | cut -d= -f2 || echo 1.0.0)" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Restore the upload keystore
+        id: keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [[ -n "$KEYSTORE_BASE64" ]]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+            echo "PULSE_KEYSTORE_FILE=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::No signing secrets: building an UNSIGNED release (it cannot be uploaded to Google Play)."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build the release bundle and APK
+        env:
+          PULSE_VERSION_CODE: ${{ steps.version.outputs.code }}
+          PULSE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          PULSE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          PULSE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: >
+          ./gradlew :app:bundleRelease :app:assembleRelease
+          -Ppulse.versionName=${{ steps.version.outputs.name }}
+          ${{ steps.keystore.outputs.signed == 'true' && '-Ppulse.requireSigning=true' || '' }}
+
+      - name: The merged release manifest asks for no network permission
+        run: |
+          manifest=$(find app/build/intermediates -path '*release*' -name AndroidManifest.xml | grep -E 'merged_manifest' | head -1)
+          echo "Checking $manifest"
+          if grep -E 'android.permission.(INTERNET|ACCESS_NETWORK_STATE)' "$manifest"; then
+            echo "::error::The release manifest requests a network permission, but the privacy policy and Play data-safety answers say the app is offline."
+            exit 1
+          fi
+
+      - name: Verify the bundle signature
+        if: steps.keystore.outputs.signed == 'true'
+        run: jarsigner -verify -verbose:summary app/build/outputs/bundle/release/app-release.aab | tail -3
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: |
+            android/app/build/outputs/bundle/release/*.aab
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/mapping/release/mapping.txt
+          retention-days: 30
+
+  deploy:
+    name: deploy
+    needs: release-build
+    if: needs.release-build.outputs.signed == 'true' && (startsWith(github.ref, 'refs/tags/android-v') || inputs.deploy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: google-play
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-release
+          path: release
+
+      - name: Upload to Google Play
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: health.pulse.strength
+          releaseFiles: release/bundle/release/app-release.aab
+          mappingFile: release/mapping/release/mapping.txt
+          track: ${{ inputs.track || 'internal' }}
+          status: ${{ inputs.status || 'draft' }}
+          whatsNewDirectory: android/store/whatsnew

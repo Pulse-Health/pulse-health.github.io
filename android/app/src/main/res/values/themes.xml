@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window chrome only: every screen is drawn by Compose with the Pulse theme. -->
+    <style name="Theme.PulseStrength" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/pulse_ground</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+</resources>
