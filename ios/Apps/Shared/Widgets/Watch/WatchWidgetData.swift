@@ -26,7 +26,7 @@ enum WatchSnapshotAging {
     /// How long a personal record counts as fresh, the same 24 hours as `PRSummary.isFresh`.
     static let recordLifetime: TimeInterval = 24 * 3600
 
-    /// `snapshot` as it reads at `date`. A date before the snapshot's own day returns it unchanged.
+    /// `snapshot` as it reads at `date`. On the snapshot's own day (or before it) the day counters and the week stay as they are.
     static func aged(_ snapshot: WidgetSnapshot, to date: Date) -> WidgetSnapshot {
         var result = snapshot
         let calendar = WidgetContext(timeZoneID: snapshot.timeZoneID).calendar
@@ -243,18 +243,20 @@ enum WatchTimelinePlan {
         func add(_ date: Date?) {
             if let date, date > now { dates.append(date) }
         }
+        func addWorkoutMoments() {
+            guard let active = raw.active else { return }
+            if !active.isPaused { add(active.restEndsAt) }
+            add(raw.generatedAt.addingTimeInterval(WatchSnapshotAging.activeLifetime))
+        }
         add(nextMidnight(after: now, in: raw))
         switch topic {
-        case .rest, .restControls, .logSet, .nextUp:
-            if let active = raw.active {
-                if !active.isPaused { add(active.restEndsAt) }
-                add(raw.generatedAt.addingTimeInterval(WatchSnapshotAging.activeLifetime))
-            }
-            if topic == .nextUp {
-                for window in usualWindows(raw, around: now) {
-                    add(window.lowerBound)
-                    add(window.upperBound)
-                }
+        case .rest, .restControls, .logSet:
+            addWorkoutMoments()
+        case .nextUp:
+            addWorkoutMoments()
+            for window in usualWindows(raw, around: now) {
+                add(window.lowerBound)
+                add(window.upperBound)
             }
         case .record:
             // A record is fresh up to and including 24 hours after it: the card changes one second later.

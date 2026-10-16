@@ -58,11 +58,14 @@ private struct ISO8601Formatters: @unchecked Sendable {
 ///
 /// Use `WatchWidgetSnapshotReceiver.shared`. `handle(payload:)` may run on any thread; everything else runs on the main actor.
 public final class WatchWidgetSnapshotReceiver: @unchecked Sendable {
-    public static let shared = WatchWidgetSnapshotReceiver()
+    public static let shared = WatchWidgetSnapshotReceiver(directory: { WidgetSnapshotStore.directory() })
 
     /// The key of the encoded snapshot in the WatchConnectivity dictionaries (`WatchWidgetSnapshotSender.payloadKey` on the iPhone).
     public static let payloadKey = "w"
 
+    /// The directory of the Watch's App Group container that holds the snapshot file and the command inbox; nil when the process is not
+    /// entitled to the group.
+    private let directory: () -> URL?
     private let lock = NSLock()
     private var lastData: Data?
 
@@ -71,7 +74,10 @@ public final class WatchWidgetSnapshotReceiver: @unchecked Sendable {
     private var requestState: (@MainActor () -> Void)?
     private var isObserving = false
 
-    private init() {}
+    /// Tests give the receiver a directory of their own instead of the App Group's.
+    init(directory: @escaping () -> URL?) {
+        self.directory = directory
+    }
 
     // MARK: iPhone -> widgets
 
@@ -92,13 +98,14 @@ public final class WatchWidgetSnapshotReceiver: @unchecked Sendable {
               snapshot.schemaVersion <= WidgetSnapshot.currentSchemaVersion
         else { return false }
         lastData = data
+        let folder = directory()
         // The snapshot built at the same instant is the one already saved (the context the app re-reads at every launch): it needs
         // neither a write nor a reload.
-        if let stored = WidgetSnapshotStore.load(), abs(stored.generatedAt.timeIntervalSince(snapshot.generatedAt)) < 0.001 {
+        if let stored = WidgetSnapshotStore.load(directory: folder), abs(stored.generatedAt.timeIntervalSince(snapshot.generatedAt)) < 0.001 {
             return false
         }
         do {
-            try WidgetSnapshotStore.save(snapshot)
+            try WidgetSnapshotStore.save(snapshot, directory: folder)
         } catch {
             lastData = nil
             return false
@@ -121,8 +128,8 @@ public final class WatchWidgetSnapshotReceiver: @unchecked Sendable {
     /// Applies every request the Watch widgets left in the inbox (older than ten minutes: dropped by the inbox) and empties it.
     @MainActor
     public func drainCommands() {
-        guard let controller, let inbox = WidgetCommandInbox.shared() else { return }
-        guard let commands = try? inbox.drain(), !commands.isEmpty else { return }
+        guard let controller, let folder = directory() else { return }
+        guard let commands = try? WidgetCommandInbox(directory: folder).drain(), !commands.isEmpty else { return }
         var applied = false
         var logged = false
         for command in commands {

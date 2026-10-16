@@ -1,7 +1,8 @@
 // LiftTrendWatchWidget.swift
 //
-// WA-08 the lift trend complication: the estimated 1RM of the most trained lift over its last sessions as a sparkline, the personal-record
-// session in gold. The lift is the first of `WidgetSnapshot.lifts` (the lifts are ranked by how often they were trained in the last 90 days).
+// WA-08 the lift trend complication: the best estimated 1RM of the most trained lift, and its estimated 1RM over the last sessions as a
+// sparkline with the personal-record session in gold (the board of Watch.dc.html shows the best value over a sparkline that dips after it).
+// The lift is the first of `WidgetSnapshot.lifts` (they are ranked by how often they were trained in the last 90 days).
 // Compiled into the watchOS widget extension.
 
 #if os(watchOS)
@@ -17,7 +18,7 @@ struct LiftTrendWatchWidget: Widget {
             LiftTrendWatchView(entry: entry)
         }
         .configurationDisplayName("Lift trend")
-        .description("The estimated 1RM of your most trained lift over its last sessions.")
+        .description("The best estimated 1RM of your most trained lift, and how it moved over its last sessions.")
         .supportedFamilies([.accessoryRectangular])
     }
 }
@@ -46,7 +47,7 @@ struct LiftTrendWatchView: View {
         }
     }
 
-    /// "BENCH PRESS E1RM" and the latest value, the sparkline under it.
+    /// "BENCH PRESS E1RM" and the best value (the gold dot of the sparkline when the best is the newest record), the sparkline under it.
     private func trend(_ lift: LiftTrend) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 4) {
@@ -56,7 +57,7 @@ struct LiftTrendWatchView: View {
                     .lineLimit(1)
                     .widgetAccentable()
                 Spacer(minLength: 2)
-                Text(NumberText.kg(lift.currentE1RM))
+                Text(NumberText.kg(lift.bestE1RM))
                     .font(WidgetTheme.number(13, .bold))
                     .foregroundStyle(WidgetTheme.ink)
                     .lineLimit(1)
@@ -78,7 +79,8 @@ struct LiftTrendWatchView: View {
 
     private func spoken(_ lift: LiftTrend) -> String {
         let values = lift.points.map { NumberText.kg($0.value) }.joined(separator: ", ")
-        var text = "\(lift.name) estimated one rep max over the last \(lift.points.count) sessions: \(values) kilograms"
+        var text = "\(lift.name) estimated one rep max, best \(NumberText.kg(lift.bestE1RM)) kilograms. "
+        text += "Last \(lift.points.count) sessions: \(values) kilograms"
         if lift.deltaKg > 0.005 {
             text += ". Up \(NumberText.kg(lift.deltaKg)) since the previous session"
         } else if lift.deltaKg < -0.005 {
