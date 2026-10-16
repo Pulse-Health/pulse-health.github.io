@@ -923,8 +923,11 @@ final class OnboardingTour: UIDriver {
             if !exists(.text("Use at least 8 characters.")) {
                 fail("The password rule is not shown")
             }
-            dismissKeyboard()
-            shot("signup-errors", settle: 1.0)
+            // The error moved the focus to the email field: close the keyboard (its Done button), so that it does not cover
+            // what the next steps tap.
+            tap(.button("onboarding.keyboardDone"), timeout: 3, required: false)
+            pause(0.6)
+            shot("signup-errors", settle: 0.6)
         }
     }
 

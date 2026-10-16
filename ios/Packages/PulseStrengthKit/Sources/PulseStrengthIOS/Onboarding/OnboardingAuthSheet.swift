@@ -44,6 +44,15 @@ struct OnboardingAuthSheet: View {
         .overlay(alignment: .topTrailing) {
             closeButton
         }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button(copy.keyboardDone) {
+                    focus = nil
+                }
+                .accessibilityIdentifier("onboarding.keyboardDone")
+            }
+        }
         .onChange(of: model.focusRequest) { (_: AuthFocusRequest?, request: AuthFocusRequest?) in
             if let field = request?.field {
                 focus = field

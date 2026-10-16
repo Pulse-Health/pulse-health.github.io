@@ -151,6 +151,14 @@ public struct OnboardingCopy: Equatable, Hashable, Sendable {
         }
     }
 
+    /// The button above the keyboard that closes it.
+    public var keyboardDone: String {
+        switch language {
+        case .english: return "Done"
+        case .german: return "Fertig"
+        }
+    }
+
     /// The notice after "Forgot password?" (it does not say whether the account exists).
     public var authForgotSent: String {
         switch language {

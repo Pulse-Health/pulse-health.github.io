@@ -95,6 +95,11 @@ final class OnboardingCopyTests: XCTestCase {
         XCTAssertNotEqual(english.authForgotSent, german.authForgotSent)
     }
 
+    func testTheKeyboardHasADoneButtonInBothLanguages() {
+        XCTAssertEqual(english.keyboardDone, "Done")
+        XCTAssertEqual(german.keyboardDone, "Fertig")
+    }
+
     func testTheResetNoticeDoesNotRevealWhetherTheAccountExists() {
         XCTAssertTrue(english.authForgotSent.hasPrefix("If there is an account"))
         XCTAssertTrue(german.authForgotSent.hasPrefix("Falls es ein Konto"))
