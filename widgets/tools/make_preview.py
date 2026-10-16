@@ -81,6 +81,7 @@ preview = {
     "nextUp": {
         "templateID": UA, "name": "Upper A · Push", "splitLabel": "Push day", "exerciseCount": 6, "setCount": 20,
         "estimatedMinutes": 55, "lastPerformedAt": iso(day(0, 9, 30)), "daysSince": 5,
+        "planName": "Upper / Lower", "planPosition": 1, "planCount": 3,
         "exercises": [{"exerciseID": e[0], "name": e[1], "muscle": e[2], "setCount": e[3], "summary": e[4]} for e in exercises],
     },
     "templates": [

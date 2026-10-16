@@ -1,0 +1,269 @@
+{
+  "extraction": {
+    "exercises": [
+      {
+        "equipment": "Machine",
+        "library_id": null,
+        "muscle": "Legs",
+        "name": "Seated leg curl",
+        "note": "Hamstrings; warms up the knees for squats.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:00",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": "Machine",
+        "library_id": null,
+        "muscle": "Legs",
+        "name": "Smith machine squat",
+        "note": "As deep as you can, explode out of the hole; last set to failure.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "failure",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:11",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": null,
+        "library_id": "rdl",
+        "muscle": null,
+        "name": "Romanian deadlift",
+        "note": "Push the hips back without rounding the lower back; use straps.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:22",
+        "tracking": null
+      },
+      {
+        "equipment": null,
+        "library_id": "legext",
+        "muscle": null,
+        "name": "Leg extension",
+        "note": "Seat set back for a deep stretch of the rectus femoris; on the last set do myo-reps beyond failure (rest a few seconds, 3 more reps, repeat).",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "failure",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:31",
+        "tracking": null
+      },
+      {
+        "equipment": "Machine",
+        "library_id": null,
+        "muscle": "Legs",
+        "name": "Hip adduction machine",
+        "note": "Inner thighs; 2 sets, superset with hip abduction.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": "A",
+        "timestamp": "0:41",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": "Machine",
+        "library_id": null,
+        "muscle": "Legs",
+        "name": "Hip abduction machine",
+        "note": "Glutes; 2 sets, superset with hip adduction.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": "A",
+        "timestamp": "0:41",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": null,
+        "library_id": "calf",
+        "muscle": null,
+        "name": "Standing calf raise",
+        "note": "4 sets.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": null,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:49",
+        "tracking": null
+      }
+    ],
+    "summary": "Jeff Nippard's second leg day: seated curls, Smith machine squats, RDL, leg extensions, an adduction/abduction superset and calves.",
+    "title": "UL/PPL · Legs",
+    "warnings": [
+      "Sets and reps are not stated in the video for: seated leg curl, Smith machine squat, Romanian deadlift, leg extension. Used 3 sets of 10 (check against the full program).",
+      "Stated in the description: 2 sets each of hip adduction and abduction (superset) and 4 sets of standing calf raises.",
+      "Reps are not stated for the hip adduction/abduction superset or the calf raises; 10 used.",
+      "Rest times are not stated in the video; the exercise's default rest was used.",
+      "Weights are not stated; enter your own."
+    ]
+  },
+  "model": "manual: read from the video captions and description by Claude in a Claude Code session (no API call)",
+  "name": "UL/PPL · Legs",
+  "plan": {
+    "daysPerWeek": 5,
+    "name": "Jeff Nippard UL/PPL",
+    "position": 4
+  },
+  "sources": [
+    {
+      "captions": "auto",
+      "duration": 54,
+      "title": "Best Scientific Leg Workout",
+      "url": "https://www.youtube.com/watch?v=jf9PBwwNAMs"
+    }
+  ],
+  "vision": false
+}

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older (android:fullBackupContent): only the workout data is backed up (an explicit include leaves everything else, such
+     as the device settings in shared preferences, out), and not the unfinished workout. -->
+<full-backup-content>
+    <include domain="file" path="PulseStrength" />
+    <exclude domain="file" path="PulseStrength/active-workout.json" />
+</full-backup-content>

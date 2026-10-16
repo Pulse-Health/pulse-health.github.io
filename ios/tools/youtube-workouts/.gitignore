@@ -1,0 +1,3 @@
+__pycache__/
+# downloaded captions and video frames; the extracted workouts next to it are worth committing
+out/.cache/
