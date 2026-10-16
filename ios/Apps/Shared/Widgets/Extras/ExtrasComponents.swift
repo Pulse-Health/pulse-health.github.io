@@ -63,8 +63,8 @@ struct ExtrasPalette {
 
 // MARK: - Progress bar
 
-/// A horizontal bar: `fraction` of the width in `color` over a track. In tinted mode the track is a faint alpha step, so the solid fill
-/// stays apart from it; the fill is in the accent group unless `isAccented` is false (the bars of other people).
+/// A `BarMeter` whose track is the palette's faint alpha step in tinted mode, so the solid fill stays apart from it. The bar is in the
+/// accent group unless `isAccented` is false (the bars of other people).
 struct ExtrasProgressBar: View {
     var fraction: Double
     var color: Color = WidgetTheme.progress
@@ -77,18 +77,8 @@ struct ExtrasProgressBar: View {
     private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
 
     var body: some View {
-        GeometryReader { proxy in
-            ZStack(alignment: .leading) {
-                Capsule().fill(palette.track)
-                if fraction > 0 {
-                    Capsule()
-                        .fill(color)
-                        .frame(width: max(height, proxy.size.width * CGFloat(min(1, max(0, fraction)))))
-                        .widgetAccentable(isAccented)
-                }
-            }
-        }
-        .frame(height: height)
+        BarMeter(fraction: fraction, color: color, track: palette.track, height: height)
+            .widgetAccentable(isAccented)
     }
 }
 
