@@ -11,9 +11,13 @@ struct OnboardingAuthSheet: View {
 
     @FocusState private var focus: AuthField?
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The tallest the form has been while the sheet is open. The sheet's first detent is this tall (it hugs its form and can be
     /// pulled up), and it does not shrink again when an error line goes or the other tab is shorter, so it never jumps.
     @State private var tallestContent: CGFloat = 0
+    /// Whether the on-screen keyboard is up. The form follows the focus only then: before that, the room above the keyboard is not
+    /// known yet.
+    @State private var keyboardIsUp = false
 
     private var copy: OnboardingCopy { model.copy }
     private var isSignUp: Bool { model.authMode == .signUp }
@@ -32,29 +36,43 @@ struct OnboardingAuthSheet: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                modePicker
-                header
-                appleButton
-                separator
-                form
-                legal
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 30)
-            .padding(.bottom, 20)
-            .background(
-                GeometryReader { proxy in
-                    Color.clear.preference(key: OnboardingSheetHeightKey.self, value: proxy.size.height)
+        ScrollViewReader { scroll in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    modePicker
+                    header
+                    appleButton
+                    separator
+                    form
+                    legal
                 }
-            )
-        }
-        .scrollBounceBehavior(.basedOnSize)
-        .scrollDismissesKeyboard(.interactively)
-        .onPreferenceChange(OnboardingSheetHeightKey.self) { (height: CGFloat) in
-            if height > tallestContent {
-                tallestContent = height
+                .padding(.horizontal, 20)
+                .padding(.top, 30)
+                .padding(.bottom, 20)
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: OnboardingSheetHeightKey.self, value: proxy.size.height)
+                    }
+                )
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDismissesKeyboard(.interactively)
+            .onPreferenceChange(OnboardingSheetHeightKey.self) { (height: CGFloat) in
+                if height > tallestContent {
+                    tallestContent = height
+                }
+            }
+            .onChange(of: focus) { (_: AuthField?, field: AuthField?) in
+                if keyboardIsUp {
+                    reveal(field, with: scroll)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { (_: Notification) in
+                keyboardIsUp = true
+                reveal(focus, with: scroll)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { (_: Notification) in
+                keyboardIsUp = false
             }
         }
         .presentationDetents(detents)
@@ -96,6 +114,22 @@ struct OnboardingAuthSheet: View {
                 .accessibilityElement()
                 .accessibilityLabel(String(Int(tallestContent)))
                 .accessibilityIdentifier("onboarding.sheet.measured")
+        }
+    }
+
+    // MARK: Keyboard
+
+    /// Moves the field that has the focus to the middle of the room above the keyboard. A scroll view does not follow the focus by
+    /// itself, and the keyboard with its Done bar covers the lower part of the form: the password field on a short phone, and most of
+    /// the form at accessibility text sizes, where it is taller than the screen.
+    private func reveal(_ field: AuthField?, with scroll: ScrollViewProxy) {
+        guard let field = field else { return }
+        if reduceMotion {
+            scroll.scrollTo(field, anchor: .center)
+        } else {
+            withAnimation(Animation.easeOut(duration: 0.25)) {
+                scroll.scrollTo(field, anchor: .center)
+            }
         }
     }
 
@@ -188,13 +222,20 @@ struct OnboardingAuthSheet: View {
 
     // MARK: Form
 
+    /// A field and the line under it are one scroll target (the `id`), so that the error line comes into view with its field.
     private var form: some View {
         VStack(alignment: .leading, spacing: 0) {
-            emailField
-            message(for: model.emailIsInvalid ? copy.text(.authErrorEmail) : nil, isError: true)
-            passwordField
-                .padding(.top, 10)
-            message(for: passwordMessage, isError: model.passwordIsInvalid)
+            VStack(alignment: .leading, spacing: 0) {
+                emailField
+                message(for: model.emailIsInvalid ? copy.text(.authErrorEmail) : nil, isError: true)
+            }
+            .id(AuthField.email)
+            VStack(alignment: .leading, spacing: 0) {
+                passwordField
+                message(for: passwordMessage, isError: model.passwordIsInvalid)
+            }
+            .padding(.top, 10)
+            .id(AuthField.password)
             if !isSignUp {
                 forgotRow
             }
