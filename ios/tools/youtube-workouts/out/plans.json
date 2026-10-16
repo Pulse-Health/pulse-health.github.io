@@ -1,0 +1,16 @@
+[
+  {
+    "daysPerWeek": 5,
+    "id": "42AD9435-42BE-5F10-83D9-334C7E069C65",
+    "isActive": false,
+    "name": "Jeff Nippard UL/PPL",
+    "nextIndex": 0,
+    "templateIDs": [
+      "C309A354-5ACC-5BC8-A3F7-8179529D94E3",
+      "4D2991F8-3617-5419-A5A7-149CC70CAE66",
+      "2B08B0B0-3612-57C5-96DA-A4E7A771D065",
+      "6EF0BDD6-BB26-519D-B229-E313B1FA7DA5",
+      "200F085B-A34E-5347-8306-01E7E80242BE"
+    ]
+  }
+]

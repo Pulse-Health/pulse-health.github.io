@@ -1,0 +1,2 @@
+yt-dlp
+anthropic>=1.0
