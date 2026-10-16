@@ -69,6 +69,18 @@ class ManifestTest {
     }
 
     @Test
+    fun everyTileHasAPreviewImageForTheTileGallery() {
+        TileComplicationUpdater.tiles.forEach { service ->
+            val preview = info(service).metaData?.getInt("androidx.wear.tiles.PREVIEW") ?: 0
+
+            assertThat(preview).isNotEqualTo(0)
+            assertThat(app.resources.getResourceTypeName(preview)).isEqualTo("drawable")
+            assertThat(app.resources.getResourceEntryName(preview)).startsWith("tile_preview_")
+            assertThat(app.resources.getDrawable(preview, null)).isNotNull()
+        }
+    }
+
+    @Test
     fun theTileBindActionFindsEveryTileOfTheApp() {
         val intent = Intent("androidx.wear.tiles.action.BIND_TILE_PROVIDER").setPackage(app.packageName)
 

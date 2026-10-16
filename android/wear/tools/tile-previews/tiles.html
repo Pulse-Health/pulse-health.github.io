@@ -1,0 +1,39 @@
+<!doctype html><meta charset="utf-8"><style>
+  body { margin: 0; background: #444; }
+  .tile { width: 400px; height: 400px; background: #000; color: #fff; box-sizing: border-box; padding: 54px 40px 50px;
+    display: flex; flex-direction: column; align-items: center; text-align: center; overflow: hidden;
+    font-family: Roboto, "Google Sans", Inter, "Helvetica Neue", Arial, sans-serif; }
+  .tile.record { background: #3A2E00; }
+  .label { display: flex; align-items: center; gap: 8px; font-size: 28px; font-weight: 700; height: 34px; }
+  .label svg { width: 30px; height: 30px; }
+  .green { color: #30D158; } .gold { color: #FFD60A; } .heart { color: #FF453A; }
+  .secondary, .secondary-label { color: #98989D; } .secondary-label { font-weight: 400; }
+  .content { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 2px; }
+  .title1 { font-size: 48px; font-weight: 700; line-height: 1.1; } .title3 { font-size: 32px; font-weight: 700; line-height: 1.15; }
+  .body1 { font-size: 32px; font-weight: 700; line-height: 1.15; }
+  .caption2 { font-size: 24px; } .caption3 { font-size: 20px; } .bold { font-weight: 700; }
+  .row { display: flex; align-items: baseline; gap: 8px; } .spacer { height: 8px; }
+  .foot { margin-top: 2px; }
+  .chip { height: 84px; width: 252px; border-radius: 42px; background: #30D158; color: #000; font-size: 30px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 10px; }
+  .chip svg { width: 30px; height: 30px; }
+  .bars { display: flex; align-items: flex-end; height: 108px; } .bars i { display: block; border-radius: 4px; }
+</style><div class="tile next_up" id="next_up">
+    <div class="label green"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M2,6 v4 M4.5,4.5 v7 M11.5,4.5 v7 M14,6 v4 M4.5,8 h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Push day</span></div>
+    <div class="content"><div class="title3">Upper A · Push</div><div class="caption2 secondary">6 exercises · ~55 min</div></div>
+    <div class="chip">Start</div></div><div class="tile workout" id="workout">
+    <div class="label secondary-label">Set 3 of 4</div>
+    <div class="content"><div class="body1">Bench Press</div><div class="title1">80 kg × 6</div></div>
+    <div class="chip"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M6,9.5 V4 a1,1 0 0 1 2,0 v4 M8,7.5 V3 a1,1 0 0 1 2,0 v4.5 M10,7.5 V5 a1,1 0 0 1 2,0 v4.5 a4,4 0 0 1 -4,4 h-0.5 A3.5,3.5 0 0 1 4.6,12 L3,9.6 a1,1 0 0 1 1.6,-1.2 L6,9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Log set</span></div></div><div class="tile record" id="record">
+    <div class="label gold"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M5,2.5 h6 v3.5 a3,3 0 0 1 -6,0 z M5,3.5 H2.5 a2.2,2.2 0 0 0 2.6,3 M11,3.5 h2.5 a2.2,2.2 0 0 1 -2.6,3 M8,9 v3 M5.5,13.5 h5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>NEW RECORD</span></div>
+    <div class="content"><div class="body1">Bench Press</div><div class="title1">85 × 5</div><div class="caption2 gold">e1RM 99 kg · +4 kg</div></div></div><div class="tile lift_trend" id="lift_trend">
+    <div class="label green"><span>Bench Press</span></div>
+    <div class="content">
+      <div class="row"><div class="title1">96</div><div class="caption2 secondary">kg e1RM</div></div>
+      <div class="spacer"></div><svg width="248" height="80" viewBox="0 0 248 80"><path d="M10,70 L124,10 L238,40" fill="none" stroke="#30D158" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="70" r="5" fill="#30D158"/><circle cx="124" cy="10" r="9" fill="#FFD60A"/><circle cx="238" cy="40" r="5" fill="#30D158"/></svg>
+    </div>
+    <div class="caption2 secondary foot">3 sessions · −3 kg</div></div><div class="tile heart_rate" id="heart_rate">
+    <div class="label heart"><svg viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M8,14 s-5.5,-3.4 -5.5,-7.4 A3,3 0 0 1 8,4.3 a3,3 0 0 1 5.5,2.3 C13.5,10.6 8,14 8,14 z" fill="currentColor" stroke="none" stroke-width="0" stroke-linecap="butt" stroke-linejoin="miter"/></svg><span>Heart rate</span></div>
+    <div class="content"><div class="bars" style="gap:6px"><i style="width:25.75px;height:22px;background:rgba(255,69,58,.5)"></i><i style="width:25.75px;height:77px;background:#FF453A"></i><i style="width:25.75px;height:34px;background:rgba(255,69,58,.5)"></i><i style="width:25.75px;height:100px;background:#FF453A"></i><i style="width:25.75px;height:29px;background:rgba(255,69,58,.5)"></i><i style="width:25.75px;height:108px;background:#FF453A"></i><i style="width:25.75px;height:40px;background:rgba(255,69,58,.5)"></i><i style="width:25.75px;height:91px;background:#FF453A"></i></div>
+      <div class="spacer"></div><div class="caption2 bold">avg 118 · peak 151</div></div>
+    <div class="caption3 secondary foot">Upper B · Pull</div></div>

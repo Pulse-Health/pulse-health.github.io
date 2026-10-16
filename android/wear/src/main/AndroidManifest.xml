@@ -55,7 +55,8 @@
             </intent-filter>
         </service>
 
-        <!-- Tiles (WA-03, WA-04, WA-05, WA-06, WA-08, WA-09). Only the system may bind them. -->
+        <!-- Tiles (WA-03, WA-04, WA-05, WA-06, WA-08, WA-09). Only the system may bind them. Each has a preview image for the tile gallery
+             (res/drawable-nodpi/tile_preview_*.png, drawn by tools/tile-previews/render.mjs). -->
         <service
             android:name=".tiles.NextUpTile"
             android:description="@string/tile_next_up_description"
@@ -66,6 +67,9 @@
             <intent-filter>
                 <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
             </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tile_preview_next_up" />
         </service>
         <service
             android:name=".tiles.WorkoutTile"
@@ -77,6 +81,9 @@
             <intent-filter>
                 <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
             </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tile_preview_workout" />
         </service>
         <service
             android:name=".tiles.RecordTile"
@@ -88,6 +95,9 @@
             <intent-filter>
                 <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
             </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tile_preview_record" />
         </service>
         <service
             android:name=".tiles.LiftTrendTile"
@@ -99,6 +109,9 @@
             <intent-filter>
                 <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
             </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tile_preview_lift_trend" />
         </service>
         <service
             android:name=".tiles.HeartRateTile"
@@ -110,6 +123,9 @@
             <intent-filter>
                 <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
             </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@drawable/tile_preview_heart_rate" />
         </service>
 
         <!-- Complications (WA-01, WA-02, WA-07, WA-10). They are pushed (UPDATE_PERIOD_SECONDS 0) whenever a snapshot arrives. -->
