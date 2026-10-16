@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    CT-10 Action button analogue. Static launcher shortcuts for hardware buttons (Pixel Quick Tap, Samsung side key, routines) and the
+    App Actions capability "start exercise", which Assistant fulfils by starting the next workout. Referenced by the activity alias
+    .LauncherAlias in the manifest region "system".
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <capability android:name="actions.intent.START_EXERCISE">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetClass="health.pulse.strength.MainActivity"
+            android:targetPackage="health.pulse.strength">
+            <url-template android:value="pulse-strength://start-next" />
+        </intent>
+    </capability>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_primary"
+        android:shortcutId="primary_action"
+        android:shortcutLongLabel="@string/shortcut_primary_long"
+        android:shortcutShortLabel="@string/shortcut_primary_short">
+        <intent
+            android:action="android.intent.action.MAIN"
+            android:targetClass="health.pulse.strength.controls.PrimaryActionActivity"
+            android:targetPackage="health.pulse.strength" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_start"
+        android:shortcutId="start_workout"
+        android:shortcutLongLabel="@string/shortcut_start_long"
+        android:shortcutShortLabel="@string/shortcut_start_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="pulse-strength://start-next"
+            android:targetClass="health.pulse.strength.MainActivity"
+            android:targetPackage="health.pulse.strength" />
+    </shortcut>
+
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_plates"
+        android:shortcutId="plates"
+        android:shortcutLongLabel="@string/shortcut_plates_long"
+        android:shortcutShortLabel="@string/shortcut_plates_short">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="pulse-strength://plates"
+            android:targetClass="health.pulse.strength.MainActivity"
+            android:targetPackage="health.pulse.strength" />
+    </shortcut>
+</shortcuts>
