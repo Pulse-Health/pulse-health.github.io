@@ -70,8 +70,12 @@ public final class PlannedSessionManager {
             plan = stored.plan
             countdownStarted = stored.countdownStarted
         }
+        // The handler returns when the ActivityKit update the command caused was handed over: the intent's `perform()` returns with it,
+        // and an app that the intent launched in the background may be suspended right after.
         PlannedSessionBus.shared.install { [weak self] command in
-            await self?.handle(command)
+            guard let manager = self else { return }
+            await manager.handle(command)
+            await manager.waitUntilIdle()
         }
         activationObserver = NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification,
@@ -126,9 +130,22 @@ public final class PlannedSessionManager {
         cancel()
     }
 
-    /// Brings the countdown in line with the stored plan; the app calls it when it becomes active.
+    /// Returns when every ActivityKit operation queued so far has finished.
+    func waitUntilIdle() async {
+        await tail?.value
+    }
+
+    /// Brings the countdown in line with the stored plan; the app calls it when it becomes active. A countdown without a plan (the
+    /// app was killed while ending it) is ended.
     func refresh() {
-        guard let current = plan else { return }
+        guard let current = plan else {
+            if !PlannedActivity.activities.isEmpty {
+                enqueue { [weak self] in
+                    await self?.endActivities()
+                }
+            }
+            return
+        }
         if Date() >= current.startsAt.addingTimeInterval(Self.lingerInterval) {
             cancel()
             return

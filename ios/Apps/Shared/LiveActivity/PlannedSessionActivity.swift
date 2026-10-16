@@ -6,7 +6,8 @@
 //
 // The attributes live in PulseStrengthActivity (the app starts the activity, the extension draws it). The countdown is the system's
 // `Text(timerInterval:)`; the manager sets `staleDate = startsAt`, so when the time comes the system re-renders with `isStale` and
-// the card says "Time to train" and "Now". The card is 134 pt tall (10 + 18 + 8 + 37 + 8 + 40 + 12).
+// the card says "Time to train" and "Now". The card is about 135 pt tall (10 + 18 + 8 + 39 + 8 + 40 + 12), within the 160 pt of the
+// Lock Screen.
 //
 // Compiled into the widget extension and the Live Activity snapshot tests with the other files of this folder.
 
@@ -283,7 +284,7 @@ struct PlannedIslandLeading: View {
     }
 }
 
-/// Expanded bottom: the template and its first set, then the two buttons (4 + 37 + 8 + 38 = 87 pt).
+/// Expanded bottom: the template and its first set, then the two buttons (4 + 38 + 8 + 38 = 88 pt).
 struct PlannedIslandBottom: View {
     let attributes: PlannedSessionAttributes
     let state: PlannedSessionAttributes.ContentState
