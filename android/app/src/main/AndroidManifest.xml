@@ -20,14 +20,8 @@
     <!-- ==== permissions-host:end ==== -->
 
     <!-- ==== permissions-system:begin ==== -->
-    <!-- The workout notification (the host UI asks for POST_NOTIFICATIONS at runtime) and its promotion to a Live Update on Android 16. -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
-    <!-- Rest end, PR moment and planned-session alarms. Without the user's "Alarms & reminders" grant they fall back to inexact alarms. -->
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <!-- One buzz when a rest is over. -->
-    <uses-permission android:name="android.permission.VIBRATE" />
-    <!-- Alarms do not survive a reboot: the planned session is armed again. -->
+    <!-- A planned session (LA-06) lives in an alarm, and alarms do not survive a reboot: the plan is armed again when the phone starts.
+         POST_NOTIFICATIONS and POST_PROMOTED_NOTIFICATIONS are declared above; no exact-alarm permission: the alarms here are inexact. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- ==== permissions-system:end ==== -->
 
@@ -125,19 +119,15 @@
             android:taskAffinity=""
             android:theme="@style/Theme.PulseTransparent" />
 
-        <!-- Notification actions (Log set, -, +, rest adjustments, coach tip answers). -->
+        <!-- Buttons that LiveUpdates adds to the workout notification (Log A2, the coach tip's answers). -->
         <receiver
             android:name=".live.WorkoutActionReceiver"
             android:exported="false" />
 
-        <!-- Rest end, PR moment end, and the user granting or revoking exact alarms. -->
+        <!-- The end of a PR flash (LA-01): the ongoing notification is drawn again without it. -->
         <receiver
             android:name=".live.LiveAlarmReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
-            </intent-filter>
-        </receiver>
+            android:exported="false" />
 
         <!-- LA-06: countdown, "Time to train", snooze, and arming the plan again after a reboot or an update. -->
         <receiver

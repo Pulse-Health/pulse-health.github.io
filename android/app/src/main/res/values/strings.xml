@@ -47,8 +47,8 @@
     <!-- ==== strings-glance-extras:end ==== -->
 
     <!-- ==== strings-system:begin ==== -->
-    <string name="live_channel_workout">Workout</string>
-    <string name="live_channel_workout_description">The running workout on the lock screen and in the status bar, and the summary afterwards.</string>
+    <string name="live_channel_summary">Workout summaries and plans</string>
+    <string name="live_channel_summary_description">The summary after a workout and the countdown to a planned session. Silent.</string>
     <string name="live_channel_reminder">Workout reminders</string>
     <string name="live_channel_reminder_description">A reminder when a planned session is due.</string>
     <string name="bench_mode_label">Bench mode</string>

@@ -1,14 +1,14 @@
 package health.pulse.strength.controls
 
+import android.app.Activity
 import android.content.Context
-import android.os.VibrationEffect
-import android.os.Vibrator
 import android.widget.Toast
 import health.pulse.strength.core.SnapshotPhase
 import health.pulse.strength.core.widgets.WidgetSnapshot
-import health.pulse.strength.live.LiveText
 import health.pulse.strength.runtime.StrengthRuntime
+import health.pulse.strength.services.WorkoutNotifications
 import health.pulse.strength.surfaces.Surfaces
+import health.pulse.strength.ui.components.PulseHaptics
 
 /** The three meanings of the one button (CT-10). */
 internal enum class PrimaryKind {
@@ -46,7 +46,7 @@ internal object PrimaryAction {
             PrimaryKind.SKIP_REST -> "Rest skipped"
             PrimaryKind.LOG_SET -> when {
                 active == null || active.targetSetID == null -> "All sets logged"
-                else -> "Set logged · ${LiveText.work(active)}"
+                else -> "Set logged · ${WorkoutNotifications.workText(active)}"
             }
         }
     }
@@ -60,12 +60,9 @@ internal object PrimaryAction {
         return message
     }
 
-    /** The confirmation for a press that the person cannot see happen: a short buzz and a toast. */
-    fun feedback(context: Context, message: String) {
-        val vibrator = context.getSystemService(Vibrator::class.java)
-        if (vibrator != null && vibrator.hasVibrator()) vibrator.vibrate(VibrationEffect.createOneShot(TICK_MS, VibrationEffect.DEFAULT_AMPLITUDE))
-        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+    /** The confirmation for a press that the person cannot see happen: a haptic tap (if touch feedback is on) and a toast. */
+    fun feedback(activity: Activity, message: String) {
+        PulseHaptics(activity.window.decorView).success()
+        Toast.makeText(activity.applicationContext, message, Toast.LENGTH_SHORT).show()
     }
-
-    private const val TICK_MS = 40L
 }

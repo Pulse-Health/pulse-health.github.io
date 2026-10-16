@@ -13,8 +13,7 @@ object BenchMode {
 
     /** An intent that opens the bench-mode screen; [night] selects the red-on-black theme (otherwise chosen by the hour). */
     fun intent(context: Context, night: Boolean? = null): Intent =
-        Intent()
-            .setClassName(context.packageName, "health.pulse.strength.live.BenchModeActivity")
+        Intent(context, BenchModeActivity::class.java)
             // Callable from a service or a widget too; inside the app's own task it only brings the activity to the front.
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             .also { intent -> if (night != null) intent.putExtra(EXTRA_NIGHT, night) }

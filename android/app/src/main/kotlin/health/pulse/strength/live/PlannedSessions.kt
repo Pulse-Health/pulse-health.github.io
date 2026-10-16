@@ -8,9 +8,12 @@ import java.util.Date
 
 /**
  * LA-06 Pre-workout countdown. A planned session shows a notification with a countdown to its start from 30 minutes before, with the
- * actions "Start now" and "Snooze 10 min"; at the start an exact alarm posts "Time to train". The plan is kept in `SharedPreferences`,
- * armed again after a reboot, and cancelled as soon as a workout runs (`LiveUpdates.refresh` does that). The host UI (owner: host)
- * calls [schedule] from the "Plan a session" dialog of the hub.
+ * actions "Start now" and "Snooze 10 min"; at the start an alarm posts "Time to train". The plan is kept in `SharedPreferences`,
+ * armed again after a reboot, and cancelled as soon as a workout runs (`LiveUpdates` does that). The host UI (owner: host) calls
+ * [schedule] from the "Plan a session" dialog of the hub.
+ *
+ * The alarms are inexact (`setAndAllowWhileIdle`, no permission), so "Time to train" can come a few minutes late; the countdown card
+ * itself is exact, because its chronometer counts to the start and the system removes the card then.
  */
 object PlannedSessions {
     /**
@@ -35,7 +38,7 @@ object PlannedSessions {
         val from = maxOf(plan.startsAtMillis, System.currentTimeMillis())
         val moved = plan.copy(startsAtMillis = from + minutes * 60_000L)
         store(app).write(moved)
-        LiveUpdateNotifier.cancel(app, LiveIds.PLANNED_DUE)
+        LiveCards.cancel(app, CardKind.PLANNED_DUE)
         arm(app, moved)
     }
 
@@ -47,11 +50,11 @@ object PlannedSessions {
         store.clear()
         LiveAlarms.cancel(app, AlarmSlot.PLANNED_COUNTDOWN)
         LiveAlarms.cancel(app, AlarmSlot.PLANNED_DUE)
-        LiveUpdateNotifier.cancel(app, LiveIds.PLANNED)
-        LiveUpdateNotifier.cancel(app, LiveIds.PLANNED_DUE)
+        LiveCards.cancel(app, CardKind.PLANNED)
+        LiveCards.cancel(app, CardKind.PLANNED_DUE)
     }
 
-    /** Arms the stored plan again: after a reboot or an update, or when the exact-alarm grant changed. */
+    /** Arms the stored plan again: after a reboot or an update of the app. */
     internal fun restore(context: Context) {
         val app = context.applicationContext
         val plan = store(app).read() ?: return
@@ -62,8 +65,9 @@ object PlannedSessions {
     internal fun showCountdown(context: Context) {
         val app = context.applicationContext
         val plan = store(app).read() ?: return
-        if (PlannedSessionModels.phaseAt(plan, System.currentTimeMillis()) != PlannedPhase.COUNTDOWN) return
-        LiveUpdateNotifier.post(app, PlannedSessionModels.countdown(plan, StrengthRuntime.snapshots.current(), startsAtText(app, plan)))
+        val now = System.currentTimeMillis()
+        if (PlannedSessionModels.phaseAt(plan, now) != PlannedPhase.COUNTDOWN) return
+        LiveCards.post(app, PlannedSessionModels.countdown(plan, StrengthRuntime.snapshots.current(), startsAtText(app, plan), now))
     }
 
     /** The alarm at the start. */
@@ -71,8 +75,8 @@ object PlannedSessions {
         val app = context.applicationContext
         val plan = store(app).read() ?: return
         if (PlannedSessionModels.phaseAt(plan, System.currentTimeMillis()) != PlannedPhase.DUE) return
-        LiveUpdateNotifier.cancel(app, LiveIds.PLANNED)
-        LiveUpdateNotifier.post(app, PlannedSessionModels.due(plan, StrengthRuntime.snapshots.current(), startsAtText(app, plan)))
+        LiveCards.cancel(app, CardKind.PLANNED)
+        LiveCards.post(app, PlannedSessionModels.due(plan, StrengthRuntime.snapshots.current(), startsAtText(app, plan)))
     }
 
     /** Sets the two alarms that the phase of [plan] still needs, and shows the countdown right away when it is already running. */
@@ -83,12 +87,13 @@ object PlannedSessions {
             PlannedPhase.WAITING -> {
                 LiveAlarms.schedule(context, AlarmSlot.PLANNED_COUNTDOWN, plan.startsAtMillis - PlannedSessionModels.COUNTDOWN_LEAD_MILLIS)
                 LiveAlarms.schedule(context, AlarmSlot.PLANNED_DUE, plan.startsAtMillis)
-                LiveUpdateNotifier.cancel(context, LiveIds.PLANNED)
+                LiveCards.cancel(context, CardKind.PLANNED)
             }
             PlannedPhase.COUNTDOWN -> {
                 LiveAlarms.schedule(context, AlarmSlot.PLANNED_DUE, plan.startsAtMillis)
                 showCountdown(context)
             }
+            // After a reboot inside the two hours of "Time to train" there is nothing left to arm.
             PlannedPhase.DUE, PlannedPhase.EXPIRED -> Unit
         }
     }

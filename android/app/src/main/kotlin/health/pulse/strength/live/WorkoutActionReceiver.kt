@@ -10,8 +10,9 @@ import health.pulse.strength.surfaces.Surfaces
 import kotlinx.serialization.SerializationException
 
 /**
- * The buttons of the workout notification ("Log set", "−", "+", "−15 s", "+15 s", "Skip", the coach tip answers). The command runs in the
- * app process through `StrengthRuntime.commands`, without opening the app, and every surface is refreshed afterwards.
+ * The buttons that [LiveUpdates] adds to the workout notification ("Log A2" of a superset, the coach tip's answers and "Skip" next to
+ * them). The other buttons belong to `NotificationActionReceiver`. The command runs in the app process through
+ * `StrengthRuntime.commands`, without opening the app, and every surface is refreshed afterwards.
  */
 class WorkoutActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -28,7 +29,7 @@ class WorkoutActionReceiver : BroadcastReceiver() {
                 val setId = intent.getStringExtra(EXTRA_SET_ID) ?: return
                 SystemScope.runAsync(this) {
                     LiveState.of(app).dismissCoachTip(setId)
-                    LiveUpdates.refresh(app)
+                    LiveUpdates.repost(app)
                 }
             }
         }

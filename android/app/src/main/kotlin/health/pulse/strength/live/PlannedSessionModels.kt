@@ -3,7 +3,7 @@ package health.pulse.strength.live
 import health.pulse.strength.core.widgets.DeepLinks
 import health.pulse.strength.core.widgets.WidgetSnapshot
 
-/** A session the user planned: which template, and when it starts. */
+/** A session the person planned: which template, and when it starts. */
 internal data class PlannedSession(val templateId: String, val startsAtMillis: Long)
 
 /** Where a plan is on its way to the start. */
@@ -11,7 +11,7 @@ internal enum class PlannedPhase {
     /** More than 30 minutes to go: nothing is shown yet. */
     WAITING,
 
-    /** The countdown notification runs. */
+    /** The countdown card runs. */
     COUNTDOWN,
 
     /** The start time has come: "Time to train". */
@@ -38,32 +38,33 @@ internal object PlannedSessionModels {
         else -> PlannedPhase.EXPIRED
     }
 
-    /** The countdown to the start: the template, how long it takes, "Start now" and "Snooze 10 min". [startsAtText] is the local time, "18:00". */
-    fun countdown(plan: PlannedSession, snapshot: WidgetSnapshot, startsAtText: String): LiveUpdateModel {
+    /**
+     * The countdown to the start: the template, how long it takes, "Start now" and "Snooze 10 min". [startsAtText] is the local time,
+     * "18:00". The card can be swiped away and leaves by itself at the start, even if the alarm for "Time to train" is late.
+     */
+    fun countdown(plan: PlannedSession, snapshot: WidgetSnapshot, startsAtText: String, nowMillis: Long): LiveCard {
         val template = describe(plan.templateId, snapshot)
-        return LiveUpdateModel(
-            kind = LiveKind.PLANNED,
+        return LiveCard(
+            kind = CardKind.PLANNED,
             title = template.name,
             text = template.detail ?: "Your planned workout",
             subText = "Planned $startsAtText",
-            clock = LiveClock.Countdown(plan.startsAtMillis),
+            countdownToMillis = plan.startsAtMillis,
             actions = actions(plan),
-            contentLink = DeepLinks.hub,
+            timeoutMillis = (plan.startsAtMillis - nowMillis).coerceAtLeast(1L),
         )
     }
 
-    /** "Time to train": the one notification of the app that makes a sound. */
-    fun due(plan: PlannedSession, snapshot: WidgetSnapshot, startsAtText: String): LiveUpdateModel {
+    /** "Time to train": the one notification of this package that makes a sound. */
+    fun due(plan: PlannedSession, snapshot: WidgetSnapshot, startsAtText: String): LiveCard {
         val template = describe(plan.templateId, snapshot)
-        return LiveUpdateModel(
-            kind = LiveKind.PLANNED_DUE,
+        return LiveCard(
+            kind = CardKind.PLANNED_DUE,
             title = "Time to train",
             text = template.name,
             subText = "Planned $startsAtText",
             detailLines = listOfNotNull(template.detail),
             actions = actions(plan),
-            contentLink = DeepLinks.hub,
-            ongoing = false,
             timeoutMillis = DUE_LIFETIME_MILLIS,
         )
     }

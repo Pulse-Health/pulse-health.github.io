@@ -1,5 +1,6 @@
 package health.pulse.strength.live
 
+import health.pulse.strength.core.NumberText
 import health.pulse.strength.core.SnapshotPhase
 import health.pulse.strength.core.TrackingKind
 import health.pulse.strength.core.WorkoutSnapshot
@@ -7,16 +8,26 @@ import health.pulse.strength.core.widgets.WidgetSnapshot
 import java.time.Instant
 import java.time.LocalTime
 
+/** The set that comes next, in two lines: "Set 4" and "80 kg × 6" (the snapshot's `nextSetText` is "Set 4 · 80 kg × 6"). */
+internal data class NextSet(val label: String, val work: String?) {
+    companion object {
+        fun of(nextSetText: String): NextSet {
+            val separator = nextSetText.indexOf(" · ")
+            return if (separator < 0) NextSet(nextSetText, null) else NextSet(nextSetText.substring(0, separator), nextSetText.substring(separator + 3))
+        }
+    }
+}
+
 /** What bench mode (SB-02, SB-04) shows, as plain data. [BenchModeStates] derives it from the snapshot and the clock. */
 internal sealed interface BenchState {
-    /** The rest countdown: the 220 dp ring and the 64 sp clock, with the next set below. */
-    data class Resting(val exercise: String, val remainingSeconds: Int, val totalSeconds: Int, val nextLine: String) : BenchState {
+    /** The rest countdown: the 220 dp ring and the 64 sp clock, with the next set beside it. */
+    data class Resting(val exercise: String, val remainingSeconds: Int, val totalSeconds: Int, val next: NextSet) : BenchState {
         /** The part of the rest that is left, 1 at the start and 0 at the end. */
         val fraction: Float get() = if (totalSeconds <= 0) 0f else (remainingSeconds.toFloat() / totalSeconds).coerceIn(0f, 1f)
     }
 
     /** The rest ran out: "Go". */
-    data class RestOver(val exercise: String, val nextLine: String) : BenchState
+    data class RestOver(val exercise: String, val next: NextSet) : BenchState
 
     /**
      * A set waits: the weight and the reps, large. [weight] is null for exercises without a weight (reps only, duration);
@@ -38,10 +49,11 @@ internal object BenchModeStates {
         val active = snapshot.active
         if (active == null || active.finish != null) return idle(snapshot, is24Hour)
         val title = active.exerciseName.ifBlank { active.workoutName }
-        if (active.isPaused) return BenchState.Paused(title, LiveText.clock(active.elapsedWhenPaused))
+        if (active.isPaused) return BenchState.Paused(title, NumberText.clock(active.elapsedWhenPaused))
         return when (active.displayPhase(now)) {
-            SnapshotPhase.RESTING -> BenchState.Resting(title, active.restRemainingSeconds(now), active.restTotalSeconds, "Next: ${active.nextSetText}")
-            SnapshotPhase.REST_OVER -> BenchState.RestOver(title, "Next: ${active.nextSetText}")
+            SnapshotPhase.RESTING ->
+                BenchState.Resting(title, active.restRemainingSeconds(now), active.restTotalSeconds, NextSet.of(active.nextSetText))
+            SnapshotPhase.REST_OVER -> BenchState.RestOver(title, NextSet.of(active.nextSetText))
             SnapshotPhase.COMPLETE -> complete(active)
             SnapshotPhase.LOGGING -> logging(active, title)
         }

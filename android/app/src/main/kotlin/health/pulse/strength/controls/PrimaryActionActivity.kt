@@ -25,7 +25,7 @@ class PrimaryActionActivity : Activity() {
             } finally {
                 // Whatever happened, the invisible activity must not stay on top of the screen.
                 withContext(NonCancellable + Dispatchers.Main) {
-                    message?.let { PrimaryAction.feedback(app, it) }
+                    message?.let { PrimaryAction.feedback(this@PrimaryActionActivity, it) }
                     if (!isFinishing) finish()
                 }
             }

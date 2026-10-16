@@ -1,12 +1,12 @@
 package health.pulse.strength.controls
 
+import health.pulse.strength.core.NumberText
 import health.pulse.strength.core.SnapshotPhase
 import health.pulse.strength.core.WorkoutSnapshot
 import health.pulse.strength.core.widgets.DeepLinks
 import health.pulse.strength.core.widgets.WidgetCommand
 import health.pulse.strength.core.widgets.WidgetCommands
 import health.pulse.strength.core.widgets.WidgetSnapshot
-import health.pulse.strength.live.LiveText
 import health.pulse.strength.live.displayPhase
 import health.pulse.strength.live.restRemainingSeconds
 import java.time.Instant
@@ -99,14 +99,14 @@ internal object TileModels {
         if (active == null) return unavailable("No workout")
         if (active.isPaused) {
             return if (active.phase == SnapshotPhase.RESTING) {
-                TileModel(Control.REST, "Rest", "${LiveText.clock(active.restRemainingSeconds(now))} · paused", TileStatus.INACTIVE, TileIcon.REST, TileAction.OpenBench)
+                TileModel(Control.REST, "Rest", "${NumberText.clock(active.restRemainingSeconds(now))} · paused", TileStatus.INACTIVE, TileIcon.REST, TileAction.OpenBench)
             } else {
                 unavailable("Paused")
             }
         }
         return when (active.displayPhase(now)) {
             SnapshotPhase.RESTING ->
-                TileModel(Control.REST, "Rest", LiveText.clock(active.restRemainingSeconds(now)), TileStatus.ACTIVE, TileIcon.REST, TileAction.OpenBench)
+                TileModel(Control.REST, "Rest", NumberText.clock(active.restRemainingSeconds(now)), TileStatus.ACTIVE, TileIcon.REST, TileAction.OpenBench)
             SnapshotPhase.REST_OVER ->
                 TileModel(Control.REST, "Rest", "Go", TileStatus.ACTIVE, TileIcon.REST, TileAction.OpenBench)
             else -> unavailable("Not resting")
@@ -150,7 +150,7 @@ internal object TileModels {
             TileModel(
                 Control.PAUSE,
                 "Resume workout",
-                "Paused · ${LiveText.clock(active.elapsedWhenPaused)}",
+                "Paused · ${NumberText.clock(active.elapsedWhenPaused)}",
                 TileStatus.ACTIVE,
                 TileIcon.RESUME,
                 TileAction.Command(WidgetCommand.of(WidgetCommands.RESUME)),
