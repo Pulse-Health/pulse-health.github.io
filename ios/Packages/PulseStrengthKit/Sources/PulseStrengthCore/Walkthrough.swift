@@ -29,6 +29,11 @@ public enum Walkthrough {
     /// Raise it when the tour has changed enough that people who have seen it should see it again.
     public static let version = 1
 
+    /// How long the Undo toast stays after a removal, in whole seconds: the app's own undo window, so the tip cannot drift from it.
+    static var undoSeconds: Int {
+        Int(WorkoutReducer.undoWindow.rounded())
+    }
+
     /// The pages, in order. The first one welcomes, the last one points at the places to look next.
     public static let steps: [WalkthroughStep] = [
         WalkthroughStep(
@@ -76,8 +81,8 @@ public enum Walkthrough {
             message: "Change the plan while you train. Tap Edit to add, reorder or remove exercises.",
             symbol: "slider.horizontal.3",
             points: [
-                "The options button of an exercise shows its form demo, rest timer and superset.",
-                "Removed something by mistake? Tap Undo within a few seconds.",
+                "The options button of an exercise offers its form & instructions, rest timer, superset, replace, move and remove.",
+                "Removed an exercise or set by mistake? Undo appears at the bottom of the workout screen for \(Walkthrough.undoSeconds) seconds; close the exercise list to see it.",
                 "Minimise the workout to look around; it keeps running in the bar at the bottom.",
             ]
         ),
@@ -87,7 +92,7 @@ public enum Walkthrough {
             message: "Tap Finish when you are done. The summary shows your volume, sets and any new personal records.",
             symbol: "trophy.fill",
             points: [
-                "Changed the exercises? You can update the template or keep the change to this workout.",
+                "Added, removed or reordered exercises in a workout you started from a template? When you finish, you can update the template or keep the change to this workout.",
                 "Every finished workout is saved to your history.",
             ]
         ),

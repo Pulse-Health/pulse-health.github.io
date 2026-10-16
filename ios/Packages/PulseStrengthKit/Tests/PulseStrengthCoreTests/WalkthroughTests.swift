@@ -26,6 +26,16 @@ final class WalkthroughTests: XCTestCase {
         XCTAssertEqual(Walkthrough.steps.last?.id, "more")
     }
 
+    func testUndoTipUsesTheAppsOwnUndoWindow() {
+        XCTAssertEqual(Walkthrough.undoSeconds, Int(WorkoutReducer.undoWindow.rounded()))
+        guard let shape = Walkthrough.steps.first(where: { $0.id == "shape" }) else {
+            return XCTFail("the tour has no 'shape' step")
+        }
+        let tip = shape.points.first { $0.contains("Undo") }
+        XCTAssertNotNil(tip, "the 'shape' step explains Undo")
+        XCTAssertTrue(tip?.contains("\(Walkthrough.undoSeconds) seconds") ?? false, "the tip names the app's undo window")
+    }
+
     // MARK: When to show
 
     func testShownToSomeoneWhoNeverSawIt() {

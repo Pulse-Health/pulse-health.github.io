@@ -1,5 +1,6 @@
 #if os(iOS)
 import SwiftUI
+import UIKit
 import PulseStrengthCore
 
 /// The walkthrough that follows onboarding: a short, swipeable tour of the Strength feature (the hub, logging sets, the
@@ -49,6 +50,9 @@ public struct StrengthWalkthroughView: View {
                 Label("Back", systemImage: "chevron.left")
                     .pulseFont(17, relativeTo: .body)
                     .foregroundStyle(PulseTheme.greenText)
+                    .frame(minWidth: 44, alignment: .leading)
+                    .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
+                    .contentShape(Rectangle())
             }
             .opacity(progress.isFirst ? 0 : 1)
             .disabled(progress.isFirst)
@@ -61,6 +65,9 @@ public struct StrengthWalkthroughView: View {
                 Text("Skip")
                     .pulseFont(17, relativeTo: .body)
                     .foregroundStyle(PulseTheme.inkSecondary)
+                    .frame(minWidth: 44, alignment: .trailing)
+                    .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
+                    .contentShape(Rectangle())
             }
             .opacity(progress.isLast ? 0 : 1)
             .disabled(progress.isLast)
@@ -68,9 +75,7 @@ public struct StrengthWalkthroughView: View {
             .accessibilityIdentifier("walkthrough-skip")
         }
         .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 4)
-        .pulseScaledFrame(minHeight: 44)
+        .padding(.top, 8)
     }
 
     // MARK: Pages
@@ -144,12 +149,23 @@ public struct StrengthWalkthroughView: View {
         withAnimation(pageAnimation) {
             _ = progress.advance()
         }
+        announcePage()
     }
 
     private func goBack() {
         withAnimation(pageAnimation) {
             _ = progress.goBack()
         }
+        announcePage()
+    }
+
+    /// Tells a VoiceOver user which page "Next" or "Back" has moved to (focus stays on the button, so nothing else would).
+    private func announcePage() {
+        guard UIAccessibility.isVoiceOverRunning, steps.indices.contains(progress.index) else { return }
+        UIAccessibility.post(
+            notification: .announcement,
+            argument: steps[progress.index].title + ", " + progress.positionText
+        )
     }
 }
 
@@ -287,10 +303,10 @@ private struct WalkthroughIllustration: View {
                     .font(PulseFont.number(24))
                     .foregroundStyle(PulseTheme.ink)
             }
-            HStack(spacing: 6) {
-                muscleChip("Chest", color: PulseTheme.recoveryGood)
-                muscleChip("Shoulders", color: PulseTheme.recoveryFair)
-                muscleChip("Triceps", color: PulseTheme.recoveryGood)
+            HStack(spacing: 5) {
+                muscleChip("Chest 88%", color: PulseTheme.recoveryGood)
+                muscleChip("Shoulders 74%", color: PulseTheme.recoveryFair)
+                muscleChip("Arms 91%", color: PulseTheme.recoveryGood)
             }
             HStack(spacing: 8) {
                 Text("Start Workout")
@@ -311,16 +327,17 @@ private struct WalkthroughIllustration: View {
     }
 
     private func muscleChip(_ title: String, color: Color) -> some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             Circle()
                 .fill(color)
                 .frame(width: 7, height: 7)
             Text(title)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(PulseTheme.ink)
                 .lineLimit(1)
+                .minimumScaleFactor(0.85)
         }
-        .padding(.horizontal, 9)
+        .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(PulseTheme.cellFill, in: Capsule())
     }
@@ -508,6 +525,7 @@ private struct WalkthroughIllustration: View {
             menuRow("App Walkthrough", systemImage: "questionmark.circle", highlighted: true)
         }
         .frame(maxWidth: 280)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .pulseCard(radius: 14)
     }
 
