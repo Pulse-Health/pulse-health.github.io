@@ -1594,7 +1594,12 @@ class WorkoutReducerMiscTests {
     fun testHeartRateChangesNothingElse() {
         var s = RedFix.designState()
         s = RedFix.reduced(s, RedFix.toggle(s, 0, 2), at = 1)
-        val expected = s.copy(heartRate = 140, heartRateSum = 140, heartRateCount = 1)
+        val expected = s.copy(
+            heartRate = 140,
+            heartRateSum = 140,
+            heartRateCount = 1,
+            heartRateSeries = listOf(HeartRateSample(140, RedFix.at(50))),
+        )
         assertThat(RedFix.reduced(s, WorkoutAction.UpdateHeartRate(140), at = 50)).isEqualTo(expected)
     }
 }
