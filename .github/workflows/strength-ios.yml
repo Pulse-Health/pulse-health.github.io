@@ -900,7 +900,7 @@ jobs:
           fi
           echo "OK: $total screenshot(s) in the artifact strength-screens"
 
-  # A SHORT second screenshot tour (ios/Apps/PulseStrengthUITests/StrengthTourTests.swift, 14 screenshots, about 3 minutes) under
+  # A SHORT second screenshot tour (ios/Apps/PulseStrengthUITests/StrengthTourTests.swift, 21 screenshots, about 4 minutes) under
   # four conditions the long flow of `visual` never looks at. One runner per entry, in parallel, and no entry stops the others:
   #   dark    iPhone 16 Pro, dark appearance               (the dark values of PulseTheme)
   #   xxl     iPhone 16 Pro, content size accessibility-extra-large   (layouts at Dynamic Type accessibility sizes)

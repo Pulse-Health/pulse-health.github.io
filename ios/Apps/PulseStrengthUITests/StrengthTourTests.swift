@@ -1,6 +1,6 @@
 // StrengthTourTests.swift
 //
-// A SHORT second screenshot tour of Pulse Strength (about 14 screenshots, about 3 minutes), made to be run several times
+// A SHORT second screenshot tour of Pulse Strength (about 21 screenshots, about 4 minutes), made to be run several times
 // under different conditions by the `matrix` job of the strength-ios workflow, to look at what the long flow
 // (StrengthFlowTests, 55 screenshots, light mode, default phone) never looked at:
 //
@@ -12,13 +12,14 @@
 // The test knows nothing about the condition: the workflow sets it on the simulator before xcodebuild starts and names it
 // in TOUR_CONFIG (forwarded as TEST_RUNNER_TOUR_CONFIG; 'default' when unset). The name only goes into the file names:
 //
-//   tour-<config>-<NN>-<name>.png     14 screenshots, in the directory of SCREENSHOT_DIR, attached to the test result as well
+//   tour-<config>-<NN>-<name>.png     21 screenshots, in the directory of SCREENSHOT_DIR, attached to the test result as well
 //   tour-<config>-flow-log.txt        the step log (OK / FAILED / SKIPPED per step), like ui-flow-log.txt
 //   tour-<config>-layout.txt          frames of header, navigator, card and rest dock of the active screen, 'pageScrolls',
 //                                     'LAYOUT VIOLATION' lines (TourLayout.swift)
 //
-// The numbers NN are fixed per screenshot (01 hub-top ... 14 exercise-detail-top), so the same number can be compared
-// between the runs. A screenshot of a failure ('...-missing') gets a number from 91 on and does not move the others.
+// The numbers NN are fixed per screenshot (01 hub-top ... 14 exercise-detail-top, 15-21 the seven walkthrough pages), so the
+// same number can be compared between the runs. A screenshot of a failure ('...-missing') gets a number from 91 on and
+// does not move the others.
 //
 // Same rules as the flow: the app is launched with '-PulseUITest' (fresh demo store, no live services), continueAfterFailure
 // is true, every step runs through UIDriver.step and a failed step closes stray overlays; a step that needs the active
@@ -120,6 +121,8 @@ final class StrengthTour: UIDriver {
         summaryStep()
         hubAfterFinishStep()
         libraryStep()
+        // Last on purpose: a failure here can never cost the screenshots and the layout report of the steps above.
+        walkthroughStep()
 
         report.finish()
         output.log(
@@ -287,6 +290,106 @@ final class StrengthTour: UIDriver {
             tourShot(2, "hub-scrolled", settle: 0.6)
             swipeScreenDown(times: 1)
         }
+    }
+
+    // MARK: 15-21: the walkthrough
+
+    /// Opens the walkthrough from the hub's More menu (the UI-test mode never opens it by itself), photographs each of its
+    /// seven pages (the pictures and the tips must fit every configuration of the matrix) and closes it with "Get Started".
+    ///
+    /// Runs last, from a freshly launched app (the UI-test mode starts from the hub), and taps by coordinate (see `tapMiddle`):
+    /// the first version tapped the toolbar's More button with `XCUIElement.tap()`, which made XCTest end the whole tour.
+    private func walkthroughStep() {
+        step("Walkthrough: open it from the More menu, page through it, then Get Started", checkApp: false) {
+            relaunch()
+            if waitFor(.button("Start Workout"), timeout: 40) == nil {
+                fail("The hub did not appear after launching the app again for the walkthrough: no 'Start Workout' button within 40 s")
+                return
+            }
+            if !tapMiddle(of: [.button("hub-more"), .button("More")]) {
+                failShot("walkthrough-more-missing")
+                return
+            }
+            let item: [Target] = [.button("App Walkthrough", .contains), .element("App Walkthrough", .contains)]
+            if !tapMiddle(of: item, timeout: 8) {
+                failShot("walkthrough-menu-missing")
+                recoverMenu()
+                return
+            }
+            guard waitFor(.button("Next"), timeout: 10) != nil else {
+                fail("The walkthrough did not open: no 'Next' button within 10 s")
+                failShot("walkthrough-missing")
+                return
+            }
+            let pages = ["welcome", "today", "log", "rest", "shape", "finish", "more"]
+            var page = 0
+            while page < pages.count {
+                tourShot(15 + page, "walkthrough-" + pages[page], settle: 0.9)
+                if page == pages.count - 1 {
+                    break
+                }
+                if !tapMiddle(of: [.button("Next")]) {
+                    closeWalkthrough()
+                    return
+                }
+                page += 1
+            }
+            guard waitFor(.button("Get Started"), timeout: 5) != nil else {
+                fail("The last page of the walkthrough shows no 'Get Started' button")
+                closeWalkthrough()
+                return
+            }
+            if !tapMiddle(of: [.button("Get Started")]) {
+                return
+            }
+            if !waitUntilGone(.button("Get Started"), timeout: 8) {
+                fail("The walkthrough is still showing 8 s after tapping 'Get Started'")
+                closeWalkthrough()
+            }
+        }
+    }
+
+    /// Taps the middle of the first of the targets that exists, by coordinate.
+    ///
+    /// `XCUIElement.tap()` first asks the accessibility layer to scroll the element into view. For the toolbar's More button
+    /// that fails ("Failed to scroll to visible (by AX action) ... kAXErrorCannotComplete") and XCTest then ends the whole test,
+    /// whatever continueAfterFailure says. A tap at a coordinate never scrolls. The element must exist and have a frame whose
+    /// middle is on screen; otherwise an ordinary failure is recorded and the walk goes on.
+    @discardableResult
+    private func tapMiddle(of targets: [Target], timeout: TimeInterval = 10) -> Bool {
+        guard let index = waitForAny(targets, timeout: timeout), let element = find(targets[index]) else {
+            fail("Not found within " + String(Int(timeout)) + " s: " + targets.map { $0.summary }.joined(separator: " or "))
+            return false
+        }
+        guard element.exists else {
+            fail("The element to tap vanished between finding it and tapping it: " + targets[index].summary)
+            return false
+        }
+        let frame = element.frame
+        let middle = CGPoint(x: frame.midX, y: frame.midY)
+        guard frame.width > 1 && frame.height > 1 && app.frame.contains(middle) else {
+            fail("The element to tap has frame " + String(describing: frame) + ", whose middle is not on screen: " + targets[index].summary)
+            return false
+        }
+        element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        return true
+    }
+
+    /// Leaves the walkthrough with "Skip" (or "Get Started" on its last page) after a failure.
+    private func closeWalkthrough() {
+        if exists(.button("Skip")) {
+            tapMiddle(of: [.button("Skip")], timeout: 2)
+        } else if exists(.button("Get Started")) {
+            tapMiddle(of: [.button("Get Started")], timeout: 2)
+        }
+        pause(0.8)
+    }
+
+    /// Closes the More menu when it is still open: a tap on the inert part of the navigation bar (left of the More button)
+    /// dismisses a menu and does nothing otherwise.
+    private func recoverMenu() {
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.07)).tap()
+        pause(0.6)
     }
 
     // MARK: 03: start the template
