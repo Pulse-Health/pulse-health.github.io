@@ -348,6 +348,13 @@ internal object ExtrasText {
         }
     }
 
+    /** The legend word of a stretch kind. */
+    fun timelineLabel(kind: TimelineKind): String = when (kind) {
+        TimelineKind.LIFTING -> "Lifting"
+        TimelineKind.REST -> "Rest"
+        TimelineKind.LONG_REST -> "Long rest"
+    }
+
     /** [kinds] are the kinds present, in legend order; [message] replaces the bar when there is none to draw. */
     data class TimelineModel(
         val name: String?,

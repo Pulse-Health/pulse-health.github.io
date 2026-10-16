@@ -1,6 +1,7 @@
 package health.pulse.strength.widgets.extras
 
 import android.os.SystemClock
+import android.util.TypedValue
 import android.widget.RemoteViews
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
@@ -199,8 +200,9 @@ internal fun SetDots(dots: List<DotState>) {
  * The base is `elapsedRealtime` plus the time that is left, because a chronometer counting down reads `base - now`.
  */
 @Composable
-internal fun RestCountdown(remainingMillis: Long, modifier: GlanceModifier = GlanceModifier) {
+internal fun RestCountdown(remainingMillis: Long, textSizeSp: Float, modifier: GlanceModifier = GlanceModifier) {
     val views = RemoteViews(LocalContext.current.packageName, R.layout.widget_rest_chronometer)
+    views.setTextViewTextSize(R.id.rest_chronometer, TypedValue.COMPLEX_UNIT_SP, textSizeSp)
     views.setChronometerCountDown(R.id.rest_chronometer, true)
     views.setChronometer(R.id.rest_chronometer, SystemClock.elapsedRealtime() + remainingMillis, null, true)
     AndroidRemoteViews(remoteViews = views, modifier = modifier)
