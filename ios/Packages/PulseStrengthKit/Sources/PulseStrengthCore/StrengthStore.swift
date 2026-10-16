@@ -19,6 +19,8 @@ public final class StrengthStore: ObservableObject {
     @Published public private(set) var customExercises: [Exercise] = []
     /// Best estimated 1RM per exercise id.
     @Published public private(set) var personalBests: [String: PersonalBest] = [:]
+    /// Training plans (rotations of templates).
+    @Published public private(set) var plans: [WorkoutPlan] = []
     /// The user's body weight over time, newest first.
     @Published public private(set) var bodyWeights: [BodyWeightEntry] = []
     /// How often the app asks the user to update their weight.
@@ -53,6 +55,43 @@ public final class StrengthStore: ObservableObject {
     public func saveTemplate(_ template: WorkoutTemplate) {
         model.saveTemplate(template)
         publish()
+    }
+
+    /// The plan the hub follows, if any.
+    public var activePlan: WorkoutPlan? { plans.first { $0.isActive } }
+
+    /// The workout to recommend next: the active plan's next workout, else the one after the most recently performed template.
+    public var nextTemplate: WorkoutTemplate? { model.nextTemplate() }
+
+    /// Adds a plan, or replaces the one with the same id, and saves it.
+    public func savePlan(_ plan: WorkoutPlan) {
+        model.savePlan(plan)
+        publish()
+    }
+
+    /// Makes a plan the active one.
+    public func activatePlan(id: UUID) {
+        model.activatePlan(id: id)
+        publish()
+    }
+
+    /// Removes a plan; its templates stay.
+    public func deletePlan(id: UUID) {
+        model.deletePlan(id: id)
+        publish()
+    }
+
+    /// Passes over the next workout of a plan.
+    public func skipNextWorkout(planID: UUID) {
+        model.skipNextWorkout(planID: planID)
+        publish()
+    }
+
+    /// Imports a plan file (see `PlanBundle`): its plan, workouts and new exercises are added, or replaced by the same ids.
+    public func importPlan(from fileData: Data) -> Result<PlanImportSummary, PlanImportError> {
+        let result = model.importPlan(from: fileData)
+        publish()
+        return result
     }
 
     /// Records a finished workout: history (newest first), personal bests, the template's `lastPerformed`, and `updateTemplate` when given.
@@ -124,6 +163,7 @@ public final class StrengthStore: ObservableObject {
         if history != data.history { history = data.history }
         if customExercises != data.customExercises { customExercises = data.customExercises }
         if personalBests != data.personalBests { personalBests = data.personalBests }
+        if plans != data.plans { plans = data.plans }
         if bodyWeights != data.bodyWeights { bodyWeights = data.bodyWeights }
         if weighIn != data.weighIn { weighIn = data.weighIn }
     }
