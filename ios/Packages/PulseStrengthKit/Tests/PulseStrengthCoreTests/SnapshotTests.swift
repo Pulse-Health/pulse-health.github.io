@@ -350,6 +350,20 @@ final class SnapshotBuilderTests: XCTestCase {
         return try encoder.encode(snap).count
     }
 
+    /// `snap` without the live context (set dots, moments, superset, plates, coach tip, finish card): the flat part of the content.
+    /// The live context has its own budget (`LiveMomentsTests.testTheLargestRealisticSnapshotStaysUnderTheSizeBudget`).
+    private func flat(_ snap: WorkoutSnapshot) -> WorkoutSnapshot {
+        var copy = snap
+        copy.exerciseDoneSets = nil
+        copy.exerciseSetCount = nil
+        copy.moment = nil
+        copy.superset = nil
+        copy.plates = nil
+        copy.coachTip = nil
+        copy.finish = nil
+        return copy
+    }
+
     func testLiveActivitySizeSanity() throws {
         var states: [WorkoutState] = [
             PresFix.freshUpperA(),
@@ -367,11 +381,15 @@ final class SnapshotBuilderTests: XCTestCase {
         long.rest = RestState(endsAt: PresFix.at(100), totalSeconds: 600)
         states.append(long)
         for (index, state) in states.enumerated() {
-            let snap = snapshot(state, at: 1458)
+            let snap = flat(snapshot(state, at: 1458))
             XCTAssertLessThan(try jsonSize(snap, iso: false), 1500, "state \(index)")
             XCTAssertLessThan(try jsonSize(snap, iso: true), 1500, "state \(index) iso")
         }
-        XCTAssertLessThan(try jsonSize(snapshot(PresFix.goldenState(), at: 1458), iso: true), 1000)
+        XCTAssertLessThan(try jsonSize(flat(snapshot(PresFix.goldenState(), at: 1458)), iso: true), 1000)
+        // With the live context the same states stay far below the 4 KB limit of a Live Activity.
+        for (index, state) in states.enumerated() {
+            XCTAssertLessThan(try jsonSize(snapshot(state, at: 1458), iso: true), 2000, "state \(index) with live context")
+        }
     }
 
     func testSnapshotRoundTripsThroughJSON() throws {

@@ -24,47 +24,57 @@ struct NextUpWidget: Widget {
     }
 }
 
+/// The widget as the system hosts it: reads the surface from the environment, adds the card and the tap target around `NextUpLayout`.
 struct NextUpView: View {
     let entry: SnapshotEntry
     @Environment(\.widgetFamily) private var family
     @Environment(\.showsWidgetContainerBackground) private var showsBackground
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
 
-    private var snapshot: WidgetSnapshot { entry.snapshot }
-    private var isMedium: Bool { family == .systemMedium }
-    /// StandBy at night: the system tints the widget red, so tomorrow's plan replaces the Start button.
-    private var isNight: Bool { isLuminanceReduced && !isMedium }
+    private var surface: HomeSurface {
+        HomeSurface(family: family, showsContainerBackground: showsBackground, isLuminanceReduced: isLuminanceReduced)
+    }
 
     var body: some View {
-        content
+        NextUpLayout(entry: entry, surface: surface)
             .containerBackground(for: .widget) {
-                if isNight {
+                if surface.isNight {
                     Color.black
                 } else {
                     WidgetTheme.card
                 }
             }
-            .widgetURL(tapTarget)
+            .widgetURL(NextUpLayout.tapTarget(snapshot: entry.snapshot, surface: surface))
+    }
+}
+
+/// What the widget draws on one surface: the small card, the medium card with the exercise list, the small card without its card (StandBy),
+/// tomorrow's plan at night, or the empty state. Everything comes from the snapshot and the surface, so a test can render any of them.
+struct NextUpLayout: View {
+    let entry: SnapshotEntry
+    let surface: HomeSurface
+
+    private var snapshot: WidgetSnapshot { entry.snapshot }
+
+    /// The small widget has one tap target, the whole widget, which starts the next workout; at night, when empty and in the medium widget
+    /// (which has its own Start link) it opens the Strength hub.
+    static func tapTarget(snapshot: WidgetSnapshot, surface: HomeSurface) -> URL {
+        if !surface.isMedium, !surface.isNight, snapshot.nextUp != nil { return StrengthDeepLink.startNext.url }
+        return StrengthDeepLink.hub.url
     }
 
-    @ViewBuilder
-    private var content: some View {
-        if isNight {
+    var body: some View {
+        if surface.isNight {
             NextUpNightContent(tomorrow: snapshot.tomorrow)
         } else if let nextUp = snapshot.nextUp {
-            if isMedium {
+            if surface.isMedium {
                 NextUpMediumContent(nextUp: nextUp)
             } else {
-                NextUpSmallContent(nextUp: nextUp, isStandBy: !showsBackground)
+                NextUpSmallContent(nextUp: nextUp, isStandBy: surface.isStandBy)
             }
         } else {
-            NextUpEmptyContent(isMedium: isMedium, isStandBy: !showsBackground)
+            NextUpEmptyContent(isMedium: surface.isMedium, isStandBy: surface.isStandBy)
         }
-    }
-
-    private var tapTarget: URL {
-        if !isMedium, !isNight, snapshot.nextUp != nil { return StrengthDeepLink.startNext.url }
-        return StrengthDeepLink.hub.url
     }
 }
 

@@ -29,7 +29,10 @@ struct NextUpAccessoryWidget: Widget {
 
 struct NextUpAccessoryView: View {
     let entry: SnapshotEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var environmentFamily
+    /// Set by the snapshot tests: `widgetFamily` is read-only in the environment, so a renderer cannot choose the layout through it.
+    var familyOverride: WidgetFamily?
+    private var family: WidgetFamily { familyOverride ?? environmentFamily }
 
     private var snapshot: WidgetSnapshot { entry.snapshot }
 

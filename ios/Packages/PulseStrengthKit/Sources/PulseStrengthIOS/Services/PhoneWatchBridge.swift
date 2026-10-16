@@ -19,11 +19,13 @@ private func launchCompanionWatchApp(using store: HKHealthStore) {
     }
 }
 
-/// Sends `payload` to the Watch as the latest application context and, when the Watch is reachable, as a message too.
+/// Sends `context` to the Watch as the latest application context and, when the Watch is reachable, `payload` as a message too.
+/// The context is `payload` plus the widget snapshot (`WatchWidgetSnapshotSender`): an application context replaces the whole dictionary,
+/// so the snapshot has to be in every one, while the live message stays as small as it was.
 /// Errors are ignored: the next state change sends a newer envelope anyway.
-private func deliverToWatch(_ payload: [String: Any], over session: WCSession) {
+private func deliverToWatch(_ payload: [String: Any], context: [String: Any], over session: WCSession) {
     do {
-        try session.updateApplicationContext(payload)
+        try session.updateApplicationContext(context)
     } catch {
         // Not activated, or the Watch app is gone: nothing to do.
     }
@@ -45,6 +47,9 @@ private func deliverToWatch(_ payload: [String: Any], over session: WCSession) {
 ///   change, otherwise (a duplicate, or a command without effect) the bridge pushes an envelope of its own.
 /// * A new workout launches the Watch app (`HKHealthStore.startWatchApp(with:)`) when it is installed.
 /// * The reachability of an installed Watch app during a workout becomes the `WatchStatus` shown on the workout screen.
+/// * The widget snapshot for the Watch widgets (`WatchWidgetSnapshotSender`) rides in the application context next to the state envelope,
+///   under its own key. When only the snapshot changed, the bridge sends the context it sent last again with the new snapshot in it, so the
+///   envelope in it is never lost.
 @MainActor
 final class PhoneWatchBridge: NSObject, WorkoutSideEffect, WCSessionDelegate {
     /// Called on the main actor when the status derived from reachability changes.
@@ -77,6 +82,11 @@ final class PhoneWatchBridge: NSObject, WorkoutSideEffect, WCSessionDelegate {
         let session = WCSession.default
         session.delegate = self
         session.activate()
+        WatchWidgetSnapshotSender.shared.observeChanges { [weak self] in
+            Task { @MainActor in
+                self?.pushWidgetSnapshot()
+            }
+        }
     }
 
     // MARK: WorkoutSideEffect
@@ -128,7 +138,25 @@ final class PhoneWatchBridge: NSObject, WorkoutSideEffect, WCSessionDelegate {
         let session = WCSession.default
         guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled else { return }
         guard let payload = try? SyncCodec.encode(message) else { return }
-        deliverToWatch(payload, over: session)
+        deliverToWatch(payload, context: WatchWidgetSnapshotSender.shared.attaching(to: payload), over: session)
+    }
+
+    /// Sends the latest widget snapshot to the Watch when the context it holds does not have it yet (or always with `force`, for a Watch app
+    /// that was just installed): the context the phone sent last, which keeps the state envelope in it, with the snapshot under its key.
+    /// Without a workout this is the only thing the phone sends; it never makes up an envelope of its own.
+    private func pushWidgetSnapshot(force: Bool = false) {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled else { return }
+        guard let data = WatchWidgetSnapshotSender.shared.latestData else { return }
+        var context = session.applicationContext
+        if !force, (context[WatchWidgetSnapshotSender.payloadKey] as? Data) == data { return }
+        context[WatchWidgetSnapshotSender.payloadKey] = data
+        do {
+            try session.updateApplicationContext(context)
+        } catch {
+            // Not activated, or the Watch app is gone: the next snapshot or state change tries again.
+        }
     }
 
     private func launchWatchApp(for state: WorkoutState) {
@@ -217,6 +245,7 @@ final class PhoneWatchBridge: NSObject, WorkoutSideEffect, WCSessionDelegate {
             launchWatchApp(for: state)
         }
         pushStateIfWorkoutRunning()
+        pushWidgetSnapshot()
         refreshStatus()
     }
 
@@ -260,6 +289,8 @@ final class PhoneWatchBridge: NSObject, WorkoutSideEffect, WCSessionDelegate {
     nonisolated func sessionWatchStateDidChange(_ session: WCSession) {
         Task { @MainActor [weak self] in
             self?.sessionConnectionDidChange()
+            // A Watch app that was just installed has none of the context sent before.
+            self?.pushWidgetSnapshot(force: true)
         }
     }
 
