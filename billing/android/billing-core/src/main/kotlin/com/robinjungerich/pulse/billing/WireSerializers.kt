@@ -8,6 +8,7 @@
 
 package com.robinjungerich.pulse.billing
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -62,6 +63,7 @@ internal fun parseInstant(text: String): Instant =
     }
 
 /** The one JSON configuration of the billing client: unknown fields are ignored, null fields are not sent. */
+@OptIn(ExperimentalSerializationApi::class)
 internal val BillingJson: Json = Json {
     ignoreUnknownKeys = true
     explicitNulls = false

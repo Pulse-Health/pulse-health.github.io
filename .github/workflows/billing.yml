@@ -4,6 +4,8 @@
 #   ios-core   PulseBillingCore on Linux (swift test): models, API client, purchase state machine, parsing of the contract fixtures.
 #   ios-ui     macOS: swift test, then PulseBillingUI (Stripe PaymentSheet, SwiftUI) built for the iOS Simulator, which resolves
 #              the Stripe iOS SDK. This is the only job that compiles the SwiftUI / Stripe code.
+#   android    JDK 17 + Android SDK 36: billing-core unit tests (JVM, including the contract fixtures), billing-android unit tests
+#              and a debug build of the Compose / Stripe PaymentSheet module.
 #
 # The contract fixtures in billing/contract/fixtures are parsed by the tests of all three code bases, so a change to the wire
 # format that is not made everywhere fails here.
@@ -148,3 +150,43 @@ jobs:
             -destination 'generic/platform=iOS' \
             -configuration Release \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tail -n 30
+
+  android:
+    name: android
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: billing/android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The runner image ships an Android SDK; make sure the platform and build tools the modules compile against are there.
+      - name: Android SDK packages
+        run: |
+          SDKMANAGER="$(command -v sdkmanager || ls "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/cmdline-tools/*/bin/sdkmanager | head -n 1)"
+          echo "sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" | tail -n 5
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Unit tests and debug build
+        run: ./gradlew --no-daemon --stacktrace :billing-core:test :billing-android:testDebugUnitTest :billing-android:assembleDebug
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-reports
+          path: |
+            billing/android/**/build/reports/tests
+            billing/android/**/build/test-results
+          if-no-files-found: ignore
+          retention-days: 7
