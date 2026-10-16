@@ -1,0 +1,212 @@
+{
+  "extraction": {
+    "exercises": [
+      {
+        "equipment": null,
+        "library_id": "legcurl",
+        "muscle": null,
+        "name": "Lying leg curl",
+        "note": "First exercise of the day. Hips pressed into the pad, lengthened partials at the end of the last set.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:16",
+        "tracking": null
+      },
+      {
+        "equipment": "Machine",
+        "library_id": null,
+        "muscle": "Legs",
+        "name": "Pendulum squat",
+        "note": "3 sets of 6-8. Leave 1-2 reps in reserve on the first two sets, last set to failure; go as deep as you can. Swap: barbell, Smith or hack squat.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 8,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 8,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 8,
+            "type": "failure",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "2:30",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": null,
+        "library_id": "rdl",
+        "muscle": null,
+        "name": "Romanian deadlift",
+        "note": "Push the hips straight back, slight knee bend, lower to just below the knee with a neutral spine.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 6,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 6,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 6,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "5:02",
+        "tracking": null
+      },
+      {
+        "equipment": null,
+        "library_id": "legext",
+        "muscle": null,
+        "name": "Leg extension",
+        "note": "One or two hard sets. Seat set as far back as possible, strapped in, optional slow 3 s negative.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "6:43",
+        "tracking": null
+      },
+      {
+        "equipment": "Machine",
+        "library_id": null,
+        "muscle": "Legs",
+        "name": "Hip abduction machine",
+        "note": "Seated with hips extended (upright) to target the glute medius; push it hard, close to failure.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "9:09",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": null,
+        "library_id": "calf",
+        "muscle": null,
+        "name": "Standing calf raise",
+        "note": "8-10 reps, deep stretch at the bottom. After the last set hold the bottom stretch for 30 seconds.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "10:51",
+        "tracking": null
+      }
+    ],
+    "summary": "Jeff Nippard's 6-exercise lower-body day (the first of his two leg days per week), starting with lying leg curls to warm up the knees.",
+    "title": "UL/PPL · Lower",
+    "warnings": [
+      "Sets and reps are not stated in the video for: lying leg curl, Romanian deadlift, hip abduction. Used 3 sets of 10 (check against the full program).",
+      "Pendulum squat: video says 3 sets of 6-8 reps; 3 x 8 used. Leg extension: 'one or two hard sets'; 2 used with 10 reps (reps not stated). Standing calf raise: 8-10 reps; 3 sets assumed, 10 reps.",
+      "Romanian deadlift: the 6 reps come from Jeff's example ('two plates per side for six hard reps'), not a prescription.",
+      "Rest times are not stated in the video; the exercise's default rest was used.",
+      "Weights are not stated for any exercise; enter your own."
+    ]
+  },
+  "model": "manual: read from the video captions and description by Claude in a Claude Code session (no API call)",
+  "name": "UL/PPL · Lower",
+  "sources": [
+    {
+      "captions": "auto",
+      "duration": 729,
+      "title": "The Leg Workout I Followed For My 1 Year Transformation",
+      "url": "https://www.youtube.com/watch?v=hRZ5MM6gmlE"
+    }
+  ],
+  "vision": false
+}

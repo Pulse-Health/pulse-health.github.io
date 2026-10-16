@@ -1,0 +1,1469 @@
+[
+  {
+    "entries": [
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Machine",
+          "id": "custom-seated-leg-curl",
+          "isCustom": true,
+          "muscle": "Legs",
+          "name": "Seated leg curl",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "8F12D30D-C4CD-5EAF-8383-666140CD63B5",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Machine",
+          "id": "custom-smith-machine-squat",
+          "isCustom": true,
+          "muscle": "Legs",
+          "name": "Smith machine squat",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "F4C79C32-02F8-5A50-85B6-5E84A866D2FF",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Soften your knees and push your hips straight back.",
+            "Slide the bar down your thighs with a flat back until you feel a hamstring stretch.",
+            "Squeeze your glutes to stand tall again."
+          ],
+          "defaults": {
+            "reps": 8,
+            "restSeconds": 120,
+            "sets": 3,
+            "weightKg": 60.0
+          },
+          "equipment": "Barbell",
+          "id": "rdl",
+          "isCustom": false,
+          "mediaKey": "rdl",
+          "muscle": "Legs",
+          "name": "Romanian deadlift",
+          "previousBestE1RM": 0.0,
+          "previousSets": [
+            {
+              "reps": 8,
+              "weightKg": 70.0
+            }
+          ],
+          "secondary": "Glutes · Lower back",
+          "tracking": "weightReps"
+        },
+        "id": "3B7B1FB3-1FF1-5AE0-8364-0B473AF5BA2B",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 120
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Align your knees with the machine's pivot and sit back in the seat.",
+            "Extend until your legs are straight and squeeze your quads.",
+            "Lower under control and don't let the stack crash."
+          ],
+          "defaults": {
+            "reps": 12,
+            "restSeconds": 75,
+            "sets": 3,
+            "weightKg": 40.0
+          },
+          "equipment": "Machine",
+          "id": "legext",
+          "isCustom": false,
+          "mediaKey": "legext",
+          "muscle": "Legs",
+          "name": "Leg extension",
+          "previousBestE1RM": 0.0,
+          "previousSets": [
+            {
+              "reps": 12,
+              "weightKg": 45.0
+            }
+          ],
+          "secondary": "Quads",
+          "tracking": "weightReps"
+        },
+        "id": "4F51E1FE-972B-5F52-B77D-94D77A253901",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 75
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Machine",
+          "id": "custom-hip-adduction-machine",
+          "isCustom": true,
+          "muscle": "Legs",
+          "name": "Hip adduction machine",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "0D70B314-2386-5084-B73D-EC222E016377",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90,
+        "supersetGroup": "A"
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Machine",
+          "id": "custom-hip-abduction-machine",
+          "isCustom": true,
+          "muscle": "Legs",
+          "name": "Hip abduction machine",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "78D4F68D-03A4-5860-8C07-6C2F5E369B26",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90,
+        "supersetGroup": "A"
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Place the balls of your feet on the platform with your heels hanging off.",
+            "Rise as high as you can and pause at the top.",
+            "Lower into a deep stretch before the next rep."
+          ],
+          "defaults": {
+            "reps": 12,
+            "restSeconds": 60,
+            "sets": 4,
+            "weightKg": 60.0
+          },
+          "equipment": "Machine",
+          "id": "calf",
+          "isCustom": false,
+          "mediaKey": "calf",
+          "muscle": "Legs",
+          "name": "Standing calf raise",
+          "previousBestE1RM": 0.0,
+          "previousSets": [
+            {
+              "reps": 12,
+              "weightKg": 60.0
+            }
+          ],
+          "secondary": "Calves",
+          "tracking": "weightReps"
+        },
+        "id": "B42D372D-3DED-569A-A795-DA2377C8BCCF",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 60
+      }
+    ],
+    "id": "200F085B-A34E-5347-8306-01E7E80242BE",
+    "name": "UL/PPL · Legs"
+  },
+  {
+    "entries": [
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Line up your knees with the machine's pivot point.",
+            "Curl the pad toward your glutes without lifting your hips.",
+            "Lower slowly to full extension."
+          ],
+          "defaults": {
+            "reps": 12,
+            "restSeconds": 75,
+            "sets": 3,
+            "weightKg": 30.0
+          },
+          "equipment": "Machine",
+          "id": "legcurl",
+          "isCustom": false,
+          "mediaKey": "legcurl",
+          "muscle": "Legs",
+          "name": "Lying leg curl",
+          "previousBestE1RM": 0.0,
+          "previousSets": [
+            {
+              "reps": 12,
+              "weightKg": 35.0
+            }
+          ],
+          "secondary": "Hamstrings",
+          "tracking": "weightReps"
+        },
+        "id": "8D40D16B-5A10-54FC-8476-EB097F1E7783",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 75
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Machine",
+          "id": "custom-pendulum-squat",
+          "isCustom": true,
+          "muscle": "Legs",
+          "name": "Pendulum squat",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "B701D506-AFFE-5579-946D-029DE84099A3",
+        "plannedSets": [
+          {
+            "reps": 8,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 8,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 8,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Soften your knees and push your hips straight back.",
+            "Slide the bar down your thighs with a flat back until you feel a hamstring stretch.",
+            "Squeeze your glutes to stand tall again."
+          ],
+          "defaults": {
+            "reps": 8,
+            "restSeconds": 120,
+            "sets": 3,
+            "weightKg": 60.0
+          },
+          "equipment": "Barbell",
+          "id": "rdl",
+          "isCustom": false,
+          "mediaKey": "rdl",
+          "muscle": "Legs",
+          "name": "Romanian deadlift",
+          "previousBestE1RM": 0.0,
+          "previousSets": [
+            {
+              "reps": 8,
+              "weightKg": 70.0
+            }
+          ],
+          "secondary": "Glutes · Lower back",
+          "tracking": "weightReps"
+        },
+        "id": "1E7F18E4-B0D5-56AC-B987-E2288C7BF7A0",
+        "plannedSets": [
+          {
+            "reps": 6,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 6,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 6,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 120
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Align your knees with the machine's pivot and sit back in the seat.",
+            "Extend until your legs are straight and squeeze your quads.",
+            "Lower under control and don't let the stack crash."
+          ],
+          "defaults": {
+            "reps": 12,
+            "restSeconds": 75,
+            "sets": 3,
+            "weightKg": 40.0
+          },
+          "equipment": "Machine",
+          "id": "legext",
+          "isCustom": false,
+          "mediaKey": "legext",
+          "muscle": "Legs",
+          "name": "Leg extension",
+          "previousBestE1RM": 0.0,
+          "previousSets": [
+            {
+              "reps": 12,
+              "weightKg": 45.0
+            }
+          ],
+          "secondary": "Quads",
+          "tracking": "weightReps"
+        },
+        "id": "56BBF393-6EC7-5DF9-9A45-8D722CFB7EC4",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 75
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Machine",
+          "id": "custom-hip-abduction-machine",
+          "isCustom": true,
+          "muscle": "Legs",
+          "name": "Hip abduction machine",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "030E6690-40B4-5580-AA6D-3B063036BB38",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Place the balls of your feet on the platform with your heels hanging off.",
+            "Rise as high as you can and pause at the top.",
+            "Lower into a deep stretch before the next rep."
+          ],
+          "defaults": {
+            "reps": 12,
+            "restSeconds": 60,
+            "sets": 4,
+            "weightKg": 60.0
+          },
+          "equipment": "Machine",
+          "id": "calf",
+          "isCustom": false,
+          "mediaKey": "calf",
+          "muscle": "Legs",
+          "name": "Standing calf raise",
+          "previousBestE1RM": 0.0,
+          "previousSets": [
+            {
+              "reps": 12,
+              "weightKg": 60.0
+            }
+          ],
+          "secondary": "Calves",
+          "tracking": "weightReps"
+        },
+        "id": "4C501992-CC23-5A9D-9005-49DE015D9203",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 60
+      }
+    ],
+    "id": "4D2991F8-3617-5419-A5A7-149CC70CAE66",
+    "name": "UL/PPL · Lower"
+  },
+  {
+    "entries": [
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Grip slightly wider than your shoulders and lean back a touch.",
+            "Pull the bar to your upper chest, leading with your elbows.",
+            "Let the bar rise until your arms are straight again."
+          ],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 50.0
+          },
+          "equipment": "Cable",
+          "id": "pulldown",
+          "isCustom": false,
+          "mediaKey": "pulldown",
+          "muscle": "Back",
+          "name": "Lat pulldown",
+          "previousBestE1RM": 0.0,
+          "previousSets": [
+            {
+              "reps": 10,
+              "weightKg": 55.0
+            }
+          ],
+          "secondary": "Biceps · Mid back",
+          "tracking": "weightReps"
+        },
+        "id": "5E56356D-C6F1-5935-94E1-A970FF848683",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Machine",
+          "id": "custom-chest-supported-machine-row",
+          "isCustom": true,
+          "muscle": "Back",
+          "name": "Chest-supported machine row",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "39A58A48-7DE4-559A-B022-EB86A4D468F7",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Sit tall with a slight bend in your knees.",
+            "Pull the handle to your lower ribs and squeeze your shoulder blades together.",
+            "Return slowly until your arms are straight without rounding your back."
+          ],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 45.0
+          },
+          "equipment": "Cable",
+          "id": "crow",
+          "isCustom": false,
+          "mediaKey": "crow",
+          "muscle": "Back",
+          "name": "Seated cable row",
+          "previousBestE1RM": 0.0,
+          "previousSets": [
+            {
+              "reps": 10,
+              "weightKg": 50.0
+            }
+          ],
+          "secondary": "Biceps · Lats",
+          "tracking": "weightReps"
+        },
+        "id": "1318AD3D-D7E2-55B7-9083-DB3661A63690",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Cable",
+          "id": "custom-reverse-cable-fly",
+          "isCustom": true,
+          "muscle": "Shoulders",
+          "name": "Reverse cable fly",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "10A655CF-8660-5D9E-AFD0-A9A976B38F49",
+        "plannedSets": [
+          {
+            "reps": 15,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 15,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 15,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Other",
+          "id": "custom-shrug",
+          "isCustom": true,
+          "muscle": "Back",
+          "name": "Shrug",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "DAD61A3F-0F63-548F-ABB4-F2AEBFD844FF",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Barbell",
+          "id": "custom-ez-bar-curl",
+          "isCustom": true,
+          "muscle": "Arms",
+          "name": "EZ-bar curl",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "F58CC7FA-9812-572F-9F75-3D1CD404D805",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Rest your upper arms flat on the pad.",
+            "Curl up and lower slowly without lifting your elbows."
+          ],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 75,
+            "sets": 3,
+            "weightKg": 25.0
+          },
+          "equipment": "Machine",
+          "id": "preacher",
+          "isCustom": false,
+          "muscle": "Arms",
+          "name": "Preacher curl",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Biceps",
+          "tracking": "weightReps"
+        },
+        "id": "3746B3F6-FD92-5FA3-BF21-FDA85A6439E2",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 75
+      }
+    ],
+    "id": "6EF0BDD6-BB26-519D-B229-E313B1FA7DA5",
+    "name": "UL/PPL · Pull"
+  },
+  {
+    "entries": [
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Pull your shoulder blades back and down and keep your feet planted.",
+            "Lower the bar to mid-chest with your elbows about 45–60° from your body.",
+            "Press up and slightly back until your arms are straight."
+          ],
+          "defaults": {
+            "reps": 8,
+            "restSeconds": 150,
+            "sets": 3,
+            "weightKg": 60.0
+          },
+          "equipment": "Barbell",
+          "id": "bench",
+          "isCustom": false,
+          "mediaKey": "bench",
+          "muscle": "Chest",
+          "name": "Barbell bench press",
+          "previousBestE1RM": 99.0,
+          "previousSets": [
+            {
+              "reps": 8,
+              "weightKg": 50.0
+            },
+            {
+              "reps": 5,
+              "weightKg": 70.0
+            },
+            {
+              "reps": 6,
+              "weightKg": 80.0
+            },
+            {
+              "reps": 6,
+              "weightKg": 80.0
+            },
+            {
+              "reps": 5,
+              "weightKg": 80.0
+            }
+          ],
+          "secondary": "Shoulders · Triceps",
+          "tracking": "weightReps"
+        },
+        "id": "2B996976-0EC7-5CA9-9A26-AC864C91E799",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 150
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Machine",
+          "id": "custom-machine-shoulder-press",
+          "isCustom": true,
+          "muscle": "Shoulders",
+          "name": "Machine shoulder press",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "FF94DA9E-70B8-5AB9-9B3B-ADBEDBDA3BE8",
+        "plannedSets": [
+          {
+            "reps": 12,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 12,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 12,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Machine",
+          "id": "custom-pec-deck",
+          "isCustom": true,
+          "muscle": "Chest",
+          "name": "Pec deck",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "F4C37133-0569-5E1D-83ED-E77EF7BADDB8",
+        "plannedSets": [
+          {
+            "reps": 20,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 20,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 20,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Cable",
+          "id": "custom-high-cable-lateral-raise",
+          "isCustom": true,
+          "muscle": "Shoulders",
+          "name": "High cable lateral raise",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "ACA5AE59-3C30-5946-9736-BAB20E1D2FC1",
+        "plannedSets": [
+          {
+            "reps": 15,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 15,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 15,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Face away from the cable with your elbows pointing forward.",
+            "Extend your arms overhead and return to a deep stretch."
+          ],
+          "defaults": {
+            "reps": 12,
+            "restSeconds": 60,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Cable",
+          "id": "ohtri",
+          "isCustom": false,
+          "muscle": "Arms",
+          "name": "Overhead triceps extension",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Triceps",
+          "tracking": "weightReps"
+        },
+        "id": "9CE29799-6F12-5EC2-AB62-432CCC0B007C",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 60
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Cable",
+          "id": "custom-cable-triceps-kickback",
+          "isCustom": true,
+          "muscle": "Arms",
+          "name": "Cable triceps kickback",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "4F45CC74-8BB4-5770-9D53-A0D405F4691F",
+        "plannedSets": [
+          {
+            "reps": 15,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 15,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 15,
+            "type": "normal",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      }
+    ],
+    "id": "2B08B0B0-3612-57C5-96DA-A4E7A771D065",
+    "name": "UL/PPL · Push"
+  },
+  {
+    "entries": [
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Barbell",
+          "id": "custom-incline-barbell-bench-press",
+          "isCustom": true,
+          "muscle": "Chest",
+          "name": "Incline barbell bench press",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "3DC79DA5-956B-50B2-9E82-FB3A7719067D",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Cable",
+          "id": "custom-seated-cable-fly",
+          "isCustom": true,
+          "muscle": "Chest",
+          "name": "Seated cable fly",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "002886CC-D448-5250-84D8-E23008829269",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Bodyweight",
+          "id": "custom-weighted-pull-up",
+          "isCustom": true,
+          "muscle": "Back",
+          "name": "Weighted pull-up",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "DFC1B328-6F77-5673-A9B0-8C7296086C06",
+        "plannedSets": [
+          {
+            "reps": 6,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 6,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 6,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Cable",
+          "id": "custom-high-cable-lateral-raise",
+          "isCustom": true,
+          "muscle": "Shoulders",
+          "name": "High cable lateral raise",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "C482357A-7C5B-5EF6-A820-31B817C6D9C3",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Barbell",
+          "id": "custom-deficit-pendlay-row",
+          "isCustom": true,
+          "muscle": "Back",
+          "name": "Deficit Pendlay row",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "116A2A7B-5172-53BE-A7B1-BDC5328F1B84",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [
+            "Face away from the cable with your elbows pointing forward.",
+            "Extend your arms overhead and return to a deep stretch."
+          ],
+          "defaults": {
+            "reps": 12,
+            "restSeconds": 60,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Cable",
+          "id": "ohtri",
+          "isCustom": false,
+          "muscle": "Arms",
+          "name": "Overhead triceps extension",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Triceps",
+          "tracking": "weightReps"
+        },
+        "id": "E3DFF83A-6B27-5567-B08B-197A6AA3DBC8",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 60
+      },
+      {
+        "exercise": {
+          "barKg": 20.0,
+          "cues": [],
+          "defaults": {
+            "reps": 10,
+            "restSeconds": 90,
+            "sets": 3,
+            "weightKg": 20.0
+          },
+          "equipment": "Cable",
+          "id": "custom-bayesian-cable-curl",
+          "isCustom": true,
+          "muscle": "Arms",
+          "name": "Bayesian cable curl",
+          "previousBestE1RM": 0.0,
+          "previousSets": [],
+          "secondary": "Custom",
+          "tracking": "weightReps"
+        },
+        "id": "291FA096-9AF5-5A94-BC84-6FBF05917B9F",
+        "plannedSets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weightKg": 0.0
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weightKg": 0.0
+          }
+        ],
+        "restSeconds": 90
+      }
+    ],
+    "id": "C309A354-5ACC-5BC8-A3F7-8179529D94E3",
+    "name": "UL/PPL · Upper"
+  }
+]

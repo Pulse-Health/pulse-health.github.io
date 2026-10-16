@@ -1,0 +1,250 @@
+{
+  "extraction": {
+    "exercises": [
+      {
+        "equipment": null,
+        "library_id": "pulldown",
+        "muscle": null,
+        "name": "Close-grip lat pulldown",
+        "note": "Torso vertical for a big stretch at the top, drive the elbows down. Very high lat emphasis.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:00",
+        "tracking": null
+      },
+      {
+        "equipment": "Machine",
+        "library_id": null,
+        "muscle": "Back",
+        "name": "Chest-supported machine row",
+        "note": "Elbows higher and flared, squeeze the shoulder blades together at the top (mid-back, rhomboids, mid traps).",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:12",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": null,
+        "library_id": "crow",
+        "muscle": null,
+        "name": "Close-grip cable row",
+        "note": "Horizontal shoulder extension; after failure keep going with lengthened partials.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "failure",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:22",
+        "tracking": null
+      },
+      {
+        "equipment": "Cable",
+        "library_id": null,
+        "muscle": "Shoulders",
+        "name": "Reverse cable fly",
+        "note": "Light weight, higher reps so the mid traps do not take over (rear delts).",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 15,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 15,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 15,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:38",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": "Other",
+        "library_id": null,
+        "muscle": "Back",
+        "name": "Shrug",
+        "note": "Upper traps: shrug up and in toward the ears.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:44",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": "Barbell",
+        "library_id": null,
+        "muscle": "Arms",
+        "name": "EZ-bar curl",
+        "note": "Biceps.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:50",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": null,
+        "library_id": "preacher",
+        "muscle": null,
+        "name": "Machine preacher curl",
+        "note": "Biceps.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:55",
+        "tracking": null
+      }
+    ],
+    "summary": "Jeff Nippard's pull day: lat, mid-back, rear delt, upper trap and two biceps exercises.",
+    "title": "UL/PPL · Pull",
+    "warnings": [
+      "Sets and reps are not stated in the video for: all seven exercises. Used 3 sets of 10 (check against the full program).",
+      "Reverse cable fly: 'light weight and higher reps', so 15 reps were used instead of 10.",
+      "Shrug: equipment is not stated (set to Other); upper-trap work is filed under Back.",
+      "Rest times are not stated in the video; the exercise's default rest was used.",
+      "Weights are not stated; enter your own."
+    ]
+  },
+  "model": "manual: read from the video captions and description by Claude in a Claude Code session (no API call)",
+  "name": "UL/PPL · Pull",
+  "sources": [
+    {
+      "captions": "auto",
+      "duration": 59,
+      "title": "Best Scientific Pull Workout (Back, Biceps, Rear Delts)",
+      "url": "https://www.youtube.com/watch?v=KV4D8MQrdhw"
+    }
+  ],
+  "vision": false
+}

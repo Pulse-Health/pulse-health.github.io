@@ -175,6 +175,9 @@ def expand_urls(urls: list[str], extra: list[str]) -> list[str]:
     """A playlist URL stands for its videos in playlist order (handy when a workout is a playlist of parts)."""
     result: list[str] = []
     for url in urls:
+        if re.search(r"[?&]v=", url) and re.search(r"[?&]list=", url):
+            print(f"  note: {url} is ONE video from a playlist. To use the whole playlist, pass its "
+                  "https://www.youtube.com/playlist?list=... URL.", file=sys.stderr)
         if is_playlist_url(url):
             info = json.loads(ytdlp(["--flat-playlist", "--dump-single-json", url], extra))
             entries = [e for e in info.get("entries") or [] if e and e.get("id")]
@@ -249,7 +252,9 @@ def fetch_video(url: str, cache: Path, args) -> Video:
     if meta_probe.exists() and not args.refresh:
         info = json.loads(meta_probe.read_text())
     else:
-        info = json.loads(ytdlp(["--skip-download", "--dump-single-json", "--no-playlist", url], extra))
+        # --ignore-no-formats-error: only text is needed here, and YouTube sometimes offers no formats without a login.
+        info = json.loads(ytdlp(["--skip-download", "--ignore-no-formats-error", "--dump-single-json",
+                                 "--no-playlist", url], extra))
         meta_probe.parent.mkdir(parents=True, exist_ok=True)
         meta_probe.write_text(json.dumps(info))
     vid = info["id"]
@@ -266,8 +271,8 @@ def fetch_video(url: str, cache: Path, args) -> Video:
             flag = "--write-subs" if kind == "manual" else "--write-auto-subs"
             for old in folder.glob("*.json3"):
                 old.unlink()
-            ytdlp(["--skip-download", flag, "--sub-langs", re.escape(language), "--sub-format", "json3",
-                   "--no-playlist", "-o", str(folder / "%(id)s"), url], extra)
+            ytdlp(["--skip-download", "--ignore-no-formats-error", flag, "--sub-langs", re.escape(language),
+                   "--sub-format", "json3", "--no-playlist", "-o", str(folder / "%(id)s"), url], extra)
             cached = next(iter(sorted(folder.glob("*.json3"))), None)
             (folder / "caption-kind.txt").write_text(kind)
     if cached is not None:

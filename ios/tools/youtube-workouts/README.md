@@ -59,7 +59,10 @@ without calling the API again:
 * `--force` redoes a workout that already has an `.extracted.json`; `--refresh` ignores the download cache (`out/.cache`).
 * `--model`, `--effort`: default `claude-opus-5-5` at `medium`.
 * `--ytdlp-args "…"`: anything for yt-dlp. **If YouTube answers "Sign in to confirm you're not a bot"** (common from servers
-  and VPNs), pass your browser's login: `--ytdlp-args "--cookies-from-browser chrome"`.
+  and VPNs), pass your browser's login: `--ytdlp-args "--cookies-from-browser chrome"`. Without a login, this often still
+  works for the text the tool needs: `--ytdlp-args "--extractor-args youtube:player_client=web_embedded"`.
+* A playlist URL (`/playlist?list=…`) is expanded into its videos, which are then read as the **parts of one workout**. If
+  every video is its own workout, list them one by one in a `--batch` file instead (one `# Name` each).
 
 ## What to expect
 
