@@ -49,6 +49,8 @@ object DayChange {
  */
 class DayChangeReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        // Only what the manifest asks for and the app's own alarm: anything else is not for this receiver.
+        if (intent.action !in handled) return
         val app = context.applicationContext
         // The next midnight first: nothing below may leave the app without one.
         DayChange.schedule(app)
@@ -56,5 +58,15 @@ class DayChangeReceiver : BroadcastReceiver() {
             StrengthRuntime.rebuild()
             Surfaces.refreshAll(app)
         }
+    }
+
+    private companion object {
+        val handled = setOf(
+            DayChange.ACTION_MIDNIGHT,
+            Intent.ACTION_TIME_CHANGED,
+            Intent.ACTION_TIMEZONE_CHANGED,
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+        )
     }
 }

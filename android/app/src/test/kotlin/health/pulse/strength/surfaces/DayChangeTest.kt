@@ -108,6 +108,16 @@ class DayChangeTest {
     }
 
     @Test
+    fun anotherActionIsNotForTheReceiver() {
+        val runtime = CountingRuntime()
+        StrengthRuntime.installForTest(runtime)
+        DayChangeReceiver().onReceive(app, Intent("health.pulse.strength.test.OTHER"))
+        DayChangeReceiver().onReceive(app, Intent())
+        Thread.sleep(200)
+        assertThat(runtime.rebuilds).isEqualTo(0)
+    }
+
+    @Test
     fun theReceiverListensToTheClockTheZoneTheBootAndTheUpdate() {
         val pm = app.packageManager
         for (action in listOf(Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_MY_PACKAGE_REPLACED)) {

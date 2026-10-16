@@ -23,6 +23,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -168,7 +169,7 @@ internal fun HubPlanSessionSheet(
     val zone = remember { ZoneId.systemDefault() }
     val locale = remember { Locale.getDefault() }
     val haptics = rememberPulseHaptics()
-    var startsAtMillis by rememberSaveable { mutableStateOf(HubPlanTimes.suggestedStart(clock.now(), zone).toEpochMilli()) }
+    var startsAtMillis by rememberSaveable { mutableLongStateOf(HubPlanTimes.suggestedStart(clock.now(), zone).toEpochMilli()) }
     var showsDatePicker by rememberSaveable { mutableStateOf(false) }
     var showsTimePicker by rememberSaveable { mutableStateOf(false) }
     val existing = remember(planner) { planner.current() }

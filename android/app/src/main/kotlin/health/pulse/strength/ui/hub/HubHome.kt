@@ -628,13 +628,13 @@ private fun WeekSection(home: HubHomeData, time: HubTime, topGap: Dp, goal: Int,
     val week = remember(home.history, time) { HubFormat.weekStats(home.history, time.today, time.zone, time.firstDayOfWeek) }
     Column(Modifier.padding(top = topGap)) {
         HubSectionHeader(title = "This Week")
-        HubWeekCard(week, goal)
+        HubWeekCard(week, goal = goal)
         if (onGoalChange != null) HubWeeklyGoalRow(goal, onGoalChange, Modifier.padding(top = 8.dp))
     }
 }
 
 @Composable
-internal fun HubWeekCard(week: HubWeekStats, goal: Int = HubFormat.SESSION_GOAL, modifier: Modifier = Modifier) {
+internal fun HubWeekCard(week: HubWeekStats, modifier: Modifier = Modifier, goal: Int = HubFormat.SESSION_GOAL) {
     HubStatRow(
         stats = listOf(
             HubStat("Sessions", "${week.sessions} of ${maxOf(goal, week.sessions)}"),

@@ -257,7 +257,7 @@ never by `SnapshotBuilder.make`.
 
 | iOS | Android |
 |---|---|
-| App Group file `widget-snapshot.json` (written by the app, read by the extensions) | `filesDir/widget-snapshot.json`, `StateFlow<WidgetSnapshot>` in `StrengthRuntime` |
+| App Group file `widget-snapshot.json` (written by the app, read by the extensions) | no file: the widgets live in the app's own process, so `StrengthRuntime.snapshots` (a `StateFlow<WidgetSnapshot>` kept by `LiveRuntime`) is the only copy; it is built again when the process starts |
 | `WidgetCenter.reloadTimelines` | `GlanceAppWidget.updateAll`, tile `TileService.getUpdater`, complication `ComplicationDataSourceUpdateRequester` |
 | App Intents (Button(intent:), ControlWidget) | Glance `ActionCallback`, `PendingIntent` broadcasts, `TileService` clicks |
 | Live Activity / Dynamic Island | Live Update notification (`ProgressStyle`) + status-bar chip text |
