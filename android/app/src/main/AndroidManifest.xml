@@ -63,6 +63,10 @@
                 <data android:scheme="pulse-strength" />
             </intent-filter>
             <!-- ==== host:begin (shortcuts meta-data and further intent filters of the main activity) ==== -->
+            <!-- Static launcher shortcuts (CT-10): the primary action, start workout, plate calculator and the "start exercise" App Action. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
             <!-- ==== host:end ==== -->
         </activity>
 
@@ -228,23 +232,6 @@
         <!-- ==== glance-extras:end ==== -->
 
         <!-- ==== system:begin (service, receivers, tile services, shortcuts activity) ==== -->
-        <!--
-            Launcher entry that carries the static shortcuts (CT-10). The integrator removes the LAUNCHER intent-filter from MainActivity,
-            otherwise the app shows two launcher icons.
-        -->
-        <activity-alias
-            android:name=".LauncherAlias"
-            android:exported="true"
-            android:targetActivity=".MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <meta-data
-                android:name="android.app.shortcuts"
-                android:resource="@xml/shortcuts" />
-        </activity-alias>
-
         <!-- SB-02 / SB-04: full-screen bench mode, opened from the app, the widgets and the Rest tile (never from outside). -->
         <activity
             android:name=".live.BenchModeActivity"
@@ -253,11 +240,12 @@
             android:launchMode="singleTop"
             android:theme="@style/Theme.PulseBench" />
 
-        <!-- CT-10: starts from a launcher shortcut, Quick Tap, a side key or a routine; runs the primary action and finishes. -->
+        <!-- CT-10: the launcher shortcut "Primary action" (Quick Tap, side key) starts it; it runs the primary action and finishes. Not
+             exported: the system starts a shortcut's activity as the app itself, and no other app should be able to log a set. -->
         <activity
             android:name=".controls.PrimaryActionActivity"
             android:excludeFromRecents="true"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/shortcut_primary_short"
             android:noHistory="true"
             android:taskAffinity=""
@@ -424,5 +412,19 @@
         <receiver
             android:name=".services.RestAlarmReceiver"
             android:exported="false" />
+
+        <!-- Midnight, a change of the clock or of the time zone, a restart and an update of the app: the widgets draw "today" and "N days ago"
+             from the snapshot, so it is built again then and every surface is refreshed (surfaces/DayChange.kt). BOOT_COMPLETED needs the
+             permission that the system region above declares. -->
+        <receiver
+            android:name=".surfaces.DayChangeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

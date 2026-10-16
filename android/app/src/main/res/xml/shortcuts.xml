@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
     CT-10 Action button analogue. Static launcher shortcuts for hardware buttons (Pixel Quick Tap, Samsung side key, routines) and the
-    App Actions capability "start exercise", which Assistant fulfils by starting the next workout. Referenced by the activity alias
-    .LauncherAlias in the manifest region "system".
+    App Actions capability "start exercise", which Assistant fulfils by starting the next workout. Referenced by the meta-data
+    "android.app.shortcuts" of the launcher activity (MainActivity) in the manifest.
 -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
 

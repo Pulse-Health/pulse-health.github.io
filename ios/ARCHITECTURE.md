@@ -743,7 +743,55 @@ phone ends the workout.
 
 `project.yml` (XcodeGen) defines targets PulseStrength (iOS app, embeds the widget extension and the Watch app; sources `Apps/PulseStrength` + `Apps/Shared/Intents`), PulseStrengthWidgets
 (app-extension; sources `Apps/PulseStrengthWidgets` + `Apps/Shared/Intents` + `Apps/Shared/LiveActivity`), PulseStrengthWatch (watchOS app) with the package products as dependencies, entitlements and Info.plist properties from 5.1, schemes. `Apps/*` contains the `@main` entry points, plists, entitlements,
-asset catalogs (AccentColor, placeholder AppIcon). `.github/workflows/strength-ios.yml`: Linux job (`swift test`, with and without `-Xswiftc -DPULSE_COMBINE_SHIM`) and a macOS job
+asset catalogs (AccentColor, placeholder AppIcon). Since the widgets (5.7) the project also has `PulseStrengthWatchWidgets` (watchOS widget extension, embedded in the Watch app; sources `Apps/PulseStrengthWatchWidgets` + `Apps/Shared/Widgets/Common` + `Apps/Shared/Widgets/Watch`), the extension takes `Apps/Shared/Widgets` (without `Watch/`) and `Apps/Shared/Controls` as well (and `Apps/Shared/Intents` without `PulseShortcuts.swift`, which is app only), and two more snapshot-test targets with their schemes (`PulseStrengthWidgetSnapshots`, `PulseStrengthWatchWidgetSnapshots`).
+`.github/workflows/strength-ios.yml`: Linux job (`swift test`, with and without `-Xswiftc -DPULSE_COMBINE_SHIM`) and a macOS job
 (`swift test` of the package on macOS, `xcodegen generate` plus a check that the committed `PulseStrength.xcodeproj` is unchanged, `xcodebuild build` of the iOS and watchOS schemes for the simulators with `CODE_SIGNING_ALLOWED=NO`). `README.md`
 documents setup, what is verified and what is not, integration with the Pulse app (replace `RecoveryProvider`, the App Group id, the bundle ids, the media source), and the
 public-domain attribution of the form photos (Free Exercise DB, Unlicense).
+
+### 5.7 Widgets, controls and live surfaces
+
+The catalogue (66 designs, ids `HS-01` ... `WI-11`), the exact rule behind every figure and the platform mapping are [`../widgets/SPEC.md`](../widgets/SPEC.md); [`../widgets/README.md`](../widgets/README.md)
+maps the areas to files on both platforms. This section is the iOS contract.
+
+**Data (`PulseStrengthCore/Widgets/`, Foundation only, tested on Linux and macOS).**
+* `WidgetSnapshot` and its value types are generated (`WidgetSnapshot.generated.swift`, `WidgetSnapshotPreview.generated.swift`, from `widgets/tools/schema.py`, which also writes the Kotlin twin; the
+  CI job `widgets-contract` fails when a generated file is stale). Surfaces read nothing else. The live-surface fields of `WorkoutSnapshot` (`exerciseDoneSets`, `exerciseSetCount`, `moment`, `superset`, `plates`, `coachTip`, `finish`) are optional,
+  so content written by an older build still decodes.
+* `WidgetSnapshotBuilder.build(data:context:now:)` produces the snapshot (SPEC section 2). `WidgetContext` carries what the host adds: the weekly goal (1 to 7, default 4, a persisted setting of `StrengthSettings`), body weight,
+  readiness, training partners, the running `WorkoutSnapshot` and the time zone. `SnapshotBuilder.make` fills the live-moment fields (superset round, plate math, coach tip) and `prMoment(from:to:now:lifetime:)` / `finishBrief(from:savedToHealth:)`
+  build the record flash and the finish card (SPEC "Live moments").
+* `WidgetSnapshotStore`: `widget-snapshot.json` in the App Group directory (`directory(groupID:)`), `save` writes atomically, `loadForDisplay(now:)` rebuilds the parts that depend on the day when the file is older than midnight.
+* `WidgetCommandInbox` (`pending-commands.json`, at most 64 commands, none older than 10 minutes) and `PendingWidgetCommand`: where an extension leaves a workout command or a deep link for the app.
+* `StrengthDeepLink` parses `pulse-strength://workout | start-next | start?template=<uuid> | start-empty?name= | exercise/<id> | hub | plates | weight`.
+
+**App side (`PulseStrengthIOS/Services`, `StrengthAppEnvironment`).**
+* `WidgetPublisher` (a `WorkoutSideEffect`) rebuilds the snapshot after a change of the workout, the templates, the history or the weekly goal, coalesces bursts (300 ms), publishes heart-rate-only changes at most every 10 s, skips a write that equals the last one
+  except for its time stamp, writes it into the App Group and calls `WidgetCenter.reloadAllTimelines()` and `ControlCenter.reloadAllControls()`. `onPublish` feeds `WatchWidgetSnapshotSender`.
+* `WidgetCommandDrain` applies the inbox at launch, when the app becomes active and on the Darwin notification `StrengthConfig.commandInboxNotification`.
+* `LiveActivityManager` flashes a record on the Live Activity for four seconds and ends the activity with the finish card; `PlannedSessionManager` runs the second activity type (`PlannedSessionAttributes`) of LA-06: the countdown before a
+  planned session, and the notification at its start.
+
+**Intents (`Apps/Shared/Intents`; app and widget extension, except `PulseShortcuts.swift`, which is app only).**
+* `StrengthIntents.swift`: the Live Activity buttons (`LogSetIntent`, `NudgeSetIntent`, `AdjustRestIntent`, `SkipRestIntent`), `LiveActivityIntent`s that run in the app's process.
+* `ControlIntents.swift`: the controls' intents. Intents that change the workout (log next set, skip rest, pause / resume as a `SetValueIntent`) are `LiveActivityIntent`s; the ones that need the app (start next, plate calculator, finish) set `openAppWhenRun`
+  and leave a deep link. Nothing finishes a workout from outside the app: Finish opens the running workout, which asks for the confirmation.
+* `LiveMomentIntents.swift`: apply the coach tip, start or snooze a planned session, plan a session (with its `AppEntity`).
+* `PulseShortcuts.swift`: the App Shortcuts and `PrimaryActionIntent` for the Action button (log set while logging, skip rest while resting, start next otherwise); it is a `ForegroundContinuableIntent`, which extensions cannot use.
+* `WidgetIntentDispatch` is the one place an intent sends a command: through `WorkoutCommandBus` when it runs in the app, into the inbox (plus the Darwin notification) when it runs in an extension, and `openApp(_:origin:)` for links.
+  `WorkoutControlState` is the pure rule of what a control shows for a snapshot.
+
+**Views.**
+* `Apps/Shared/Widgets/Common`: `WidgetTheme` (tokens, adaptive colours, the container background), `WidgetText` / `NumberText` (the wording rules of SPEC), `WidgetShapes` (ring gauge, bar meter, pills), `SnapshotProvider` (timeline entry and provider:
+  an entry now, one at the end of a running rest, a reload after the next midnight).
+* `Home` (HS-01 ... HS-12, SB-01, SB-03, SB-04), `Lock` (LS-01 ... LS-11, accessory families), `Extras` (WI-01 ... WI-11), `Controls` (CT-01 ... CT-09) and `LiveActivity` (LA-01 ... LA-10, SB-02, the planned-session activity) each end in a bundle:
+  `HomeWidgetBundle`, `LockWidgetBundle`, `ExtrasWidgetBundle`, `ControlsBundle`, `LiveActivityBundle`. `PulseStrengthWidgets` lists them through `.body`, because a `WidgetBundle` is not itself a `Widget` and cannot be nested as a value.
+* `Watch` (WA-01 ... WA-10): `WatchWidgetBundle` in `PulseStrengthWatchWidgets`. The phone sends the Watch snapshot under the key `"w"` of the WatchConnectivity application context; `WatchWidgetSnapshotReceiver` (Watch app) stores it in the Watch's App Group
+  and reloads the widgets, which never talk to the phone themselves. Widget buttons are `WatchIntents.swift` intents that exist in the Watch app too.
+* Widgets that depend on the family or on the container background take it as an explicit value in tests (`familyOverride`, `HomeSurface`), because `widgetFamily` and `showsWidgetContainerBackground` are read-only in the SwiftUI environment.
+
+**Tests.** `Tests/PulseStrengthCoreTests` covers the builder rules (one test file per SPEC rule group), the live moments, the persisted fields behind them and the golden file `widgets/fixtures/golden-sample.json` (rewritten with
+`UPDATE_GOLDEN=1 swift test --filter WidgetSnapshotGoldenTests`, compared by the Kotlin core). `PulseStrengthWidgetSnapshotTests`, `PulseStrengthWatchWidgetSnapshotTests` and `PulseStrengthLiveSnapshotTests` draw every view that
+a widget, complication or Live Activity uses (light and dark, preview and empty data, the running-workout states) with `ImageRenderer` into `widget-*.png`, `watchwidget-*.png` and `live-*.png`, which the `visual` job uploads in
+`strength-screens`. These renders show layout, colour and wording; `ImageRenderer` neither draws the widget container background nor runs timers, so StandBy tinting, countdown text, buttons and the system's chrome are not covered.
+
