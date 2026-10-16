@@ -34,6 +34,9 @@ class StrengthAppEnvironment private constructor(
     /** Emits when something outside the UI (the deep link, a notification tap) asks to show the running workout. */
     val openWorkoutRequests: SharedFlow<Unit> = mutableOpenWorkoutRequests.asSharedFlow()
 
+    /** The screen that a widget, tile or notification link asked for; the root composable shows it and clears it. */
+    val hostRequests = HostRequests()
+
     /** Asks the UI to show the active workout (no effect without a workout in progress). */
     fun requestOpenWorkout() {
         mutableOpenWorkoutRequests.tryEmit(Unit)
