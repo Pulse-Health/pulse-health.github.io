@@ -42,6 +42,7 @@ import androidx.core.content.ContextCompat
 import health.pulse.strength.HostRequest
 import health.pulse.strength.StrengthAppEnvironment
 import health.pulse.strength.core.CompletedWorkout
+import health.pulse.strength.core.Exercise
 import health.pulse.strength.core.WorkoutTemplate
 import health.pulse.strength.ui.active.ActiveWorkoutScreen
 import health.pulse.strength.ui.active.LocalRestAlertsEnabled
@@ -116,8 +117,11 @@ fun PulseStrengthRoot(environment: StrengthAppEnvironment) {
     // The summary of the layer that is sliding out: kept so that the exit animation has something to draw.
     var lastSummary by remember { mutableStateOf<CompletedWorkout?>(null) }
     if (summary != null) lastSummary = summary
+    // The same for the exercise a widget or tile opened.
+    var lastDetail by remember { mutableStateOf<Exercise?>(null) }
+    if (detailExercise != null) lastDetail = detailExercise
     // Something covers the hub: it must neither animate, nor take touches, nor be reachable by a screen reader.
-    val hubCovered = showsActiveWorkout && hasWorkout || summary != null
+    val hubCovered = showsActiveWorkout && hasWorkout || summary != null || detailExercise != null
 
     Box(Modifier.fillMaxSize().background(PulseTheme.colors.ground)) {
         Column(Modifier.fillMaxSize()) {
@@ -160,10 +164,15 @@ fun PulseStrengthRoot(environment: StrengthAppEnvironment) {
             enter = slideInVertically { it / 6 } + fadeIn(),
             exit = slideOutVertically { it / 6 } + fadeOut(),
         ) {
-            val shown = detailExercise
+            val shown = detailExercise ?: lastDetail
             if (shown != null) {
-                BackHandler { detailExerciseID = null }
-                ExerciseDetailScreen(exercise = shown, store = environment.store, onBack = { detailExerciseID = null })
+                BackHandler(enabled = detailExercise != null) { detailExerciseID = null }
+                ExerciseDetailScreen(
+                    exercise = shown,
+                    store = environment.store,
+                    onBack = { detailExerciseID = null },
+                    modifier = Modifier.layerBehavior(title = "Exercise"),
+                )
             }
         }
 
