@@ -1,6 +1,7 @@
 package health.pulse.strength.wear.tiles
 
 import android.content.Context
+import androidx.core.content.edit
 import androidx.wear.protolayout.DeviceParametersBuilders.DeviceParameters
 import androidx.wear.protolayout.LayoutElementBuilders.LayoutElement
 import androidx.wear.protolayout.ResourceBuilders
@@ -34,7 +35,7 @@ class LiftTrendTile : PulseTileService() {
 
     override suspend fun onClick(action: String) {
         if (action == ACTION_NEXT_LIFT) {
-            prefs(applicationContext).edit().putInt(KEY_LIFT, selectedLift(applicationContext) + 1).apply()
+            prefs(applicationContext).edit { putInt(KEY_LIFT, selectedLift(applicationContext) + 1) }
         }
     }
 

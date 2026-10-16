@@ -4,6 +4,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.drawable.Icon
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.wear.protolayout.expression.DynamicBuilders.DynamicFloat
 import androidx.wear.protolayout.expression.DynamicBuilders.DynamicInstant
 import androidx.wear.watchface.complications.data.ComplicationData
@@ -136,26 +138,38 @@ internal class ComplicationFactory(context: Context) {
             .setMinimumTimeUnit(TimeUnit.SECONDS)
             .build()
         val description = described("Rest timer")
-        val elapsedNow = (state.totalSeconds - state.remainingSeconds).toFloat()
         return when (type) {
-            ComplicationType.RANGED_VALUE -> {
-                val remaining = DynamicInstant.platformTimeWithSecondsPrecision()
-                    .durationUntil(DynamicInstant.withSecondsPrecision(state.endsAt))
-                    .toIntSeconds()
-                    .asFloat()
-                val elapsed = DynamicFloat.constant(state.totalSeconds.toFloat()).minus(remaining)
-                RangedValueComplicationData.Builder(elapsed, elapsedNow, 0f, state.totalSeconds.toFloat(), description)
-                    .setText(countdown)
-                    .setTitle(plain(REST_TITLE))
-                    .setTapAction(tapAction(Tap.OPEN_APP))
-                    .build()
-            }
+            ComplicationType.RANGED_VALUE -> restGauge(state, description)
+                .setText(countdown)
+                .setTitle(plain(REST_TITLE))
+                .setTapAction(tapAction(Tap.OPEN_APP))
+                .build()
             else -> ShortTextComplicationData.Builder(countdown, description)
                 .setTitle(plain(REST_TITLE))
                 .setTapAction(tapAction(Tap.OPEN_APP))
                 .build()
         }
     }
+
+    private fun restGauge(state: RestContent.Counting, description: ComplicationText): RangedValueComplicationData.Builder =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) dynamicRestGauge(state, description) else staticRestGauge(state, description)
+
+    /** From Wear OS 4 (API 33) the watch face evaluates the elapsed seconds itself from the end time, so the gauge fills second by second. */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    internal fun dynamicRestGauge(state: RestContent.Counting, description: ComplicationText): RangedValueComplicationData.Builder {
+        val remaining = DynamicInstant.platformTimeWithSecondsPrecision()
+            .durationUntil(DynamicInstant.withSecondsPrecision(state.endsAt))
+            .toIntSeconds()
+            .asFloat()
+        val elapsed = DynamicFloat.constant(state.totalSeconds.toFloat()).minus(remaining)
+        return RangedValueComplicationData.Builder(elapsed, elapsedSeconds(state), 0f, state.totalSeconds.toFloat(), description)
+    }
+
+    /** Before Wear OS 4 the gauge shows the elapsed seconds as of this update (the digits of the countdown still tick). */
+    internal fun staticRestGauge(state: RestContent.Counting, description: ComplicationText): RangedValueComplicationData.Builder =
+        RangedValueComplicationData.Builder(elapsedSeconds(state), 0f, state.totalSeconds.toFloat(), description)
+
+    private fun elapsedSeconds(state: RestContent.Counting): Float = (state.totalSeconds - state.remainingSeconds).toFloat()
 
     private fun restOver(type: ComplicationType): ComplicationData =
         restPlain(type, REST_OVER, 1f, 1f, description = "Rest is over, the next set is due")

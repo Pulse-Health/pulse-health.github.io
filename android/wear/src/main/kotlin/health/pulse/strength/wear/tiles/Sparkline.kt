@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import androidx.core.graphics.createBitmap
 import java.io.ByteArrayOutputStream
 import kotlin.math.max
 
@@ -35,7 +36,7 @@ internal object Sparkline {
 
     /** The PNG of the line through [values], the record at [recordIndex] in gold; [density] scales the stroke and the dots. */
     fun png(values: List<Double>, recordIndex: Int?, widthPx: Int, heightPx: Int, density: Float): ByteArray {
-        val bitmap = Bitmap.createBitmap(max(widthPx, 1), max(heightPx, 1), Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(max(widthPx, 1), max(heightPx, 1))
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             strokeCap = Paint.Cap.ROUND

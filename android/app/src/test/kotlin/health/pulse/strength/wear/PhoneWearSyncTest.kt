@@ -11,6 +11,7 @@ import java.io.IOException
 import java.time.Instant
 import kotlin.test.assertFailsWith
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -101,6 +102,15 @@ class PhoneWearSyncTest {
         push(preview)
 
         assertThat(attempts).isEqualTo(1)
+        assertThat(written).hasSize(1)
+    }
+
+    @Test
+    fun aWriteThatNeverReturnsIsGivenUpAndTheNextRefreshWritesAgain() = runTest {
+        PhoneWearSync.push(preview) { awaitCancellation() }
+
+        push(preview)
+
         assertThat(written).hasSize(1)
     }
 

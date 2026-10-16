@@ -9,6 +9,7 @@ import androidx.wear.watchface.complications.data.ComplicationType
 import androidx.wear.watchface.complications.data.LongTextComplicationData
 import androidx.wear.watchface.complications.data.MonochromaticImageComplicationData
 import androidx.wear.watchface.complications.data.NoDataComplicationData
+import androidx.wear.watchface.complications.data.PlainComplicationText
 import androidx.wear.watchface.complications.data.RangedValueComplicationData
 import androidx.wear.watchface.complications.data.ShortTextComplicationData
 import androidx.wear.watchface.complications.data.SmallImageComplicationData
@@ -20,6 +21,7 @@ import health.pulse.strength.wear.WearFixtures
 import health.pulse.strength.wear.WearFixtures.now
 import health.pulse.strength.wear.WearMainActivity
 import health.pulse.strength.wear.data.WearView
+import health.pulse.strength.wear.model.RestContent
 import java.time.Instant
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -252,6 +254,23 @@ class ComplicationFactoryTest {
         assertThat(counting.value).isEqualTo(36f)
         assertThat(counting.min).isEqualTo(0f)
         assertThat(counting.max).isEqualTo(120f)
+    }
+
+    @Test
+    fun beforeWearOs4TheRestGaugeShowsTheElapsedTimeAsOfTheUpdate() {
+        val state = RestContent.Counting(
+            startedAt = now.minusSeconds(36),
+            endsAt = now.plusSeconds(84),
+            totalSeconds = 120,
+            remainingSeconds = 84,
+        )
+
+        val gauge = factory.staticRestGauge(state, PlainComplicationText.Builder("Rest timer").build()).build()
+
+        assertThat(gauge.dynamicValue).isNull()
+        assertThat(gauge.value).isEqualTo(36f)
+        assertThat(gauge.min).isEqualTo(0f)
+        assertThat(gauge.max).isEqualTo(120f)
     }
 
     @Test

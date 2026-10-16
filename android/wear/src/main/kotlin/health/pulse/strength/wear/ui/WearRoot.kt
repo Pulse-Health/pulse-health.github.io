@@ -14,6 +14,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.edit
 import health.pulse.strength.core.widgets.WidgetCommands
 import health.pulse.strength.wear.data.WearCommands
 import health.pulse.strength.wear.data.WearRuntime
@@ -100,7 +101,7 @@ private fun NotificationPermission(workoutRuns: Boolean) {
     }
     LaunchedEffect(workoutRuns) {
         if (workoutRuns && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !OngoingWorkout.mayNotify(context) && !asked(context)) {
-            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_NOTIFICATIONS_ASKED, true).apply()
+            context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean(KEY_NOTIFICATIONS_ASKED, true) }
             launcher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
