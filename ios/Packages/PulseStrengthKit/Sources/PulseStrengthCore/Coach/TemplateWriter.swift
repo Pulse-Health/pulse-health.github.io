@@ -7,10 +7,14 @@ import Foundation
 public struct CoachLine: Equatable, Sendable {
     public var headline: String
     public var detail: String?
+    /// True for a note about the past ("Last time: 140 kg × 5") rather than a target: a card must not put "Next time" in front of it,
+    /// and must not drop its explanation to save room.
+    public var isLookingBack: Bool
 
-    public init(headline: String, detail: String? = nil) {
+    public init(headline: String, detail: String? = nil, isLookingBack: Bool = false) {
         self.headline = headline
         self.detail = detail
+        self.isLookingBack = isLookingBack
     }
 
     /// "82.5 kg × 6. Two clean sessions at RIR 2 or more."
@@ -55,7 +59,10 @@ public enum TemplateWriter {
             guard let target = target(recommendation) else { return nil }
             // After a long break "stay" would be wrong: the person is not at that weight any more.
             if reasons.contains(.returningAfterBreak) {
-                return CoachLine(headline: "Last time: " + target, detail: "It has been a while since your last session, so ease back in.")
+                return CoachLine(
+                    headline: "Last time: " + target, detail: "It has been a while since your last session, so ease back in.",
+                    isLookingBack: true
+                )
             }
             return CoachLine(headline: "Stay at " + target, detail: holdDetail(reasons, minimumRIR: minimumRIR))
         }
@@ -68,7 +75,6 @@ public enum TemplateWriter {
     }
 
     private static func holdDetail(_ reasons: [ReasonCode], minimumRIR: String) -> String? {
-        if reasons.contains(.returningAfterBreak) { return "It has been a while since your last session, so ease back in." }
         if reasons.contains(.lastSessionNearFailure) { return "Last session ended close to failure." }
         if reasons.contains(.repsFellAtSameLoad) {
             if reasons.contains(.reduceExceedsCap) {

@@ -296,6 +296,12 @@ stronger, erased a genuinely heavier session whose sets agreed, ignored recency 
 hid recent training and the other day's weight reached Apply in a split's first sessions (now a plan check); "Stay at" was the wrong word
 after a layoff; the 28-day boundary flipped on the time of day; and the lighter week still fired for a typical beginner.
 
+A third review, of the second round, found five more, fixed the same way (`CoachThirdReviewTests`): a weight typo copied onto two sets by
+"add set" was kept as "agreeing" (now a magnitude cap and a cluster test); a lighter warm-up set made a beginner's real top set look like a
+typo (now compared only with sets at the same weight); the record tip was hidden for a coach line the plan check had removed; "Next time ·
+Last time: …"; and Apply was not idempotent when lowering a pyramid. Three rounds of mutation testing (about 500 single-site mutants of the
+changed lines) now leave only equivalent survivors.
+
 *Found, not fixed, because each is a policy decision for a qualified coach:*
 * **Light lifts only ever gain reps.** With a 7.5 % cap (5 % when the age is unknown) the 2 to 2.5 kg steps are "too big a jump" for
   barbells under 33 kg (50 kg), dumbbells under 27 kg (40 kg) and most isolation work; the target climbs to 30 reps and then holds, now with

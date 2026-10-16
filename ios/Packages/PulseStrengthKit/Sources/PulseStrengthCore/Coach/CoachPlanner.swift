@@ -36,7 +36,7 @@ extension ExerciseHistory {
     /// case and surrounding spaces; a name nobody has used leaves the history unchanged. When the newest session of this workout is
     /// more than `breakDays` older than the newest session of the lift in any workout, the lift has been trained since in another
     /// workout and the whole history is used, so a two-year-old "Chest day" cannot hide last week's training.
-    func scoped(toWorkoutNamed name: String?, minimum: Int = 2, breakDays: Int = 28) -> ExerciseHistory {
+    func scoped(toWorkoutNamed name: String?, now: Date, minimum: Int = 2, breakDays: Int = 28) -> ExerciseHistory {
         guard let name else { return self }
         let wanted = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !wanted.isEmpty else { return self }
@@ -44,8 +44,12 @@ extension ExerciseHistory {
             $0.workoutName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == wanted
         }
         guard matching.count >= minimum else { return self }
-        if let newestOfWorkout = matching.map({ $0.date }).max(), let newestOverall = sessions.map({ $0.date }).max(),
-           newestOverall.timeIntervalSince(newestOfWorkout) > Double(breakDays) * 86_400 {
+        // Dates the engine would ignore (not a number, or a day or more ahead of `now`) cannot decide which sessions are the newest.
+        func newest(_ rows: [ExerciseSession]) -> Date? {
+            rows.map { $0.date }.filter { $0.timeIntervalSinceReferenceDate.isFinite && $0.timeIntervalSince(now) <= 86_400 }.max()
+        }
+        if let newestOfWorkout = newest(matching), let newestOverall = newest(sessions),
+           newestOverall.timeIntervalSince(newestOfWorkout) > (Double(breakDays) + 0.5) * 86_400 {
             return self
         }
         var scoped = self
@@ -81,7 +85,7 @@ public enum CoachPlanner {
             guard seen.insert(id).inserted else { continue }
             let current = exercise(id) ?? entry.exercise
             let recommendation = ProgressionEngine.recommend(
-                for: current, history: history(id).scoped(toWorkoutNamed: template.name, breakDays: config.breakDays),
+                for: current, history: history(id).scoped(toWorkoutNamed: template.name, now: now, breakDays: config.breakDays),
                 audience: audience, config: config, now: now
             )
             guard let line = lineFor(recommendation, config: config) else { continue }
@@ -101,7 +105,8 @@ public enum CoachPlanner {
     }
 
     /// What the engine says about one exercise of the running workout, whatever the sets look like, or nil for an exercise without a
-    /// weight. The card uses it to decide whether the "beat your best" tip would contradict the coach.
+    /// weight, or when its weight is far from the planned one (see `nextTime`). The card uses it to decide whether the "beat your
+    /// best" tip would contradict a coach line that is, or would be, shown.
     public static func recommendation(
         for entry: WorkoutExercise,
         history: ExerciseHistory,
@@ -111,10 +116,12 @@ public enum CoachPlanner {
         now: Date
     ) -> Recommendation? {
         guard entry.exercise.tracksWeight else { return nil }
-        return ProgressionEngine.recommend(
-            for: entry.exercise, history: history.scoped(toWorkoutNamed: workoutName, breakDays: config.breakDays),
+        let recommendation = ProgressionEngine.recommend(
+            for: entry.exercise, history: history.scoped(toWorkoutNamed: workoutName, now: now, breakDays: config.breakDays),
             audience: audience, config: config, now: now
         )
+        let planned = entry.sets.filter { $0.type == .normal || $0.type == .failure }.map { $0.weightKg }.max() ?? 0
+        return fitsPlan(recommendation, plannedKg: planned, config: config) ? recommendation : nil
     }
 
     /// The suggestion for one exercise of the running workout, or nil when there is nothing useful to show.
@@ -124,8 +131,9 @@ public enum CoachPlanner {
     /// "Log RIR" hint and the note after a long break are shown without actions.
     ///
     /// Apply changes the **top group** of the pending sets: the sets at the heaviest pending weight, counting to-failure sets (the
-    /// engine judges the heaviest set) but changing only the `.normal` ones. Lighter back-off sets, pyramids and ramps keep what the
-    /// person planned, and warm-ups, drop sets and failure sets are never touched.
+    /// engine judges the heaviest set) but changing only the `.normal` ones. When the target is lighter than that group, the pending
+    /// `.normal` sets between the target and the group move down with it, so that a second tap has nothing left to change. Lighter
+    /// back-off sets, pyramids and ramps keep what the person planned, and warm-ups, drop sets and failure sets are never touched.
     public static func suggestion(
         for entry: WorkoutExercise,
         history: ExerciseHistory,
@@ -154,8 +162,10 @@ public enum CoachPlanner {
         let pending = entry.sets.filter { !$0.isDone && ($0.type == .normal || $0.type == .failure) }
         let topWeight = pending.map { $0.weightKg }.max() ?? 0
         guard fitsPlan(recommendation, plannedKg: topWeight, config: config) else { return nil }
+        // Raising the top group changes only that group; lowering it takes every normal set above the target down with it.
+        let floor = min(topWeight, weight) - 0.005
         var actions: [WorkoutAction] = []
-        for set in pending where set.type == .normal && abs(set.weightKg - topWeight) <= 0.005 {
+        for set in pending where set.type == .normal && set.weightKg >= floor {
             if abs(set.weightKg - weight) > 0.005 {
                 actions.append(.setWeight(exerciseID: entry.id, setID: set.id, kg: weight))
             }
@@ -177,6 +187,7 @@ public enum CoachPlanner {
     private static func fitsPlan(_ recommendation: Recommendation, plannedKg: Double, config: CoachConfig) -> Bool {
         guard let weight = recommendation.targetWeightKg, plannedKg > 0 else { return true }
         if recommendation.reasons.contains(.returningAfterBreak) { return true }
-        return abs(weight - plannedKg) <= config.maximumPlanDeviation * max(weight, plannedKg)
+        // The slack keeps a deviation of exactly the limit on paper (17.2 against 21.5 kg is 20 %) on the same side whatever rounding does.
+        return abs(weight - plannedKg) <= config.maximumPlanDeviation * max(weight, plannedKg) * (1 + 1e-9)
     }
 }

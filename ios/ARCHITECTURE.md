@@ -538,11 +538,14 @@ proposal records the decision not to use on-device models.
   *Typo guard.* Only the recent run of sessions (below) says what is typical. A set is a suspect when its estimated 1RM is more than
   `suspectRatio` (1.25, compared with a 1e-9 slack so an exact 1.25 on paper is never decided by rounding) times the median of the last
   six session bests **and** either more than that times the best of the next older session (so a lifter who climbs every session is
-  not mistaken for a typo) or more than that times the best of the other sets of its own session (a rep typo stands out from its
-  neighbours). Suspects are dropped, except that two or more of them making up at least half of a session agree with each other and
-  are kept (a beginner moving from the empty bar to a working weight has not made three identical typos). That needs three recent
-  sessions; with exactly two whose bests are further apart than `suspectRatio` the engine says nothing (`insufficientData`,
-  `suspectSetExcluded`) unless the higher session's sets agree with each other, because it cannot tell which one is right.
+  not mistaken for a typo) or more than that times the best of the other sets **at the same weight** in its own session (a rep typo
+  stands out from its neighbours; a lighter warm-up or ramp set is no evidence). Suspects are dropped, except suspects that *agree*:
+  one is kept when another suspect lies within `suspectRatio` of it and it is at most 3 times the typical best, and only if at least
+  two such suspects make up at least half of the session (a beginner moving from the empty bar to a working weight has not made three
+  identical typos; a weight typed ten times too large and copied onto the next set by "add set" is still a typo). That needs three
+  sessions of the run; with exactly two whose bests are further apart than `suspectRatio` the engine says nothing (`insufficientData`,
+  `suspectSetExcluded`) unless at least two sets of the higher session (at least half) lie within `suspectRatio` of its best and the
+  best is at most 3 times the other session's.
   *Rules, in this order:* an invalid `CoachConfig` (NaN or out-of-range caps), an audience that avoids the muscle, an exercise that is
   not weight x reps, or fewer than two valid sessions → `insufficientData` (nothing is shown); more than `breakDays` since the last
   session (or a date that is not a number) → `hold` (`returningAfterBreak`); `breakDays` carries half a day of slack, so four weeks to
@@ -575,8 +578,12 @@ proposal records the decision not to use on-device models.
   long break the card shows "Last time: 140 kg × 5 … ease back in" without an Apply button, whatever the plan says.
   `CoachPlanner.recommendation(for:...)` returns the engine's answer for an exercise even when there is nothing to apply; the card uses it
   to keep the record tip away while the coach has named a weight (after "Apply", or when the plan already is the target). The history
-  is scoped to the workout's name only when at least two sessions carry the name and the newest of them is within `breakDays` of the
-  newest session of the lift in any workout.
+  is scoped to the workout's name only when at least two sessions carry the name and the newest of them is within `breakDays` (plus half
+  a day) of the newest session of the lift in any workout, dates the engine ignores (not a number, a day or more ahead) not counted.
+  Applying is idempotent: when the target is lighter than the top group, the pending `.normal` sets between the target and the group
+  move down with it. The recommendation is gated by the plan check too, so the tip is only kept away while a coach line is, or
+  would be, shown. The break note ("Last time: …", `CoachLine.isLookingBack`) has no "Next time ·" in front and always keeps its
+  explanation.
 * **`HubNoteBuilder.message(template:exercise:recovery:audience:includeTarget:)`**: the hub card's coach note, moved out of
   `StrengthHubView` (it had no test). The readiness sentence is built only when `recovery` is non-nil (the hub passes nil while
   `WorkoutController.isUsingDemoRecovery`) and never names a muscle the person avoids. The "Aim for" sentence is the old record chase: it
@@ -597,7 +604,7 @@ proposal records the decision not to use on-device models.
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
-  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 965 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 988 (the controller and
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 999 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 1022 (the controller and
   store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
   phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
   40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice. `SyncHardeningTests.swift` holds one

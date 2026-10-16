@@ -398,11 +398,11 @@ final class CoachMutationRound3Tests: XCTestCase {
             session(3, 80, name: "  Upper A "), session(10, 80, name: "Upper A"),
             session(17, 80, name: "Upper A2"), session(24, 80, name: "Push"),
         ]
-        XCTAssertEqual(history(padded).scoped(toWorkoutNamed: "upper a").sessions.count, 2)
+        XCTAssertEqual(history(padded).scoped(toWorkoutNamed: "upper a", now: now).sessions.count, 2)
 
         let blanks = [session(3, 80, name: ""), session(10, 80, name: "   "), session(17, 80, name: "Push")]
-        XCTAssertEqual(history(blanks).scoped(toWorkoutNamed: "  ").sessions.count, 3)
-        XCTAssertEqual(history(blanks).scoped(toWorkoutNamed: "").sessions.count, 3)
+        XCTAssertEqual(history(blanks).scoped(toWorkoutNamed: "  ", now: now).sessions.count, 3)
+        XCTAssertEqual(history(blanks).scoped(toWorkoutNamed: "", now: now).sessions.count, 3)
     }
 
     // MARK: Hub note

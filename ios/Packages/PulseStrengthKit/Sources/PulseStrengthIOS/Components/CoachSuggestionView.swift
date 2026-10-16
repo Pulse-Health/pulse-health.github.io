@@ -47,11 +47,13 @@ struct CoachSuggestionView: View {
         )
     }
 
-    private var showsDetail: Bool { !(isCompact && !canApply) }
+    /// A note about the past ("Last time: …") always keeps its explanation; a note without a button drops it when space is short.
+    private var showsDetail: Bool { line.isLookingBack || !(isCompact && !canApply) }
 
     private var texts: some View {
         VStack(alignment: .leading, spacing: 2) {
-            let title: Text = Text("Next time · ").fontWeight(.semibold) + Text(verbatim: line.headline).fontWeight(.semibold)
+            let lead = line.isLookingBack ? "" : "Next time · "
+            let title: Text = Text(verbatim: lead).fontWeight(.semibold) + Text(verbatim: line.headline).fontWeight(.semibold)
             title
                 .font(.system(size: textSize))
                 .foregroundStyle(PulseTheme.ink)

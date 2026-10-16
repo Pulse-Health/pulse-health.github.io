@@ -105,11 +105,11 @@ final class CoachReviewFixTests: XCTestCase {
 
     func testAWorkoutNameWithTooFewSessionsFallsBackToTheWholeHistory() {
         let sessions = [session(3, 80, name: "Upper A"), session(10, 80, name: "Push day")]
-        XCTAssertEqual(history(sessions).scoped(toWorkoutNamed: "Upper A").sessions.count, 2)
-        XCTAssertEqual(history(sessions).scoped(toWorkoutNamed: nil).sessions.count, 2)
-        XCTAssertEqual(history(sessions).scoped(toWorkoutNamed: "  ").sessions.count, 2)
+        XCTAssertEqual(history(sessions).scoped(toWorkoutNamed: "Upper A", now: now).sessions.count, 2)
+        XCTAssertEqual(history(sessions).scoped(toWorkoutNamed: nil, now: now).sessions.count, 2)
+        XCTAssertEqual(history(sessions).scoped(toWorkoutNamed: "  ", now: now).sessions.count, 2)
         let more = sessions + [session(17, 80, name: "UPPER A")]
-        XCTAssertEqual(history(more).scoped(toWorkoutNamed: "upper a").sessions.count, 2)
+        XCTAssertEqual(history(more).scoped(toWorkoutNamed: "upper a", now: now).sessions.count, 2)
     }
 
     // MARK: Sessions must be close enough in time to count together

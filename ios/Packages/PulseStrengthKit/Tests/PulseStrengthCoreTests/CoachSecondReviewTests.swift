@@ -165,8 +165,8 @@ final class CoachSecondReviewTests: XCTestCase {
         let recent = (0..<8).map { session(3 + $0 * 7, 90 - Double($0) * 2.5, name: "Push A") }
         let stale = [session(210, 60, name: "Chest day"), session(217, 60, name: "Chest day")]
         let all = history(recent + stale)
-        XCTAssertEqual(all.scoped(toWorkoutNamed: "Chest day").sessions.count, 10, "falls back to everything")
-        XCTAssertEqual(all.scoped(toWorkoutNamed: "Push A").sessions.count, 8)
+        XCTAssertEqual(all.scoped(toWorkoutNamed: "Chest day", now: now).sessions.count, 10, "falls back to everything")
+        XCTAssertEqual(all.scoped(toWorkoutNamed: "Push A", now: now).sessions.count, 8)
 
         let plan = entry(bench, [LoggedSet(weightKg: 90, reps: 6), LoggedSet(weightKg: 90, reps: 6)])
         let note = CoachPlanner.suggestion(for: plan, history: all, workoutName: "Chest day", audience: .adult, now: now)

@@ -30,6 +30,10 @@ public enum ProgressionEngine {
     /// the same side whatever floating point does to it.
     private static let ratioEpsilon = 1e-9
 
+    /// Suspects that agree with each other are only kept up to this multiple of the typical best (or of the other session's best): a
+    /// beginner can triple the weight from the bar, a factor of ten is never real.
+    private static let agreeingLimit = 3.0
+
     /// Half a day of slack on the break length: four weeks to the hour is still four weeks, whatever time of day the person trains
     /// or the clocks do.
     private static let breakTolerance = 0.5
@@ -230,18 +234,22 @@ public enum ProgressionEngine {
     }
 
     /// Working-set summaries, newest first, after dropping sets that are far above the lifter's recent best (a typo such as 6 reps
-    /// entered as 16).
+    /// entered as 16, or 1000 kg for 100).
     ///
     /// Only the **recent run** (the newest sessions with no gap longer than `breakDays` between neighbours) says what is typical; a
     /// session from last year is no reference for this month. A set is a suspect when its estimated 1RM is more than `suspectRatio`
     /// times the median of the last six session bests of the run **and** either more than that times the best of the next older
     /// session (a lifter who really gets stronger every session is not a typo: each step is small, only the median lags behind) or
-    /// more than that times the best of the other sets of its own session (a rep typo stands out from its neighbours). Suspects are
-    /// dropped, except that two or more of them that make up at least half of a session's sets agree with each other and are kept: a
-    /// beginner who moves from the empty bar to a working weight has not made three identical typos.
+    /// more than that times the best of the other sets **at the same weight** in its own session (a rep typo stands out from its
+    /// neighbours; a lighter warm-up or ramp set is no evidence). Suspects are dropped, except suspects that **agree** with each other:
+    /// a suspect is kept when another suspect lies within `suspectRatio` of it and it is no more than `agreeingLimit` times the
+    /// reference, and only if at least two such suspects make up at least half of the session. A beginner who moves from the empty bar
+    /// to a working weight has not made three identical typos, but a weight typed ten times too large and copied onto the next set by
+    /// "add set" is still a typo.
     ///
     /// Three sessions of the run are needed to know what "typical" is. With exactly two whose bests are further apart than
-    /// `suspectRatio`, nothing can be dropped, so unless the higher session's sets agree with each other the pair is reported as an
+    /// `suspectRatio`, nothing can be dropped, so unless at least two sets of the higher session (and at least half of them) lie within
+    /// `suspectRatio` of its best, and the best is no more than `agreeingLimit` times the other session's, the pair is reported as an
     /// `unresolvedJump` and the engine stays silent.
     private static func prepare(
         _ input: [ExerciseSession], _ config: CoachConfig, now: Date
@@ -280,18 +288,24 @@ public enum ProgressionEngine {
         let typicalBests = window.filter { $0 > 0 }
         let reference: Double? = typicalBests.count >= 3 ? median(typicalBests) : nil
 
-        /// Sets of session `index` that are above `limit`, as flags.
-        func above(_ limit: Double, in index: Int) -> [Bool] { values[index].map { $0 > limit } }
-        /// Several suspects that make up at least half of the session agree with each other, so they are not typos.
-        func corroborated(_ flags: [Bool]) -> Bool {
-            let count = flags.filter { $0 }.count
-            return count >= 2 && count * 2 >= flags.count
+        /// Two or more sets, at least half of the session, that agree with each other (each within `ratio` of another) and are not
+        /// absurdly far above `base`.
+        func agreeing(_ indices: [Int], in index: Int, base: Double) -> Set<Int> {
+            let limit = agreeingLimit * base
+            let kept = indices.filter { candidate in
+                values[index][candidate] <= limit && indices.contains { other in
+                    other != candidate && within(ratio, values[index][candidate], values[index][other])
+                }
+            }
+            return kept.count >= 2 && kept.count * 2 >= working[index].count ? Set(kept) : []
         }
 
         var unresolved = false
         if typicalBests.count == 2, let high = typicalBests.max(), let low = typicalBests.min(), high > ratio * low,
            let highIndex = window.firstIndex(of: high) {
-            unresolved = !corroborated(above(ratio * low, in: highIndex))
+            // Agreement is judged on the higher session: the sets within `ratio` of its best.
+            let cluster = values[highIndex].indices.filter { values[highIndex][$0] * ratio >= high }
+            unresolved = agreeing(cluster, in: highIndex, base: low).isEmpty
         }
 
         var excluded = 0
@@ -300,20 +314,19 @@ public enum ProgressionEngine {
             var kept = sets
             if let reference, reference > 0, index < runEnd {
                 let older = index + 1 < runEnd ? bests[index + 1] : 0
-                var flags: [Bool] = []
-                for (position, value) in values[index].enumerated() {
-                    var suspect = false
-                    if value > ratio * reference {
-                        let jumpedFromOlder = older <= 0 || value > ratio * older
-                        let others = values[index].enumerated().filter { $0.offset != position }.map { $0.element }
-                        let standsOut = (others.max()).map { value > ratio * $0 } ?? false
-                        suspect = jumpedFromOlder || standsOut
+                var suspects: [Int] = []
+                for position in sets.indices {
+                    let value = values[index][position]
+                    guard value > ratio * reference else { continue }
+                    let jumpedFromOlder = value > ratio * older
+                    let sameWeight = sets.indices.filter {
+                        $0 != position && abs(sets[$0].weightKg - sets[position].weightKg) <= sameWeightTolerance
                     }
-                    flags.append(suspect)
+                    let standsOut = (sameWeight.map { values[index][$0] }.max()).map { value > ratio * $0 } ?? false
+                    if jumpedFromOlder || standsOut { suspects.append(position) }
                 }
-                if !corroborated(flags) {
-                    kept = zip(sets, flags).filter { !$0.1 }.map { $0.0 }
-                }
+                let agreed = agreeing(suspects, in: index, base: reference)
+                kept = sets.indices.filter { !suspects.contains($0) || agreed.contains($0) }.map { sets[$0] }
                 excluded += sets.count - kept.count
             }
             if let summary = summarise(kept, date: sessions[index].date, config: config) {
@@ -321,6 +334,11 @@ public enum ProgressionEngine {
             }
         }
         return (result, excluded, unresolved)
+    }
+
+    /// Whether two positive values are within `ratio` of each other.
+    private static func within(_ ratio: Double, _ lhs: Double, _ rhs: Double) -> Bool {
+        max(lhs, rhs) <= ratio * min(lhs, rhs)
     }
 
     private static func summarise(_ sets: [CompletedSet], date: Date, config: CoachConfig) -> Summary? {
