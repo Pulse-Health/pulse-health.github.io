@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Each owner adds only inside its own marked region (see widgets/SPEC.md section 6). -->
+
+    <!-- ==== permissions-host:begin ==== -->
+    <!-- ==== permissions-host:end ==== -->
+
+    <!-- ==== permissions-system:begin ==== -->
+    <!-- ==== permissions-system:end ==== -->
+
+    <!-- ==== permissions-wear:begin ==== -->
+    <!-- ==== permissions-wear:end ==== -->
+
+    <application
+        android:name=".PulseApp"
+        android:allowBackup="false"
+        android:label="@string/app_name"
+        android:supportsRtl="true">
+
+        <!-- ==== host:begin (activities, deep links, application metadata) ==== -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- ==== host:end ==== -->
+
+        <!-- ==== glance-home:begin ==== -->
+        <!-- ==== glance-home:end ==== -->
+
+        <!-- ==== glance-extras:begin ==== -->
+        <!-- ==== glance-extras:end ==== -->
+
+        <!-- ==== system:begin (service, receivers, tile services, shortcuts activity) ==== -->
+        <!-- ==== system:end ==== -->
+
+        <!-- ==== wear:begin (Data Layer listener service) ==== -->
+        <!-- ==== wear:end ==== -->
+
+    </application>
+</manifest>

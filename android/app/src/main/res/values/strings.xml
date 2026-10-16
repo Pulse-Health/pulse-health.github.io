@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pulse Strength</string>
+
+    <!-- ==== strings-host:begin ==== -->
+    <!-- ==== strings-host:end ==== -->
+
+    <!-- ==== strings-glance-home:begin ==== -->
+    <!-- ==== strings-glance-home:end ==== -->
+
+    <!-- ==== strings-glance-extras:begin ==== -->
+    <!-- ==== strings-glance-extras:end ==== -->
+
+    <!-- ==== strings-system:begin ==== -->
+    <!-- ==== strings-system:end ==== -->
+
+    <!-- ==== strings-wear:begin ==== -->
+    <!-- ==== strings-wear:end ==== -->
+</resources>

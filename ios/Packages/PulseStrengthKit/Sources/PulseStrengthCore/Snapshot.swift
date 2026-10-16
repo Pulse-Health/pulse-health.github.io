@@ -62,6 +62,22 @@ public struct WorkoutSnapshot: Codable, Hashable, Sendable {
     public var nextSetText: String
     public var nextExerciseName: String?
 
+    // MARK: Live moments and context (all optional: an older payload without them still decodes)
+
+    /// Sets of the shown exercise that are logged / in total (the "set dots" of the compact Dynamic Island).
+    public var exerciseDoneSets: Int?
+    public var exerciseSetCount: Int?
+    /// A personal record that was just logged; cleared by an update at `PRMoment.expiresAt`.
+    public var moment: PRMoment?
+    /// The running superset, nil when the shown exercise is not in one.
+    public var superset: SupersetBrief?
+    /// Plates for the target set; nil unless the target is a barbell weight exercise.
+    public var plates: PlateBrief?
+    /// A one-tap suggestion shown while resting (reps in reserve of the last set were high).
+    public var coachTip: CoachTipBrief?
+    /// Set on the final content of a finished workout (the Live Activity stays on the Lock Screen for a while).
+    public var finish: FinishBrief?
+
     public init(
         workoutID: UUID,
         revision: Int,
@@ -90,7 +106,14 @@ public struct WorkoutSnapshot: Codable, Hashable, Sendable {
         loggedSets: Int,
         totalSets: Int,
         nextSetText: String,
-        nextExerciseName: String? = nil
+        nextExerciseName: String? = nil,
+        exerciseDoneSets: Int? = nil,
+        exerciseSetCount: Int? = nil,
+        moment: PRMoment? = nil,
+        superset: SupersetBrief? = nil,
+        plates: PlateBrief? = nil,
+        coachTip: CoachTipBrief? = nil,
+        finish: FinishBrief? = nil
     ) {
         self.workoutID = workoutID
         self.revision = revision
@@ -120,6 +143,13 @@ public struct WorkoutSnapshot: Codable, Hashable, Sendable {
         self.totalSets = totalSets
         self.nextSetText = nextSetText
         self.nextExerciseName = nextExerciseName
+        self.exerciseDoneSets = exerciseDoneSets
+        self.exerciseSetCount = exerciseSetCount
+        self.moment = moment
+        self.superset = superset
+        self.plates = plates
+        self.coachTip = coachTip
+        self.finish = finish
     }
 }
 

@@ -1,0 +1,14 @@
+# Gradle / Android Studio
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+*.apk
+*.aab
+# Keystores and secrets never belong in this repository
+*.jks
+*.keystore
+keystore.properties
