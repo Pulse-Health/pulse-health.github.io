@@ -45,6 +45,16 @@
             text-align: left;
         }
         th { background: #f5f5f5; }
+
+        /* Small screens: a wide table scrolls sideways inside the page (words stay whole) instead of stretching the page. */
+        h1, h2, h3 { overflow-wrap: anywhere; }
+        @media (max-width: 1100px) {
+            table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            th, td { padding: 8px; }
+        }
+        @media (max-width: 720px) {
+            .container { padding: 24px 14px; }
+        }
     </style>
 </head>
 <body>
@@ -603,6 +613,9 @@
             <li><strong>Right to Data Portability (Art. 20):</strong> Export your data</li>
             <li><strong>Right to Rectification (Art. 16):</strong> Edit your data</li>
             <li><strong>Right to Object (Art. 21):</strong> Object to processing</li>
+            <li><strong>Right to Restriction of Processing (Art. 18):</strong> Ask that the processing of your data is restricted, e.g. while we check its accuracy</li>
+            <li><strong>Right to Withdraw Consent (Art. 7(3)):</strong> You can withdraw any consent you gave (for example to AI coaching or to the processing of health data) at any time with effect for the future; the lawfulness of the processing before the withdrawal is not affected</li>
+            <li><strong>Right to Lodge a Complaint (Art. 77):</strong> You can complain to a supervisory authority, see Section 12</li>
         </ul>
         <p>To exercise these rights, contact: <a class="js-contact-email-link"></a><noscript>robin.juengerich@icloud.com</noscript></p>
 
