@@ -82,7 +82,7 @@ class WorkoutEngine(
             val made = WorkoutFactory.makeWorkout(template, now)
             made.copy(exercises = made.exercises.map { it.copy(exercise = refreshed(it.exercise)) })
         } else {
-            val trimmed = name?.trim() ?: ""
+            val trimmed = name?.trimmedFoundation() ?: ""
             WorkoutFactory.makeEmpty(if (trimmed.isEmpty()) StrengthConfig.defaultWorkoutName else trimmed, now)
         }
         state = started

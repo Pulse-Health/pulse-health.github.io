@@ -3,7 +3,7 @@
 # The app has no reflection of its own. The only thing R8 cannot see through is kotlinx.serialization: the generated serializers of the
 # workout data classes are looked up by name through `Companion.serializer()` / `$$serializer`, so they are kept.
 
--keepattributes *Annotation*, InnerClasses, Signature, RuntimeVisibleAnnotations
+-keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature, RuntimeVisibleAnnotations
 -dontnote kotlinx.serialization.AnnotationsKt
 
 # kotlinx.serialization.json
