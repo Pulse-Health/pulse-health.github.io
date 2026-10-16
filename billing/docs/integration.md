@@ -6,6 +6,12 @@ connect, found by reading it on 2026-10-16.
 
 ## Backend
 
+Status of the Pulse backend as reported by the Railway migration session on 2026-10-16: the API gateway (Deno, `Deno.serve`, no framework,
+`railway/api/` in `RobinJue/pulse`, draft PR RobinJue/pulse#6) and Postgres 17 run on Railway in EU West, **production still runs on
+Supabase until the switch-over**, so do not point a released app build at the Railway URLs yet. Billing runs as its own Railway service
+next to the gateway and reuses its conventions: variables are Railway service variables (`${{shared.NAME}}` / `${{Service.NAME}}`
+references), `CLERK_ISSUER` is the one Clerk variable, and migrations are timestamped files in `supabase/migrations/`.
+
 1. Add `billing/server/migrations/001_billing.sql` and `002_premium_access_link.sql` to the Pulse migrations
    (`supabase/migrations/YYYYMMDDHHMMSS_*.sql`) or let the billing service apply them itself (`BILLING_RUN_MIGRATIONS=true`).
    `002` adds `external_ref` and a partial unique index to `user_premium_access`; it changes nothing else of that table.

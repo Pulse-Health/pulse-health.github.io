@@ -32,7 +32,8 @@ Do everything in **Stripe test mode** first. Nothing here needs a code change; i
 
 ## 2. Clerk
 
-* `CLERK_JWKS_URL` = `https://<your Frontend API>/.well-known/jwks.json`, `CLERK_ISSUER` = `https://<your Frontend API>`.
+* `CLERK_ISSUER` = `https://<your Frontend API>` (on Railway reference the one the `api` service already has). The keys are read from
+  `<issuer>/.well-known/jwks.json` and the token's `iss` must equal the issuer; `CLERK_JWKS_URL` overrides the key location.
 * **Email in the session token** (so Stripe can send receipts and invoices): Dashboard → Sessions → Customize session token →
   `{ "email": "{{user.primary_email_address}}" }`. The server uses it only when the Stripe customer is created. Without the
   claim everything works except that Stripe has no address to send to.
@@ -43,7 +44,7 @@ Do everything in **Stripe test mode** first. Nothing here needs a code change; i
 1. In the Railway project (EU West), **New service → GitHub repo**, root directory `billing/server`. `railway.json` sets the build
    and start commands and the `/healthz` check. Give it a public domain.
 2. Variables (see `billing/server/.env.example`): `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`,
-   `CLERK_JWKS_URL`, `CLERK_ISSUER`, `DATABASE_URL` (reference the Postgres service; **the owner role**, so it can write the
+   `CLERK_ISSUER`, `DATABASE_URL` (reference the Postgres service; **the owner role**, so it can write the
    Pulse tables despite row-level security), `BILLING_PORTAL_RETURN_URLS` (e.g. `pulse://` for the app's URL scheme), and
    `BILLING_PURCHASE_COUNTRIES_IOS` / `_ANDROID` (leave at `US` until you have read `store-policy.md`).
 3. On start the service applies `migrations/001` (billing tables) and `002` (the `external_ref` column on `user_premium_access`);

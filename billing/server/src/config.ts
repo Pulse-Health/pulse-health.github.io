@@ -58,10 +58,12 @@ const EnvSchema = z.object({
   /** Allowed `returnUrl` values for the customer portal: exact URLs or prefixes such as `pulse://`. */
   BILLING_PORTAL_RETURN_URLS: z.string().default(''),
 
-  /** Clerk: JWKS of your instance, e.g. https://<frontend-api>/.well-known/jwks.json */
-  CLERK_JWKS_URL: z.string().url(),
-  /** Optional but recommended: the `iss` claim, i.e. your Clerk Frontend API URL. */
-  CLERK_ISSUER: z.string().optional(),
+  /**
+   * Clerk. `CLERK_ISSUER` (your Frontend API URL, the same variable the Pulse API gateway uses) is enough: the keys are read from
+   * `<issuer>/.well-known/jwks.json` and the token's `iss` must equal it. `CLERK_JWKS_URL` overrides the key location.
+   */
+  CLERK_ISSUER: z.string().url().optional(),
+  CLERK_JWKS_URL: z.string().url().optional(),
   /** Optional: allowed `azp` values for tokens that carry one (web origins). Native tokens have none. */
   CLERK_AUTHORIZED_PARTIES: z.string().default(''),
 
@@ -112,6 +114,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     throw new Error(`Invalid billing configuration: ${problems}`);
   }
   const e = parsed.data;
+  // Clerk's `iss` has no trailing slash; accept one in the variable anyway.
+  const issuer = e.CLERK_ISSUER ? e.CLERK_ISSUER.replace(/\/+$/, '') : null;
+  const jwksUrl = e.CLERK_JWKS_URL ?? (issuer ? `${issuer}/.well-known/jwks.json` : null);
+  if (!jwksUrl) throw new Error('Invalid billing configuration: set CLERK_ISSUER (your Clerk Frontend API URL) or CLERK_JWKS_URL');
   return {
     billing: {
       stripeSecretKey: e.STRIPE_SECRET_KEY,
@@ -132,8 +138,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       pastDueGraceDays: e.BILLING_PAST_DUE_GRACE_DAYS,
       portalReturnUrls: csv(e.BILLING_PORTAL_RETURN_URLS),
     },
-    clerkJwksUrl: e.CLERK_JWKS_URL,
-    clerkIssuer: e.CLERK_ISSUER || null,
+    clerkJwksUrl: jwksUrl,
+    clerkIssuer: issuer,
     clerkAuthorizedParties: csv(e.CLERK_AUTHORIZED_PARTIES),
     databaseUrl: e.DATABASE_URL,
     port: e.PORT,
