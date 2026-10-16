@@ -9,6 +9,7 @@
 #   PulseStrength          iOS app (embeds the widget extension and the Watch app)
 #   PulseStrengthWidgets   widget extension that hosts the Live Activity (Lock Screen + Dynamic Island)
 #   PulseStrengthWatch     watchOS 10 single-target app (embedded in the iOS app through "Embed Watch Content")
+#   PulseStrengthWatchWidgets   watchOS widget extension: the Apple Watch complications and Smart Stack cards (embedded in the Watch app)
 #
 # Visual test targets (the `visual` job of .github/workflows/strength-ios.yml; they write screenshots, see README.md,
 # "Screenshots in CI"). They are in their own schemes only, so the app, widget and Watch schemes above never build them:
@@ -131,11 +132,15 @@ targets:
     platform: watchOS
     sources:
       - path: Apps/PulseStrengthWatch
+      # The Watch widgets' buttons are App Intents that must also exist in the Watch app (the extension leaves the request in the inbox).
+      - path: Apps/Shared/Widgets/Watch/WatchIntents.swift
     dependencies:
       - package: PulseStrengthKit
         product: PulseStrengthCore
       - package: PulseStrengthKit
         product: PulseStrengthWatchUI
+      # Embedded automatically ("Embed Foundation Extensions").
+      - target: PulseStrengthWatchWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).watchkitapp
@@ -145,6 +150,26 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "4"
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+        SKIP_INSTALL: "YES"
+
+  # ---------------------------------------------------------------------------------------------------------------
+  PulseStrengthWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - path: Apps/PulseStrengthWatchWidgets
+      # The shared widget helpers (theme, shapes, text) and the Watch widgets of widgets/SPEC.md.
+      - path: Apps/Shared/Widgets/Common
+      - path: Apps/Shared/Widgets/Watch
+    dependencies:
+      - package: PulseStrengthKit
+        product: PulseStrengthCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).watchkitapp.widgets
+        INFOPLIST_FILE: Apps/PulseStrengthWatchWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Apps/PulseStrengthWatchWidgets/PulseStrengthWatchWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "4"
         SKIP_INSTALL: "YES"
 
   # ---------------------------------------------------------------------------------------------------------------

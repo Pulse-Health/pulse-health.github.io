@@ -87,6 +87,10 @@ public final class StrengthAppEnvironment: ObservableObject {
             directory: WidgetSnapshotStore.directory(),
             providers: WidgetPublisher.Providers(weeklyGoal: { store.weeklyGoal })
         )
+        // The Watch widgets read the same snapshot, which travels to the Watch with the next application context.
+        publisher.onPublish = { (snapshot: WidgetSnapshot) in
+            WatchWidgetSnapshotSender.shared.update(snapshot)
+        }
         controller.addEffect(publisher)
         let environment = StrengthAppEnvironment(
             persistence: persistence,

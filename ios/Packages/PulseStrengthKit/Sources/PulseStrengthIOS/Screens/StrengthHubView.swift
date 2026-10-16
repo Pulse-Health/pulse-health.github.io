@@ -1871,6 +1871,7 @@ private struct HubTemplateDetailView: View {
     let onStart: (WorkoutTemplate) -> Void
     let onResume: () -> Void
     @State var showsEditor = false
+    @State var showsPlanner = false
     @State var showsBusyAlert = false
 
     init(
@@ -1897,7 +1898,13 @@ private struct HubTemplateDetailView: View {
             .navigationTitle(template?.name ?? "Template")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button {
+                        showsPlanner = true
+                    } label: {
+                        Label("Plan a session", systemImage: "calendar.badge.clock")
+                    }
+                    .disabled(template == nil)
                     Button("Edit") {
                         showsEditor = true
                     }
@@ -1906,6 +1913,11 @@ private struct HubTemplateDetailView: View {
             }
             .sheet(isPresented: $showsEditor) {
                 HubTemplateEditorSheet(store: store, template: template)
+            }
+            .sheet(isPresented: $showsPlanner) {
+                if let template = template {
+                    PlanSessionSheet(template: template)
+                }
             }
             .alert("Workout in progress", isPresented: $showsBusyAlert) {
                 Button("Resume") {
