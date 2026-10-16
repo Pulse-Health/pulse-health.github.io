@@ -91,7 +91,7 @@ private extension WorkoutReducer {
             guard !overflow else { return }
             moveExercise(&s, from: k, to: target)
         case let .replaceExercise(exerciseID, replacement):
-            replaceExercise(&s, exerciseID: exerciseID, with: replacement)
+            replaceExercise(&s, exerciseID: exerciseID, with: replacement, now: now)
         case let .toggleSuperset(exerciseID):
             toggleSuperset(&s, exerciseID: exerciseID)
         case let .setRest(exerciseID, seconds):
@@ -319,7 +319,7 @@ private extension WorkoutReducer {
         if let index = s.exercises.firstIndex(where: { $0.id == currentID }) { s.currentIndex = index }
     }
 
-    static func replaceExercise(_ s: inout WorkoutState, exerciseID: UUID, with replacement: Exercise) {
+    static func replaceExercise(_ s: inout WorkoutState, exerciseID: UUID, with replacement: Exercise, now: Date) {
         guard let k = s.exerciseIndex(id: exerciseID) else { return }
         let old = s.exercises[k]
         s.exercises[k] = makeEntry(for: replacement, id: old.id, group: old.supersetGroup, templateEntryID: old.templateEntryID)
@@ -327,6 +327,15 @@ private extension WorkoutReducer {
         // A deleted set of the old exercise no longer fits the new one.
         if let undo = s.undo, case let .set(undoExerciseID, _, _) = undo.payload, undoExerciseID == old.id {
             s.undo = nil
+        }
+        // Replacing throws away what was logged on the old exercise (and its note): keep it restorable for a few seconds. An exercise
+        // with nothing logged and no note loses nothing, so it leaves a pending undo of something else alone.
+        if old.sets.contains(where: { $0.isDone }) || !old.note.isEmpty {
+            s.undo = UndoEntry(
+                payload: .replaced(exercise: old),
+                title: "Replaced " + old.exercise.name,
+                expiresAt: now.addingTimeInterval(undoWindow)
+            )
         }
     }
 
@@ -420,6 +429,11 @@ private extension WorkoutReducer {
                   !s.exercises.contains(where: { $0.sets.contains(where: { $0.id == set.id }) }) else { return }
             let at = max(0, min(index, s.exercises[k].sets.count))
             s.exercises[k].sets.insert(set, at: at)
+        case let .replaced(original):
+            // The replacement carries the entry id of the original; if that entry is gone the undo has nothing to swap back.
+            guard let k = s.exerciseIndex(id: original.id) else { return }
+            s.exercises[k] = original
+            s.currentIndex = k
         }
     }
 }

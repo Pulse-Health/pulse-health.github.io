@@ -63,7 +63,7 @@ final class StrengthDataTests: XCTestCase {
         data.personalBests["incline"] = PersonalBest(exerciseID: "incline", estimated1RM: 10, weightKg: 8, reps: 8, date: F.now)
         XCTAssertEqual(try XCTUnwrap(data.exercise(id: "bench")).previousBestE1RM, 120)
         XCTAssertEqual(try XCTUnwrap(data.exercise(id: "incline")).previousBestE1RM, 10, "what is remembered wins")
-        XCTAssertEqual(try XCTUnwrap(data.exercise(id: "ohp")).previousBestE1RM, 58, "untouched exercises keep the library value")
+        XCTAssertEqual(try XCTUnwrap(data.exercise(id: "ohp")).previousBestE1RM, 0, "untouched exercises have no previous best: the library carries no history")
         var expected = try XCTUnwrap(ExerciseLibrary.exercise(id: "bench"))
         expected.previousBestE1RM = 120
         XCTAssertEqual(data.exercise(id: "bench"), expected)

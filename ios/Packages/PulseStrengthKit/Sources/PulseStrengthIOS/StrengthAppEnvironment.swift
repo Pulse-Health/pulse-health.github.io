@@ -35,7 +35,8 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// Exchanges the body weight with Apple Health when the user turned that on; nil for previews and UI tests (no Health access, no prompts).
     let healthSync: BodyWeightHealthSync?
 
-    /// The live environment of the running app (persistence in Application Support or the App Group container, demo data when the store is empty).
+    /// The live environment of the running app (persistence in Application Support or the App Group container). A new user starts with an
+    /// empty store: no demo workouts, no invented records.
     public static let shared: StrengthAppEnvironment = StrengthAppEnvironment.live()
 
     private init(
@@ -63,7 +64,11 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// Builds the environment of the running app: persistence in the App Group container when the app is
     /// entitled to one, otherwise in Application Support/PulseStrength (the standalone build), the platform services, the command-bus handler for the Live Activity
     /// buttons, and restores a workout that was running when the app was last closed.
-    public static func live(seedDemoData: Bool = true) -> StrengthAppEnvironment {
+    ///
+    /// `seedDemoData` fills an empty store with demo templates, five invented workouts and invented personal bests. It is off by
+    /// default because those would be shown (and compared against) as the user's own data; previews and the UI tests get the demo
+    /// data through `preview(withActiveWorkout:)`.
+    public static func live(seedDemoData: Bool = false) -> StrengthAppEnvironment {
         let persistence = makeLivePersistence()
         let store = StrengthStore(persistence: persistence, seedDemoData: seedDemoData)
         let controller = WorkoutController(store: store, persistence: persistence, role: .authority)

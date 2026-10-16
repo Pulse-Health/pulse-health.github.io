@@ -112,8 +112,12 @@ final class LibraryTests: XCTestCase {
         XCTAssertEqual(actual.equipment, expected.equipment, "equipment \(tag)", file: file, line: line)
         XCTAssertEqual(actual.tracking, expected.tracking, "tracking \(tag)", file: file, line: line)
         XCTAssertEqual(actual.mediaKey, expected.mediaKey, "mediaKey \(tag)", file: file, line: line)
-        XCTAssertEqual(actual.previousBestE1RM, expected.previousBestE1RM, "previousBestE1RM \(tag)", file: file, line: line)
-        XCTAssertEqual(actual.previousSets, expected.previousSets, "previousSets \(tag)", file: file, line: line)
+        // The library carries no history; the design's previous results are the explicit baseline of the tests (DesignBaseline).
+        XCTAssertEqual(actual.previousBestE1RM, 0, "previousBestE1RM \(tag)", file: file, line: line)
+        XCTAssertEqual(actual.previousSets, [], "previousSets \(tag)", file: file, line: line)
+        let baseline = DesignBaseline.apply(actual)
+        XCTAssertEqual(baseline.previousBestE1RM, expected.previousBestE1RM, "baseline previousBestE1RM \(tag)", file: file, line: line)
+        XCTAssertEqual(baseline.previousSets, expected.previousSets, "baseline previousSets \(tag)", file: file, line: line)
         XCTAssertEqual(actual.defaults, expected.defaults, "defaults \(tag)", file: file, line: line)
         XCTAssertEqual(actual.cues, expected.cues, "cues \(tag)", file: file, line: line)
         XCTAssertEqual(actual.barKg, expected.barKg, "barKg \(tag)", file: file, line: line)
@@ -149,8 +153,11 @@ final class LibraryTests: XCTestCase {
             XCTAssertEqual(exercise.equipment, expected.equipment, "equipment \(tag)")
             XCTAssertEqual(exercise.tracking, expected.tracking, "tracking \(tag)")
             XCTAssertEqual(exercise.mediaKey, expected.media, "media \(tag)")
-            XCTAssertEqual(exercise.previousBestE1RM, expected.e1RM, "e1RM \(tag)")
-            XCTAssertEqual(exercise.previousSets.count, expected.previousSetCount, "previous sets \(tag)")
+            XCTAssertEqual(exercise.previousBestE1RM, 0, "the library carries no best \(tag)")
+            XCTAssertTrue(exercise.previousSets.isEmpty, "the library carries no previous sets \(tag)")
+            let baseline = DesignBaseline.apply(exercise)
+            XCTAssertEqual(baseline.previousBestE1RM, expected.e1RM, "baseline e1RM \(tag)")
+            XCTAssertEqual(baseline.previousSets.count, expected.previousSetCount, "baseline previous sets \(tag)")
             XCTAssertEqual(exercise.defaults.sets, expected.sets, "default sets \(tag)")
             XCTAssertEqual(exercise.defaults.weightKg, expected.kg, "default kg \(tag)")
             XCTAssertEqual(exercise.defaults.reps, expected.reps, "default reps \(tag)")
@@ -166,8 +173,16 @@ final class LibraryTests: XCTestCase {
         }
     }
 
-    func testDataInvariants() {
+    /// A new user starts without a PREVIOUS column and without a record to beat: the shipped library carries no history at all.
+    func testTheLibraryShipsNoHistory() {
         for exercise in ExerciseLibrary.builtIn {
+            XCTAssertEqual(exercise.previousBestE1RM, 0, exercise.id)
+            XCTAssertTrue(exercise.previousSets.isEmpty, exercise.id)
+        }
+    }
+
+    func testDataInvariants() {
+        for exercise in DesignBaseline.library {
             XCTAssertFalse(exercise.name.isEmpty, exercise.id)
             XCTAssertFalse(exercise.secondary.isEmpty, exercise.id)
             XCTAssertGreaterThanOrEqual(exercise.cues.count, 2, exercise.id)
@@ -344,6 +359,9 @@ final class LibraryTests: XCTestCase {
             "bench": 99, "incline": 38, "crossover": 22, "ohp": 58, "lateral": 12.5, "pushdown": 43,
         ]
         for exercise in ExerciseLibrary.builtIn {
+            XCTAssertEqual(exercise.previousBestE1RM, 0, "the library carries no best \(exercise.id)")
+        }
+        for exercise in DesignBaseline.library {
             XCTAssertEqual(exercise.previousBestE1RM, expected[exercise.id] ?? 0, exercise.id)
         }
     }
