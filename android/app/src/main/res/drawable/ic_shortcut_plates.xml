@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher shortcut "Plates": a plate on the brand green. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="48"
+    android:viewportHeight="48">
+    <path
+        android:fillColor="#FF1B8448"
+        android:pathData="M24,24m-24,0a24,24 0,1 1,48 0a24,24 0,1 1,-48 0" />
+    <group
+        android:translateX="12"
+        android:translateY="12">
+        <path
+            android:pathData="M12,12m-9,0a9,9 0,1 1,18 0a9,9 0,1 1,-18 0M12,12m-2.4,0a2.4,2.4 0,1 1,4.8 0a2.4,2.4 0,1 1,-4.8 0"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="2.1"
+            android:strokeLineCap="round" />
+    </group>
+</vector>

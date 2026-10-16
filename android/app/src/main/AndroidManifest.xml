@@ -20,6 +20,9 @@
     <!-- ==== permissions-host:end ==== -->
 
     <!-- ==== permissions-system:begin ==== -->
+    <!-- A planned session (LA-06) lives in an alarm, and alarms do not survive a reboot: the plan is armed again when the phone starts.
+         POST_NOTIFICATIONS and POST_PROMOTED_NOTIFICATIONS are declared above; no exact-alarm permission: the alarms here are inexact. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- ==== permissions-system:end ==== -->
 
     <!-- ==== permissions-wear:begin ==== -->
@@ -60,10 +63,37 @@
                 <data android:scheme="pulse-strength" />
             </intent-filter>
             <!-- ==== host:begin (shortcuts meta-data and further intent filters of the main activity) ==== -->
+            <!-- Static launcher shortcuts (CT-10): the primary action, start workout, plate calculator and the "start exercise" App Action. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
             <!-- ==== host:end ==== -->
         </activity>
 
         <!-- ==== glance-home:begin ==== -->
+        <!-- App widget providers are exported so that the system and the launcher can deliver the widget broadcasts (update, resize, deleted) to them. -->
+        <receiver
+            android:name=".widgets.home.NextUpReceiver"
+            android:exported="true"
+            android:label="@string/widget_next_up_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/next_up_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.NextUpWideReceiver"
+            android:exported="true"
+            android:label="@string/widget_next_up_wide_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/next_up_wide_widget_info" />
+        </receiver>
         <receiver
             android:name=".widgets.home.WeeklyGoalReceiver"
             android:exported="true"
@@ -74,6 +104,127 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/weekly_goal_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.WeeklyGoalThemedReceiver"
+            android:exported="true"
+            android:label="@string/widget_weekly_goal_themed_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weekly_goal_themed_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.PrSpotlightReceiver"
+            android:exported="true"
+            android:label="@string/widget_pr_spotlight_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pr_spotlight_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.MuscleFreshnessReceiver"
+            android:exported="true"
+            android:label="@string/widget_muscle_freshness_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/muscle_freshness_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.OverloadReceiver"
+            android:exported="true"
+            android:label="@string/widget_overload_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/overload_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.WeeklySetsReceiver"
+            android:exported="true"
+            android:label="@string/widget_weekly_sets_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weekly_sets_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.LiftTrendReceiver"
+            android:exported="true"
+            android:label="@string/widget_lift_trend_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/lift_trend_widget_info" />
+        </receiver>
+        <!-- Exported and not protected by a permission on purpose: the launcher starts it with APPWIDGET_CONFIGURE when the widget is added or reconfigured. -->
+        <activity
+            android:name=".widgets.home.LiftTrendConfigActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/widget_lift_trend_config_title"
+            android:theme="@style/Theme.PulseStrength">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <receiver
+            android:name=".widgets.home.TrainingWeekReceiver"
+            android:exported="true"
+            android:label="@string/widget_training_week_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/training_week_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.TemplateLauncherReceiver"
+            android:exported="true"
+            android:label="@string/widget_template_launcher_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/template_launcher_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.MonthHeatmapReceiver"
+            android:exported="true"
+            android:label="@string/widget_month_heatmap_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/month_heatmap_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.tablet.TrainingBlockReceiver"
+            android:exported="true"
+            android:label="@string/widget_training_block_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/training_block_widget_info" />
         </receiver>
         <!-- ==== glance-home:end ==== -->
 
@@ -326,6 +477,153 @@
         <!-- ==== glance-extras:end ==== -->
 
         <!-- ==== system:begin (service, receivers, tile services, shortcuts activity) ==== -->
+        <!-- SB-02 / SB-04: full-screen bench mode, opened from the app, the widgets and the Rest tile (never from outside). -->
+        <activity
+            android:name=".live.BenchModeActivity"
+            android:exported="false"
+            android:label="@string/bench_mode_label"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.PulseBench" />
+
+        <!-- CT-10: the launcher shortcut "Primary action" (Quick Tap, side key) starts it; it runs the primary action and finishes. Not
+             exported: the system starts a shortcut's activity as the app itself, and no other app should be able to log a set. -->
+        <activity
+            android:name=".controls.PrimaryActionActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:label="@string/shortcut_primary_short"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.PulseTransparent" />
+
+        <!-- Buttons that LiveUpdates adds to the workout notification (Log A2, the coach tip's answers). -->
+        <receiver
+            android:name=".live.WorkoutActionReceiver"
+            android:exported="false" />
+
+        <!-- The end of a PR flash (LA-01): the ongoing notification is drawn again without it. -->
+        <receiver
+            android:name=".live.LiveAlarmReceiver"
+            android:exported="false" />
+
+        <!-- LA-06: countdown, "Time to train", snooze, and arming the plan again after a reboot or an update. -->
+        <receiver
+            android:name=".live.PlannedSessionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- CT-01 ... CT-08: Quick Settings tiles. Active tiles: the app asks for a refresh through Controls.refresh. -->
+        <service
+            android:name=".controls.StartNextTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_start"
+            android:label="@string/tile_start_next_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.LogSetTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_log"
+            android:label="@string/tile_log_set_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.RestTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_rest"
+            android:label="@string/tile_rest_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.AddRestTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_add_rest"
+            android:label="@string/tile_add_rest_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.PlatesTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_plates"
+            android:label="@string/tile_plates_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.PauseTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_pause"
+            android:label="@string/tile_pause_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.FinishTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_finish"
+            android:label="@string/tile_finish_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.NextUpTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_next_up"
+            android:label="@string/tile_next_up_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
         <!-- ==== system:end ==== -->
 
         <!-- ==== wear:begin (Data Layer listener service) ==== -->
@@ -359,5 +657,19 @@
         <receiver
             android:name=".services.RestAlarmReceiver"
             android:exported="false" />
+
+        <!-- Midnight, a change of the clock or of the time zone, a restart and an update of the app: the widgets draw "today" and "N days ago"
+             from the snapshot, so it is built again then and every surface is refreshed (surfaces/DayChange.kt). BOOT_COMPLETED needs the
+             permission that the system region above declares. -->
+        <receiver
+            android:name=".surfaces.DayChangeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>

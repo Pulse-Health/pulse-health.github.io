@@ -563,6 +563,8 @@ private extension StrengthData {
 public final class StrengthDataModel: WorkoutDataProviding {
     /// The current data.
     public private(set) var data: StrengthData
+    /// The user's settings (see `StrengthSettings`).
+    public private(set) var settings: StrengthSettings
     /// The first error of the last save that failed; nil when the last save wrote every file it was asked to write.
     public private(set) var lastPersistenceError: Error?
 
@@ -573,6 +575,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
     public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false, now: Date = Date()) {
         self.persistence = persistence
         self.data = StrengthData()
+        self.settings = StrengthSettings()
         loadFromDisk()
         if seedDemoData, data.seedDemoDataIfEmpty(now: now) {
             persist(templates: true, history: true, customExercises: false, personalBests: true)
@@ -587,6 +590,17 @@ public final class StrengthDataModel: WorkoutDataProviding {
 
     /// One template by id.
     public func template(id: UUID) -> WorkoutTemplate? { data.template(id: id) }
+
+    /// Workouts per week the user aims for, 1...7 (`StrengthSettings.weeklyGoal`).
+    public var weeklyGoal: Int { settings.weeklyGoal }
+
+    /// Sets the weekly goal (a number outside 1...7 is brought into it) and saves the settings. Nothing is written when the goal stays.
+    public func setWeeklyGoal(_ goal: Int) {
+        let clamped = StrengthSettings.clamped(goal)
+        guard clamped != settings.weeklyGoal else { return }
+        settings.weeklyGoal = clamped
+        persist(templates: false, history: false, customExercises: false, personalBests: false, settings: true)
+    }
 
     /// Adds a custom exercise and saves the custom exercises.
     public func addCustomExercise(_ exercise: Exercise) {
@@ -719,6 +733,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
             bodyWeights: persistence.loadBodyWeights(),
             weighIn: persistence.loadWeighInPreferences()
         )
+        settings = persistence.loadSettings()
         cache = nil
     }
 
@@ -743,7 +758,8 @@ public final class StrengthDataModel: WorkoutDataProviding {
         personalBests: Bool,
         plans: Bool = false,
         bodyWeights: Bool = false,
-        weighIn: Bool = false
+        weighIn: Bool = false,
+        settings: Bool = false
     ) -> Error? {
         guard let persistence else {
             lastPersistenceError = nil
@@ -767,6 +783,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         if plans { _ = attempt { try persistence.savePlans(data.plans) } }
         if bodyWeights { _ = attempt { try persistence.saveBodyWeights(data.bodyWeights) } }
         if weighIn { _ = attempt { try persistence.saveWeighInPreferences(data.weighIn) } }
+        if settings { _ = attempt { try persistence.saveSettings(self.settings) } }
         lastPersistenceError = firstError
         return historyError
     }

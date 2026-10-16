@@ -235,8 +235,11 @@ public struct PulseStrengthRootView: View {
                 playStartHaptic()
             }
             presentActiveWorkout()
-        case .exercise, .hub:
-            // Both land on the hub: the exercise detail is reached from there. A running workout stays minimised.
+        case .exercise(let exerciseID):
+            // The hub pushes the detail; a running workout stays minimised.
+            showsActiveWorkout = false
+            environment.pendingExerciseID = exerciseID
+        case .hub:
             showsActiveWorkout = false
         }
     }

@@ -43,6 +43,7 @@ import health.pulse.strength.ui.theme.PulseTheme
 import java.time.ZoneId
 import java.time.temporal.WeekFields
 import java.util.Locale
+import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
  * The Strength hub (design: Main.dc.html, and TrainLive.dc.html while a workout runs): today's recommended template with readiness,
@@ -196,7 +197,19 @@ private fun HubDestination(
     actions: HubActions,
 ) {
     when (route) {
-        null -> HubHome(store = store, recovery = recovery, home = home, time = time, actions = actions)
+        null -> {
+            val settings = environment.services?.settings
+            val goal by (settings?.weeklyGoal ?: remember { MutableStateFlow(HubFormat.SESSION_GOAL) }).collectAsState()
+            HubHome(
+                store = store,
+                recovery = recovery,
+                home = home,
+                time = time,
+                actions = actions,
+                weeklyGoal = goal,
+                onWeeklyGoalChange = settings?.let { owner -> { value: Int -> owner.setWeeklyGoal(value) } },
+            )
+        }
         HubRoute.Library -> HubLibraryScreen(store, actions)
         HubRoute.Templates -> HubTemplateListScreen(home, time, actions)
         is HubRoute.Template -> HubTemplateDetailScreen(route.id, home, time, actions)
