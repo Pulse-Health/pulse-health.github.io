@@ -54,7 +54,7 @@ struct WorkoutControlState: Sendable, Equatable {
     enum Rest: Sendable, Equatable {
         /// There is no rest to show.
         case inactive
-        /// The countdown runs; the system draws the ticking digits (`Text(timerInterval:)`), so the label needs no refresh.
+        /// The countdown runs and ends at the upper bound; the system's timer text (`Text(timerInterval:)`) draws it and moves without a refresh.
         case running(ClosedRange<Date>)
         /// The workout is paused, so the rest stands still at this many seconds.
         case frozen(seconds: Int)

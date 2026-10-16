@@ -16,6 +16,7 @@ struct StartNextControl: ControlWidget {
             ControlWidgetButton(action: StartNextIntent()) {
                 Label(state.startTitle, systemImage: "dumbbell.fill")
             }
+            .tint(WidgetTheme.green)
         }
         .displayName("Start workout")
         .description("Opens Pulse Strength on the next workout of your split. A workout that is already running opens instead.")
