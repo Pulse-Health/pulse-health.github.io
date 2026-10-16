@@ -42,8 +42,10 @@
 		C511CC56C902BB36D3B87F05 /* WatchSnapshotFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB922E4870995876F6566984 /* WatchSnapshotFixtures.swift */; };
 		C5C855357728CEF035D1D346 /* PulseStrengthActivity in Frameworks */ = {isa = PBXBuildFile; productRef = 741E1F7A2248FB724DDB0548 /* PulseStrengthActivity */; };
 		C5E7923953C5947F7AE810AA /* TourLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF30154EC68F8AB1DE11083 /* TourLayout.swift */; };
+		D35C63DA961ABB641F944693 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EB2C77A8B867752B60670F36 /* PrivacyInfo.xcprivacy */; };
 		D4FF3378ECD8320C051243EE /* LiveSnapshotHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D8C353E873B8A325E01DBB /* LiveSnapshotHarness.swift */; };
 		D52F4F2B27F5DADFBB648E91 /* LiveSnapshotFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F45B60FC72FBE53481E5120B /* LiveSnapshotFixtures.swift */; };
+		D9D2698483576616B078427F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B68251C5DA33F4888E23338E /* PrivacyInfo.xcprivacy */; };
 		DE09BE398BBE7903F95BFE19 /* LiveActivitySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C9BFA3E27FA38E6C864D62 /* LiveActivitySnapshotTests.swift */; };
 		E3C1018F0F6B4A9E1156AD83 /* PulseStrengthCore in Frameworks */ = {isa = PBXBuildFile; productRef = 001AB78FB9B24CE72BA9A87C /* PulseStrengthCore */; };
 		E9EC3179AE28F814E5CB1A18 /* LockScreenActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 160871DFCA72A3A0674CC9B7 /* LockScreenActivityView.swift */; };
@@ -127,12 +129,14 @@
 		A0216BA0140A8ACC842F6D19 /* WatchSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSnapshotTests.swift; sourceTree = "<group>"; };
 		A940FAA749C252858BEF3559 /* FlowSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowSupport.swift; sourceTree = "<group>"; };
 		B1410FB4F5A91BB23E1F27EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B68251C5DA33F4888E23338E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		C11383CF820E4440CCD83F1A /* PulseStrengthUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PulseStrengthUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD11956FA99A0FC4B2BA3471 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D17D63AC10BE63F68AF8BD10 /* WorkoutLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivity.swift; sourceTree = "<group>"; };
 		E1C3D8A49A2F28A65D6AAFF9 /* StrengthTourTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthTourTests.swift; sourceTree = "<group>"; };
 		E1FA38F36C4FB86AA870B866 /* PulseStrength.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PulseStrength.entitlements; sourceTree = "<group>"; };
 		E604A55A06793D4699A2D342 /* ActivityComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityComponents.swift; sourceTree = "<group>"; };
+		EB2C77A8B867752B60670F36 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F45B60FC72FBE53481E5120B /* LiveSnapshotFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSnapshotFixtures.swift; sourceTree = "<group>"; };
 		F6E13FC599BDEE16AB16EAB0 /* PulseStrengthWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseStrengthWatchApp.swift; sourceTree = "<group>"; };
 		FB922E4870995876F6566984 /* WatchSnapshotFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSnapshotFixtures.swift; sourceTree = "<group>"; };
@@ -230,6 +234,7 @@
 			children = (
 				370C601D67262C6BBB07C3A6 /* Assets.xcassets */,
 				12929ABCA60B58DBC291FABF /* Info.plist */,
+				B68251C5DA33F4888E23338E /* PrivacyInfo.xcprivacy */,
 				8FC342859CB1C9ACF29C9DFD /* PulseStrengthWatch.entitlements */,
 				F6E13FC599BDEE16AB16EAB0 /* PulseStrengthWatchApp.swift */,
 			);
@@ -322,6 +327,7 @@
 			children = (
 				B1410FB4F5A91BB23E1F27EB /* Assets.xcassets */,
 				CD11956FA99A0FC4B2BA3471 /* Info.plist */,
+				EB2C77A8B867752B60670F36 /* PrivacyInfo.xcprivacy */,
 				E1FA38F36C4FB86AA870B866 /* PulseStrength.entitlements */,
 				273BBEA41C09838A23FEC3B9 /* PulseStrengthApp.swift */,
 			);
@@ -533,6 +539,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				56AD65F9585B10EAD7690C9C /* Assets.xcassets in Resources */,
+				D9D2698483576616B078427F /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -541,6 +548,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A62B485384B63E9F1EC7FAE8 /* Assets.xcassets in Resources */,
+				D35C63DA961ABB641F944693 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
