@@ -92,6 +92,7 @@ androidx-glance-appwidget-testing = { module = "androidx.glance:glance-appwidget
 # ==== libs-system:end ====
 
 # ==== libs-wear:begin ====
+androidx-wear-protolayout-proto = { module = "androidx.wear.protolayout:protolayout-proto", version.ref = "protolayout" }
 # ==== libs-wear:end ====
 
 [plugins]

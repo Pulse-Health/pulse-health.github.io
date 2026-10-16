@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark green of the Next up card in the canvas ("Apple Watch" board, items 2 and 3). -->
+    <color name="launcher_background">#0E2A19</color>
+</resources>

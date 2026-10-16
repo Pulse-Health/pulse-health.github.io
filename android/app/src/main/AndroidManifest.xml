@@ -627,6 +627,19 @@
         <!-- ==== system:end ==== -->
 
         <!-- ==== wear:begin (Data Layer listener service) ==== -->
+        <!-- Wear OS: the watch app sends its commands here (WearProtocol.COMMAND_PATH, the path in the filter). Play services binds the
+             service from its own process, so it has to be exported; it is not a network endpoint and needs no permission. -->
+        <service
+            android:name=".wear.PhoneWearListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:host="*"
+                    android:pathPrefix="/pulse/command"
+                    android:scheme="wear" />
+            </intent-filter>
+        </service>
         <!-- ==== wear:end ==== -->
 
         <!-- Health Connect: the screen that explains why the app writes workouts. -->
