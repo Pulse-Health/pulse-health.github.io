@@ -51,7 +51,7 @@ ios/
 * Code must be real, complete and compile-ready against the iOS 17 / watchOS 10 SDKs. No `TODO`, no
   `fatalError("not implemented")`, no placeholder views. If an API is uncertain, use the documented, widely used form.
 * Weights are STORED in kilograms (`weightKg` everywhere); pounds are a display and entry concern only (section 3.6). `LoggedSet.reps` holds seconds
-  for duration exercises.
+  for duration exercises (up to 10,800 s). The weight of a set is 0 or more, except for a reps-only exercise that allows an added load (`Exercise.allowsAddedWeight`): there it is signed (an assisted load is negative, down to -300 kg).
 
 ## 3. Core contract (`PulseStrengthCore`)
 
@@ -75,7 +75,9 @@ public enum ExerciseLibrary {
         // result sorted by name (case-insensitive, then id)
 }
 public enum Estimated1RM {
-    public static func epley(weightKg: Double, reps: Int) -> Double   // kg * (1 + reps/30); 0 if kg <= 0 or reps <= 0
+    public static let maximumReliableReps: Int                        // 12
+    public static func epley(weightKg: Double, reps: Int) -> Double   // kg * (1 + reps/30); 0 if kg <= 0 or reps <= 0 (the formula alone, for any reps)
+    public static func estimate(weightKg: Double, reps: Int) -> Double?   // epley for 1...12 reps and a weight > 0; nil for everything else (13+ reps, no weight, not finite)
 }
 public struct PlatePlan: Equatable, Sendable {                        // values in `unit`
     public var perSide: [Double]; public var leftover: Double; public var unit: WeightUnit
@@ -96,6 +98,10 @@ public enum NumberText {                                    // locale independen
     public static func rest(seconds: Int) -> String         // 0 -> "Off", 150 -> "2:30"
 }
 ```
+**The estimate has ONE rule, `Estimated1RM.estimate`**: 20 kg x 100 reps is not an 87 kg lifter, so a set of more than 12 reps is "no estimate" for every caller that compares, records or
+charts one (the presenter, the coach tip, `SummaryBuilder`, the best set, the exercise history and its chart, the personal bests and their recompute). An `e1RM` that an older build recorded from such a set
+(`CompletedExercise.bestE1RM`, `PersonalBest.estimated1RM` with `reps > 12`) is read as none (`PersonalBest.withoutUnreliableEstimate`).
+
 Library data and media keys come from `Active.dc.html` (`IMG`/`L`): the 25 media keys are
 bench, incline, ohp, lateral, pushdown, crossover, pullup, pulldown, brow, squat, deadlift, curl, pushup,
 legpress, rdl, plank, hipthrust, crow, facepull, dbcurl, skull, legcurl, legext, calf, cablecrunch.
@@ -103,7 +109,8 @@ Keep ids, names, muscles, secondary text, equipment, tracking, defaults and cues
 else 20. `Exercise.weightStep(in:)` is the stepper increment of a unit (kg: `weightStepKg`; lb: 5 for barbell, machine, cable and dumbbell, 2.5 for
 bodyweight and other) and `Exercise.barWeight(in:)` the empty bar for the plate calculator (kg: `barKg`; lb: the next multiple of 5 above it,
 up to half a pound of tolerance: 20 kg is 45 lb, 15 kg 35 lb, 10 kg 25 lb). `Exercise.custom(...)` takes `restSeconds` (default 90, see
-`StrengthPreferences.defaultRestSeconds`). The library carries NO results of the user: `previousBestE1RM` is 0 and `previousSets` is empty for every built-in exercise. The design's
+`StrengthPreferences.defaultRestSeconds`). `Exercise.allowsAddedWeight` (`decodeIfPresent`, default false, only written when true) marks a reps-only exercise that can carry an added load or be done with
+assistance: the built-in `pullup` and `dips` and every custom reps-only exercise (`Exercise.custom`); `carriesLoad` is `tracking == .repsOnly && allowsAddedWeight` and `hasEditableWeight` is `tracksWeight || carriesLoad`. The library carries NO results of the user: `previousBestE1RM` is 0 and `previousSets` is empty for every built-in exercise. The design's
 invented previous results (bench best 99 kg, 25 exercises with last sets) live in `DemoPreviousResults` (`SampleData.swift`) and in
 `ExerciseLibrary.demoBuiltIn`, for previews, UI tests and the tests of the demo data (see "No invented data" in section 3.4).
 
@@ -119,8 +126,14 @@ public enum WorkoutTargets {
 public enum WorkoutReducer {
     public static var undoWindow: TimeInterval { get }      // 6 seconds
     public static let maximumWeightKg: Double               // 1_000_000 (rule 3)
+    public static let minimumWeightKg: Double               // -300: an assisted load of an exercise that `carriesLoad` (rule 3)
     public static let maximumRestSeconds: Int               // 3_600 (rule 7)
+    public static let maximumReps: Int                      // 999
+    public static let maximumDurationSeconds: Int           // 10_800 (3 h): the most seconds of a set of a timed exercise (rule 12)
     public static func reduce(_ state: inout WorkoutState, _ action: WorkoutAction, now: Date)
+}
+public enum RestRules {                                    // the rest after a set, pure (rule 2)
+    public static func seconds(afterSetAt index: Int, types: [SetType], exerciseRest: Int) -> Int
 }
 public enum WorkoutFactory {
     public static func makeEmpty(name: String, now: Date, id: UUID = UUID(), preferences: StrengthPreferences = StrengthPreferences()) -> WorkoutState
@@ -136,48 +149,70 @@ Reducer rules (ported from `Active.dc.html`; `S` = state):
    nothing else happens; if it changed, `revision += 1`. Unknown ids / out-of-range indexes are no-ops.
    `currentIndex` is always within `0..<exercises.count` (0 when empty) after every action.
 2. Logging (`toggleSet`, `logSet`, `logNextSet`): toggling a done set makes it pending (rir is kept, rest untouched).
-   A set becoming done: `lastLogged = SetRef`; rest seconds = 0 when the exercise's `restSeconds` is 0 (the timer is Off: no rest after a
-   set of ANY type, warm-ups included), else warm-up ? `max(30, round(rest*0.4/5)*5)` : the
-   exercise's `restSeconds`. Superset: take the indexes of exercises sharing the (non-nil) `supersetGroup`; if the
-   exercise is not the last of the group, `currentIndex = index + 1` and no rest starts; otherwise
-   `currentIndex = first index of the group` and rest starts. Not in a superset: `currentIndex` unchanged.
+   A set becoming done: `lastLogged = SetRef`; the rest seconds come from `RestRules.seconds(afterSetAt:types:exerciseRest:)` (the types are those of all the sets of the exercise): 0 when the exercise's
+   `restSeconds` is 0 (the timer is Off: no rest after a set of ANY type, warm-ups included); after a normal or failure set the exercise's `restSeconds`; after a warm-up
+   `max(30, round(rest*0.4/5)*5)`; after a drop set 0 when the NEXT set of the same exercise is also a drop set (the drops follow each other at once), else the exercise's `restSeconds` (the last
+   set of an exercise has no next set). The rest is clamped to 0...`maximumRestSeconds` first, so no arithmetic can overflow; an index outside the sets counts as a normal set.
+   `WorkoutTemplate.estimatedMinutes` adds the same rests up. Superset: take the indexes (ascending) of the exercises sharing the (non-nil) `supersetGroup`; if a member with a higher index exists,
+   `currentIndex` = the NEXT member by index order (the members need not be next to each other) and no rest starts; otherwise
+   `currentIndex = the first member` and rest starts. Not in a superset: `currentIndex` unchanged. While a timed set runs (rule 12) no rest starts at all.
    Starting rest: `settings.autoStartRest && seconds > 0` -> `rest = RestState(endsAt: now + seconds, totalSeconds: seconds,
    frozenRemaining: paused ? seconds : nil)`, otherwise `rest = nil`. `logSet` on a done set is a no-op.
    `logNextSet` first moves `currentIndex` to the exercise of `WorkoutTargets.nextPending`, then logs that set.
 3. `setWeight` clamps to 0...`maximumWeightKg` (1,000,000 kg; the keypad's six characters stay below it) and rounds to 0.01; NaN and
-   +infinity are ignored (not representable). `setReps` clamps to 0...999; neither changes `isDone`.
+   +infinity are ignored (not representable). For an exercise that `carriesLoad` (reps-only with `allowsAddedWeight`: pull-up, dip) the weight is SIGNED and clamps to `minimumWeightKg`...`maximumWeightKg`
+   (an assisted load is negative, 0 is bodyweight); every other exercise keeps 0...max. A stored zero is never negative zero. `setReps` clamps to 0...999 (0...`maximumDurationSeconds` for an
+   exercise that tracks duration, whose reps are seconds); neither changes `isDone`.
    `nudgeNextSet(weightSteps:repsSteps:)` edits the `nextPending` set: the weight AS SHOWN (`settings.weightUnit.displayValue`) += steps *
-   `exercise.weightStep(in: settings.weightUnit)`, converted back to kilograms and stored like `setWeight` (>= 0, only for weight-tracking
-   exercises), so a step up and a step down return to the same displayed weight; in kilograms this is `weightStepKg` as always. Reps += steps *
-   `exercise.repsStep` (clamped 0...999).
+   `exercise.weightStep(in: settings.weightUnit)`, converted back to kilograms and stored like `setWeight` (only for exercises with an editable weight: weight-tracking ones and `carriesLoad`),
+   so a step up and a step down return to the same displayed weight; in kilograms this is `weightStepKg` as always. Reps += steps *
+   `exercise.repsStep` (clamped like `setReps`).
 4. `setSetType`, `setRIR(rir)` (clamp 0...4, nil clears), `toggleLastSetRIR(v)` (applies to `lastLogged`; same value clears),
    `setNote`.
-5. `addSet`: copies weight/reps of the last set (type normal, not done, no rir); with no sets uses the exercise defaults.
+5. `addSet`: copies weight/reps of the last set (type normal, not done, no rir); with no sets it uses the starting values of the exercise (rule 7).
    `deleteSet`: removes it, sets `undo = UndoEntry(.set, title "Set deleted", expiresAt now + undoWindow)`, clears
    `lastLogged` when it pointed at that set.
 6. `removeExercise`: removes it; if it was in a superset and exactly one member remains, that member leaves the group;
    `currentIndex` shifts down when an earlier exercise was removed, then clamps; `lastLogged` cleared if it pointed at it;
    `undo = UndoEntry(.exercise(index, exercise), title "Removed <name>", expiresAt now + undoWindow)`.
-   `undo`: restores when an entry exists and `now <= expiresAt` (exercise re-inserted at its index, `currentIndex` set to it;
-   set re-inserted at its index), and always clears the entry.
-7. `moveExercise(from:to:)` and `moveExerciseBy(delta:)` reorder; `currentIndex` keeps following the same exercise.
+   `undo`: restores when an entry exists and `now <= expiresAt` (exercise re-inserted at its index, `currentIndex` set to it, its superset group kept only while that keeps
+   every group together, see rule 8; set re-inserted at its index), and always clears the entry. `removeExercise`, `deleteSet` and `replaceExercise` end the timed set that belonged to them.
+7. `moveExercise(from:to:)` and `moveExerciseBy(delta:)` reorder; `currentIndex` keeps following the same exercise. The members of every superset group stay next to each other:
+   a move that would split the group of the moved exercise takes it out of the group (a partner left alone leaves too, as in rule 6); an exercise that would land between the members of ANOTHER
+   group goes behind that group's block when it moved down and in front of it when it moved up. (A state that broke the rule, for example by a sync replay, is repaired the same way; the work is
+   bounded by the number of exercises.)
    `replaceExercise` keeps the entry id and superset group, takes the new exercise with default sets (not done),
    its default rest, empty note; clears `lastLogged` if it pointed at it. `addExercises` appends entries with default
-   sets and default rest; into an empty workout it sets `currentIndex = 0`. `setRest` sets `restSeconds`, clamped to
+   sets and default rest; into an empty workout it sets `currentIndex = 0`. **Default sets** (also for `replaceExercise` and `addSet` without sets): `defaults.sets` pending normal sets, all
+   starting from the LAST WORKING set of the exercise's `previousSets` (warm-ups are never copied; a trailing drop set is skipped while an earlier working set exists, because its lighter load is not where
+   the next session starts; a set without reps is ignored), else from `defaults`. The reps (seconds for a timed exercise) are copied; the weight only for an exercise with an editable weight, so a push-up
+   takes the last reps and no weight and a pull-up the signed load. The exercise copies passed in come from the store's overlay (`exercise(id:)`), which carries the previous session. The set COUNT is always
+   the default's. `setRest` sets `restSeconds`, clamped to
    0...`maximumRestSeconds` (3,600 s; the rest presets stop at 5:00); default rests are clamped the same way.
    `WorkoutTemplate.estimatedMinutes` counts a rest outside that range (a template that did not come through the reducer) as the nearest bound,
    and follows rule 2: 45 s of work per set plus the rest after it (warm-up rule as above), nothing for an exercise whose rest is 0.
-8. `toggleSuperset(exerciseID)`: in a group -> leaves it (orphan clean-up as in rule 6); otherwise joins the NEXT exercise
-   (no next -> no-op): both get the next exercise's group, or the first unused letter of A, B, C, D, E, Z.
+8. `toggleSuperset(exerciseID)`: in a group -> leaves it (orphan clean-up as in rule 6; leaving from the MIDDLE of a group makes the members after it a group of their own, so that every group stays
+   together); otherwise joins the NEXT exercise (no next -> no-op): both get the next exercise's group, or the first unused group name (a name that the exercise of a removal that can still be undone carries counts as used, so that the undo never puts it into a superset
+   it was not in). The names run A...Z, then AA, AB, ... AZ, BA, ... (like spreadsheet
+   columns), so any number of supersets keep their own letter (`WorkoutReducer.groupName(at:)`).
 9. Rest: `adjustRest(seconds)`: no rest and seconds > 0 -> start `now + seconds` (total = seconds); otherwise
    `endsAt = max(now, max(now, endsAt) + seconds)` and `totalSeconds = max(5, total + seconds)`; while paused adjust
    `frozenRemaining` instead (>= 0). `skipRest` -> `rest = nil`.
-10. `pause`: if running `pausedAt = now`; an active rest gets `frozenRemaining = max(0, endsAt - now)`.
-    `resume`: `pausedTotal += now - pausedAt`, `pausedAt = nil`, and a frozen rest gets `endsAt = now + frozen`.
+10. `pause`: if running `pausedAt = now`; an active rest gets `frozenRemaining = max(0, endsAt - now)`, a running timed set `frozenElapsed = elapsed`.
+    `resume`: `pausedTotal += now - pausedAt`, `pausedAt = nil`, a frozen rest gets `endsAt = now + frozen` and a frozen timed set `startedAt = now - frozenElapsed`.
 11. `goTo`, `nextExercise`, `previousExercise` clamp. `setUsedWatch`, `rename`, `setAutoStartRest`,
     `setAlertWhenRestEnds` set the field; `setWeightUnit(unit)` sets `settings.weightUnit` (display and entry only: no stored weight changes). `updateHeartRate(bpm)` sets `heartRate` and, for a non-nil bpm in 30...240,
     adds it to `heartRateSum` / `heartRateCount`; it is the ONE action that does NOT bump `revision` (samples arrive every few seconds).
     Controllers and effects must not persist, broadcast or update the Live Activity for it more than once per 10 seconds.
+12. Timed sets. `WorkoutState.timedSet: TimedSetState?` (`decodeIfPresent`; nil in every state written before it) = `{ setRef, startedAt, targetSeconds, frozenElapsed? }`; the elapsed time is
+    `now - startedAt`, or `frozenElapsed` while paused (the same idea as `RestState.frozenRemaining`; no ticking counter is stored). `startTimedSet(SetRef)` works only for a pending set of an exercise
+    that tracks duration and only while no timed set runs: it sets `currentIndex` to the exercise, ends a running rest, and takes the set's seconds as `targetSeconds` (a started set follows later edits
+    of its seconds: `setReps` and `nudgeNextSet` move the target). `stopTimedSet` logs the set with the whole elapsed seconds (rounded down, clamped to 0...`maximumDurationSeconds`; a clock that moved back gives 0)
+    and from there it is `logSet` (rule 2: the rest after it follows the normal rules, a superset advances); `cancelTimedSet` drops the timer and logs nothing; `logSet` / `toggleSet` / `logNextSet` on the timed set
+    log it with its planned seconds and end the timer. A running timed set that reaches its target is NOT logged by the reducer (it has no clock): `ActiveWorkoutPresentation.TimedSetPresentation.isOverTarget` says so and the
+    screen sends `stopTimedSet`. While a timed set runs no rest starts (rule 2) or can be started (`adjustRest`). `finish` and `discard` end the workout, so the timer goes with it; a set that was being timed is
+    not logged by a finish. `WorkoutSnapshot` is unchanged by timed sets (the phase stays `logging`; there is no `timedSetEndsAt`: the Watch and the Live Activity get no timer UI from this change). The actions
+    travel in `RemoteCommand`s like any other; an older build cannot read them, a state without a timer decodes everywhere.
 
 Factory: `makeEmpty` / `makeWorkout` start with `WorkoutSettings(autoStartRest:alertWhenRestEnds:weightUnit:)` taken from `preferences` (the defaults: rest timer on, kilograms).
 `makeWorkout(from:)` creates entries with new ids, `templateEntryID` = entry id, sets from `plannedSets`
@@ -189,9 +224,13 @@ entry ids, planned sets = the current sets' type/weight/reps), keeps `id`, `name
 
 ```swift
 public enum WorkoutPresenter {
-    public static func present(_ state: WorkoutState, now: Date, recovery: RecoveryProvider, recoveryHasData: Bool = true, locale: Locale = DisplayFormat.metric.locale) -> ActiveWorkoutPresentation
+    public static func present(_ state: WorkoutState, now: Date, recovery: RecoveryProvider, recoveryHasData: Bool = true, locale: Locale = DisplayFormat.metric.locale,
+                               template: WorkoutTemplate? = nil, templateUpdatePrompt: TemplateUpdatePrompt = .whenChanged) -> ActiveWorkoutPresentation
 }
-public extension TemplateDiff { static func compute(for state: WorkoutState) -> TemplateDiff }
+public extension TemplateDiff {
+    static func compute(for state: WorkoutState) -> TemplateDiff                                   // the structure only
+    static func compute(for state: WorkoutState, against template: WorkoutTemplate?) -> TemplateDiff   // + changedExercises
+}
 public enum SummaryBuilder { public static func build(from state: WorkoutState, finishedAt: Date) -> CompletedWorkout }
 public enum SnapshotBuilder { public static func make(from state: WorkoutState, now: Date, locale: Locale = DisplayFormat.metric.locale) -> WorkoutSnapshot }
 ```
@@ -202,45 +241,66 @@ started by an older build still decodes) tells the Live Activity and the Watch w
 
 Presenter rules (port of `renderVals` in `Active.dc.html`):
 
-* Totals: logged sets, all sets, volume = sum of `weightKg * reps` over logged sets that are not warm-up and belong to
-  weight-tracking exercises; completed exercises = exercises with >= 1 set and all done.
+* Totals: logged sets, all sets, volume = `WorkoutExercise.loggedVolumeKg` summed: `max(0, weightKg) * reps` over the logged sets that are not warm-up of exercises with an editable weight
+  (weight-tracking ones and `carriesLoad` ones, so an added load counts, bodyweight and an assisted load add nothing; timed and other reps-only exercises have no volume); completed exercises =
+  exercises with >= 1 set and all done.
 * Header: `clockText` = `NumberText.clock(elapsedSeconds)`; paused -> "Paused · " + clock. `volumeText` = thousands, `setsText` =
   "<logged> of <total>", `heartRateText` = bpm or "–"; `volumeText` is `WeightFormatter.volume` (a whole number of the unit, grouped by the locale, no symbol). One `Segment` per exercise (fraction = done/total sets, `isCurrent`).
 * Navigator is nil when empty; `position` is 1-based.
 * Card for the current exercise: recovery percent from the provider (`recoveryHasData` false = only the default, hide the line), level good >= 80, fair >= 60, else low; `supersetLabel`
   "Superset <letter>"; `restText` via `NumberText.rest`; column titles: weightReps -> the unit symbol ("kg" or "lb")/"Reps", repsOnly -> "Added"/"Reps",
   duration -> ""/"Sec".
-* Rows: `number` = "W"/"D"/"F" or the running number of normal sets; `previousText` from `exercise.previousSets[min(i, count-1)]`
-  ("80 × 6", "8 reps", "45 s", "–" when none); `weightText` = `WeightFormatter.text` / "BW" / "–"; `weightEditable` only for weightReps;
-  `isNext` = the first pending set of the card. Personal record: a logged, non-warm-up set of a weight-tracking exercise whose
-  Epley e1RM exceeds the running baseline + 0.05, where the baseline starts at `previousBestE1RM` and rises with each logged
-  set that beats it; no PR when `previousBestE1RM == 0`. `estimated1RM` = rounded e1RM for such sets, as a whole number of the workout's unit that clamps at
-  1,000,000,000 (the presenter never traps on a state the reducer did not produce); an estimate that is not finite counts as 0. `rirText` = "RIR n" / "RIR 4+" only
+* Rows: `number` = "W"/"D"/"F" or the running number of normal sets; `previousText` / `previousSet` come from the previous session (`exercise.previousSets`, the sets of the MOST RECENT session only,
+  `PresenterSupport.matchedPreviousSets`): the warm-up rows take the previous warm-ups and the working rows (normal, drop, failure; a previous set without a type is a working one) the previous working
+  sets, each kind in order; a row with no previous set of its kind left shows "–" (the last one is never reused). The text is "80 × 6", "+10 × 8" (an exercise that carries a load), "8 reps", "45 s". Each
+  occurrence of an exercise that is in the workout twice is matched to the same previous sets on its own. `previousSet` carries the previous set's `type` and `rir`.
+  `weightText` = `WeightFormatter.text` for weightReps; for repsOnly "BW", or for an exercise that carries a load the signed text of the formatter ("BW" at 0, "+10", "−20" with U+2212); "–" for durations.
+  `weightEditable` = `Exercise.hasEditableWeight`. `WorkoutExercise.matchedPreviousSet(at:)` gives the same matched set for the keypad's "Use last". `isNext` = the first pending set of the card.
+  **Personal records** (`PresenterSupport.analyse`, one rule shared with `SummaryBuilder`, see `RecordTracker` in `Records.swift`): a logged, non-warm-up set is a record when it beats, by more than 0.05 kg
+  (reps and seconds: by at least one), a value that EXISTED before the workout, in the first of these that applies; the values rise with every logged set of the workout. (1) weight x reps with 1...12 reps:
+  the estimated 1RM against `previousBestE1RM` (needs `previousBestE1RM > 0`) -> `PRKind.estimated1RM`. (2) a load (weight x reps, or a reps-only set with an added or assisted load; no estimate for those): the
+  weight against the heaviest weight of any earlier set (`previousRecords.heaviestKg`) -> `.heaviest`, then against the heaviest weight lifted for at least that many reps (`previousRecords.repRecords[reps]`, key
+  13 = "13 or more reps") -> `.repRecord(reps:)`. (3) a reps-only set without a load: more reps than `previousRecords.bestReps` -> `.reps` (on an exercise that carries a load it is judged as a load of 0 as well, and the higher kind wins). (4) a timed set: more seconds than `previousRecords.bestSeconds` -> `.duration`.
+  A record needs its own earlier value, so the first session of an exercise, of a rep range or of a hold flags nothing; a signed load is compared as it is (-15 is heavier than -20). A set carries ONE
+  kind (the first that applies, in the order above) in `SetRow.prKind` (`isPersonalRecord` is `prKind != nil`) and, once saved, in `CompletedSet.prKind`. `estimated1RM` is the rounded estimate as a whole number of the
+  workout's unit, only for an `.estimated1RM` record (it clamps at 1,000,000,000: the presenter never traps on a state the reducer did not produce; an estimate that is not finite is none). `rirText` = "RIR n" / "RIR 4+" only
   on logged sets. `accessibilityLabel` is a full sentence ("Set 3, working set, 82.5 kilograms, 6 reps, logged"; "135 pounds" in pounds).
-* Dock exists iff a rest exists and there is a current exercise. `remainingSeconds` = ceil of the remaining time (frozen while
+* Timed set: `ActiveWorkoutPresentation.timedSet` (`TimedSetPresentation`: exercise and set ids, 1-based `setNumber`, `elapsedSeconds`, `targetSeconds`, `remainingSeconds`, `isOverTarget`, `isPaused` and the
+  texts "m:ss") is set while a timed set runs and its set exists; `isOverTarget` is true from `elapsed >= target` (target above 0) and the stopwatch keeps counting. The reducer does not log the set by itself;
+  the screen sends `stopTimedSet`.
+* Dock exists iff a rest exists, no timed set runs and there is a current exercise. `remainingSeconds` = ceil of the remaining time (frozen while
   paused); finished when 0 (`remainingText` "Go", `fraction` 1); `nextSetText` = "Next · Set 4 · 82.5 kg × 6" (warm-up:
   "Next · Warm-up · 50 kg × 8"; repsOnly "8 reps", duration "45 s") or "All sets logged". `showsRIR` iff `lastLogged` resolves to a
   logged non-warm-up set; `rirSelection` its rir.
 * `coachTip` (card): only while no rest runs, for weight-tracking exercises with `previousBestE1RM > 0` and at least one pending
-  non-warm-up set. Baseline = the running best e1RM (previous best, raised by sets already logged today). Take the LAST pending
+  non-warm-up set with 1...12 reps (a set above the cap cannot beat an estimate: no tip). Baseline = the running best e1RM (previous best, raised by sets already logged today). Take the LAST pending
   normal set (else the last pending non-warm-up set), find the lowest weight (a multiple of `weightStep(in: unit)` of the workout's unit, rounded up) whose Epley e1RM with
   that set's reps exceeds the baseline by more than 0.05, evaluated for the kilograms a set would store (rounded to 0.01 kg), so entering the named weight really beats it. The set's current weight is irrelevant (it may already equal the target).
   Text: "85 kg × 6 on your last set would beat your best estimated 1RM of 99 kg." ("190 lb × 5 ... of 220 lb." in pounds; bench: pending 85 × 6 with previous best 99 gives exactly this).
 * `undoText` = undo title while `now <= expiresAt`, else nil. `finishCheck`: `loggedSets`, `unloggedSets`, `canFinish = logged > 0`,
   title "Nothing logged yet" / "Finish workout?", message ("Log at least one set to save this workout." /
   "<n> set(s) is/are not logged yet and will be left out." / "All sets are logged. Nice work."), `templateDiff`, `diffMessage`
-  "Changes: <summary>.", `asksToUpdateTemplate = !diff.isEmpty && templateID != nil`.
-* `TemplateDiff.compute`: added = exercises with `templateEntryID == nil` or not in `templateBaseline`; removed = baseline ids with no
-  matching exercise; reordered = the relative order of the common ids differs from the baseline.
+  "Changes: <summary>.", `asksToUpdateTemplate = templateID != nil` and the change that `StrengthPreferences.askToUpdateTemplate` names (`TemplateUpdatePrompt`): `.whenChanged` (default) = `!diff.isEmpty`
+  (structure OR loads), `.structureOnly` = `diff.hasStructureChanges` (the text names the structure only), `.never` = false. `WorkoutEngine.presentation(now:)` (so `WorkoutController`) passes the
+  saved template of the workout and the user's choice; a caller that passes no template gets the structure only (`compute(for:)`). The Watch mirror has no template and so asks for structure changes only.
+* `TemplateDiff.compute(for:)`: added = exercises with `templateEntryID == nil` or not in `templateBaseline`; removed = baseline ids with no
+  matching exercise; reordered = the relative order of the common ids differs from the baseline. `compute(for:against:)` adds `changedExercises: [ChangedExercise]` (entry id, name,
+  `kinds: Set<Change>` with `setCount`, `weight`, `reps`, `restSeconds`, `setType`; in workout order; `decodeIfPresent`) for every KEPT exercise whose sets (logged and planned alike) or rest differ from the
+  template's entry: `setCount` = another number of sets (warm-ups count); `setType` = the same number but a set with another type; `weight` / `reps` = a WORKING set (warm-ups are left out) with another weight (compared
+  in kilograms rounded to 0.01; exercises with an editable weight only) or reps / seconds, compared set by set when both have as many working sets (otherwise only the count counts); `restSeconds` = another rest.
+  Notes and superset groups are not compared; an entry the template no longer has is skipped. `summary` names the structure first and then the first two changed exercises ("1 added, Bench Press weight, Squat sets and
+  2 more"); `structureSummary` is the structure alone; both say "none" when empty. `WorkoutFactory.updatedTemplate` rebuilds the planned sets from the current sets, so an accepted update stores the new loads.
 * `SummaryBuilder`: only logged sets; volume as above; averageRIR over recorded rir; `durationSeconds` = elapsed at `finishedAt`;
-  PR per exercise as in the presenter (baseline `previousBestE1RM`); `PersonalRecord.estimated1RM` = best e1RM of the exercise,
-  weight/reps of that set; `muscleSets` = logged non-warm-up sets per muscle group (omit zeros, sort by sets desc then name);
+  records exactly as in the presenter (the same `analyse`): each logged set gets its `prKind`, and the exercise gets ONE `PersonalRecord` for its best record (the higher `PRKind.rank`, then the larger weight /
+  reps / seconds; `kind`, `decodeIfPresent`, default `.estimated1RM`) with the weight and reps of that set, `estimated1RM` = the set's estimate (0 for a kind without one) and `previousBest` = the value that
+  record beat (kilograms of estimate, heaviest or rep-range weight, reps or seconds); `CompletedExercise.bestE1RM` is the best estimate of the logged sets (0 without one); `muscleSets` = logged non-warm-up sets per muscle group (omit zeros, sort by sets desc then name);
   `averageHeartRate` = `state.averageHeartRate`.
 * `SnapshotBuilder`: target = `WorkoutTargets.nextPending`; phase `complete` when no target, else `resting` / `restOver` / `logging`
   from the rest; `setLabel` = ("Warm-up · " if warm-up) + "Set <position among all sets> of <set count>"; `activeStart = startedAt +
   pausedTotal`; `elapsedWhenPaused`; `restStartedAt = restEndsAt - total`; `restFrozenRemaining` while paused; `weightText`/`repsText`/
-  `repsUnit` ("reps"/"sec"); `showsWeight` = weight-tracking; `nextSetText` = "Set 4 · 82.5 kg × 6" style; `nextExerciseName` = the next
-  exercise (after the current one) that still has pending sets; `volumeText` thousands.
+  `repsUnit` ("reps"/"sec"); `showsWeight` = weight-tracking; `nextSetText` = "Set 4 · 82.5 kg × 6" style ("+10 kg × 8" for an exercise that carries a load); `nextExerciseName` = the next
+  exercise (after the current one) that still has pending sets; `volumeText` thousands. `showsWeight` stays weight-tracking only: the Watch and the Live Activity show the reps of a pull-up and no weight stepper,
+  although `weightText` already holds the signed load.
 
 ### 3.4 `SyncCodec.swift`, `SyncReconciler.swift`, `Stores.swift`, `StrengthStore.swift`, `WorkoutController.swift`, `SampleData.swift` (area: services)
 
@@ -514,7 +574,7 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
 
 **No invented data** (`SampleData.swift`, `StrengthData.swift`, `StrengthData+Reset.swift`, `StarterTemplates.swift`, `RecoveryEstimator.swift`).
 * A real user never sees invented workouts, previous results, personal-record baselines or recovery. `DemoPreviousResults.byExerciseID` is the exercise id -> best e1RM + last sets table of the
-  design (`applying(to:)` puts it onto an `Exercise`; `ExerciseLibrary.demoBuiltIn` is the whole library with it). `StrengthData.usesDemoPreviousResults` (not stored, never encoded) is true
+  design (its estimates follow the 12-rep cap: lateral raise 0, pushdown 42, crossover 21; the bench sets carry their two warm-ups as `type: .warmup`) (`applying(to:)` puts it onto an `Exercise`; `ExerciseLibrary.demoBuiltIn` is the whole library with it). `StrengthData.usesDemoPreviousResults` (not stored, never encoded) is true
   only when `seedDemoDataIfEmpty` seeded this store in this process: the overlay (`exercises()`, `exercise(id:)`, `overlay(_:)`) then starts from the demo numbers; remembered history and
   personal bests still win. In every other store the overlay uses only the user's own history and bests, so the PREVIOUS column is empty, no set is flagged as a record, no coach tip appears and
   `PersonalRecord.previousBest` is never invented for a first session. A reload keeps the flag; `removeSampleData()` and a history reset switch it off.
@@ -522,7 +582,8 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
   something, so a workout that an older build saved does not keep the invented previous results or record baseline.
 * Older builds seeded the sample items into real files. `StrengthData.hasSampleData` (also on the model and the store) is true while a template or workout with an id of `SampleData.templateIDs` /
   `workoutIDs` is stored, or (only while `historyIsIncomplete`, when stored bests are kept) while a stored personal best is one the demo seeding wrote: same estimate, weight and reps as
-  `SampleData.personalBests(now:)` and the sample's distance in time from one shared seeding day (to the second), at least two of them. `removeSampleData()` deletes exactly the sample templates and
+  `SampleData.personalBests(now:)` and the sample's distance in time from one shared seeding day (to the second), at least two of them; the sample bests without an estimate (the pull-up's reps, the lateral
+  raise's weights) are then recognised by that day and their marks. `removeSampleData()` deletes exactly the sample templates and
   workouts (also when the user edited a sample template; finished workouts started from one stay, with their template id) and those sample bests, then runs `recomputePersonalBests()` so the sample
   records of a readable history go too (while `historyIsIncomplete` the other bests are only raised), and returns `SampleDataRemoval(templates:workouts:personalBests:)`. The model saves the templates
   when any went, the history when a workout went and the bests when they changed; nothing is written when nothing was there.
@@ -539,7 +600,7 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
   leaves its recovery line out instead of showing the default 100 %. `DemoRecovery.provider` stays for previews, `StrengthAppEnvironment.preview` and tests.
 * `StrengthStore.resetData(_ scope: ResetScope)` (an `OptionSet`: `.templates`, `.history`, `.customExercises`, `.bodyWeights`, `.preferences`, `.all`) erases and saves: `.history` also clears the personal
   bests, the `lastPerformed` of every template, `historyIsIncomplete` and the demo flag; `.customExercises` leaves the copies inside templates and the names inside finished workouts; `.bodyWeights` does
-  not touch Apple Health and switches `weighIn.syncWithHealth` off (otherwise the next read from Health would import the weigh-ins again; the preferences file is saved too); `.preferences` puts every stored preference back to its default (today the weigh-in reminder; new preference fields are reset in the private `resetPreferences()` of `StrengthData+Reset.swift`). The files of
+  not touch Apple Health and switches `weighIn.syncWithHealth` off (otherwise the next read from Health would import the weigh-ins again; the preferences file is saved too); `.preferences` puts every stored preference back to its default (the weigh-in reminder and the workout preferences of section 3.6, the unit by `deviceLocale`; new preference fields are reset in the private `resetPreferences(deviceLocale:)` of `StrengthData+Reset.swift`). The files of
   the named parts are written empty; for `.all` (every option set) the model calls `FileStrengthPersistence.deleteAll()` instead, which removes every data file (also `active-workout.json` and
   `acknowledged-commands.json`) but keeps `schema.json`, the `*.corrupt-*.json` copies and the `schema-vN-backup` folders. Like a write, `deleteAll` is refused for a newer data format and for an
   unreadable file whose original cannot be copied first (nothing is removed then). The store does not look at the running workout: the screen must not offer a reset while one runs.
@@ -553,8 +614,22 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
   muscle, the best e1RM per exercise, `isPersonalRecord`, `personalRecords`), judged against the workouts older than this one in the history; later workouts keep the records they were
   given. `deleteWorkout` gives the template the `lastPerformed` of the workout before it when the deleted one was the last.
 * Personal bests are a pure function of the complete history (`StrengthData.recomputedPersonalBests()`): per exercise the best estimated e1RM of any workout (the e1RM recorded on
-  the entry, else the best Epley estimate of its non-warm-up sets), the earliest workout winning a tie. `record` raises them incrementally and gives the same result (a workout that
-  replaces one with the same id recomputes them); a best can go down when the workout that set it is changed or deleted, except while `historyIsIncomplete` (see above).
+  the entry, else the best `Estimated1RM.estimate` of its non-warm-up sets of 1...12 reps), the earliest workout winning a tie, plus the record marks below. `record` raises them incrementally and gives the same
+  result (a workout that replaces one with the same id recomputes them); a best can go down when the workout that set it is changed or deleted, except while `historyIsIncomplete` (see above).
+  Every exercise that has a counted set has a best, also one without an estimate (reps-only and timed exercises, sets above 12 reps): then `estimated1RM`, `weightKg` and `reps` are 0 and `date` is the earliest workout with a mark.
+* **Record marks** (`Records.swift`, `RecordMarks`; flat `decodeIfPresent` fields of `PersonalBest`, nested in `Exercise.previousRecords`): `heaviestKg` (the heaviest signed weight of any counted set),
+  `repRecords: [Int: Double]` (reps -> the heaviest weight lifted for AT LEAST that many reps: a set of 5 reps writes the keys 1...5; the keys are 1...12 and 13, which means "13 or more reps"; a key exists only when
+  a set reached it), `bestReps` (most reps of a reps-only set without a load, 0 = none) and `bestSeconds` (longest timed set, 0 = none). Only non-warm-up, logged sets count; a weight-tracking set needs a weight > 0 and
+  reps >= 1; a reps-only set with a weight other than 0 is a load (an exercise that carries one), without one it counts for `bestReps` (and, for an exercise that carries a load, also as a load of 0, so that going from
+  assisted to bodyweight is a record and a step back to an assisted load is not; `CompletedExercise.carriesLoad` answers from the library, a custom reps-only id always allows a load); a timed set counts for `bestSeconds`. In JSON `repRecords` is an object keyed by the reps
+  as text (`{"5":100,"13":60}`; the default coding of a Swift dictionary with integer keys is a flat array), and a mark that is missing, damaged or unknown reads as not reached. A best written before the marks has none: the
+  overlay (`exercise(id:)`, `exercises()`) merges the marks of the stored best with those it computes from the history, and the next recompute writes them. A stored estimate from a set of more than 12 reps is ignored
+  (`PersonalBest.withoutUnreliableEstimate`, in the overlay, in `raised(by:)` and in the history screen).
+* **Previous session** (`StrengthData.overlay`): `Exercise.previousSets` are the sets of the exercise's MOST RECENT session only (the first entry with sets when the exercise is in that workout twice; nothing is merged), as
+  `PreviousSet(weightKg:reps:type:rir:)` with `type` written only for a warm-up, drop or failure set (nil = normal) and `rir` when recorded (both `decodeIfPresent`). `previousBestE1RM` and `previousRecords` come from every session.
+  `ExerciseHistory.previousSets` is the same list. `ExerciseHistory.records` lists, besides the earlier rows, "Heaviest weight" (id `heaviest`; "Heaviest added weight" with the signed text for a reps-only exercise) and
+  "Best 3RM" / "Best 5RM" / "Best 8RM" (`rm3`, `rm5`, `rm8`, only when reached and not 0, bodyweight being no added load), each with the date it was first reached, written by the display `WeightFormatter`;
+  "Most reps in a set" and "Longest set" also look at the stored marks. For a reps-only exercise "Most reps in a set" and `bestSetText` count the sets without a load only, as `bestReps` does.
 * `deleteCustomExercise(id:)` removes the exercise from the library and its entries from the templates (the result is the number of templates that changed); the history keeps the
   names. `updateCustomExercise(_:)` replaces the library entry and the copies in the templates (the remembered previous results of a copy stay); the history keeps the old names.
   `WorkoutEngine.start` gives the exercises of a started template the library's current version for built-in exercises (name, cues, media), plus the latest previous results for all.

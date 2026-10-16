@@ -82,14 +82,27 @@ public enum SetType: String, Codable, CaseIterable, Hashable, Sendable {
 
 // MARK: - Exercise library entry
 
+/// One set of an exercise's most recent session (the PREVIOUS column and the defaults of an exercise that is added again).
+///
+/// `type` and `rir` came later and are nil in data that predates them. The type is only written for a set that is not a normal one
+/// (warm-up, drop set, to failure): a nil type counts as a normal set.
 public struct PreviousSet: Codable, Hashable, Sendable {
     public var weightKg: Double
+    /// Reps, or seconds when the exercise tracks duration.
     public var reps: Int
+    public var type: SetType?
+    /// Reps in reserve, 0...4, when the set recorded it.
+    public var rir: Int?
 
-    public init(weightKg: Double, reps: Int) {
+    public init(weightKg: Double, reps: Int, type: SetType? = nil, rir: Int? = nil) {
         self.weightKg = weightKg
         self.reps = reps
+        self.type = type
+        self.rir = rir
     }
+
+    /// True for a warm-up set; every other kind, and an unknown one, is a working set.
+    public var isWarmup: Bool { type == .warmup }
 }
 
 public struct ExerciseDefaults: Codable, Hashable, Sendable {
@@ -117,15 +130,23 @@ public struct Exercise: Identifiable, Codable, Hashable, Sendable {
     public var tracking: TrackingKind
     /// Base name of the two form-demo frames in the IOS resources: "<key>-a" and "<key>-b" (.jpg).
     public var mediaKey: String?
-    /// Best estimated 1RM from earlier sessions (kg). 0 means "no history": no PR can be flagged.
+    /// Best estimated 1RM from earlier sessions (kg). 0 means "no estimate before": a PR by estimated 1RM needs one.
     public var previousBestE1RM: Double
-    /// Last session's sets, aligned by set index (used for the PREVIOUS column).
+    /// The sets of the most recent session of this exercise, warm-ups included (the PREVIOUS column matches them to the rows by kind
+    /// and order, see `PresenterSupport.matchedPreviousSets`; a new entry of the exercise starts from the last working one).
     public var previousSets: [PreviousSet]
     public var defaults: ExerciseDefaults
     public var cues: [String]
     /// Empty-bar weight used by the plate calculator (barbell exercises only).
     public var barKg: Double
     public var isCustom: Bool
+    /// True for a reps-only exercise that can carry an added load (weighted pull-up, dip) or an assisted one (a negative load).
+    /// Its sets then have an editable, signed weight; every other exercise keeps weights of 0 or more. Meaningless for the other
+    /// tracking kinds.
+    public var allowsAddedWeight: Bool
+    /// The marks the earlier sessions reached (heaviest weight, rep records, most reps, longest hold): what a set has to beat to be
+    /// a personal record besides `previousBestE1RM`. Empty without history.
+    public var previousRecords: RecordMarks
 
     public init(
         id: String,
@@ -140,7 +161,9 @@ public struct Exercise: Identifiable, Codable, Hashable, Sendable {
         defaults: ExerciseDefaults,
         cues: [String] = [],
         barKg: Double = 20,
-        isCustom: Bool = false
+        isCustom: Bool = false,
+        allowsAddedWeight: Bool = false,
+        previousRecords: RecordMarks = RecordMarks()
     ) {
         self.id = id
         self.name = name
@@ -155,6 +178,54 @@ public struct Exercise: Identifiable, Codable, Hashable, Sendable {
         self.cues = cues
         self.barKg = barKg
         self.isCustom = isCustom
+        self.allowsAddedWeight = allowsAddedWeight
+        self.previousRecords = previousRecords
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, muscle, secondary, equipment, tracking, mediaKey, previousBestE1RM, previousSets, defaults, cues, barKg, isCustom
+        case allowsAddedWeight, previousRecords
+    }
+
+    // `allowsAddedWeight` and `previousRecords` came later: data written before them (a saved workout, a template, a custom exercise,
+    // a state from an older phone or Watch) reads with no added load and no previous records.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.muscle = try container.decode(MuscleGroup.self, forKey: .muscle)
+        self.secondary = try container.decode(String.self, forKey: .secondary)
+        self.equipment = try container.decode(Equipment.self, forKey: .equipment)
+        self.tracking = try container.decode(TrackingKind.self, forKey: .tracking)
+        self.mediaKey = try container.decodeIfPresent(String.self, forKey: .mediaKey)
+        self.previousBestE1RM = try container.decode(Double.self, forKey: .previousBestE1RM)
+        self.previousSets = try container.decode([PreviousSet].self, forKey: .previousSets)
+        self.defaults = try container.decode(ExerciseDefaults.self, forKey: .defaults)
+        self.cues = try container.decode([String].self, forKey: .cues)
+        self.barKg = try container.decode(Double.self, forKey: .barKg)
+        self.isCustom = try container.decode(Bool.self, forKey: .isCustom)
+        self.allowsAddedWeight = try container.decodeIfPresent(Bool.self, forKey: .allowsAddedWeight) ?? false
+        self.previousRecords = try container.decodeIfPresent(RecordMarks.self, forKey: .previousRecords) ?? RecordMarks()
+    }
+
+    // The two newer entries are only written when they say something, so an exercise without them looks as it always did.
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(muscle, forKey: .muscle)
+        try container.encode(secondary, forKey: .secondary)
+        try container.encode(equipment, forKey: .equipment)
+        try container.encode(tracking, forKey: .tracking)
+        try container.encodeIfPresent(mediaKey, forKey: .mediaKey)
+        try container.encode(previousBestE1RM, forKey: .previousBestE1RM)
+        try container.encode(previousSets, forKey: .previousSets)
+        try container.encode(defaults, forKey: .defaults)
+        try container.encode(cues, forKey: .cues)
+        try container.encode(barKg, forKey: .barKg)
+        try container.encode(isCustom, forKey: .isCustom)
+        if allowsAddedWeight { try container.encode(true, forKey: .allowsAddedWeight) }
+        if !previousRecords.isEmpty { try container.encode(previousRecords, forKey: .previousRecords) }
     }
 
     /// Increment used by the - / + steppers (keypad, Watch, Live Activity).
@@ -192,6 +263,13 @@ public struct Exercise: Identifiable, Codable, Hashable, Sendable {
     public var repsStep: Int { tracking == .duration ? 5 : 1 }
 
     public var tracksWeight: Bool { tracking == .weightReps }
+
+    /// True when a set of this exercise has a weight the user edits: weight-tracking exercises, and reps-only exercises that allow an
+    /// added or assisted load (`allowsAddedWeight`).
+    public var hasEditableWeight: Bool { tracksWeight || carriesLoad }
+
+    /// True for a reps-only exercise with `allowsAddedWeight`: its weight is signed (an assisted load is negative, 0 is bodyweight).
+    public var carriesLoad: Bool { tracking == .repsOnly && allowsAddedWeight }
     public var supportsPlates: Bool { equipment == .barbell && tracking == .weightReps }
 
     /// A user-created exercise with sensible defaults (3 sets, `restSeconds` rest: 90 s unless the user's default rest differs, see
@@ -223,7 +301,8 @@ public struct Exercise: Identifiable, Codable, Hashable, Sendable {
             ),
             cues: ["Your own exercise. Add a note to remember how you like to perform it."],
             barKg: 20,
-            isCustom: true
+            isCustom: true,
+            allowsAddedWeight: tracking == .repsOnly
         )
     }
 }
@@ -290,6 +369,18 @@ public struct WorkoutExercise: Identifiable, Codable, Hashable, Sendable {
 
     public var doneCount: Int { sets.filter { $0.isDone }.count }
     public var isComplete: Bool { !sets.isEmpty && doneCount == sets.count }
+
+    /// The volume of the logged, non-warm-up sets: weight x reps, for exercises with an editable weight (`Exercise.hasEditableWeight`)
+    /// only, and only a positive weight counts: bodyweight and an assisted load add nothing, an added load counts in full. 0 for the
+    /// other exercises.
+    public var loggedVolumeKg: Double {
+        guard exercise.hasEditableWeight else { return 0 }
+        var volume = 0.0
+        for set in sets where set.isDone && set.type.countsTowardVolume {
+            volume += max(0, set.weightKg) * Double(set.reps)
+        }
+        return volume
+    }
 }
 
 // MARK: - Templates
@@ -362,18 +453,17 @@ public struct WorkoutTemplate: Identifiable, Codable, Hashable, Sendable {
 
     /// Rough duration: working time per set (45 s) plus rest, rounded to 5 minutes.
     ///
-    /// The rest after a set follows the reducer: the exercise's rest, 40 % of it (at least 30 s) after a warm-up, and none at all
-    /// when the exercise's rest is 0 (timer off), for every set type.
+    /// The rest after a set follows the reducer (`RestRules`): the exercise's rest, 40 % of it (at least 30 s) after a warm-up, nothing
+    /// after a drop set that another drop set follows, and none at all when the exercise's rest is 0 (timer off), for every set type.
     ///
     /// A rest outside `0...WorkoutReducer.maximumRestSeconds` (only possible for a template that did not come through the
     /// reducer, such as a damaged file) counts as the nearest bound, so the arithmetic cannot overflow.
     public var estimatedMinutes: Int {
         var seconds = 0
         for entry in entries {
-            let rest = max(0, min(entry.restSeconds, WorkoutReducer.maximumRestSeconds))
-            for set in entry.plannedSets {
-                let restAfterSet = rest == 0 ? 0 : (set.type == .warmup ? max(30, rest * 2 / 5) : rest)
-                seconds += 45 + restAfterSet
+            let types = entry.plannedSets.map { $0.type }
+            for index in types.indices {
+                seconds += 45 + RestRules.seconds(afterSetAt: index, types: types, exerciseRest: entry.restSeconds)
             }
         }
         let minutes = Int((Double(seconds) / 60.0 / 5.0).rounded()) * 5

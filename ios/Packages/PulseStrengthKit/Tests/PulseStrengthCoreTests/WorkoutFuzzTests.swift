@@ -56,8 +56,17 @@ struct RedActionGenerator {
         return (ghostID(), ghostID())
     }
 
+    /// A pending set of a timed (duration) exercise when the workout has one, else any target.
+    private mutating func timedTarget(_ s: WorkoutState) -> (UUID, UUID) {
+        let timed = s.exercises.filter { $0.exercise.tracking == .duration && $0.sets.contains { !$0.isDone } }
+        guard !timed.isEmpty, rng.chance(85) else { return target(s) }
+        let entry = timed[rng.int(0...(timed.count - 1))]
+        let pending = entry.sets.filter { !$0.isDone }
+        return (entry.id, pending[rng.int(0...(pending.count - 1))].id)
+    }
+
     private mutating func weight() -> Double {
-        rng.pick([-5, 0, 0.004, 22.5, 47.5, 82.505, 100, 250.25, .nan, .infinity, -.infinity, 1e300])
+        rng.pick([-5, 0, 0.004, 22.5, 47.5, 82.505, 100, 250.25, -250, -1_000, .nan, .infinity, -.infinity, 1e300])
     }
 
     private mutating func exercises() -> [Exercise] {
@@ -79,7 +88,7 @@ struct RedActionGenerator {
             lastKind = 43
             return .undo
         }
-        let kind = rng.int(0...48)
+        let kind = rng.int(0...52)
         lastKind = kind
         let count = s.exercises.count
         switch kind {
@@ -149,6 +158,12 @@ struct RedActionGenerator {
             return .setUsedWatch(rng.chance(50))
         case 48:
             return .setWeightUnit(rng.pick(WeightUnit.allCases))
+        case 49...50:
+            let (e, st) = timedTarget(s); return .startTimedSet(SetRef(exerciseID: e, setID: st))
+        case 51:
+            return .stopTimedSet
+        case 52:
+            return .cancelTimedSet
         default:
             return .rename(rng.pick(["", "Push", "Upper A · Push"]))
         }
@@ -178,6 +193,16 @@ final class WorkoutFuzzTests: XCTestCase {
         var halfDone = RedFix.designState()
         for i in 0..<5 { halfDone.exercises[0].sets[i].isDone = true }
         halfDone.currentIndex = 1
+        let timedAndLoads = RedFix.state([
+            RedFix.entry(1, RedFix.plank, RedFix.normal(3, 0, 45), rest: 45),
+            RedFix.entry(2, RedFix.pullup, RedFix.normal(3, 0, 8), rest: 120),
+            RedFix.entry(3, RedFix.plank, RedFix.normal(2, 0, 30), rest: 30, group: "A"),
+            RedFix.entry(4, RedFix.pushup, RedFix.normal(2, 0, 12), rest: 30, group: "A"),
+            RedFix.entry(5, RedFix.squat, [(.warmup, 40, 8), (.drop, 80, 6), (.drop, 60, 8), (.normal, 80, 6)], rest: 120),
+        ])
+        var timing = timedAndLoads
+        WorkoutReducer.reduce(&timing, .startTimedSet(SetRef(exerciseID: timing.exercises[0].id, setID: timing.exercises[0].sets[0].id)), now: RedFix.t0)
+        WorkoutReducer.reduce(&timing, .pause, now: RedFix.at(10))
         return [
             ("design", RedFix.designState()),
             ("empty", WorkoutState(id: RedFix.uuid(1, 3), name: "Empty", startedAt: RedFix.t0)),
@@ -185,6 +210,8 @@ final class WorkoutFuzzTests: XCTestCase {
             ("supersets", supersetHeavy),
             ("paused with rest", pausedWithRest),
             ("half done", halfDone),
+            ("timed sets and loads", timedAndLoads),
+            ("timed set running, paused", timing),
         ]
     }
 
@@ -197,11 +224,15 @@ final class WorkoutFuzzTests: XCTestCase {
         var restsStarted = 0
         var supersetJumps = 0
         var emptied = 0
+        var timersStarted = 0
+        var timersStopped = 0
         var kinds: [Int] = []
     }
 
     @discardableResult
-    private func run(_ label: String, from start: WorkoutState, seed: UInt64, steps: Int) -> (WorkoutState, RunStats) {
+    private func run(
+        _ label: String, from start: WorkoutState, seed: UInt64, steps: Int, checksGroups: Bool = true
+    ) -> (WorkoutState, RunStats) {
         var generator = RedActionGenerator(seed: seed)
         var state = start
         var stats = RunStats()
@@ -218,7 +249,7 @@ final class WorkoutFuzzTests: XCTestCase {
             stats.kinds.append(generator.lastKind)
             WorkoutReducer.reduce(&state, action, now: now)
             let context = "[\(label) seed \(seed) step \(step)] \(action)"
-            checkInvariants(state, before: before, action: action, now: now, context: context)
+            checkInvariants(state, before: before, action: action, now: now, checksGroups: checksGroups, context: context)
 
             // The same input must give the same output (apart from freshly generated ids).
             if !RedFix.createsNewIDs(action) {
@@ -238,6 +269,8 @@ final class WorkoutFuzzTests: XCTestCase {
             if let rest = state.rest, rest != before.rest { stats.restsStarted += 1 }
             if case .toggleSet = action, before.currentIndex != state.currentIndex { stats.supersetJumps += 1 }
             if state.exercises.isEmpty { stats.emptied += 1 }
+            if before.timedSet == nil, state.timedSet != nil { stats.timersStarted += 1 }
+            if case .stopTimedSet = action, before.timedSet != nil, state.timedSet == nil { stats.timersStopped += 1 }
         }
         return (state, stats)
     }
@@ -252,6 +285,8 @@ final class WorkoutFuzzTests: XCTestCase {
             total.restsStarted += stats.restsStarted
             total.supersetJumps += stats.supersetJumps
             total.emptied += stats.emptied
+            total.timersStarted += stats.timersStarted
+            total.timersStopped += stats.timersStopped
             XCTAssertGreaterThan(stats.changed, Self.stepsPerRun / 4, "too few effective actions in \(label)")
         }
         // The runs must really have exercised these paths.
@@ -259,11 +294,59 @@ final class WorkoutFuzzTests: XCTestCase {
         XCTAssertGreaterThan(total.restsStarted, 100)
         XCTAssertGreaterThan(total.supersetJumps, 20)
         XCTAssertGreaterThan(total.emptied, 0)
+        XCTAssertGreaterThan(total.timersStarted, 20, "timed sets were started")
+        XCTAssertGreaterThan(total.timersStopped, 5, "and stopped (logged)")
     }
 
     func testRandomActionsWithSeveralSeedsOnTheDesignWorkout() {
         for seed in [1, 2, 3, 4, 5, 6, 7, 8] as [UInt64] {
             run("design", from: RedFix.designState(), seed: seed, steps: 500)
+        }
+    }
+
+    /// States that a replay, an undo or a build that predates the rules can produce: superset members that are apart, a lone member,
+    /// a timed set whose set is gone, a rest together with a timed set, an index out of range. The reducer takes any of them.
+    func testRandomActionsFromStatesThatBrokeTheRulesNeverTrapAndStayDeterministic() {
+        var apart = RedFix.state([
+            RedFix.entry(1, RedFix.lateral, RedFix.normal(2, 8, 15), rest: 60, group: "A"),
+            RedFix.entry(2, RedFix.plank, RedFix.normal(2, 0, 45), rest: 45),
+            RedFix.entry(3, RedFix.pushdown, RedFix.normal(2, 30, 12), rest: 60, group: "A"),
+            RedFix.entry(4, RedFix.bench, RedFix.normal(2, 80, 5), rest: 90, group: "B"),
+            RedFix.entry(5, RedFix.pullup, RedFix.normal(2, -20, 8), rest: 90, group: "A"),
+        ])
+        apart.currentIndex = 17
+        var dangling = apart
+        dangling.timedSet = TimedSetState(
+            setRef: SetRef(exerciseID: RedFix.uuid(0xBEEF, 1), setID: RedFix.uuid(0xBEEF, 2)), startedAt: RedFix.t0, targetSeconds: -5
+        )
+        dangling.rest = RestState(endsAt: RedFix.at(60), totalSeconds: 60)
+        var wrongKind = apart
+        wrongKind.timedSet = TimedSetState(
+            setRef: SetRef(exerciseID: wrongKind.exercises[3].id, setID: wrongKind.exercises[3].sets[0].id),
+            startedAt: RedFix.at(1_000), targetSeconds: 99_999, frozenElapsed: -4
+        )
+        for (n, start) in [apart, dangling, wrongKind].enumerated() {
+            for seed in 1...6 as ClosedRange<UInt64> {
+                var generator = RedActionGenerator(seed: seed * 31 + UInt64(n))
+                var state = start
+                var now = RedFix.t0
+                for _ in 0..<600 {
+                    now = now.addingTimeInterval(Double(generator.rng.int(0...9)))
+                    let before = state
+                    let action = generator.next(for: before)
+                    WorkoutReducer.reduce(&state, action, now: now)
+                    if state.exercises.isEmpty {
+                        XCTAssertEqual(state.currentIndex, 0)
+                    } else {
+                        XCTAssertTrue((0..<state.exercises.count).contains(state.currentIndex), "\(action)")
+                    }
+                    if !RedFix.createsNewIDs(action) {
+                        var again = before
+                        WorkoutReducer.reduce(&again, action, now: now)
+                        XCTAssertEqual(again, state, "not deterministic: \(action)")
+                    }
+                }
+            }
         }
     }
 
@@ -286,7 +369,7 @@ final class WorkoutFuzzTests: XCTestCase {
             _ = generator.next(for: state)
             seen.insert(generator.lastKind)
         }
-        XCTAssertEqual(seen, Set(0...48))
+        XCTAssertEqual(seen, Set(0...52))
     }
 
     func testLCGIsDeterministicAndStaysInRange() {
@@ -304,7 +387,9 @@ final class WorkoutFuzzTests: XCTestCase {
 
     // MARK: Invariants
 
-    private func checkInvariants(_ s: WorkoutState, before b: WorkoutState, action: WorkoutAction, now: Date, context: String) {
+    private func checkInvariants(
+        _ s: WorkoutState, before b: WorkoutState, action: WorkoutAction, now: Date, checksGroups: Bool, context: String
+    ) {
         // currentIndex within bounds (0 when empty)
         if s.exercises.isEmpty {
             XCTAssertEqual(s.currentIndex, 0, "index of an empty workout \(context)")
@@ -354,13 +439,43 @@ final class WorkoutFuzzTests: XCTestCase {
             XCTAssertTrue(found, "dangling lastLogged \(context)")
         }
 
-        // set values stay in their ranges
+        // set values stay in their ranges: weights of 0 or more (down to -300 for an exercise with an added or assisted load),
+        // reps up to 999 (seconds up to 10,800 for a timed exercise)
         for entry in s.exercises {
+            let lowest = entry.exercise.carriesLoad ? WorkoutReducer.minimumWeightKg : 0
+            let mostReps = entry.exercise.tracking == .duration ? WorkoutReducer.maximumDurationSeconds : WorkoutReducer.maximumReps
             for set in entry.sets {
-                XCTAssertTrue(set.weightKg.isFinite && set.weightKg >= 0, "bad weight \(set.weightKg) \(context)")
-                XCTAssertTrue((0...999).contains(set.reps), "bad reps \(set.reps) \(context)")
+                XCTAssertTrue(
+                    set.weightKg.isFinite && set.weightKg >= lowest && set.weightKg <= WorkoutReducer.maximumWeightKg,
+                    "bad weight \(set.weightKg) \(context)"
+                )
+                XCTAssertFalse(set.weightKg == 0 && set.weightKg.sign == .minus, "negative zero \(context)")
+                XCTAssertTrue((0...mostReps).contains(set.reps), "bad reps \(set.reps) \(context)")
                 if let rir = set.rir { XCTAssertTrue((0...4).contains(rir), "bad rir \(rir) \(context)") }
             }
+        }
+
+        // the members of a superset are next to each other
+        if checksGroups {
+            for group in Set(s.exercises.compactMap { $0.supersetGroup }) {
+                let members = s.exercises.indices.filter { s.exercises[$0].supersetGroup == group }
+                if let first = members.first, let last = members.last {
+                    XCTAssertEqual(last - first, members.count - 1, "superset \(group) is split \(context)")
+                }
+            }
+        }
+
+        // a timed set: a pending set of a timed exercise, never together with a rest, frozen exactly while paused
+        if let timed = s.timedSet {
+            let found = s.exercises.first { $0.id == timed.setRef.exerciseID }
+            let set = found?.sets.first { $0.id == timed.setRef.setID }
+            XCTAssertNotNil(set, "dangling timed set \(context)")
+            XCTAssertEqual(found?.exercise.tracking, .duration, "timed set of an exercise that is not timed \(context)")
+            XCTAssertEqual(set?.isDone, false, "timed set of a logged set \(context)")
+            XCTAssertEqual(timed.targetSeconds, set?.reps, "target does not follow the set \(context)")
+            XCTAssertNil(s.rest, "a rest runs while a timed set does \(context)")
+            XCTAssertEqual(timed.frozenElapsed != nil, s.pausedAt != nil, "timed set frozen iff paused \(context)")
+            if let frozen = timed.frozenElapsed { XCTAssertGreaterThanOrEqual(frozen, 0, context) }
         }
 
         // pause bookkeeping
@@ -394,6 +509,17 @@ final class WorkoutFuzzTests: XCTestCase {
                 XCTAssertNil(s.pausedAt, context)
                 XCTAssertEqual(s.rest?.endsAt, now.addingTimeInterval(max(0, frozen)), "resume thaw \(context)")
             }
+        case .startTimedSet:
+            if b.timedSet != nil { XCTAssertEqual(s.timedSet, b.timedSet, "a second timed set replaced the first \(context)") }
+        case .stopTimedSet:
+            XCTAssertNil(s.timedSet, "stop keeps the timed set \(context)")
+            if let timed = b.timedSet, let logged = s.lastLogged, logged == timed.setRef {
+                let set = s.exercises.first { $0.id == logged.exerciseID }?.sets.first { $0.id == logged.setID }
+                XCTAssertEqual(set?.isDone, true, "stop did not log \(context)")
+            }
+        case .cancelTimedSet:
+            XCTAssertNil(s.timedSet, "cancel keeps the timed set \(context)")
+            XCTAssertEqual(s.exercises, b.exercises, "cancel changed the sets \(context)")
         case let .setWeightUnit(unit):
             XCTAssertEqual(s.settings.weightUnit, unit, "unit not set \(context)")
             XCTAssertEqual(s.exercises, b.exercises, "a unit change touched the exercises (weights stay in kilograms) \(context)")

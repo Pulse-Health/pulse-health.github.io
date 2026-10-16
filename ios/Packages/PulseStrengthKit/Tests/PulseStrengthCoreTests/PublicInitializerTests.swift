@@ -33,7 +33,15 @@ final class PublicInitializerTests: XCTestCase {
             id: row.id, number: row.number, type: row.type, previousText: row.previousText, weightText: row.weightText,
             repsText: row.repsText, weightEditable: row.weightEditable, isDone: row.isDone, isNext: row.isNext,
             isPersonalRecord: row.isPersonalRecord, estimated1RM: row.estimated1RM, rir: row.rir, rirText: row.rirText,
-            accessibilityLabel: row.accessibilityLabel
+            accessibilityLabel: row.accessibilityLabel, prKind: row.prKind, previousSet: row.previousSet
+        )
+    }
+
+    private func rebuilt(_ timed: ActiveWorkoutPresentation.TimedSetPresentation) -> ActiveWorkoutPresentation.TimedSetPresentation {
+        ActiveWorkoutPresentation.TimedSetPresentation(
+            exerciseID: timed.exerciseID, setID: timed.setID, setNumber: timed.setNumber, elapsedSeconds: timed.elapsedSeconds,
+            targetSeconds: timed.targetSeconds, remainingSeconds: timed.remainingSeconds, isOverTarget: timed.isOverTarget,
+            isPaused: timed.isPaused, elapsedText: timed.elapsedText, targetText: timed.targetText, remainingText: timed.remainingText
         )
     }
 
@@ -72,7 +80,8 @@ final class PublicInitializerTests: XCTestCase {
                 loggedSets: check.loggedSets, unloggedSets: check.unloggedSets, canFinish: check.canFinish, title: check.title,
                 message: check.message, templateDiff: check.templateDiff, diffMessage: check.diffMessage,
                 asksToUpdateTemplate: check.asksToUpdateTemplate
-            )
+            ),
+            timedSet: presentation.timedSet.map(rebuilt)
         )
     }
 
@@ -103,7 +112,8 @@ final class PublicInitializerTests: XCTestCase {
             bestSetDate: history.bestSetDate,
             volumeLast30Days: history.volumeLast30Days,
             sessionsLast30Days: history.sessionsLast30Days,
-            records: history.records.map { ExerciseRecordRow(id: $0.id, label: $0.label, value: $0.value, date: $0.date) }
+            records: history.records.map { ExerciseRecordRow(id: $0.id, label: $0.label, value: $0.value, date: $0.date) },
+            previousSets: history.previousSets.map { PreviousSet(weightKg: $0.weightKg, reps: $0.reps, type: $0.type, rir: $0.rir) }
         )
     }
 
@@ -138,13 +148,18 @@ final class PublicInitializerTests: XCTestCase {
         let empty = WorkoutFactory.makeEmpty(name: "Free workout", now: SvcSyncFix.epoch, id: SvcSyncFix.uuid(2))
         var inPounds = resting
         inPounds.settings.weightUnit = .lb
-        return [fresh, resting, pending, paused, allLogged, empty, inPounds]
+        var timing = WorkoutFactory.makeEmpty(name: "Core", now: SvcSyncFix.epoch, id: SvcSyncFix.uuid(3))
+        WorkoutReducer.reduce(&timing, .addExercises([ExerciseLibrary.exercise(id: "plank")!]), now: SvcSyncFix.at(1))
+        WorkoutReducer.reduce(
+            &timing, .startTimedSet(SetRef(exerciseID: timing.exercises[0].id, setID: timing.exercises[0].sets[0].id)), now: SvcSyncFix.at(5)
+        )
+        return [fresh, resting, pending, paused, allLogged, empty, inPounds, timing]
     }
 
     // MARK: Tests
 
     func testEveryPresentationRebuildsFromItsPartsThroughThePublicInitializers() {
-        var sawRows = false, sawDock = false, sawTip = false, sawRIR = false, sawEmpty = false, sawRecord = false
+        var sawRows = false, sawDock = false, sawTip = false, sawRIR = false, sawEmpty = false, sawRecord = false, sawTimed = false
         for state in states() {
             for offset in [0.0, 150, 1_000] {
                 let presentation = WorkoutPresenter.present(state, now: SvcSyncFix.at(offset), recovery: DemoRecovery.provider)
@@ -155,9 +170,13 @@ final class PublicInitializerTests: XCTestCase {
                 sawRIR = sawRIR || (presentation.card?.rows.contains { $0.rirText != nil } ?? false)
                 sawRecord = sawRecord || (presentation.card?.rows.contains { $0.estimated1RM != nil } ?? false)
                 sawEmpty = sawEmpty || presentation.isEmpty
+                sawTimed = sawTimed || presentation.timedSet != nil
             }
         }
-        XCTAssertTrue(sawRows && sawDock && sawTip && sawRIR && sawRecord && sawEmpty, "the states cover rows, dock, coach tip, RIR, records and the empty case")
+        XCTAssertTrue(
+            sawRows && sawDock && sawTip && sawRIR && sawRecord && sawEmpty && sawTimed,
+            "the states cover rows, dock, coach tip, RIR, records, the empty case and a timed set"
+        )
     }
 
     func testOptionalsDefaultToNil() {

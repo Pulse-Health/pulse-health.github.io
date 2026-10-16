@@ -422,3 +422,55 @@ final class WeightParseTests: XCTestCase {
         }
     }
 }
+
+// MARK: - Exhaustive round trips
+
+final class WeightRoundTripSweepTests: XCTestCase {
+    /// Every weight a person can type in pounds (0.1 steps up to 2,000 lb) is stored by the reducer and shown again unchanged.
+    func testEveryTenthOfAPoundTypedIsShownUnchangedAfterStorage() throws {
+        let formatter = lbFormatter()
+        for tenths in 0...20_000 {
+            let typed = formatter.number(Double(tenths) / 10)
+            let kg = try XCTUnwrap(WeightFormatter.parse(typed, unit: .lb, locale: enUS), typed)
+            let stored = try XCTUnwrap(WorkoutReducer.roundedWeight(kg), typed)
+            XCTAssertEqual(formatter.text(kg: stored), typed, "\(typed) lb")
+        }
+    }
+
+    /// What the formatter writes reads back in every unit and locale, grouping-free and with the locale's own decimal mark.
+    func testWhatTheFormatterWritesReadsBackInEveryUnitAndLocale() throws {
+        let identifiers = ["en_US", "en_GB", "de_DE", "fr_FR", "de_CH", "sv_SE", "ar_EG"]
+        for identifier in identifiers {
+            let locale = Locale(identifier: identifier)
+            for unit in WeightUnit.allCases {
+                let formatter = WeightFormatter(unit: unit, locale: locale)
+                for hundredths in stride(from: 0, through: 300_000, by: 37) {
+                    let text = formatter.text(kg: Double(hundredths) / 100)
+                    let kg = try XCTUnwrap(WeightFormatter.parse(text, unit: unit, locale: locale), "\(identifier) \(unit) \(text)")
+                    XCTAssertEqual(formatter.text(kg: kg), text, "\(identifier) \(unit)")
+                }
+            }
+        }
+    }
+
+    /// Whatever is typed, the parser answers with a weight in range or nil: it never traps.
+    func testArbitraryTextNeverGivesAnOutOfRangeWeight() {
+        let alphabet = Array("0123456789.,- +\u{2212}kglbs e\u{066B}\u{066C}'\u{2019}\u{202F}x")
+        var seed: UInt64 = 0x9E37_79B9_7F4A_7C15
+        func next() -> Int {
+            seed = seed &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
+            return Int(seed >> 33)
+        }
+        for _ in 0..<20_000 {
+            let text = String((0..<(next() % 13)).map { _ in alphabet[next() % alphabet.count] })
+            for unit in WeightUnit.allCases {
+                for allowsNegative in [false, true] {
+                    guard let kg = WeightFormatter.parse(text, unit: unit, locale: deDE, allowsNegative: allowsNegative) else { continue }
+                    XCTAssertTrue(kg.isFinite, text)
+                    XCTAssertLessThanOrEqual(abs(kg), WorkoutReducer.maximumWeightKg, text)
+                    XCTAssertTrue(allowsNegative || kg >= 0, text)
+                }
+            }
+        }
+    }
+}

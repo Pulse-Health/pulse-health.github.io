@@ -86,11 +86,12 @@ public extension StrengthData {
     }
 }
 
-/// What the history says about one exercise: its latest sets and its best estimated 1RM.
+/// What the history says about one exercise: its latest sets, its best estimated 1RM and its record marks.
 private struct ExerciseMemory {
     var lastDate: Date
     var lastSets: [PreviousSet]
     var bestE1RM: Double
+    var marks: RecordMarks
 }
 
 private extension StrengthData {
@@ -106,32 +107,42 @@ private extension StrengthData {
     func overlay(_ exercise: Exercise, memory: [String: ExerciseMemory]) -> Exercise {
         var result = usesDemoPreviousResults ? DemoPreviousResults.applying(to: exercise) : exercise
         let remembered = memory[exercise.id]
-        let best = max(personalBests[exercise.id]?.estimated1RM ?? 0, remembered?.bestE1RM ?? 0)
+        let stored = personalBests[exercise.id]?.withoutUnreliableEstimate
+        let best = max(stored?.estimated1RM ?? 0, remembered?.bestE1RM ?? 0)
         if best > 0 { result.previousBestE1RM = best }
         if let sets = remembered?.lastSets, !sets.isEmpty { result.previousSets = sets }
+        var marks = stored?.marks ?? RecordMarks()
+        if let remembered { marks.merge(remembered.marks) }
+        if !marks.isEmpty { result.previousRecords = marks }
         return result
     }
 
-    /// One pass over the history (optionally for a single exercise id): latest sets and best e1RM per exercise.
+    /// One pass over the history (optionally for a single exercise id): latest sets, best e1RM and record marks per exercise.
+    ///
+    /// The latest sets are those of the exercise's most recent workout, and of ONE entry of it: when the exercise appears twice in that
+    /// workout, the first entry that has sets (an exercise that appears twice has its occurrences matched to the same previous sets, see
+    /// `PresenterSupport.matchedPreviousSets`). The bests and marks come from every entry of every workout.
     func exerciseMemory(only id: String? = nil) -> [String: ExerciseMemory] {
         var memory: [String: ExerciseMemory] = [:]
         for workout in history {
-            var setsByExercise: [String: [CompletedSet]] = [:]
+            var firstSets: [String: [CompletedSet]] = [:]
             var bestByExercise: [String: Double] = [:]
-            var order: [String] = []
+            var marksByExercise: [String: RecordMarks] = [:]
             for entry in workout.exercises {
                 if let id, entry.exerciseID != id { continue }
-                if setsByExercise[entry.exerciseID] == nil { order.append(entry.exerciseID) }
-                setsByExercise[entry.exerciseID, default: []].append(contentsOf: entry.sets)
+                if !entry.sets.isEmpty, firstSets[entry.exerciseID] == nil { firstSets[entry.exerciseID] = entry.sets }
                 bestByExercise[entry.exerciseID] = max(bestByExercise[entry.exerciseID] ?? 0, StrengthData.bestE1RM(of: entry))
+                var marks = marksByExercise[entry.exerciseID] ?? RecordMarks()
+                marks.merge(RecordMarks(entry: entry))
+                marksByExercise[entry.exerciseID] = marks
             }
-            for exerciseID in order {
-                let sets = setsByExercise[exerciseID] ?? []
-                var item = memory[exerciseID] ?? ExerciseMemory(lastDate: .distantPast, lastSets: [], bestE1RM: 0)
-                item.bestE1RM = max(item.bestE1RM, bestByExercise[exerciseID] ?? 0)
-                if !sets.isEmpty, (item.lastSets.isEmpty || workout.finishedAt > item.lastDate) {
+            for (exerciseID, best) in bestByExercise {
+                var item = memory[exerciseID] ?? ExerciseMemory(lastDate: .distantPast, lastSets: [], bestE1RM: 0, marks: RecordMarks())
+                item.bestE1RM = max(item.bestE1RM, best)
+                item.marks.merge(marksByExercise[exerciseID] ?? RecordMarks())
+                if let sets = firstSets[exerciseID], item.lastSets.isEmpty || workout.finishedAt > item.lastDate {
                     item.lastDate = workout.finishedAt
-                    item.lastSets = sets.map { PreviousSet(weightKg: $0.weightKg, reps: $0.reps) }
+                    item.lastSets = sets.map { PreviousSet(weightKg: $0.weightKg, reps: $0.reps, type: $0.type == .normal ? nil : $0.type, rir: $0.rir) }
                 }
                 memory[exerciseID] = item
             }
@@ -139,19 +150,31 @@ private extension StrengthData {
         return memory
     }
 
-    /// The e1RM recorded on the entry, or (when none was recorded) the best Epley estimate of its non-warm-up sets.
+    /// The best estimated 1RM of the entry: the best estimate (`Estimated1RM.estimate`, sets of 1...12 reps) of its non-warm-up sets,
+    /// or, when the entry recorded one, that value.
+    ///
+    /// A value recorded before the 12-rep cap that came from a set of more reps (20 kg x 100 reps was "estimated" at 87 kg) is no
+    /// estimate any more and gives way to what the sets say.
     static func bestE1RM(of entry: CompletedExercise) -> Double {
-        if entry.bestE1RM > 0 { return entry.bestE1RM }
-        return bestSet(in: entry.sets, tracking: entry.tracking)?.e1RM ?? 0
+        let derived = bestSet(in: entry.sets, tracking: entry.tracking)?.e1RM ?? 0
+        guard entry.bestE1RM > 0 else { return derived }
+        if entry.tracking == .weightReps, derived < entry.bestE1RM, entry.sets.contains(where: { set in
+            set.type != .warmup && set.reps > Estimated1RM.maximumReliableReps
+                && Estimated1RM.epley(weightKg: set.weightKg, reps: set.reps) == entry.bestE1RM
+        }) {
+            return derived
+        }
+        return entry.bestE1RM
     }
 
-    /// The non-warm-up set with the highest Epley estimate (the first one on a tie); nil without a weight-tracking set.
+    /// The non-warm-up set with the highest estimate (`Estimated1RM.estimate`; the first one on a tie); nil without a weight-tracking
+    /// set that has one.
     static func bestSet(in sets: [CompletedSet], tracking: TrackingKind) -> (e1RM: Double, weightKg: Double, reps: Int)? {
         guard tracking == .weightReps else { return nil }
         var best: (e1RM: Double, weightKg: Double, reps: Int)?
         for set in sets where set.type != .warmup {
-            let value = Estimated1RM.epley(weightKg: set.weightKg, reps: set.reps)
-            if value > 0, value > (best?.e1RM ?? 0) { best = (value, set.weightKg, set.reps) }
+            guard let value = Estimated1RM.estimate(weightKg: set.weightKg, reps: set.reps) else { continue }
+            if value > (best?.e1RM ?? 0) { best = (value, set.weightKg, set.reps) }
         }
         return best
     }
@@ -184,9 +207,10 @@ public extension StrengthData {
     /// Records a finished workout.
     ///
     /// * History: inserted newest first (a workout with the same id is replaced).
-    /// * Personal bests: raised for every exercise whose best estimated 1RM beats the stored one. The result is the same as
-    ///   `recomputePersonalBests()` over the new history; a workout that replaced an earlier one with the same id recomputes them,
-    ///   because the earlier version may have held a best the new one does not reach.
+    /// * Personal bests: raised for every exercise whose best estimated 1RM beats the stored one, and for every mark (heaviest weight,
+    ///   rep records, most reps, longest hold) the workout raises. The result is the same as `recomputePersonalBests()` over the new
+    ///   history; a workout that replaced an earlier one with the same id recomputes them, because the earlier version may have held
+    ///   a best the new one does not reach.
     /// * Templates: the workout's template gets `lastPerformed`; `updateTemplate` (when given) replaces the stored template with the same id
     ///   (or is added) and also gets `lastPerformed`.
     mutating func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) {
@@ -213,8 +237,10 @@ public extension StrengthData {
     }
 
     /// The personal bests as a pure function of the complete history: for every exercise the best estimated 1RM of any workout
-    /// (the e1RM recorded on the entry, or the best Epley estimate of its non-warm-up sets), with the set, reps and date that reached it.
-    /// The earliest workout wins a tie, and bests of exercises without history do not exist.
+    /// (the e1RM recorded on the entry, or the best estimate of its non-warm-up sets of 1...12 reps), with the set, reps and date that
+    /// reached it, and the marks of `RecordMarks` over all its non-warm-up sets (heaviest weight, rep records, most reps, longest
+    /// hold). The earliest workout wins a tie, an exercise without an estimate has the date of its earliest workout with a mark, and
+    /// bests of exercises without history (or without a single set that counts) do not exist.
     func recomputedPersonalBests() -> [String: PersonalBest] {
         // Oldest first; workouts with the same finish time keep the order in which they were recorded (the newer one is listed first).
         let ordered = history.enumerated().sorted { lhs, rhs in
@@ -240,43 +266,44 @@ public extension StrengthData {
             return
         }
         for (id, candidate) in recomputed {
-            guard let current = personalBests[id] else {
-                personalBests[id] = candidate
-                continue
-            }
-            if candidate.estimated1RM > current.estimated1RM
-                || (candidate.estimated1RM == current.estimated1RM && candidate.date < current.date) {
-                personalBests[id] = candidate
-            }
+            personalBests[id] = personalBests[id]?.raised(by: candidate) ?? candidate
         }
     }
 
-    /// The best estimated 1RM per exercise id among the workouts older than the one at `index` of the (newest first) history.
-    internal func bestE1RMs(inWorkoutsOlderThanIndex index: Int) -> [String: Double] {
-        var best: [String: Double] = [:]
+    /// The best estimated 1RM and the record marks per exercise id among the workouts older than the one at `index` of the (newest
+    /// first) history: what a workout at that position had to beat.
+    internal func baselines(inWorkoutsOlderThanIndex index: Int) -> [String: (e1RM: Double, marks: RecordMarks)] {
+        var baselines: [String: (e1RM: Double, marks: RecordMarks)] = [:]
         for workout in history.dropFirst(index + 1) {
             for entry in workout.exercises {
-                best[entry.exerciseID] = max(best[entry.exerciseID] ?? 0, StrengthData.bestE1RM(of: entry))
+                var item = baselines[entry.exerciseID] ?? (0, RecordMarks())
+                item.e1RM = max(item.e1RM, StrengthData.bestE1RM(of: entry))
+                item.marks.merge(RecordMarks(entry: entry))
+                baselines[entry.exerciseID] = item
             }
         }
-        return best
+        return baselines
     }
 
-    /// Stores the best of `entry` (finished at `date`) when it beats the one in `bests`, or equals it at an earlier date.
+    /// Raises the best of the exercise of `entry` (finished at `date`) with what the entry reached (see `PersonalBest.raised(by:)`).
     fileprivate static func raiseBest(_ bests: inout [String: PersonalBest], with entry: CompletedExercise, at date: Date) {
-        let value = bestE1RM(of: entry)
-        guard value > 0, value.isFinite else { return }
-        if let current = bests[entry.exerciseID] {
-            guard value > current.estimated1RM || (value == current.estimated1RM && date < current.date) else { return }
-        }
-        let set = bestSet(in: entry.sets, tracking: entry.tracking)
-        bests[entry.exerciseID] = PersonalBest(
+        let estimate = bestE1RM(of: entry)
+        let value = estimate.isFinite && estimate > 0 ? estimate : 0
+        let marks = RecordMarks(entry: entry)
+        guard value > 0 || !marks.isEmpty else { return }
+        let set = value > 0 ? bestSet(in: entry.sets, tracking: entry.tracking) : nil
+        let candidate = PersonalBest(
             exerciseID: entry.exerciseID,
             estimated1RM: value,
             weightKg: set?.weightKg ?? 0,
             reps: set?.reps ?? 0,
-            date: date
+            date: date,
+            heaviestKg: marks.heaviestKg,
+            repRecords: marks.repRecords,
+            bestReps: marks.bestReps,
+            bestSeconds: marks.bestSeconds
         )
+        bests[entry.exerciseID] = bests[entry.exerciseID]?.raised(by: candidate) ?? candidate
     }
 
     /// Fills an empty store (no templates, no history) with the demo templates, history and personal bests and switches on the demo
@@ -341,7 +368,7 @@ public extension StrengthData {
         }
         let seriesBest = series.map { $0.value }.max() ?? 0
         bestValue = max(bestValue, seriesBest)
-        if let stored = personalBests[exerciseID], stored.estimated1RM > bestValue + 1e-9 {
+        if let stored = personalBests[exerciseID]?.withoutUnreliableEstimate, stored.estimated1RM > bestValue + 1e-9 {
             bestValue = stored.estimated1RM
             bestWeight = stored.weightKg
             bestReps = stored.reps
@@ -357,7 +384,7 @@ public extension StrengthData {
         case .weightReps:
             if bestValue > 0, bestReps > 0 { bestSetText = String(format: "%@ × %ld", formatter.textWithUnit(kg: bestWeight), bestReps) }
         case .repsOnly:
-            if let top = StrengthData.topSet(in: sessions, by: { $0.reps }) {
+            if let top = StrengthData.topSet(in: sessions, by: { $0.bodyweightReps }) {
                 bestSetText = String(top.value) + (top.value == 1 ? " rep" : " reps")
                 bestDate = top.date
             }
@@ -368,6 +395,7 @@ public extension StrengthData {
             }
         }
 
+        let marks = datedMarks(of: sessions, stored: personalBests[exerciseID])
         return ExerciseHistory(
             exerciseID: exerciseID,
             sessions: sessions.map { $0.session },
@@ -377,20 +405,58 @@ public extension StrengthData {
             bestSetDate: bestSetText == nil ? nil : bestDate,
             volumeLast30Days: volume,
             sessionsLast30Days: recent.count,
-            records: records(for: tracking, sessions: sessions, bestE1RM: bestValue, bestDate: bestDate, bestSetText: bestSetText, formatter: formatter)
-                + bodyWeightRecords(
-                    for: exerciseID, tracking: tracking, sessions: sessions,
-                    bestE1RM: tracking == .weightReps ? bestValue : 0, bestDate: bestDate, formatter: formatter
-                )
+            records: records(
+                for: tracking, sessions: sessions, bestE1RM: bestValue, bestDate: bestDate, bestSetText: bestSetText, marks: marks, formatter: formatter
+            ) + bodyWeightRecords(
+                for: exerciseID, tracking: tracking, sessions: sessions,
+                bestE1RM: tracking == .weightReps ? bestValue : 0, bestDate: bestDate, formatter: formatter
+            ),
+            previousSets: exerciseMemory(only: exerciseID)[exerciseID]?.lastSets ?? []
         )
     }
+}
+
+private extension CompletedSet {
+    /// The reps of a set of a reps-only exercise without an added or assisted load (what `RecordMarks.bestReps` counts); 0 for a loaded set.
+    var bodyweightReps: Int { abs(weightKg) < 0.005 ? reps : 0 }
 }
 
 private struct SessionItem {
     var session: ExerciseSession
     var tracking: TrackingKind
+    var carriesLoad: Bool
     var e1RM: Double
     var volumeKg: Double
+}
+
+/// Record marks with the date each was reached.
+private struct DatedMarks {
+    var marks = RecordMarks()
+    var heaviestDate: Date?
+    var repDates: [Int: Date] = [:]
+    var repsDate: Date?
+    var secondsDate: Date?
+
+    /// Raises every mark that `other` (reached at `date`) beats; the date of a mark only changes when it is beaten, so feeding the
+    /// sessions oldest first dates each mark with the earliest session that reached it.
+    mutating func raise(with other: RecordMarks, at date: Date) {
+        if let heaviest = other.heaviestKg, heaviest > marks.heaviestKg ?? -.infinity {
+            marks.heaviestKg = heaviest
+            heaviestDate = date
+        }
+        for (reps, weight) in other.repRecords where weight > marks.repRecords[reps] ?? -.infinity {
+            marks.repRecords[reps] = weight
+            repDates[reps] = date
+        }
+        if other.bestReps > marks.bestReps {
+            marks.bestReps = other.bestReps
+            repsDate = date
+        }
+        if other.bestSeconds > marks.bestSeconds {
+            marks.bestSeconds = other.bestSeconds
+            secondsDate = date
+        }
+    }
 }
 
 private extension StrengthData {
@@ -401,9 +467,10 @@ private extension StrengthData {
             let entries = workout.exercises.filter { $0.exerciseID == exerciseID && !$0.sets.isEmpty }
             guard let first = entries.first else { continue }
             let sets = entries.flatMap { $0.sets }
-            let volume = first.tracking == .weightReps
-                ? sets.reduce(0.0) { $0 + ($1.type == .warmup ? 0 : $1.weightKg * Double($1.reps)) }
-                : 0
+            // Weight x reps; a reps-only exercise counts its added loads only (bodyweight and assisted sets add nothing).
+            let volume = first.tracking == .duration
+                ? 0
+                : sets.reduce(0.0) { $0 + ($1.type == .warmup ? 0 : max(0, $1.weightKg) * Double($1.reps)) }
             let session = ExerciseSession(
                 id: workout.id,
                 date: workout.finishedAt,
@@ -412,7 +479,7 @@ private extension StrengthData {
                 isPersonalRecord: entries.contains { $0.isPersonalRecord }
             )
             let e1RM = entries.map { StrengthData.bestE1RM(of: $0) }.max() ?? 0
-            items.append((offset, SessionItem(session: session, tracking: first.tracking, e1RM: e1RM, volumeKg: volume)))
+            items.append((offset, SessionItem(session: session, tracking: first.tracking, carriesLoad: first.carriesLoad, e1RM: e1RM, volumeKg: volume)))
         }
         items.sort { lhs, rhs in
             if lhs.item.session.date != rhs.item.session.date { return lhs.item.session.date > rhs.item.session.date }
@@ -439,6 +506,7 @@ private extension StrengthData {
         bestE1RM: Double,
         bestDate: Date?,
         bestSetText: String?,
+        marks: DatedMarks,
         formatter: WeightFormatter
     ) -> [ExerciseRecordRow] {
         guard !sessions.isEmpty else { return [] }
@@ -462,6 +530,7 @@ private extension StrengthData {
             if let text = bestSetText {
                 rows.append(ExerciseRecordRow(id: "bestSet", label: "Best set", value: text, date: bestDate))
             }
+            rows.append(contentsOf: loadRows(marks, label: "Heaviest weight", format: { formatter.textWithUnit(kg: $0) }))
             if let common = commonWorkingWeight(in: sessions) {
                 var most = 0
                 var mostDate: Date?
@@ -481,14 +550,19 @@ private extension StrengthData {
                 rows.append(ExerciseRecordRow(id: "bestVolume", label: "Best session volume", value: formatter.volumeWithUnit(kg: top.value), date: top.date))
             }
         case .repsOnly:
-            if let top = StrengthData.topSet(in: sessions, by: { $0.reps }) {
+            var most = StrengthData.topSet(in: sessions, by: { $0.bodyweightReps })
+            if marks.marks.bestReps > (most?.value ?? 0), let date = marks.repsDate { most = (marks.marks.bestReps, date) }
+            if let top = most {
                 rows.append(ExerciseRecordRow(id: "mostReps", label: "Most reps in a set", value: String(top.value), date: top.date))
             }
+            rows.append(contentsOf: loadRows(marks, label: "Heaviest added weight", format: { formatter.signedText(kg: $0) + " " + formatter.unit.symbol }))
             if let top = bestSession({ item in Double(item.session.sets.reduce(0) { $0 + ($1.type == .warmup ? 0 : $1.reps) }) }) {
                 rows.append(ExerciseRecordRow(id: "bestSessionReps", label: "Best session reps", value: NumberText.thousands(top.value), date: top.date))
             }
         case .duration:
-            if let top = StrengthData.topSet(in: sessions, by: { $0.reps }) {
+            var longest = StrengthData.topSet(in: sessions, by: { $0.reps })
+            if marks.marks.bestSeconds > (longest?.value ?? 0), let date = marks.secondsDate { longest = (marks.marks.bestSeconds, date) }
+            if let top = longest {
                 rows.append(ExerciseRecordRow(id: "longest", label: "Longest set", value: String(top.value) + " s", date: top.date))
             }
             if let top = bestSession({ item in Double(item.session.sets.reduce(0) { $0 + ($1.type == .warmup ? 0 : $1.reps) }) }) {
@@ -496,6 +570,34 @@ private extension StrengthData {
             }
         }
         return rows
+    }
+
+    /// The rows of the load marks: the heaviest weight ("heaviest") and the best 3, 5 and 8 rep maxes ("rm3", "rm5", "rm8": the
+    /// heaviest weight for at least that many reps), each only when achieved. A mark of 0 (bodyweight, as a reps-only exercise that
+    /// carries a load counts it) is no load worth a row. `format` writes a weight with its unit.
+    func loadRows(_ marks: DatedMarks, label heaviestLabel: String, format: (Double) -> String) -> [ExerciseRecordRow] {
+        var rows: [ExerciseRecordRow] = []
+        if let heaviest = marks.marks.heaviestKg, heaviest != 0 {
+            rows.append(ExerciseRecordRow(id: "heaviest", label: heaviestLabel, value: format(heaviest), date: marks.heaviestDate))
+        }
+        for reps in [3, 5, 8] {
+            guard let weight = marks.marks.repRecords[reps], weight != 0 else { continue }
+            rows.append(ExerciseRecordRow(
+                id: "rm\(reps)", label: String(format: "Best %ldRM", reps), value: format(weight), date: marks.repDates[reps]
+            ))
+        }
+        return rows
+    }
+
+    /// The record marks over all sessions with the date of the earliest session that reached each, raised by the stored personal best
+    /// (`stored`, dated with its own date) where that is higher: it can hold a mark of workouts that cannot be read any more.
+    func datedMarks(of sessions: [SessionItem], stored: PersonalBest?) -> DatedMarks {
+        var dated = DatedMarks()
+        for item in sessions.reversed() {
+            dated.raise(with: RecordMarks(sets: item.session.sets, tracking: item.tracking, carriesLoad: item.carriesLoad), at: item.session.date)
+        }
+        if let stored { dated.raise(with: stored.marks, at: stored.date) }
+        return dated
     }
 
     /// The record rows that need the user's body weight (none without a weigh-in):

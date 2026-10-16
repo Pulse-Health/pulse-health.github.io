@@ -4,10 +4,23 @@ import Foundation
 
 /// Estimated one-rep max formulas.
 public enum Estimated1RM {
-    /// Epley estimate `kg * (1 + reps / 30)`; 0 when the weight or the reps are zero or negative.
+    /// The most reps of a set that still gives a usable estimate (12). Epley grows without bound with the reps (20 kg for 100 reps
+    /// would "estimate" 87 kg), so a set above it is not an estimate: personal records, bests and charts leave it out.
+    public static let maximumReliableReps = 12
+
+    /// Epley estimate `kg * (1 + reps / 30)`; 0 when the weight or the reps are zero or negative. The formula alone, for any reps:
+    /// everything that compares, records or charts an estimate uses `estimate(weightKg:reps:)`.
     public static func epley(weightKg: Double, reps: Int) -> Double {
         guard weightKg > 0, weightKg.isFinite, reps > 0 else { return 0 }
         return weightKg * (1 + Double(reps) / 30)
+    }
+
+    /// The estimate of a set for comparison, bests, records and charts: Epley for 1...`maximumReliableReps` reps and a weight above
+    /// zero, nil for everything else (no weight, no reps, more reps than the cap, an estimate that is not finite).
+    public static func estimate(weightKg: Double, reps: Int) -> Double? {
+        guard (1...maximumReliableReps).contains(reps) else { return nil }
+        let value = epley(weightKg: weightKg, reps: reps)
+        return value > 0 && value.isFinite ? value : nil
     }
 }
 

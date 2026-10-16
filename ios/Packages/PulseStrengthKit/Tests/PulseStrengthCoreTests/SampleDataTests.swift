@@ -140,7 +140,7 @@ final class SampleDataTests: XCTestCase {
         for workout in SampleData.history(now: now) {
             for entry in workout.exercises {
                 let computed = entry.sets.filter { $0.type != .warmup }
-                    .map { Estimated1RM.epley(weightKg: $0.weightKg, reps: $0.reps) }.max() ?? 0
+                    .compactMap { Estimated1RM.estimate(weightKg: $0.weightKg, reps: $0.reps) }.max() ?? 0
                 let expected = entry.tracking == .weightReps ? computed : 0
                 XCTAssertEqual(entry.bestE1RM, expected, accuracy: 1e-9, entry.name)
                 XCTAssertFalse(entry.sets.isEmpty)
@@ -242,24 +242,32 @@ final class SampleDataTests: XCTestCase {
         let bests = SampleData.personalBests(now: now)
         var maxima: [String: Double] = [:]
         for workout in history { for entry in workout.exercises { maxima[entry.exerciseID] = max(maxima[entry.exerciseID] ?? 0, entry.bestE1RM) } }
-        let expectedIDs = Set(maxima.filter { $0.value > 0 }.keys)
-        XCTAssertEqual(Set(bests.keys), expectedIDs)
+        XCTAssertEqual(Set(bests.keys), Set(maxima.keys), "every exercise with a logged set has a best (its marks)")
         for (id, best) in bests {
             XCTAssertEqual(best.estimated1RM, maxima[id] ?? -1, accuracy: 1e-9, id)
             XCTAssertEqual(best.exerciseID, id)
-            XCTAssertEqual(Estimated1RM.epley(weightKg: best.weightKg, reps: best.reps), best.estimated1RM, accuracy: 1e-9, id)
+            if best.estimated1RM > 0 {
+                XCTAssertEqual(Estimated1RM.epley(weightKg: best.weightKg, reps: best.reps), best.estimated1RM, accuracy: 1e-9, id)
+            }
             XCTAssertTrue(history.contains { $0.finishedAt == best.date }, id)
         }
-        XCTAssertNil(bests["pullup"], "bodyweight exercises have no e1RM")
+        let pullup = bests["pullup"]
+        XCTAssertEqual(pullup?.estimated1RM, 0, "bodyweight exercises have no e1RM")
+        XCTAssertEqual(pullup?.bestReps, 8, "but they keep their most reps")
+        XCTAssertEqual(bests["lateral"]?.estimated1RM, 0, "8 kg x 14 to 17 reps are above the 12-rep cap: no estimate")
+        XCTAssertEqual(bests["lateral"]?.heaviestKg, 8)
     }
 
     func testBestsMatchTheDemoValuesOfTheDesignExercises() throws {
         let bests = SampleData.personalBests(now: now)
-        for id in ["bench", "incline", "ohp", "lateral", "pushdown", "crossover"] {
+        for id in ["bench", "incline", "ohp", "pushdown", "crossover"] {
             let library = try XCTUnwrap(DemoPreviousResults.byExerciseID[id]).bestE1RM
             XCTAssertGreaterThan(library, 0)
             XCTAssertEqual(try XCTUnwrap(bests[id]).estimated1RM, library, accuracy: 0.5, id)
         }
+        // Only sets of up to 12 reps are estimates: the lateral raise sets (14 to 17 reps) give none, in the history and in the demo.
+        XCTAssertEqual(try XCTUnwrap(DemoPreviousResults.byExerciseID["lateral"]).bestE1RM, 0)
+        XCTAssertEqual(try XCTUnwrap(bests["lateral"]).estimated1RM, 0)
     }
 
     // MARK: Overlay
@@ -268,7 +276,9 @@ final class SampleDataTests: XCTestCase {
         let data = StrengthData.demo(now: now)
         for id in ["bench", "incline", "ohp", "lateral", "pushdown", "crossover"] {
             let library = try XCTUnwrap(DemoPreviousResults.byExerciseID[id])
-            XCTAssertEqual(try XCTUnwrap(data.exercise(id: id)).previousSets, library.sets, id)
+            // The history also remembers the reps in reserve of each set; the demo table does not.
+            let remembered = try XCTUnwrap(data.exercise(id: id)).previousSets.map { PreviousSet(weightKg: $0.weightKg, reps: $0.reps, type: $0.type) }
+            XCTAssertEqual(remembered, library.sets, id)
         }
     }
 

@@ -111,19 +111,22 @@ final class IncompleteHistoryBestsTests: XCTestCase {
         }
     }
 
-    func testAnIncompleteHistoryOnlyRaisesBestsAndKeepsTheEarlierDateOnATie() {
-        let stored = PersonalBest(exerciseID: "bench", estimated1RM: 120, weightKg: 60, reps: 30, date: F.daysAgo(2))
+    func testAnIncompleteHistoryOnlyRaisesBestsAndKeepsTheEarlierDateOnATie() throws {
+        let stored = PersonalBest(exerciseID: "bench", estimated1RM: 100 * (1 + 6.0 / 30), weightKg: 100, reps: 6, date: F.daysAgo(2))
         var data = StrengthData(
-            history: [F.workout(1, finishedAt: F.daysAgo(1), [F.entry("bench", [F.work(40, 60)], n: 1)])],
+            history: [F.workout(1, finishedAt: F.daysAgo(1), [F.entry("bench", [F.work(100, 6)], n: 1)])],
             personalBests: ["bench": stored, "squat": PersonalBest(exerciseID: "squat", estimated1RM: 150, weightKg: 130, reps: 5, date: F.daysAgo(9))],
             historyIsIncomplete: true
         )
         data.recomputePersonalBests()
-        XCTAssertEqual(data.personalBests["bench"], stored, "an equal value at a later date does not replace the stored best")
+        let kept = data.personalBests["bench"]
+        XCTAssertEqual(kept?.estimated1RM, stored.estimated1RM, "an equal value at a later date does not replace the stored best")
+        XCTAssertEqual(kept?.date, stored.date)
+        XCTAssertEqual(kept?.heaviestKg, 100, "the marks of the readable history still raise it")
         XCTAssertNotNil(data.personalBests["squat"])
-        data.history = [F.workout(1, finishedAt: F.daysAgo(1), [F.entry("bench", [F.work(100, 30)], n: 1)])]
+        data.history = [F.workout(1, finishedAt: F.daysAgo(1), [F.entry("bench", [F.work(100, 12)], n: 1)])]
         data.recomputePersonalBests()
-        XCTAssertEqual(data.personalBests["bench"]?.estimated1RM, 200)
+        XCTAssertEqual(try XCTUnwrap(data.personalBests["bench"]).estimated1RM, 140, accuracy: 1e-9)
     }
 }
 
@@ -147,22 +150,24 @@ final class WorkoutEditSafetyTests: XCTestCase {
     }
 
     func testTiedWorkoutsGiveTheSameBestIncrementallyAndWhenRecomputed() {
-        // Both reach an e1RM of exactly 120 at the same instant, with a different weight and number of reps.
-        let first = F.workout(1, finishedAt: F.daysAgo(2), [F.entry("bench", [F.work(60, 30)], n: 1)])
-        let second = F.workout(2, finishedAt: F.daysAgo(2), [F.entry("bench", [F.work(40, 60)], n: 2)])
+        // Both reach an e1RM of exactly 82.67 at the same instant, with a different weight and number of reps.
+        let first = F.workout(1, finishedAt: F.daysAgo(2), [F.entry("bench", [F.work(80, 1)], n: 1)])
+        let second = F.workout(2, finishedAt: F.daysAgo(2), [F.entry("bench", [F.work(77.5, 2)], n: 2)])
         var data = StrengthData()
         data.record(first, updateTemplate: nil)
         data.record(second, updateTemplate: nil)
         XCTAssertEqual(data.history.map { $0.id }, [second.id, first.id], "the one recorded last is listed first")
-        XCTAssertEqual(data.personalBests["bench"]?.weightKg, 60, "recording keeps the first one reached")
-        XCTAssertEqual(data.recomputedPersonalBests()["bench"]?.weightKg, 60, "a recompute picks the same one")
-        XCTAssertEqual(data.recomputedPersonalBests()["bench"]?.reps, 30)
+        XCTAssertEqual(data.personalBests["bench"]?.weightKg, 80, "recording keeps the first one reached")
+        XCTAssertEqual(data.recomputedPersonalBests()["bench"]?.weightKg, 80, "a recompute picks the same one")
+        XCTAssertEqual(data.recomputedPersonalBests()["bench"]?.reps, 1)
+        XCTAssertEqual(data.recomputedPersonalBests()["bench"], data.personalBests["bench"], "marks included")
 
         var other = StrengthData()
         other.record(second, updateTemplate: nil)
         other.record(first, updateTemplate: nil)
-        XCTAssertEqual(other.personalBests["bench"]?.weightKg, 40)
-        XCTAssertEqual(other.recomputedPersonalBests()["bench"]?.weightKg, 40)
+        XCTAssertEqual(other.personalBests["bench"]?.weightKg, 77.5)
+        XCTAssertEqual(other.recomputedPersonalBests()["bench"]?.weightKg, 77.5)
+        XCTAssertEqual(other.recomputedPersonalBests()["bench"], other.personalBests["bench"], "marks included")
     }
 }
 

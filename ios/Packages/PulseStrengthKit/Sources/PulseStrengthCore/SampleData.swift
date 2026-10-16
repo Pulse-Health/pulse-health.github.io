@@ -45,24 +45,10 @@ public enum SampleData {
         return workouts.reversed()
     }
 
-    /// The best set per exercise of the demo history (bench: 85 kg × 5, 10 days ago, estimated 1RM 99).
+    /// The best set per exercise of the demo history (bench: 85 kg × 5, 10 days ago, estimated 1RM 99) with the record marks, as
+    /// `StrengthData.recomputedPersonalBests()` makes them from `history(now:)`.
     public static func personalBests(now: Date) -> [String: PersonalBest] {
-        var bests: [String: PersonalBest] = [:]
-        for workout in history(now: now).reversed() {
-            for entry in workout.exercises where entry.bestE1RM > 0 {
-                if entry.bestE1RM > (bests[entry.exerciseID]?.estimated1RM ?? 0) + 1e-9 {
-                    let best = bestSet(of: entry.sets)
-                    bests[entry.exerciseID] = PersonalBest(
-                        exerciseID: entry.exerciseID,
-                        estimated1RM: entry.bestE1RM,
-                        weightKg: best?.weightKg ?? 0,
-                        reps: best?.reps ?? 0,
-                        date: workout.finishedAt
-                    )
-                }
-            }
-        }
-        return bests
+        StrengthData(history: history(now: now)).recomputedPersonalBests()
     }
 }
 
@@ -221,11 +207,15 @@ private extension SampleData {
             let isRecord = previous > 0 && bestValue > previous + 0.05
             baseline[exercise.id] = max(previous, bestValue)
 
+            var sets = line.sets
             if isRecord, let best {
                 records.append(PersonalRecord(
                     exerciseID: exercise.id, exerciseName: exercise.name, weightKg: best.weightKg, reps: best.reps,
                     estimated1RM: bestValue, previousBest: previous
                 ))
+                if let index = sets.firstIndex(where: { $0.type != .warmup && $0.weightKg == best.weightKg && $0.reps == best.reps }) {
+                    sets[index].prKind = .estimated1RM
+                }
             }
             if exercise.tracksWeight {
                 volume += workingSets.reduce(0.0) { $0 + $1.weightKg * Double($1.reps) }
@@ -241,7 +231,7 @@ private extension SampleData {
                 muscle: exercise.muscle,
                 mediaKey: exercise.mediaKey,
                 tracking: exercise.tracking,
-                sets: line.sets,
+                sets: sets,
                 isPersonalRecord: isRecord,
                 bestE1RM: bestValue
             ))
@@ -271,11 +261,11 @@ private extension SampleData {
         )
     }
 
-    /// The non-warm-up set with the highest Epley estimate (first on a tie).
+    /// The non-warm-up set with the highest estimate (sets of 1...12 reps; first on a tie).
     static func bestSet(of sets: [CompletedSet]) -> (e1RM: Double, weightKg: Double, reps: Int)? {
         var best: (e1RM: Double, weightKg: Double, reps: Int)?
         for set in sets where set.type != .warmup {
-            let value = Estimated1RM.epley(weightKg: set.weightKg, reps: set.reps)
+            guard let value = Estimated1RM.estimate(weightKg: set.weightKg, reps: set.reps) else { continue }
             if value > (best?.e1RM ?? 0) { best = (value, set.weightKg, set.reps) }
         }
         return best
@@ -295,7 +285,8 @@ private extension SampleData {
 
 // MARK: - Demo previous results
 
-/// The invented "previous" numbers of the demo data: a best estimated 1RM and last sets for 25 library exercises.
+/// The invented "previous" numbers of the demo data: a best estimated 1RM and last sets for 25 library exercises. The estimates count
+/// sets of up to `Estimated1RM.maximumReliableReps` reps only (the lateral raise sets of 14 to 17 reps give none).
 ///
 /// The built-in library carries none of this (see `ExerciseLibrary.builtIn`). Previews, UI tests and the tests of the demo data use
 /// `ExerciseLibrary.demoBuiltIn` or `applying(to:)`; `StrengthData` applies them only after the demo data was seeded (see
@@ -303,22 +294,25 @@ private extension SampleData {
 public enum DemoPreviousResults {
     /// The previous results of one exercise.
     public struct Entry: Equatable, Sendable {
-        /// Best estimated 1RM in kg; 0 when the demo gives none (bodyweight and timed exercises).
+        /// Best estimated 1RM in kg; 0 when the demo gives none (bodyweight and timed exercises, sets above the rep cap).
         public var bestE1RM: Double
         /// The last session's sets.
         public var sets: [PreviousSet]
 
-        init(bestE1RM: Double, sets: [(Double, Int)]) {
+        /// `warmups` is how many of the first `sets` are warm-ups.
+        init(bestE1RM: Double, warmups: Int = 0, sets: [(Double, Int)]) {
             self.bestE1RM = bestE1RM
-            self.sets = sets.map { PreviousSet(weightKg: $0.0, reps: $0.1) }
+            self.sets = sets.enumerated().map { index, set in
+                PreviousSet(weightKg: set.0, reps: set.1, type: index < warmups ? .warmup : nil)
+            }
         }
     }
 
     /// The demo previous results by exercise id.
     public static let byExerciseID: [String: Entry] = [
-        "bench": Entry(bestE1RM: 99, sets: [(50, 8), (70, 5), (80, 6), (80, 6), (80, 5)]),
+        "bench": Entry(bestE1RM: 99, warmups: 2, sets: [(50, 8), (70, 5), (80, 6), (80, 6), (80, 5)]),
         "incline": Entry(bestE1RM: 38, sets: [(26, 10), (26, 10), (26, 9)]),
-        "crossover": Entry(bestE1RM: 22, sets: [(15, 12), (15, 12), (15, 11)]),
+        "crossover": Entry(bestE1RM: 21, sets: [(15, 12), (15, 12), (15, 11)]),
         "pushup": Entry(bestE1RM: 0, sets: [(0, 15)]),
         "pullup": Entry(bestE1RM: 0, sets: [(0, 8)]),
         "pulldown": Entry(bestE1RM: 0, sets: [(55, 10)]),
@@ -327,10 +321,10 @@ public enum DemoPreviousResults {
         "deadlift": Entry(bestE1RM: 0, sets: [(100, 5)]),
         "facepull": Entry(bestE1RM: 0, sets: [(20, 15)]),
         "ohp": Entry(bestE1RM: 58, sets: [(45, 8), (45, 8), (45, 7)]),
-        "lateral": Entry(bestE1RM: 12.5, sets: [(8, 15), (8, 15), (8, 14)]),
+        "lateral": Entry(bestE1RM: 0, sets: [(8, 15), (8, 15), (8, 14)]),
         "curl": Entry(bestE1RM: 0, sets: [(30, 10)]),
         "dbcurl": Entry(bestE1RM: 0, sets: [(12, 10)]),
-        "pushdown": Entry(bestE1RM: 43, sets: [(30, 12), (30, 12), (30, 11)]),
+        "pushdown": Entry(bestE1RM: 42, sets: [(30, 12), (30, 12), (30, 11)]),
         "skull": Entry(bestE1RM: 0, sets: [(25, 10)]),
         "squat": Entry(bestE1RM: 0, sets: [(80, 6)]),
         "legpress": Entry(bestE1RM: 0, sets: [(140, 10)]),

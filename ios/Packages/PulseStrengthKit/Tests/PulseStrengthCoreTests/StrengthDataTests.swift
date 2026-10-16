@@ -77,7 +77,7 @@ final class StrengthDataTests: XCTestCase {
         var data = StrengthData()
         data.history = [F.workout(1, name: "Lower", finishedAt: F.daysAgo(2), [F.entry("squat", [F.warmup(40, 8), F.work(80, 6), F.work(90, 4)], n: 1)])]
         let squat = try XCTUnwrap(data.exercise(id: "squat"))
-        XCTAssertEqual(squat.previousSets, [PreviousSet(weightKg: 40, reps: 8), PreviousSet(weightKg: 80, reps: 6), PreviousSet(weightKg: 90, reps: 4)])
+        XCTAssertEqual(squat.previousSets, [PreviousSet(weightKg: 40, reps: 8, type: .warmup), PreviousSet(weightKg: 80, reps: 6), PreviousSet(weightKg: 90, reps: 4)])
         XCTAssertEqual(squat.previousBestE1RM, 102, accuracy: 1e-9)       // 90 x 4 (102) beats 80 x 6 (96); the warm-up is ignored
         XCTAssertEqual(try XCTUnwrap(data.exercise(id: "legpress")), ExerciseLibrary.exercise(id: "legpress"))
     }
@@ -109,12 +109,17 @@ final class StrengthDataTests: XCTestCase {
         XCTAssertEqual(data.exercise(id: "bench")?.previousSets, ExerciseLibrary.exercise(id: "bench")?.previousSets)
     }
 
-    func testTheSameExerciseTwiceInOneWorkoutIsMerged() throws {
+    func testTheSameExerciseTwiceInOneWorkoutIsNotMerged() throws {
         var data = StrengthData()
         data.history = [F.workout(1, finishedAt: F.daysAgo(1), [
             F.entry("bench", [F.work(60, 10)], n: 1), F.entry("incline", [F.work(20, 10)], n: 2), F.entry("bench", [F.work(65, 8)], n: 3),
         ])]
-        XCTAssertEqual(data.exercise(id: "bench")?.previousSets, [PreviousSet(weightKg: 60, reps: 10), PreviousSet(weightKg: 65, reps: 8)])
+        XCTAssertEqual(data.exercise(id: "bench")?.previousSets, [PreviousSet(weightKg: 60, reps: 10)],
+                       "the sets of the first entry; both occurrences of the next workout match the same previous sets")
+        // The marks and the best still come from both entries.
+        XCTAssertEqual(data.exercise(id: "bench")?.previousRecords.heaviestKg, 65)
+        XCTAssertEqual(data.exercise(id: "bench")?.previousRecords.repRecords[10], 60)
+        XCTAssertEqual(data.history(for: "bench", now: F.now).previousSets, [PreviousSet(weightKg: 60, reps: 10)])
     }
 
     func testCustomExercisesFollowTheLibraryAndGetTheOverlayToo() throws {
@@ -225,7 +230,11 @@ final class StrengthDataTests: XCTestCase {
             F.entry("bench", [F.work(80, 5)], n: 1), F.entry("squat", [F.work(100, 5)], n: 2),
             F.entry("pullup", [F.work(0, 12)], n: 3), F.entry("plank", [F.work(0, 60)], n: 4),
         ]), updateTemplate: nil)
-        XCTAssertEqual(Set(data.personalBests.keys), ["bench", "squat"], "bodyweight and duration exercises have no e1RM")
+        XCTAssertEqual(Set(data.personalBests.keys), ["bench", "squat", "pullup", "plank"], "every exercise with a counted set has a best")
+        XCTAssertEqual(data.personalBests["pullup"]?.estimated1RM, 0, "bodyweight and duration exercises have no e1RM")
+        XCTAssertEqual(data.personalBests["pullup"]?.bestReps, 12)
+        XCTAssertEqual(data.personalBests["plank"]?.estimated1RM, 0)
+        XCTAssertEqual(data.personalBests["plank"]?.bestSeconds, 60)
     }
 
     func testTheRecordedEstimateIsUsedAndAZeroOneIsComputedFromTheSets() throws {
@@ -346,16 +355,25 @@ final class StrengthDataTests: XCTestCase {
 
     func testBenchRecordRows() throws {
         let history = demoHistory("bench")
-        XCTAssertEqual(history.records.map { $0.id }, ["e1rm", "bestSet", "repsAtWeight", "bestVolume"])
-        XCTAssertEqual(history.records.map { $0.label }, ["Estimated 1RM", "Best set", "Most reps at 80 kg", "Best session volume"])
+        XCTAssertEqual(history.records.map { $0.id }, ["e1rm", "bestSet", "heaviest", "rm3", "rm5", "repsAtWeight", "bestVolume"])
+        XCTAssertEqual(
+            history.records.map { $0.label },
+            ["Estimated 1RM", "Best set", "Heaviest weight", "Best 3RM", "Best 5RM", "Most reps at 80 kg", "Best session volume"]
+        )
         XCTAssertEqual(history.records[0].value, "99 kg")
         XCTAssertEqual(history.records[0].date, F.daysAgo(10))
         XCTAssertEqual(history.records[1].value, "85 kg × 5")
         XCTAssertEqual(history.records[1].date, F.daysAgo(10))
-        XCTAssertEqual(history.records[2].value, "6")
-        XCTAssertEqual(history.records[2].date, F.daysAgo(5), "the newest session that reached the maximum")
-        XCTAssertEqual(history.records[3].value, "1,395 kg", "3 x 77.5 x 6 beats the two heavier but shorter sessions")
-        XCTAssertEqual(history.records[3].date, F.daysAgo(15))
+        XCTAssertEqual(history.records[2].value, "85 kg")
+        XCTAssertEqual(history.records[2].date, F.daysAgo(10))
+        XCTAssertEqual(history.records[3].value, "85 kg", "the heaviest weight for at least 3 reps")
+        XCTAssertEqual(history.records[3].date, F.daysAgo(10))
+        XCTAssertEqual(history.records[4].value, "85 kg")
+        XCTAssertEqual(history.records[4].date, F.daysAgo(10))
+        XCTAssertEqual(history.records[5].value, "6")
+        XCTAssertEqual(history.records[5].date, F.daysAgo(5), "the newest session that reached the maximum")
+        XCTAssertEqual(history.records[6].value, "1,395 kg", "3 x 77.5 x 6 beats the two heavier but shorter sessions")
+        XCTAssertEqual(history.records[6].date, F.daysAgo(15))
     }
 
     func testAnExerciseWithoutSessionsHasAnEmptyHistory() {

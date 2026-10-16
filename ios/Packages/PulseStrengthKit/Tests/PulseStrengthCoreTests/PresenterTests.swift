@@ -525,8 +525,8 @@ final class PresenterCardTests: XCTestCase {
         XCTAssertEqual(card.rows.map { $0.weightText }, ["BW", "BW"])
         XCTAssertEqual(card.rows.map { $0.weightEditable }, [false, false])
         XCTAssertEqual(card.rows.map { $0.repsText }, ["12", "10"])
-        // The library's last session was 15 reps; the last entry is reused for further sets.
-        XCTAssertEqual(card.rows.map { $0.previousText }, ["15 reps", "15 reps"])
+        // The library's last session was one set of 15 reps; the second row has no previous set.
+        XCTAssertEqual(card.rows.map { $0.previousText }, ["15 reps", "–"])
         XCTAssertEqual(card.rows[0].accessibilityLabel, "Set 1, working set, bodyweight, 12 reps, not logged")
     }
 
@@ -538,7 +538,7 @@ final class PresenterCardTests: XCTestCase {
         XCTAssertEqual(card.rows.map { $0.weightText }, ["–", "–"])
         XCTAssertEqual(card.rows.map { $0.weightEditable }, [false, false])
         XCTAssertEqual(card.rows.map { $0.repsText }, ["45", "40"])
-        XCTAssertEqual(card.rows.map { $0.previousText }, ["45 s", "45 s"])
+        XCTAssertEqual(card.rows.map { $0.previousText }, ["45 s", "–"])
         XCTAssertEqual(card.rows[1].accessibilityLabel, "Set 2, working set, 40 seconds, not logged")
     }
 
@@ -546,11 +546,11 @@ final class PresenterCardTests: XCTestCase {
         let noHistory = PresFix.single(PresFix.lib("dips"), PresFix.normal(2, 0, 8))
         XCTAssertEqual(try XCTUnwrap(PresFix.present(noHistory).card).rows.map { $0.previousText }, ["–", "–"])
 
-        // Incline has three previous sets; the fourth row reuses the last one.
+        // Incline has three previous sets; the fourth row has none to match (the last one is not reused).
         let incline = PresFix.single(PresFix.lib("incline"), PresFix.normal(4, 28, 10))
         XCTAssertEqual(
             try XCTUnwrap(PresFix.present(incline).card).rows.map { $0.previousText },
-            ["26 × 10", "26 × 10", "26 × 9", "26 × 9"]
+            ["26 × 10", "26 × 10", "26 × 9", "–"]
         )
     }
 
@@ -631,20 +631,20 @@ final class PresenterRecordTests: XCTestCase {
     }
 
     func testASetMustBeatTheBaselineNotJustEqualIt() throws {
-        // 82.5 x 6 = 99.0 = the previous best: not a record. 49.75 x 30 = 99.5: a record.
+        // 82.5 x 6 = 99.0 = the previous best: not a record. 82.92 x 6 = 99.504: a record.
         let equal = try rows(PresFix.lib("bench"), [(.normal, 82.5, 6)], done: [0])
         XCTAssertEqual(equal.map { $0.isPersonalRecord }, [false])
-        let above = try rows(PresFix.lib("bench"), [(.normal, 49.75, 30)], done: [0])
+        let above = try rows(PresFix.lib("bench"), [(.normal, 82.92, 6)], done: [0])
         XCTAssertEqual(above.map { $0.isPersonalRecord }, [true])
-        XCTAssertEqual(above.map { $0.estimated1RM }, [100])   // 99.5 rounds half up
+        XCTAssertEqual(above.map { $0.estimated1RM }, [100])   // 99.504 rounds up
     }
 
     func testARecordMustBeatTheBaselineByMoreThanFiftyGrams() throws {
-        // 49.51 x 30 = 99.02: above the previous best of 99 but within the 0.05 margin.
-        let within = try rows(PresFix.lib("bench"), [(.normal, 49.51, 30)], done: [0])
+        // 82.52 x 6 = 99.024: above the previous best of 99 but within the 0.05 margin.
+        let within = try rows(PresFix.lib("bench"), [(.normal, 82.52, 6)], done: [0])
         XCTAssertEqual(within.map { $0.isPersonalRecord }, [false])
-        // 49.53 x 30 = 99.06 clears the margin.
-        let beyond = try rows(PresFix.lib("bench"), [(.normal, 49.53, 30)], done: [0])
+        // 82.55 x 6 = 99.06 clears the margin.
+        let beyond = try rows(PresFix.lib("bench"), [(.normal, 82.55, 6)], done: [0])
         XCTAssertEqual(beyond.map { $0.isPersonalRecord }, [true])
         // The same margin applies to the coach tip: with a best of 98.96, 82.5 x 6 (99.0) is not enough.
         let state = PresFix.single(PresFix.lib("bench", best: 98.96), [(.normal, 70, 6)])
@@ -1071,10 +1071,10 @@ final class TemplateDiffComputeTests: XCTestCase {
 
     func testReorderedExercises() {
         var state = PresFix.freshUpperA()
-        state = PresFix.reduced(state, .moveExercise(from: 0, to: 3))
+        state = PresFix.reduced(state, .moveExercise(from: 0, to: 2))
         XCTAssertEqual(TemplateDiff.compute(for: state), TemplateDiff(added: 0, removed: 0, reordered: true))
         // Moving it back restores the baseline order.
-        state = PresFix.reduced(state, .moveExercise(from: 3, to: 0))
+        state = PresFix.reduced(state, .moveExercise(from: 2, to: 0))
         XCTAssertTrue(TemplateDiff.compute(for: state).isEmpty)
     }
 

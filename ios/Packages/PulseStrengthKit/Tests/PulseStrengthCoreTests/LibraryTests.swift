@@ -36,7 +36,7 @@ final class LibraryTests: XCTestCase {
         [
         row("bench", .chest, .barbell, .weightReps, "bench", 99, 5, 3, 60, 8, 150, 3),
         row("incline", .chest, .dumbbell, .weightReps, "incline", 38, 3, 3, 24, 10, 90, 3),
-        row("crossover", .chest, .cable, .weightReps, "crossover", 22, 3, 3, 15, 12, 60, 3),
+        row("crossover", .chest, .cable, .weightReps, "crossover", 21, 3, 3, 15, 12, 60, 3),
         row("pushup", .chest, .bodyweight, .repsOnly, "pushup", 0, 1, 3, 0, 12, 60, 3),
         row("cpress", .chest, .machine, .weightReps, nil, 0, 0, 3, 40, 10, 90, 2),
         row("dips", .chest, .bodyweight, .repsOnly, nil, 0, 0, 3, 0, 8, 90, 2),
@@ -49,12 +49,12 @@ final class LibraryTests: XCTestCase {
         row("facepull", .shoulders, .cable, .weightReps, "facepull", 0, 1, 3, 20, 15, 60, 3),
         row("ohp", .shoulders, .barbell, .weightReps, "ohp", 58, 3, 3, 40, 8, 120, 3),
         row("dbpress", .shoulders, .dumbbell, .weightReps, nil, 0, 0, 3, 18, 10, 90, 2),
-        row("lateral", .shoulders, .dumbbell, .weightReps, "lateral", 12.5, 3, 3, 8, 15, 60, 3),
+        row("lateral", .shoulders, .dumbbell, .weightReps, "lateral", 0, 3, 3, 8, 15, 60, 3),
         row("rdelt", .shoulders, .machine, .weightReps, nil, 0, 0, 3, 25, 12, 60, 2),
         row("curl", .arms, .barbell, .weightReps, "curl", 0, 1, 3, 30, 10, 75, 3),
         row("dbcurl", .arms, .dumbbell, .weightReps, "dbcurl", 0, 1, 3, 12, 10, 75, 3),
         row("hammer", .arms, .dumbbell, .weightReps, nil, 0, 0, 3, 12, 10, 75, 2),
-        row("pushdown", .arms, .cable, .weightReps, "pushdown", 43, 3, 3, 30, 12, 60, 3),
+        row("pushdown", .arms, .cable, .weightReps, "pushdown", 42, 3, 3, 30, 12, 60, 3),
         row("skull", .arms, .barbell, .weightReps, "skull", 0, 1, 3, 25, 10, 75, 3),
         row("ohtri", .arms, .cable, .weightReps, nil, 0, 0, 3, 20, 12, 60, 2),
         row("preacher", .arms, .machine, .weightReps, nil, 0, 0, 3, 25, 10, 75, 2),
@@ -125,8 +125,9 @@ final class LibraryTests: XCTestCase {
         ExerciseLibrary.exercise(id: id).map { DemoPreviousResults.applying(to: $0) }
     }
 
-    private func sets(_ pairs: [(Double, Int)]) -> [PreviousSet] {
-        pairs.map { PreviousSet(weightKg: $0.0, reps: $0.1) }
+    /// The previous sets of the demo data; the first `warmups` of them are warm-ups.
+    private func sets(_ pairs: [(Double, Int)], warmups: Int = 0) -> [PreviousSet] {
+        pairs.enumerated().map { PreviousSet(weightKg: $0.element.0, reps: $0.element.1, type: $0.offset < warmups ? .warmup : nil) }
     }
 
     // MARK: - Library contents
@@ -210,7 +211,7 @@ final class LibraryTests: XCTestCase {
         assertSame(demoExercise("bench"), Exercise(
             id: "bench", name: "Barbell bench press", muscle: .chest, secondary: "Shoulders · Triceps",
             equipment: .barbell, tracking: .weightReps, mediaKey: "bench", previousBestE1RM: 99,
-            previousSets: sets([(50, 8), (70, 5), (80, 6), (80, 6), (80, 5)]),
+            previousSets: sets([(50, 8), (70, 5), (80, 6), (80, 6), (80, 5)], warmups: 2),
             defaults: ExerciseDefaults(sets: 3, weightKg: 60, reps: 8, restSeconds: 150),
             cues: [
                 "Pull your shoulder blades back and down and keep your feet planted.",
@@ -320,7 +321,7 @@ final class LibraryTests: XCTestCase {
     func testLateralRaiseHasHistoryAndApostrophe() {
         assertSame(demoExercise("lateral"), Exercise(
             id: "lateral", name: "Dumbbell lateral raise", muscle: .shoulders, secondary: "Side delts",
-            equipment: .dumbbell, tracking: .weightReps, mediaKey: "lateral", previousBestE1RM: 12.5,
+            equipment: .dumbbell, tracking: .weightReps, mediaKey: "lateral", previousBestE1RM: 0,   // 8 x 15 is above the 12-rep cap: no estimate
             previousSets: sets([(8, 15), (8, 15), (8, 14)]),
             defaults: ExerciseDefaults(sets: 3, weightKg: 8, reps: 15, restSeconds: 60),
             cues: [
@@ -346,7 +347,7 @@ final class LibraryTests: XCTestCase {
 
     func testPersonalBestsOfTheDesign() {
         let expected: [String: Double] = [
-            "bench": 99, "incline": 38, "crossover": 22, "ohp": 58, "lateral": 12.5, "pushdown": 43,
+            "bench": 99, "incline": 38, "crossover": 21, "ohp": 58, "lateral": 0, "pushdown": 42,
         ]
         for exercise in ExerciseLibrary.demoBuiltIn {
             XCTAssertEqual(exercise.previousBestE1RM, expected[exercise.id] ?? 0, exercise.id)

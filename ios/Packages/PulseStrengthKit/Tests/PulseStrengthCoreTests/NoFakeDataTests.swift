@@ -23,14 +23,17 @@ final class LibraryWithoutInventedHistoryTests: XCTestCase {
 
     func testTheDemoLibraryReproducesTheOldNumbersExactly() throws {
         XCTAssertEqual(ExerciseLibrary.demoBuiltIn.count, 36)
-        let bests: [String: Double] = ["bench": 99, "incline": 38, "ohp": 58, "pushdown": 43, "crossover": 22, "lateral": 12.5]
+        let bests: [String: Double] = ["bench": 99, "incline": 38, "ohp": 58, "pushdown": 42, "crossover": 21]
         for exercise in ExerciseLibrary.demoBuiltIn {
             XCTAssertEqual(exercise.previousBestE1RM, bests[exercise.id] ?? 0, exercise.id)
         }
         func sets(_ id: String) throws -> [PreviousSet] {
             try XCTUnwrap(ExerciseLibrary.demoBuiltIn.first { $0.id == id }).previousSets
         }
-        XCTAssertEqual(try sets("bench"), [(50.0, 8), (70, 5), (80, 6), (80, 6), (80, 5)].map { PreviousSet(weightKg: $0.0, reps: $0.1) })
+        XCTAssertEqual(try sets("bench"), [
+            PreviousSet(weightKg: 50, reps: 8, type: .warmup), PreviousSet(weightKg: 70, reps: 5, type: .warmup),
+            PreviousSet(weightKg: 80, reps: 6), PreviousSet(weightKg: 80, reps: 6), PreviousSet(weightKg: 80, reps: 5),
+        ])
         XCTAssertEqual(try sets("incline"), [(26.0, 10), (26, 10), (26, 9)].map { PreviousSet(weightKg: $0.0, reps: $0.1) })
         XCTAssertEqual(try sets("plank"), [PreviousSet(weightKg: 0, reps: 45)])
         XCTAssertEqual(try sets("deadlift"), [PreviousSet(weightKg: 100, reps: 5)])

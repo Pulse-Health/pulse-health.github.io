@@ -10,13 +10,21 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (840 tests, 864 with the Combine
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (1,326 tests, 1,369 with the Combine
 > stand-in). The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow
 > `strength-ios` has compiled it with Xcode 16 for the iOS and watchOS simulators, run a 30-step UI flow through the real
 > iPhone app, rendered the Lock Screen, Dynamic Island and Watch screens, and re-run the app in dark mode, at large text
 > sizes and on an iPhone SE. Several rounds of adversarial review fixed what they found. What has **not** been tried is
 > anything that needs real hardware (Live Activity buttons, Watch heart rate and WatchConnectivity, notifications):
 > see [Verification status](#verification-status).
+
+> **Workout logic.** The core records more than the estimated 1RM: the heaviest weight, the best weight for a rep range, most reps and
+> longest hold are personal records too (an estimate counts for 1 to 12 reps only). Pull-ups and dips take an added or assisted load,
+> supersets keep their members together (any number of them), the PREVIOUS column matches warm-ups to warm-ups and working sets to
+> working sets, a drop set that another drop set follows has no rest, new exercises start from the last working set, a changed
+> weight, rep count, rest or set type offers to update the template (when the `askToUpdateTemplate` preference allows it), and timed sets have a
+> stopwatch state in the reducer. The screens for assisted entry (a minus key) and for the timed-set stopwatch are not built yet.
+> Details: `ARCHITECTURE.md`, sections 3.2 and 3.3.
 
 > **Repository note.** This directory lives in the `pulse-health.github.io` website repository, which GitHub Pages publishes from
 > the repository root. The root `_config.yml` excludes `ios/` from that build, so these files are not served on the website.
@@ -303,7 +311,7 @@ State at the last commit of this branch; the numbers come from the `strength-ios
 
 **Verified**
 
-* **Core (`PulseStrengthCore`)**: 700 unit tests (716 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
+* **Core (`PulseStrengthCore`)**: 1,326 unit tests (1,369 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
   reducer, presenter, snapshot and summary builders, persistence, the phone <-> Watch sync protocol (acknowledgements, optimistic
   replay, delivery fuzzing with dropped, duplicated and reordered messages), exercise library and sample data.
 * **Compiles**: `xcodegen generate`, then `xcodebuild` of the iOS app (with the widget extension and the embedded Watch app) and of the

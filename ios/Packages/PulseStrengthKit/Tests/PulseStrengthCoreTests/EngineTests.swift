@@ -918,7 +918,13 @@ final class EngineLifecycleTests: XCTestCase {
             rig.logSets(3)                                   // best working set 82.5 x 6 = 99 < 99.17
             let before = rig.model.data.personalBests["bench"]
             rig.engine.finish(updateTemplate: false)
-            XCTAssertEqual(rig.model.data.personalBests["bench"], before)
+            let after = rig.model.data.personalBests["bench"]
+            XCTAssertEqual(after?.estimated1RM, before?.estimated1RM)
+            XCTAssertEqual(after?.weightKg, before?.weightKg)
+            XCTAssertEqual(after?.reps, before?.reps)
+            XCTAssertEqual(after?.date, before?.date)
+            XCTAssertEqual(before?.repRecords[6], 80, "the best for 6 reps was 80 kg")
+            XCTAssertEqual(after?.repRecords[6], 82.5, "82.5 x 6 raises the 6 rep record, not the estimate")
         }
     }
 

@@ -64,8 +64,9 @@ public extension StrengthData {
     /// A sample best that a real set has beaten since is the user's and stays.
     private var sampleBestIDs: [String] {
         guard historyIsIncomplete else { return [] }
-        let matches = SampleBests.reference.sorted { $0.key < $1.key }.compactMap { id, sample -> (id: String, shift: TimeInterval)? in
-            guard let stored = personalBests[id],
+        let reference = SampleBests.reference.sorted { $0.key < $1.key }
+        let matches = reference.compactMap { id, sample -> (id: String, shift: TimeInterval)? in
+            guard sample.estimated1RM > 0, let stored = personalBests[id],
                   abs(stored.estimated1RM - sample.estimated1RM) < 1e-6,
                   abs(stored.weightKg - sample.weightKg) < 1e-6,
                   stored.reps == sample.reps
@@ -73,8 +74,15 @@ public extension StrengthData {
             return (id, stored.date.timeIntervalSince(sample.date))
         }
         let groups = matches.map { anchor in matches.filter { abs($0.shift - anchor.shift) <= 1 } }
-        guard let seeded = groups.max(by: { $0.count < $1.count }), seeded.count >= 2 else { return [] }
-        return seeded.map(\.id)
+        guard let seeded = groups.max(by: { $0.count < $1.count }), seeded.count >= 2, let shift = seeded.first?.shift else { return [] }
+        // The samples without an estimate (the pull-up's reps, the lateral raise's weights) are recognised by their date and marks.
+        let marksOnly = reference.compactMap { id, sample -> String? in
+            guard sample.estimated1RM == 0, let stored = personalBests[id], stored.estimated1RM == 0,
+                  abs(stored.date.timeIntervalSince(sample.date) - shift) <= 1, stored.marks == sample.marks
+            else { return nil }
+            return id
+        }
+        return seeded.map(\.id) + marksOnly
     }
 }
 

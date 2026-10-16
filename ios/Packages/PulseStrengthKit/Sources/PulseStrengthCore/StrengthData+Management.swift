@@ -95,6 +95,7 @@ public extension StrengthData {
                 guard var current = ExerciseLibrary.exercise(id: copy.id) else { continue }
                 current.previousBestE1RM = copy.previousBestE1RM
                 current.previousSets = copy.previousSets
+                current.previousRecords = copy.previousRecords
                 if current != copy {
                     templates[templateIndex].entries[entryIndex].exercise = current
                     changed = true
@@ -126,8 +127,9 @@ public extension StrengthData {
     ///
     /// What the user may change is taken from `workout`: its name (trimmed; a blank name keeps the old one) and its exercises with
     /// their sets (weight, reps, RIR, type), notes and order. A set can be removed by leaving it out, an exercise without sets
-    /// disappears. The weight is clamped to 0...`WorkoutReducer.maximumWeightKg` (as the live workout does) and rounded to 0.01 kg, reps to 0...10 800, RIR to
-    /// 0...4. The start, finish, duration, heart rate and template are kept from the stored workout.
+    /// disappears. The weight is clamped to 0...`WorkoutReducer.maximumWeightKg` (as the live workout does; a reps-only exercise keeps an
+    /// assisted load down to `WorkoutReducer.minimumWeightKg`) and rounded to 0.01 kg, reps to 0...10 800, RIR to 0...4. The start,
+    /// finish, duration, heart rate and template are kept from the stored workout.
     ///
     /// Derived fields are rebuilt the way `SummaryBuilder` builds them (volume, logged sets, mean RIR, sets per muscle, the best
     /// e1RM of each exercise), and the personal records of this workout are judged against the workouts before it (the older ones in
@@ -135,7 +137,7 @@ public extension StrengthData {
     mutating func updateWorkout(_ workout: CompletedWorkout) -> Result<Void, StrengthStoreError> {
         guard let index = history.firstIndex(where: { $0.id == workout.id }) else { return .failure(.notFound) }
         let stored = history[index]
-        let baseline = bestE1RMs(inWorkoutsOlderThanIndex: index)
+        let baselines = baselines(inWorkoutsOlderThanIndex: index)
 
         let exercises = workout.exercises.map { entry -> WorkoutExercise in
             let exercise = Exercise(
@@ -145,13 +147,15 @@ public extension StrengthData {
                 equipment: .other,
                 tracking: entry.tracking,
                 mediaKey: entry.mediaKey,
-                previousBestE1RM: baseline[entry.exerciseID] ?? 0,
-                defaults: ExerciseDefaults(sets: 0, weightKg: 0, reps: 0, restSeconds: 0)
+                previousBestE1RM: baselines[entry.exerciseID]?.e1RM ?? 0,
+                defaults: ExerciseDefaults(sets: 0, weightKg: 0, reps: 0, restSeconds: 0),
+                allowsAddedWeight: entry.carriesLoad,
+                previousRecords: baselines[entry.exerciseID]?.marks ?? RecordMarks()
             )
             let sets = entry.sets.map { set in
                 LoggedSet(
                     type: set.type,
-                    weightKg: Self.sanitizedWeight(set.weightKg),
+                    weightKg: Self.sanitizedWeight(set.weightKg, allowsNegative: entry.tracking == .repsOnly),
                     reps: max(0, min(set.reps, 10_800)),
                     isDone: true,
                     rir: set.rir.map { max(0, min($0, 4)) }
@@ -175,10 +179,11 @@ public extension StrengthData {
         return .success(())
     }
 
-    private static func sanitizedWeight(_ kg: Double) -> Double {
+    private static func sanitizedWeight(_ kg: Double, allowsNegative: Bool) -> Double {
         guard !kg.isNaN else { return 0 }
-        let limit = WorkoutReducer.maximumWeightKg
-        return (max(0, min(kg, limit)) * 100).rounded(.toNearestOrAwayFromZero) / 100
+        let clamped = max(allowsNegative ? WorkoutReducer.minimumWeightKg : 0, min(kg, WorkoutReducer.maximumWeightKg))
+        let rounded = (clamped * 100).rounded(.toNearestOrAwayFromZero) / 100
+        return rounded == 0 ? 0 : rounded
     }
 }
 
@@ -212,12 +217,14 @@ public extension StrengthData {
         stored.isCustom = true
         stored.previousBestE1RM = customExercises[index].previousBestE1RM
         stored.previousSets = customExercises[index].previousSets
+        stored.previousRecords = customExercises[index].previousRecords
         customExercises[index] = stored
         for templateIndex in templates.indices {
             for entryIndex in templates[templateIndex].entries.indices where templates[templateIndex].entries[entryIndex].exercise.id == stored.id {
                 var copy = stored
                 copy.previousBestE1RM = templates[templateIndex].entries[entryIndex].exercise.previousBestE1RM
                 copy.previousSets = templates[templateIndex].entries[entryIndex].exercise.previousSets
+                copy.previousRecords = templates[templateIndex].entries[entryIndex].exercise.previousRecords
                 templates[templateIndex].entries[entryIndex].exercise = copy
             }
         }

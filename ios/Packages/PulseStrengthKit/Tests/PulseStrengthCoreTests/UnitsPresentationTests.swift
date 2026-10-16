@@ -61,7 +61,7 @@ final class UnitsPresenterTests: XCTestCase {
         XCTAssertEqual(card.weightColumnTitle, "kg")
         XCTAssertEqual(card.repsColumnTitle, "Reps")
         XCTAssertEqual(card.rows.map { $0.weightText }, ["40", "60", "82.5", "100"])
-        XCTAssertEqual(card.rows.map { $0.previousText }, ["80 × 6", "82.5 × 5", "82.5 × 5", "82.5 × 5"])
+        XCTAssertEqual(card.rows.map { $0.previousText }, ["–", "80 × 6", "82.5 × 5", "–"], "warm-ups match warm-ups, working sets working sets")
         XCTAssertEqual(try XCTUnwrap(p.dock).nextSetText, "Next · Set 2 · 82.5 kg × 6")
         XCTAssertNil(card.coachTip, "no coach tip while a rest runs")
         XCTAssertEqual(card.rows[2].accessibilityLabel, "Set 3, working set, 82.5 kilograms, 6 reps, not logged")
@@ -74,7 +74,7 @@ final class UnitsPresenterTests: XCTestCase {
         let card = try XCTUnwrap(p.card)
         XCTAssertEqual(card.weightColumnTitle, "lb")
         XCTAssertEqual(card.rows.map { $0.weightText }, ["88.2", "132.3", "181.9", "220.5"])
-        XCTAssertEqual(card.rows.map { $0.previousText }, ["176.4 × 6", "181.9 × 5", "181.9 × 5", "181.9 × 5"])
+        XCTAssertEqual(card.rows.map { $0.previousText }, ["–", "176.4 × 6", "181.9 × 5", "–"])
         XCTAssertEqual(try XCTUnwrap(p.dock).nextSetText, "Next · Set 2 · 181.9 lb × 6")
         XCTAssertEqual(card.rows[2].accessibilityLabel, "Set 3, working set, 181.9 pounds, 6 reps, not logged")
         XCTAssertEqual(card.rows[1].accessibilityLabel, "Set 2, working set, 132.3 pounds, 8 reps, logged")
@@ -83,7 +83,7 @@ final class UnitsPresenterTests: XCTestCase {
     func testGermanSeparators() throws {
         let kg = UF.present(UF.state(unit: .kg, rest: true), deDE)
         XCTAssertEqual(UF.rows(kg).map { $0.weightText }, ["40", "60", "82,5", "100"])
-        XCTAssertEqual(UF.rows(kg).map { $0.previousText }, ["80 × 6", "82,5 × 5", "82,5 × 5", "82,5 × 5"])
+        XCTAssertEqual(UF.rows(kg).map { $0.previousText }, ["–", "80 × 6", "82,5 × 5", "–"])
         XCTAssertEqual(try XCTUnwrap(kg.dock).nextSetText, "Next · Set 2 · 82,5 kg × 6")
         XCTAssertEqual(UF.rows(kg)[2].accessibilityLabel, "Set 3, working set, 82,5 kilograms, 6 reps, not logged")
 
@@ -684,24 +684,30 @@ final class UnitsHistoryTests: XCTestCase {
     func testKilogramTexts() {
         let h = history(.metric)
         XCTAssertEqual(h.bestSetText, "85 kg × 5")
-        XCTAssertEqual(h.records.map { $0.label }, ["Estimated 1RM", "Best set", "Most reps at 80 kg", "Best session volume"])
-        XCTAssertEqual(h.records.map { $0.value }, ["99 kg", "85 kg × 5", "6", "1,305 kg"])
+        XCTAssertEqual(
+            h.records.map { $0.label },
+            ["Estimated 1RM", "Best set", "Heaviest weight", "Best 3RM", "Best 5RM", "Most reps at 80 kg", "Best session volume"]
+        )
+        XCTAssertEqual(h.records.map { $0.value }, ["99 kg", "85 kg × 5", "85 kg", "85 kg", "85 kg", "6", "1,305 kg"])
     }
 
     func testPoundTexts() {
         let h = history(DisplayFormat(unit: .lb, locale: enUS))
         XCTAssertEqual(h.bestSetText, "187.4 lb × 5")
-        XCTAssertEqual(h.records.map { $0.label }, ["Estimated 1RM", "Best set", "Most reps at 176.4 lb", "Best session volume"])
-        XCTAssertEqual(h.records.map { $0.value }, ["219 lb", "187.4 lb × 5", "6", "2,877 lb"])
+        XCTAssertEqual(
+            h.records.map { $0.label },
+            ["Estimated 1RM", "Best set", "Heaviest weight", "Best 3RM", "Best 5RM", "Most reps at 176.4 lb", "Best session volume"]
+        )
+        XCTAssertEqual(h.records.map { $0.value }, ["219 lb", "187.4 lb × 5", "187.4 lb", "187.4 lb", "187.4 lb", "6", "2,877 lb"])
     }
 
     func testGermanSeparators() {
         let kg = history(DisplayFormat(unit: .kg, locale: deDE))
         XCTAssertEqual(kg.bestSetText, "85 kg × 5")
-        XCTAssertEqual(kg.records.map { $0.value }, ["99 kg", "85 kg × 5", "6", "1.305 kg"])
+        XCTAssertEqual(kg.records.map { $0.value }, ["99 kg", "85 kg × 5", "85 kg", "85 kg", "85 kg", "6", "1.305 kg"])
         let lb = history(DisplayFormat(unit: .lb, locale: deDE))
         XCTAssertEqual(lb.bestSetText, "187,4 lb × 5")
-        XCTAssertEqual(lb.records.map { $0.label }[2], "Most reps at 176,4 lb")
+        XCTAssertEqual(lb.records.map { $0.label }[5], "Most reps at 176,4 lb")
         XCTAssertEqual(lb.records.map { $0.value }.last, "2.877 lb")
     }
 

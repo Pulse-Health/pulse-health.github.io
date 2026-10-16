@@ -524,7 +524,8 @@ public final class WorkoutEngine {
     // MARK: Derived values
 
     /// The active-workout screen model for `now`; nil without a workout. Its weights are in the workout's unit, written with
-    /// `displayLocale`.
+    /// `displayLocale`. The finish check compares the workout with the template as it is saved now and follows the user's choice of
+    /// when to offer updating it (`StrengthPreferences.askToUpdateTemplate`).
     public func presentation(now: Date) -> ActiveWorkoutPresentation? {
         state.map {
             WorkoutPresenter.present(
@@ -532,7 +533,9 @@ public final class WorkoutEngine {
                 now: now,
                 recovery: recoveryOverride ?? data.recoveryProvider(now: now),
                 recoveryHasData: recoveryOverride != nil || data.recoveryHasData(now: now),
-                locale: displayLocale
+                locale: displayLocale,
+                template: template(of: $0),
+                templateUpdatePrompt: data.preferences.askToUpdateTemplate
             )
         }
     }
@@ -543,12 +546,18 @@ public final class WorkoutEngine {
         state.map { SnapshotBuilder.make(from: $0, now: now, locale: displayLocale) }
     }
 
-    /// What changed against the template the workout started from (empty without a workout).
+    /// What changed against the template the workout started from, the sets and rest of the kept exercises included (empty without a
+    /// workout). Unlike the finish check it does not depend on the user's choice of when to offer updating the template.
     public func templateDiff() -> TemplateDiff {
-        state.map { TemplateDiff.compute(for: $0) } ?? TemplateDiff()
+        state.map { TemplateDiff.compute(for: $0, against: template(of: $0)) } ?? TemplateDiff()
     }
 
     // MARK: Helpers
+
+    /// The saved template the workout started from; nil for a workout without one or when the template was deleted since.
+    private func template(of workout: WorkoutState) -> WorkoutTemplate? {
+        workout.templateID.flatMap { data.template(id: $0) }
+    }
 
     /// Authority: a rest timer choice made during the workout (here, on the Watch or on the Live Activity) is the user's choice for the
     /// next workouts too, so it is saved as a preference.
@@ -744,13 +753,14 @@ public final class WorkoutEngine {
     }
 
     /// The template's exercise brought up to date: a built-in exercise is the library's current one (name, cues, media, ...), any
-    /// exercise gets the latest remembered best and last sets. Nothing else of a custom exercise changes (the store refreshes the
+    /// exercise gets the latest remembered best, record marks and last sets. Nothing else of a custom exercise changes (the store refreshes the
     /// template copies when the exercise is edited).
     private func refreshed(_ exercise: Exercise) -> Exercise {
         guard let latest = data.exercise(id: exercise.id) else { return exercise }
         var result = ExerciseLibrary.exercise(id: exercise.id) != nil ? latest : exercise
         result.previousBestE1RM = latest.previousBestE1RM
         result.previousSets = latest.previousSets
+        result.previousRecords = latest.previousRecords
         return result
     }
 }

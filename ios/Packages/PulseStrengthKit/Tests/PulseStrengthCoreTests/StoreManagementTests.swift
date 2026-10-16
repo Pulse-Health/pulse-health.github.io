@@ -433,8 +433,17 @@ final class WorkoutManagementTests: XCTestCase {
             F.workout(1, finishedAt: F.daysAgo(9), [F.entry("bench", [F.work(80, 5)], n: 1), F.entry("plank", [F.work(0, 60)], n: 5)]),
         ], personalBests: ["bench": PersonalBest(exerciseID: "bench", estimated1RM: 9999, weightKg: 999, reps: 1, date: F.now), "ghost": PersonalBest(exerciseID: "ghost", estimated1RM: 1, weightKg: 1, reps: 1, date: F.now)])
         data.recomputePersonalBests()
-        XCTAssertEqual(data.personalBests.keys.sorted(), ["bench"], "stale and invented bests go, reps-only and timed exercises have none")
-        XCTAssertEqual(data.personalBests["bench"], PersonalBest(exerciseID: "bench", estimated1RM: 100 * (1 + 5.0 / 30), weightKg: 100, reps: 5, date: F.daysAgo(5)))
+        XCTAssertEqual(data.personalBests.keys.sorted(), ["bench", "plank", "pushup"], "stale and invented bests go, reps-only and timed exercises keep only their marks")
+        XCTAssertEqual(data.personalBests["bench"], PersonalBest(
+            exerciseID: "bench", estimated1RM: 100 * (1 + 5.0 / 30), weightKg: 100, reps: 5, date: F.daysAgo(5),
+            heaviestKg: 100, repRecords: [1: 100, 2: 100, 3: 100, 4: 100, 5: 100]
+        ))
+        XCTAssertEqual(data.personalBests["pushup"], PersonalBest(
+            exerciseID: "pushup", estimated1RM: 0, weightKg: 0, reps: 0, date: F.daysAgo(1), bestReps: 20
+        ))
+        XCTAssertEqual(data.personalBests["plank"], PersonalBest(
+            exerciseID: "plank", estimated1RM: 0, weightKg: 0, reps: 0, date: F.daysAgo(9), bestSeconds: 60
+        ))
         XCTAssertEqual(StrengthData().recomputedPersonalBests(), [:])
     }
 
@@ -604,6 +613,62 @@ final class CustomExerciseManagementTests: XCTestCase {
         }
         XCTAssertEqual(persistence.loadCustomExercises().first?.name, "Neutral-grip press")
         XCTAssertEqual(persistence.loadTemplates()[0].entries[1].exercise.name, "Neutral-grip press")
+    }
+
+    func testUpdatingACustomExerciseKeepsItsRecordMarksAndThoseOfItsTemplateCopies() throws {
+        try svcMain {
+            let (model, custom) = makeModel(nil)
+            let storedMarks = RecordMarks(heaviestKg: 30, repRecords: [8: 30], bestReps: 0, bestSeconds: 0)
+            let copyMarks = RecordMarks(heaviestKg: 25, repRecords: [5: 25], bestReps: 3, bestSeconds: 45)
+            model.data.customExercises[0].previousRecords = storedMarks
+            var push = model.data.templates[0]
+            let copyIndex = try XCTUnwrap(push.entries.firstIndex { $0.exercise.id == custom.id })
+            push.entries[copyIndex].exercise.previousRecords = copyMarks
+            model.saveTemplate(push)
+
+            var edited = custom
+            edited.name = "Hex press 2"
+            XCTAssertNoThrow(try model.updateCustomExercise(edited).get())
+
+            XCTAssertEqual(model.data.customExercises[0].previousRecords, storedMarks, "the edit does not wipe the stored marks")
+            let copy = try XCTUnwrap(model.data.templates[0].entries.first { $0.exercise.id == custom.id })
+            XCTAssertEqual(copy.exercise.previousRecords, copyMarks, "nor the marks of a template copy")
+        }
+    }
+
+    func testRefreshingTheTemplateCopiesKeepsTheirMarksAndReportsNoChangeOnAnUnchangedStore() {
+        var data = StrengthData()
+        var bench = ExerciseLibrary.exercise(id: "bench")!
+        bench.previousRecords = RecordMarks(heaviestKg: 100, repRecords: [5: 100], bestReps: 0, bestSeconds: 0)
+        data.templates = [WorkoutTemplate(name: "Push", entries: [
+            TemplateEntry(exercise: bench, plannedSets: [PlannedSet(weightKg: 60, reps: 8)], restSeconds: 90),
+        ])]
+        XCTAssertFalse(data.refreshTemplateExercises(), "a copy with marks equals the library entry plus its results")
+        XCTAssertEqual(data.templates[0].entries[0].exercise.previousRecords, bench.previousRecords)
+        data.templates[0].entries[0].exercise.name = "Old name"
+        XCTAssertTrue(data.refreshTemplateExercises())
+        XCTAssertEqual(data.templates[0].entries[0].exercise.name, bench.name)
+        XCTAssertEqual(data.templates[0].entries[0].exercise.previousRecords, bench.previousRecords, "the marks of the copy stay")
+    }
+
+    func testEditingAWorkoutKeepsItsRecordsOfEveryKind() throws {
+        try svcMain {
+            let model = StrengthDataModel(persistence: nil)
+            let hold = { (n: Int, seconds: Int) in F.entry("plank", [F.work(0, seconds)], n: n) }
+            model.record(F.workout(1, finishedAt: F.daysAgo(20), [
+                F.entry("pullup", [F.work(0, 5), F.work(10, 6)], n: 1), F.entry("bench", [F.work(100, 5)], n: 2), hold(3, 60),
+            ]), updateTemplate: nil)
+            model.record(F.workout(2, finishedAt: F.daysAgo(5), [
+                F.entry("pullup", [F.work(0, 9)], n: 4), F.entry("bench", [F.work(110, 1)], n: 5), hold(6, 90),
+            ]), updateTemplate: nil)
+            var edited = model.data.history[0]
+            edited.name = "Edited name"
+            XCTAssertNoThrow(try model.updateWorkout(edited).get())
+
+            let after = model.data.history[0]
+            XCTAssertEqual(after.exercises.map { $0.sets.first?.prKind }, [.reps, .heaviest, .duration], "judged against the older workout's marks")
+            XCTAssertEqual(after.personalRecords.map { $0.kind }.sorted { $0.rank > $1.rank }, [.heaviest, .reps, .duration])
+        }
     }
 
     func testUpdatingRefusesUnknownIdsBuiltInExercisesAndBlankNames() {

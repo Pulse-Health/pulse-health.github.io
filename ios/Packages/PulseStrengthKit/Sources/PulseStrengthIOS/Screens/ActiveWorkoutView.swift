@@ -447,7 +447,7 @@ public struct ActiveWorkoutView: View {
 
     private func templateAlertMessage(_ check: ActiveWorkoutPresentation.FinishCheck?) -> String {
         guard let check = check else { return "" }
-        return check.diffMessage + " Save this exercise list for your next workouts?"
+        return check.diffMessage + " Save these exercises, sets and weights for your next workouts?"
     }
 
     @ViewBuilder
