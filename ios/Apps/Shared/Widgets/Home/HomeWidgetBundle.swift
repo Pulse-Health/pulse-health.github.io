@@ -9,7 +9,25 @@ import WidgetKit
 
 struct HomeWidgetBundle: WidgetBundle {
     var body: some Widget {
+        NextUpWidget()
         WeeklyGoalWidget()
+        PRSpotlightWidget()
+        MuscleFreshnessWidget()
+        OverloadWidget()
+        WeeklySetsWidget()
+        LiftTrendWidget()
+        HomeLargeWidgetBundle()
+    }
+}
+
+/// The large and extra large widgets. A widget builder holds a limited number of widgets in the SDKs this project builds with, so the last
+/// group is a bundle of its own.
+struct HomeLargeWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        TrainingWeekWidget()
+        TemplateLauncherWidget()
+        MonthHeatmapWidget()
+        TrainingBlockWidget()
     }
 }
 #endif
