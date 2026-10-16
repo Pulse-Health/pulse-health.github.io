@@ -1,26 +1,34 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
 }
 
 android {
     namespace = "health.pulse.strength.wear"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
+        // The same id as the phone app: Google Play serves the matching APK to each device and the Wearable Data Layer pairs them by package.
         applicationId = "health.pulse.strength"
         minSdk = 30
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = (providers.gradleProperty("pulse.versionCode").orNull ?: System.getenv("PULSE_VERSION_CODE"))?.toIntOrNull() ?: 1
+        versionName = providers.gradleProperty("pulse.versionName").orNull ?: "1.0.0"
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
         }
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
+    }
+
+    buildFeatures {
+        compose = true
     }
 
     compileOptions {
@@ -28,18 +36,16 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    buildFeatures {
-        compose = true
+    lint {
+        abortOnError = true
+        warningsAsErrors = false
+        disable += "OldTargetApi"
     }
 
     testOptions {
-        unitTests.isIncludeAndroidResources = true
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        unitTests {
+            isIncludeAndroidResources = true
+        }
     }
 }
 
@@ -75,6 +81,7 @@ dependencies {
     // ==== deps-wear:end ====
 
     testImplementation(libs.junit)
+    testImplementation(libs.truth)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.kotlinx.coroutines.test)

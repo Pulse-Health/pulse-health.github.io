@@ -1,0 +1,240 @@
+{
+  "extraction": {
+    "exercises": [
+      {
+        "equipment": null,
+        "library_id": "bench",
+        "muscle": null,
+        "name": "Bench press",
+        "note": "Smaller arch, pause on the chest on every rep.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 8,
+            "reps_max": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 8,
+            "reps_max": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 8,
+            "reps_max": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:00",
+        "tracking": null
+      },
+      {
+        "equipment": "Machine",
+        "library_id": null,
+        "muscle": "Shoulders",
+        "name": "Machine shoulder press",
+        "note": "Last set all the way to failure; the machine needs no stabilising.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "reps_max": 12,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": 12,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": 12,
+            "type": "failure",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:06",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": "Machine",
+        "library_id": null,
+        "muscle": "Chest",
+        "name": "Pec deck",
+        "note": "Go as deep as you can; after the last set add 4-5 lengthened partials.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 15,
+            "reps_max": 20,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 15,
+            "reps_max": 20,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 15,
+            "reps_max": 20,
+            "type": "failure",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:14",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": "Cable",
+        "library_id": null,
+        "muscle": "Shoulders",
+        "name": "High cable lateral raise",
+        "note": "Scoop the weight out: push the cable away from the body rather than lifting it.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "reps_max": 15,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": 15,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": 15,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:28",
+        "tracking": "weightReps"
+      },
+      {
+        "equipment": null,
+        "library_id": "ohtri",
+        "muscle": null,
+        "name": "Overhead cable extension",
+        "note": "Heavier weight.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 5,
+            "reps_max": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 5,
+            "reps_max": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 5,
+            "reps_max": 10,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:40",
+        "tracking": null
+      },
+      {
+        "equipment": "Cable",
+        "library_id": null,
+        "muscle": "Arms",
+        "name": "Cable triceps kickback",
+        "note": "Lighter weight.",
+        "part": 1,
+        "rest_seconds": null,
+        "sets": [
+          {
+            "reps": 10,
+            "reps_max": 15,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": 15,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          },
+          {
+            "reps": 10,
+            "reps_max": 15,
+            "type": "normal",
+            "weight": null,
+            "weight_unit": null
+          }
+        ],
+        "superset_group": null,
+        "timestamp": "0:44",
+        "tracking": "weightReps"
+      }
+    ],
+    "summary": "Jeff Nippard's push day: bench press, machine press, pec deck, cable lateral raise and two triceps exercises.",
+    "title": "UL/PPL · Push",
+    "warnings": [
+      "Sets and rep ranges come from the video description (bench 3 x 8-10, shoulder press 3 x 10-12, pec deck 3 x 15-20, lateral raise 3 x 10-15, overhead extension 3 x 5-10, kickback 3 x 10-15).",
+      "The description reads '3:10-15' for the kickback; read as 3 x 10-15.",
+      "Rest times are not stated in the video; the exercise's default rest was used.",
+      "Weights are not stated; enter your own."
+    ]
+  },
+  "model": "manual: read from the video captions and description by Claude in a Claude Code session (no API call)",
+  "name": "UL/PPL · Push",
+  "plan": {
+    "daysPerWeek": 5,
+    "name": "Jeff Nippard UL/PPL",
+    "position": 2
+  },
+  "sources": [
+    {
+      "captions": "auto",
+      "duration": 49,
+      "title": "Best Push Workout (Chest, Shoulders & Triceps)",
+      "url": "https://www.youtube.com/watch?v=bvwg4D9UWGI"
+    }
+  ],
+  "vision": false
+}

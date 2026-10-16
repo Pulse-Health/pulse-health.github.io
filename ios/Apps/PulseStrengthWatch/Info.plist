@@ -20,6 +20,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>PulseAppGroupID</key>
+	<string>group.$(PULSE_APP_BUNDLE_ID)</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Pulse Strength reads your heart rate and active energy during a strength workout and shows them on your Apple Watch and iPhone.</string>
 	<key>NSHealthUpdateUsageDescription</key>

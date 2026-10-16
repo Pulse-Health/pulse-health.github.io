@@ -96,6 +96,9 @@ data class NextUpSummary(
     val estimatedMinutes: Int = 0,
     val lastPerformedAt: Instant? = null,
     val daysSince: Int? = null,
+    val planName: String? = null,
+    val planPosition: Int? = null,
+    val planCount: Int? = null,
     val exercises: List<PlannedExerciseBrief> = emptyList(),
 )
 

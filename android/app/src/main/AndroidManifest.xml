@@ -2,6 +2,18 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- The ongoing workout notification and the rest alert (a runtime permission from Android 13). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Lets Android 16 show the workout notification as a "Live Update" chip; the user can switch it off. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <!-- Optional, user-enabled: save finished workouts to Health Connect. The app only writes, it never reads. -->
+    <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />
+
+    <!-- Deliberately absent: INTERNET and ACCESS_NETWORK_STATE. The app is offline by design; a unit test guards this. -->
+    <!-- WorkManager (a dependency of Glance, which draws the home screen widgets) declares ACCESS_NETWORK_STATE for network constraints
+         the app never uses: take it out again so the merged manifest keeps its promise. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
     <!-- Each owner adds only inside its own marked region (see widgets/SPEC.md section 6). -->
 
     <!-- ==== permissions-host:begin ==== -->
@@ -13,29 +25,43 @@
     <!-- ==== permissions-wear:begin ==== -->
     <!-- ==== permissions-wear:end ==== -->
 
-    <application
-        android:name=".PulseApp"
-        android:allowBackup="false"
-        android:label="@string/app_name"
-        android:supportsRtl="true">
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
 
-        <!-- ==== host:begin (activities, deep links, application metadata) ==== -->
+    <application
+        android:name=".PulseStrengthApplication"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:enableOnBackInvokedCallback="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.PulseStrength"
+        tools:targetApi="36">
+
         <activity
             android:name=".MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- pulse-strength:// deep links of the widgets, tiles and notifications (widgets/SPEC.md section 4) -->
+            <!-- pulse-strength://workout shows the running workout; the widgets, tiles and notifications use the other hosts of
+                 widgets/SPEC.md section 4 (hub, start-next, start, start-empty, exercise, plates, weight). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="pulse-strength" />
             </intent-filter>
+            <!-- ==== host:begin (shortcuts meta-data and further intent filters of the main activity) ==== -->
+            <!-- ==== host:end ==== -->
         </activity>
-        <!-- ==== host:end ==== -->
 
         <!-- ==== glance-home:begin ==== -->
         <!-- App widget providers must be exported so the launcher can send APPWIDGET_UPDATE (a broadcast only the system can send). -->
@@ -204,5 +230,33 @@
         <!-- ==== wear:begin (Data Layer listener service) ==== -->
         <!-- ==== wear:end ==== -->
 
+        <!-- Health Connect: the screen that explains why the app writes workouts. -->
+        <activity
+            android:name=".health.PermissionsRationaleActivity"
+            android:exported="true"
+            android:theme="@style/Theme.PulseStrength">
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+        </activity>
+        <!-- Android 14+: the same screen as "How this app uses your data" in the system's health permission settings. -->
+        <activity-alias
+            android:name="ViewPermissionUsageActivity"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE"
+            android:targetActivity=".health.PermissionsRationaleActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
+
+        <!-- Buttons of the workout notification and the backup rest alarm. Not exported: only the app's own PendingIntents reach them. -->
+        <receiver
+            android:name=".services.NotificationActionReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".services.RestAlarmReceiver"
+            android:exported="false" />
     </application>
 </manifest>

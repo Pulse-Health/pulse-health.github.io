@@ -1,0 +1,12 @@
+TITLE
+Terms change from {{EFFECTIVE_DATE}}
+
+TEXT
+We have changed our Terms of Service (Version 1.1): AI-assisted creation of training and meal plans is now described in the Terms, AI processing takes place exclusively on servers within the EU, and we may switch the AI model, model provider and access route as long as processing stays in the EU.
+
+Important: If you do not object by {{OBJECTION_DEADLINE}} and continue to use Pulse, the amended Terms are deemed accepted from {{EFFECTIVE_DATE}}. If you object, the previous Terms (Version 1.0) continue to apply to you; either party may then terminate the contract. You can also delete your account at any time.
+
+BUTTONS
+1. Read the changes in full
+2. Object by email
+3. Got it

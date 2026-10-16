@@ -1,0 +1,12 @@
+TITEL
+AGB-Änderung ab {{EFFECTIVE_DATE}}
+
+TEXT
+Wir haben unsere AGB geändert (Version 1.1): Die KI-gestützte Erstellung von Trainings- und Ernährungsplänen ist jetzt in den AGB beschrieben, die KI-Verarbeitung erfolgt ausschließlich auf Servern innerhalb der EU, und wir dürfen KI-Modell, Modellanbieter und Zugangsweg wechseln, solange die Verarbeitung in der EU bleibt.
+
+Wichtig: Widersprechen Sie nicht bis zum {{OBJECTION_DEADLINE}} und nutzen Sie Pulse weiter, gelten die geänderten AGB ab {{EFFECTIVE_DATE}} als angenommen. Bei einem Widerspruch gelten für Sie die bisherigen AGB (Version 1.0) weiter; dann kann jede Seite den Vertrag kündigen. Sie können Ihr Konto außerdem jederzeit löschen.
+
+SCHALTFLÄCHEN
+1. Änderungen im Wortlaut lesen
+2. Widerspruch per E-Mail
+3. Verstanden
