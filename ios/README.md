@@ -14,7 +14,7 @@ are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-ap
 > The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow `strength-ios`
 > has compiled it with Xcode 16 and Xcode 26 (the iPhone app with its widget extension, the Watch app with its widget
 > extension), run a 30-step UI flow through the real iPhone app, rendered the Lock Screen, Dynamic Island, Watch screens and
-> every widget (363 images), and re-run the app in dark mode, at large text sizes and on an iPhone SE. Several rounds of
+> every widget (about 360 images), and re-run the app in dark mode, at large text sizes and on an iPhone SE. Several rounds of
 > adversarial review fixed what they found. What has **not** been tried is anything that needs real hardware or the system's
 > own widget surfaces (Live Activity buttons, widget gallery and configuration, Control Center, StandBy, Watch heart rate and
 > WatchConnectivity, notifications): see [Verification status](#verification-status).

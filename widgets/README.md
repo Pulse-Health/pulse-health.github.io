@@ -51,7 +51,7 @@ Nothing in this folder has run on a device, a watch or an emulator. What has bee
   view, light and dark, into PNGs (artifact `strength-screens`, files `widget-*`, `watchwidget-*`, `live-*`). The renders show layout, colour and text; they do not show the system's
   widget background, timers, StandBy tinting or any button behaviour.
 * **Kotlin core and Android**: `./gradlew :core:test :app:testDebugUnitTest :wear:testDebugUnitTest :app:lintDebug :wear:lintDebug` and the debug builds in `strength-android`
-  (877 core tests, which include the comparison with `fixtures/golden-sample.json`, 1181 app tests, 236 watch tests, lint without errors, R8 release builds of both apps).
+  (887 core tests, which include the comparison with `fixtures/golden-sample.json`, 1213 app tests, 236 watch tests, lint without errors); the R8 release builds of both apps were assembled and linted locally (CI builds the debug variants).
   The Glance widgets are inflated and drawn into PNGs by Robolectric (`app/build/screens/widgets*`); the Wear tiles and complications are checked as data.
 * **Not covered anywhere**: widget gallery and configuration flows, Smart Stack ranking, Control Center and Action button behaviour, Live Update promotion on Android 16,
   Wear OS tile and complication behaviour on a watch, App Intent execution from an extension process, and the Watch to phone round trips.

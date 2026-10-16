@@ -70,8 +70,8 @@ What was run (in a Linux sandbox, no emulator, no device):
 
 | Check | Result |
 | --- | --- |
-| `:core:test` | 877 tests, all pass (the Swift suite was ported; it found two real divergences from the Swift rules, both fixed; the widget builder and the live moments are tested too, and the Kotlin snapshot of the demo data equals the Swift one, `widgets/fixtures/golden-sample.json`) |
-| `:app:testDebugUnitTest` | 1181 tests, all pass: every screen and sheet, the notification and rest-alert services, `FirstRunFlowTest` (an empty install through the real picker, a logged set, finish, summary and hub), and the widgets, tiles, live surfaces, runtime and watch sync described below (the widgets are drawn into PNGs) |
+| `:core:test` | 887 tests, all pass (the Swift suite was ported; it found two real divergences from the Swift rules, both fixed; the widget builder and the live moments are tested too, and the Kotlin snapshot of the demo data equals the Swift one, `widgets/fixtures/golden-sample.json`) |
+| `:app:testDebugUnitTest` | 1213 tests, all pass: every screen and sheet, the notification and rest-alert services, `FirstRunFlowTest` (an empty install through the real picker, a logged set, finish, summary and hub), and the widgets, tiles, live surfaces, runtime and watch sync described below (the widgets are drawn into PNGs) |
 | `:wear:testDebugUnitTest` | 236 tests, all pass: tiles, complications, Ongoing Activity, the watch screens, the Data Layer codec |
 | `:app:lintDebug`, `:wear:lintDebug` | no errors (lint errors fail the build) |
 | `:app:assembleRelease`, `:wear:assembleRelease` | R8 + resource shrinking, unsigned APKs; the merged manifests contain no `INTERNET` or `ACCESS_NETWORK_STATE`; the phone asks for `POST_NOTIFICATIONS`, `POST_PROMOTED_NOTIFICATIONS`, Health Connect `WRITE_EXERCISE`, `RECEIVE_BOOT_COMPLETED` and, through WorkManager (a dependency of Glance), `WAKE_LOCK` and `FOREGROUND_SERVICE` |
@@ -156,7 +156,7 @@ maps every area to its files on both platforms.
   `RECEIVE_BOOT_COMPLETED` (to arm a planned session again after a restart); the watch asks for `POST_NOTIFICATIONS` (Ongoing Activity chip).
 
 **Verified** (`./gradlew :core:test :app:testDebugUnitTest :wear:testDebugUnitTest :app:lintDebug :wear:lintDebug :app:assembleDebug :wear:assembleDebug
-:app:assembleRelease :wear:assembleRelease`): 877 + 1181 + 236 tests, lint without errors, R8 release builds of both apps. The widgets are composed through
+:app:assembleRelease :wear:assembleRelease`): 887 + 1213 + 236 tests, lint without errors, R8 release builds of both apps. The widgets are composed through
 Glance, inflated and drawn into PNGs by Robolectric (`app/build/screens/widgets*`, in the `android-screens` artifact); tile layouts and complications
 are checked as data (protolayout trees, complication data per type).
 
