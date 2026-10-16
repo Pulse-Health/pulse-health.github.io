@@ -69,6 +69,12 @@ struct WatchCountdownText: View {
     }
 
     private var label: Text {
+        WatchCountdownText.text(interval, staticNow: staticNow)
+    }
+
+    /// The countdown as a `Text` (the inline complication builds its wordings from it): the system's live timer, or the time left at
+    /// `staticNow` when a snapshot test fixes the clock.
+    static func text(_ interval: ClosedRange<Date>, staticNow: Date?) -> Text {
         if let now = staticNow {
             let remaining = max(0, interval.upperBound.timeIntervalSince(now)).rounded(.up)
             return Text(NumberText.clock(seconds: Int(remaining)))

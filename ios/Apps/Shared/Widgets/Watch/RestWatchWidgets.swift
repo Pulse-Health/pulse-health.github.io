@@ -125,6 +125,7 @@ struct RestWidget: Widget {
 struct RestWidgetView: View {
     let entry: WatchEntry
     @Environment(\.widgetFamily) private var family
+    @Environment(\.watchWidgetStaticNow) private var staticNow
 
     private var face: WatchRestFace { WatchRestFace(entry) }
 
@@ -234,7 +235,7 @@ struct RestWidgetView: View {
         switch face.stage {
         case .resting:
             if let interval = face.runningInterval {
-                let timer = Text(timerInterval: interval, countsDown: true, showsHours: false)
+                let timer = WatchCountdownText.text(interval, staticNow: staticNow)
                 WatchInlineText(
                     long: Text(verbatim: "Rest ") + timer + Text(verbatim: " · " + face.nextLine),
                     medium: Text(verbatim: "Rest ") + timer,
