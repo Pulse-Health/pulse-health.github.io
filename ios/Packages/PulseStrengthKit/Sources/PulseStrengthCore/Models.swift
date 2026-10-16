@@ -207,6 +207,9 @@ public struct LoggedSet: Identifiable, Codable, Hashable, Sendable {
     public var isDone: Bool
     /// Reps in reserve, 0...4 (4 means "4+"). nil = not recorded.
     public var rir: Int?
+    /// When the set was logged: the reducer's `now` at the moment it became done, cleared when it becomes pending again.
+    /// nil for a pending set and for a set saved before this field existed. It feeds the session timeline of the widgets.
+    public var doneAt: Date?
 
     public init(
         id: UUID = UUID(),
@@ -214,7 +217,8 @@ public struct LoggedSet: Identifiable, Codable, Hashable, Sendable {
         weightKg: Double,
         reps: Int,
         isDone: Bool = false,
-        rir: Int? = nil
+        rir: Int? = nil,
+        doneAt: Date? = nil
     ) {
         self.id = id
         self.type = type
@@ -222,6 +226,7 @@ public struct LoggedSet: Identifiable, Codable, Hashable, Sendable {
         self.reps = reps
         self.isDone = isDone
         self.rir = rir
+        self.doneAt = doneAt
     }
 }
 
