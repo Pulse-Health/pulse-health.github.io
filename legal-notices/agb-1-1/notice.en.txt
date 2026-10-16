@@ -1,0 +1,119 @@
+Subject: Pulse: Changes to the Terms of Service from {{EFFECTIVE_DATE}} – you can object until {{OBJECTION_DEADLINE}}
+
+Hello,
+
+We are changing the Terms of Service (“Terms”) for the use of Pulse. This message is the notice of changes under Section 15(2) of the Terms and is sent in text form. It contains the wording of every provision that changes. The German version of this notice is the legally binding one; this English translation is provided for your convenience only.
+
+
+1. THE MAIN POINTS
+
+- The Terms now also describe the AI-assisted creation of training and meal plans. A new note says: these plans are general suggestions, not individual medical advice (Sections 2, 7 and 8).
+- The processing of the data transferred to the AI providers used for AI coaching and for the creation of training and meal plans takes place exclusively on servers within the European Union. The previous statement that data is transferred to a provider in the USA is removed (Section 8(3)).
+- The Terms no longer name a specific AI provider. The providers and models currently used are named in the Privacy Policy (Section 8(1)).
+- We may switch, supplement or replace the AI model, the model provider and the way the model is accessed, but only as long as processing continues to take place exclusively on servers within the EU (Section 8(4)).
+- No fees are introduced. The provisions on prices and Premium (Section 5) do not change.
+- The Privacy Policy has been updated as well.
+
+
+============================================================
+2. IMPORTANT NOTICE: YOUR RIGHT TO OBJECT AND ITS CONSEQUENCES
+   (separate notice under Section 15(2) of the Terms)
+============================================================
+
+The amended Terms (Version 1.1) are to apply to your existing user relationship from {{EFFECTIVE_DATE}}.
+
+a) You agree? Then you do not need to do anything. If you do not object to the changes by {{OBJECTION_DEADLINE}} and continue to use Pulse, the changes are deemed accepted by you.
+
+b) You do not agree? Then you can object to the changes by {{OBJECTION_DEADLINE}} (six weeks from receipt of this notice). No particular form is required, for example by email to robin.juengerich@icloud.com (subject: “Objection Terms 1.1”) or by post to Robin Jüngerich, Dorfstraße 179, 24222 Schwentinental, Germany. It is enough to send your objection in good time.
+
+c) Consequences of an objection: The previous Terms (Version 1.0) then continue to apply to you until the contract ends. Either party may then terminate the contract (Section 15(3) of the Terms), including us. A termination by us is made in text form with 14 days’ notice to the end of a month (Section 13(3) of the Terms).
+
+d) Independently of this, you can end the contract at any time without notice by deleting your account in the App (Section 13(2) of the Terms). Your data is then deleted as set out in the Privacy Policy.
+
+
+3. WHY WE ARE MAKING THESE CHANGES (SECTION 15(1) OF THE TERMS)
+
+The changes are necessary for a valid reason, namely a change in the scope of services and technical requirements:
+
+- Pulse now offers AI-assisted creation of training and meal plans. The Terms must describe this scope of services, together with the related health note, accurately.
+- AI processing takes place exclusively on servers within the EU. The Terms must describe this accurately; the earlier reference to a provider in the USA is outdated.
+- AI models and providers change at short intervals (models are replaced or discontinued, access routes change). We therefore state expressly that the model, the model provider and the way the model is accessed may be changed, but only on the firm condition that processing stays exclusively within the EU.
+
+We take the view that you are not unreasonably disadvantaged as a result: the range of functions grows, the EU location of AI processing is committed to, you can disable AI coaching in the settings (Section 8(3) of the Terms) and you can end the contract at any time (Section 13(2) of the Terms).
+
+
+4. THE CHANGED PROVISIONS IN FULL
+
+Below, each changed provision is shown in its previous wording (Version 1.0) and its new wording (Version 1.1). All other provisions of the Terms remain unchanged. The version number and date have also been updated (Version 1.1, last updated October 13, 2026; original effective date June 24, 2026).
+
+Section 2(1) – Subject Matter and Description of Services
+Change: Extended by the AI-assisted creation of training and meal plans.
+
+Previously (Version 1.0):
+> (1) Pulse is an application for personal tracking of fitness, nutrition, sleep and selected health and recovery metrics (e.g. heart rate, heart rate variability). It computes analyses, trends and wellness scores and offers an optional, AI-assisted coaching feature (see Section 8).
+
+New (Version 1.1):
+> (1) Pulse is an application for personal tracking of fitness, nutrition, sleep and selected health and recovery metrics (e.g. heart rate, heart rate variability). It computes analyses, trends and wellness scores and offers an optional, AI-assisted coaching feature as well as AI-assisted creation of training and meal plans (see Section 8).
+
+Section 7(1) – Health Notice
+Change: Extended by training and meal plans.
+
+Previously (Version 1.0):
+> (1) The analyses, scores and recommendations shown in the App are for informational purposes only and support a generally healthy lifestyle.
+
+New (Version 1.1):
+> (1) The analyses, scores, recommendations and training and meal plans shown in the App are for informational purposes only and support a generally healthy lifestyle.
+
+Section 8(1) – AI-Assisted Coaching and AI-Generated Content
+Change: The AI features now also include the creation of training and meal plans. The provider named so far (OpenAI) is no longer named in the Terms; instead the Terms refer to the Privacy Policy.
+
+Previously (Version 1.0):
+> (1) The optional coaching feature generates responses using a third-party AI language model (currently OpenAI). You are interacting with artificial intelligence, not a human.
+
+New (Version 1.1):
+> (1) The optional AI features (coaching and the creation of training and meal plans) generate responses and content using third-party AI language models. The providers and models currently used are named in our Privacy Policy. You are interacting with artificial intelligence, not a human.
+
+Section 8(2)
+Change: The last sentence is new (note on AI-generated training and meal plans).
+
+Previously (Version 1.0):
+> (2) AI-generated content may be inaccurate, incomplete or misleading (“hallucinations”). We make no warranty as to the accuracy, completeness or fitness for a particular purpose of AI outputs. Verify important information independently and do not rely solely on coaching outputs.
+
+New (Version 1.1):
+> (2) AI-generated content may be inaccurate, incomplete or misleading (“hallucinations”). We make no warranty as to the accuracy, completeness or fitness for a particular purpose of AI outputs. Verify important information independently and do not rely solely on coaching outputs. AI-generated training and meal plans are general suggestions, not individual medical advice: adjust or stop an exercise that causes pain or does not suit your health, and seek professional advice where in doubt.
+
+Section 8(3)
+Change: The creation of training and meal plans is included. Instead of a transfer to a provider in the USA, processing takes place exclusively on servers within the European Union.
+
+Previously (Version 1.0):
+> (3) For AI coaching, selected profile and coaching data are transferred to the third-party provider in the USA. Details, legal bases and safeguards are set out in our Privacy Policy. You can disable AI coaching in the settings; other tracking remains unaffected.
+
+New (Version 1.1):
+> (3) For AI coaching and the AI-assisted creation of training and meal plans, selected profile, coaching and plan-setting data are transferred to the third-party AI provider(s) used. This processing takes place exclusively on servers within the European Union. Details, legal bases and safeguards are set out in our Privacy Policy. You can disable AI coaching in the settings; other tracking remains unaffected.
+
+Section 8(4)
+Change: Newly inserted (switching AI model, model provider and access route while processing stays exclusively in the EU).
+
+Previously (Version 1.0): This paragraph did not exist.
+
+New (Version 1.1):
+> (4) We may switch, supplement or replace the AI model, the model provider and the way the model is accessed (for example via an AI aggregation service or directly via the provider’s interface) (see Section 9(2)), provided that processing for these AI features continues to take place exclusively on servers within the European Union.
+
+
+5. FURTHER INFORMATION
+
+- The version of the Terms published on the website is Version 1.1. For your existing user relationship it applies only from {{EFFECTIVE_DATE}} (see Section 2).
+- Full Terms of Service, Version 1.1 (English, translation): https://pulse-health.github.io/terms.html
+- Allgemeine Geschäftsbedingungen, Version 1.1 (German, legally binding): https://pulse-health.github.io/agb.html
+- Privacy Policy, naming the AI providers and models currently used, legal bases and safeguards: https://pulse-health.github.io/privacy-policy.html
+- We are happy to send you the previous Terms (Version 1.0) on request.
+- Questions about this change? Write to us at robin.juengerich@icloud.com.
+
+Kind regards
+
+Robin Jüngerich
+Provider of Pulse
+Dorfstraße 179, 24222 Schwentinental, Germany
+robin.juengerich@icloud.com
+
+This notice was sent on {{SEND_DATE}}.

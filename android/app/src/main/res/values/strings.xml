@@ -2,6 +2,39 @@
 <resources>
     <string name="app_name">Pulse Strength</string>
 
+    <!-- Notification channels (visible in the system settings) -->
+    <string name="channel_workout_name">Workout in progress</string>
+    <string name="channel_workout_description">Shows the running workout with its timer and buttons to log a set or control the rest timer.</string>
+    <string name="channel_rest_name">Rest over</string>
+    <string name="channel_rest_description">Sounds when a rest timer reaches zero while the app is in the background.</string>
+
+    <!-- Workout notification -->
+    <string name="notification_paused_title">Paused</string>
+    <string name="notification_rest_title">Rest</string>
+    <string name="notification_rest_over_title">Rest over · Go</string>
+    <string name="notification_complete_title">All sets logged</string>
+    <plurals name="notification_complete_text">
+        <item quantity="one">%1$d set · %2$s kg</item>
+        <item quantity="other">%1$d sets · %2$s kg</item>
+    </plurals>
+    <string name="notification_empty_text">No exercises yet. Open the app to add some.</string>
+    <string name="notification_next">Next: %1$s</string>
+    <string name="action_log_set">Log set</string>
+    <string name="action_weight_minus">Weight −</string>
+    <string name="action_weight_plus">Weight +</string>
+    <string name="action_reps_minus">Reps −</string>
+    <string name="action_reps_plus">Reps +</string>
+    <string name="action_rest_minus">−15 s</string>
+    <string name="action_rest_plus">+15 s</string>
+    <string name="action_skip">Skip</string>
+
+    <!-- Health Connect rationale -->
+    <string name="hc_rationale_title">How Pulse Strength uses Health Connect</string>
+    <string name="hc_rationale_body">If you turn it on in the app\'s settings, Pulse Strength saves each finished workout to Health Connect as a strength-training session: its start and end time, its name and the number of sets and total weight lifted. The app only writes; it never reads anything from Health Connect.</string>
+    <string name="hc_rationale_offline">Pulse Strength works entirely on your device. It has no accounts and no internet access, so nothing you log is sent anywhere. You can turn this off at any time in the app\'s settings or in Health Connect.</string>
+    <string name="privacy_policy">Privacy policy</string>
+    <string name="close">Close</string>
+
     <!-- ==== strings-host:begin ==== -->
     <!-- ==== strings-host:end ==== -->
 

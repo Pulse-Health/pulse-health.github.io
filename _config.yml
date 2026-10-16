@@ -1,6 +1,8 @@
-# The Swift sources, docs and exercise photos under ios/, the Kotlin sources under android/ and the widget specification under widgets/
+# The Swift and Kotlin sources, docs and exercise photos under ios/ and android/ and the widget specification under widgets/
 # are app projects, not part of the website: keep them out of the GitHub Pages build so they are not published as public files.
+# legal-notices/ holds drafts of notices to users, not website pages.
 exclude:
   - ios
   - android
   - widgets
+  - legal-notices
