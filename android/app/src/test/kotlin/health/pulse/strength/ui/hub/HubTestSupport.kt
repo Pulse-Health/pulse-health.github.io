@@ -50,8 +50,7 @@ object HubTestSupport {
 
     /**
      * A real environment on a temporary folder. [seed] adds the demo data relative to [now] (the production store seeds nothing:
-     * `seed = false` is the first-run state). The constructor of [StrengthAppEnvironment] is private, so it is called by reflection
-     * (test code only; a public factory in the app would make this unnecessary).
+     * `seed = false` is the first-run state).
      */
     fun environment(
         seed: Boolean = true,
@@ -63,9 +62,7 @@ object HubTestSupport {
         val store = StrengthStore(persistence, seedDemoData = seed, now = now)
         val controller = WorkoutController(store, persistence, recovery)
         if (withActiveWorkout) controller.startWorkout(store.templates.firstOrNull())
-        val constructor = StrengthAppEnvironment::class.java.declaredConstructors.single { it.parameterCount == 4 }
-        constructor.isAccessible = true
-        return constructor.newInstance(persistence, store, controller, false) as StrengthAppEnvironment
+        return StrengthAppEnvironment.forParts(persistence, store, controller)
     }
 
     /** A second store on the same folder: what the next app launch would read. */
