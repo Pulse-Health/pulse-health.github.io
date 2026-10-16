@@ -5,7 +5,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -46,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
 import health.pulse.strength.StrengthAppEnvironment
@@ -249,13 +249,13 @@ private fun openNotificationSettings(context: Context) {
 private fun openHealthConnect(context: Context) = safeStart(context, HealthConnectClient.getHealthConnectManageDataIntent(context))
 
 private fun openHealthConnectStore(context: Context) {
-    safeStart(context, Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=com.google.android.apps.healthdata")))
+    safeStart(context, Intent(Intent.ACTION_VIEW, "market://details?id=com.google.android.apps.healthdata".toUri()))
 }
 
-private fun openUrl(context: Context, url: String) = safeStart(context, Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+private fun openUrl(context: Context, url: String) = safeStart(context, Intent(Intent.ACTION_VIEW, url.toUri()))
 
 private fun sendEmail(context: Context) {
-    safeStart(context, Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:${PrivacyLinks.supportEmail}")))
+    safeStart(context, Intent(Intent.ACTION_SENDTO, "mailto:${PrivacyLinks.supportEmail}".toUri()))
 }
 
 private fun safeStart(context: Context, intent: Intent) {

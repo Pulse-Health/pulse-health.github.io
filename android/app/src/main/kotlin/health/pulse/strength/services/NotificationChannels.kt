@@ -3,7 +3,6 @@ package health.pulse.strength.services
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import health.pulse.strength.R
 
 object NotificationChannels {
@@ -15,7 +14,6 @@ object NotificationChannels {
 
     /** Creates the channels (idempotent; the system keeps the user's changes to an existing channel). */
     fun ensureCreated(context: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = context.getSystemService(NotificationManager::class.java) ?: return
         val workout = NotificationChannel(
             WORKOUT,

@@ -1,6 +1,7 @@
 package health.pulse.strength.services
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
@@ -50,6 +51,7 @@ object WorkoutNotifications {
         if (snapshot.showsWeight) "${snapshot.weightText} kg × ${snapshot.repsText}" else "${snapshot.repsText} ${snapshot.repsUnit}"
 
     /** The ongoing notification for [snapshot]; [now] only decides whether a running rest has already ended. */
+    @SuppressLint("InlinedApi") // EXTRA_REQUEST_PROMOTED_ONGOING is a plain string constant; it is only read on Android 16+
     fun ongoing(context: Context, snapshot: WorkoutSnapshot, now: Instant): Notification {
         val phase = effectivePhase(snapshot, now)
         val builder = NotificationCompat.Builder(context, NotificationChannels.WORKOUT)
@@ -88,7 +90,7 @@ object WorkoutNotifications {
             }
             phase == SnapshotPhase.COMPLETE -> {
                 builder.setContentTitle(context.getString(R.string.notification_complete_title))
-                    .setContentText(context.getString(R.string.notification_complete_text, snapshot.loggedSets, snapshot.volumeText))
+                    .setContentText(context.resources.getQuantityString(R.plurals.notification_complete_text, snapshot.loggedSets, snapshot.loggedSets, snapshot.volumeText))
                     .setWhen(snapshot.activeStart.toEpochMilli()).setShowWhen(true).setUsesChronometer(true)
             }
             else -> {

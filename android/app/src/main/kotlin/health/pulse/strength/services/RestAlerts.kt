@@ -23,7 +23,8 @@ import java.time.Instant
  *
  * Reliability without special permissions or a foreground service:
  * 1. An exact alarm whose callback runs in the app process (`AlarmManager.OnAlarmListener`; this variant needs no exact-alarm
- *    permission). It fires on time while the process lives, which it normally does during a workout.
+ *    permission). It fires on time while the process lives, which it normally does during a workout. (Before Android 17 it is not
+ *    delivered in Doze; the backup covers that.)
  * 2. A backup `PendingIntent` alarm (`setAndAllowWhileIdle`, inexact) that wakes the app even when the system ended the process; it
  *    may be late but it never needs a permission.
  * Both lead to [onRestEnded]; the end time of the last alerted rest is remembered, so the alert never happens twice.
@@ -66,9 +67,12 @@ class RestAlerts(
         val delay = maxOf(0L, endsAtMillis - clock().toEpochMilli())
         val elapsedTrigger = SystemClock.elapsedRealtime() + delay
         runCatching {
-            if (Build.VERSION.SDK_INT >= 34) {
+            if (Build.VERSION.SDK_INT >= 37) {
+                // The listener variant that also fires in Doze (API 37).
                 manager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTrigger, TAG, { it.run() }, listener)
             } else {
+                // Exact without the exact-alarm permission because the callback runs in this process (API 24). It is not delivered
+                // while the device is in Doze; the inexact allow-while-idle alarm below covers that case.
                 manager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTrigger, TAG, listener, handler)
             }
         }

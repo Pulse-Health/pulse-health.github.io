@@ -13,7 +13,10 @@
     <string name="notification_rest_title">Rest</string>
     <string name="notification_rest_over_title">Rest over · Go</string>
     <string name="notification_complete_title">All sets logged</string>
-    <string name="notification_complete_text">%1$d sets · %2$s kg</string>
+    <plurals name="notification_complete_text">
+        <item quantity="one">%1$d set · %2$s kg</item>
+        <item quantity="other">%1$d sets · %2$s kg</item>
+    </plurals>
     <string name="notification_next">Next: %1$s</string>
     <string name="action_log_set">Log set</string>
     <string name="action_weight_minus">Weight −</string>

@@ -1,7 +1,7 @@
 package health.pulse.strength.health
 
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -42,7 +42,7 @@ class PermissionsRationaleActivity : ComponentActivity() {
                     Text(getString(R.string.hc_rationale_offline), style = PulseFont.subhead, color = colors.inkSecondary)
                     PulsePrimaryButton(
                         text = getString(R.string.privacy_policy),
-                        onClick = { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PrivacyLinks.policyUrl))) },
+                        onClick = { startActivity(Intent(Intent.ACTION_VIEW, PrivacyLinks.policyUrl.toUri())) },
                     )
                     PulsePrimaryButton(text = getString(R.string.close), onClick = { finish() })
                 }

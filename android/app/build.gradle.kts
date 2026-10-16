@@ -95,6 +95,8 @@ android {
         abortOnError = true
         checkReleaseBuilds = true
         warningsAsErrors = false
+        // targetSdk 36 is deliberate: Google Play requires 36 since 31 Aug 2026 and API 37's behaviour changes have not been tested.
+        disable += "OldTargetApi"
     }
 
     testOptions {
