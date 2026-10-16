@@ -12,7 +12,6 @@ import health.pulse.strength.R
 import health.pulse.strength.core.widgets.DeepLinks
 import health.pulse.strength.core.widgets.WidgetSnapshot
 import health.pulse.strength.widgets.common.PulseWidget
-import health.pulse.strength.widgets.common.WidgetDimens
 
 /** LS-03 Week streak (1x1): the flame over "6 wk"; the flame is grey while there is no streak. */
 class StreakWidget : PulseWidget() {
@@ -20,17 +19,21 @@ class StreakWidget : PulseWidget() {
     override fun Content(snapshot: WidgetSnapshot) {
         val model = LockText.streak(snapshot.week)
         val side = squareSide()
-        // The label grows with the cell but never past what is left of it under the flame, so the pair fits the smallest cell too.
+        val padding = squarePadding(side)
+        val inner = side - padding * 2
+        // The label grows with the cell but never past what is left of it under the flame or past its width, so the pair fits the smallest
+        // cell too and "104 wk" after two years is made smaller instead of being cut.
         val flame = side * 0.34f
-        val room = ((side - WidgetDimens.paddingCompact * 2 - flame).value - 2f) / TextFit.LINE_FACTOR
-        WidgetCard(description = model.description, link = DeepLinks.hub, cornerRadius = side / 2) {
+        val room = ((inner - flame).value - 2f) / TextFit.LINE_FACTOR
+        val labelSp = fittingSp(model.label, inner - FitSafety, maxSp = minOf(side.value * 0.24f, room), minSp = 7f)
+        WidgetCard(description = model.description, link = DeepLinks.hub, cornerRadius = side / 2, padding = padding) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Glyph(
                     icon = R.drawable.ic_flame,
                     size = flame,
                     tint = if (model.isActive) GlanceTheme.colors.primary else GlanceTheme.colors.onSurfaceVariant,
                 )
-                PulseText(model.label, minOf(side.value * 0.24f, room).coerceAtLeast(11f).sp, weight = FontWeight.Bold, align = TextAlign.Center)
+                PulseText(model.label, labelSp.sp, weight = FontWeight.Bold, align = TextAlign.Center)
             }
         }
     }

@@ -48,6 +48,15 @@ internal object TextFit {
     /** The lines a single run of [width] dp takes beyond the first when it is broken at [maxWidth]. */
     private fun extraLines(width: Float, maxWidth: Float): Int = (ceil(width / maxWidth).toInt() - 1).coerceAtLeast(0)
 
+    /**
+     * The type size at which a text that is [measuredWidth] dp wide at [measuredSp] is [maxWidth] dp wide (text width grows with the
+     * size), held between [minSp] and [maxSp]. A text wider than the room at [maxSp] is set smaller; [minSp] wins over [maxSp].
+     */
+    fun sizeForWidth(measuredWidth: Float, measuredSp: Float, maxWidth: Float, minSp: Float, maxSp: Float): Float {
+        if (measuredWidth <= 0f) return maxOf(minSp, maxSp)
+        return (measuredSp * maxWidth / measuredWidth).coerceIn(minSp, maxOf(minSp, maxSp))
+    }
+
     /** The first of [variants] that fits [maxWidth] dp; when none does, the last (by convention the shortest). */
     fun firstFitting(variants: List<String>, maxWidth: Float, meter: TextMeter): String =
         variants.firstOrNull { meter.width(it) <= maxWidth } ?: variants.last()

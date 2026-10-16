@@ -49,6 +49,24 @@ class TextFitTest {
     }
 
     @Test
+    fun aTextIsSetAtTheSizeAtWhichItFillsTheWidthButNeverLargerThanTheCap() {
+        // 60 dp wide at 20 sp: in 30 dp it is 10 sp; in 120 dp it would be 40 sp, but the cap holds it at 18 sp.
+        assertThat(TextFit.sizeForWidth(60f, 20f, 30f, minSp = 6f, maxSp = 18f)).isWithin(0.001f).of(10f)
+        assertThat(TextFit.sizeForWidth(60f, 20f, 120f, minSp = 6f, maxSp = 18f)).isEqualTo(18f)
+    }
+
+    @Test
+    fun aTextNeverGoesBelowTheMinimumSizeEvenWhenTheCapIsLower() {
+        assertThat(TextFit.sizeForWidth(60f, 20f, 6f, minSp = 9f, maxSp = 18f)).isEqualTo(9f)
+        assertThat(TextFit.sizeForWidth(60f, 20f, 120f, minSp = 9f, maxSp = 7f)).isEqualTo(9f)
+    }
+
+    @Test
+    fun aTextWithNoWidthTakesTheLargestSize() {
+        assertThat(TextFit.sizeForWidth(0f, 20f, 30f, minSp = 6f, maxSp = 18f)).isEqualTo(18f)
+    }
+
+    @Test
     fun theFirstVariantThatWrapsIntoEnoughLinesIsChosen() {
         // 6 per character in 60 dp: ten characters a line.
         val variants = listOf("Log bench, squat or press.", "Log a main lift.", "Log a lift")

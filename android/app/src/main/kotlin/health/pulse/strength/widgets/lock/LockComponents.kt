@@ -133,6 +133,25 @@ internal fun squareSide(): Dp {
 /** A type size that grows with [side] ([ratio] of it) but never drops below [minimum] sp, so a small cell stays legible. */
 internal fun scaledSp(side: Dp, ratio: Float, minimum: Float): TextUnit = maxOf(minimum, side.value * ratio).sp
 
+/** The padding of a 1x1 card: the usual one, or less in the smallest cell (about 40 dp), where the circle would otherwise leave no room. */
+internal fun squarePadding(side: Dp): Dp = if (side < SMALL_SQUARE) SMALL_SQUARE_PADDING else WidgetDimens.paddingCompact
+
+private val SMALL_SQUARE = 50.dp
+private val SMALL_SQUARE_PADDING = 6.dp
+
+/** The type size the bold [text] is measured at to find the size at which it fills a width. */
+private const val REFERENCE_SP = 20f
+
+/**
+ * The type size for the bold [text]: [maxSp], or smaller (down to [minSp]) when the text would be wider than [width] at that size, so
+ * a streak of "104 wk" or "104d" in a small circle stays on its line instead of being cut.
+ */
+@Composable
+internal fun fittingSp(text: String, width: Dp, maxSp: Float, minSp: Float): Float {
+    val measured = rememberTextMeter(REFERENCE_SP.sp, bold = true).width(text)
+    return TextFit.sizeForWidth(measured, REFERENCE_SP, width.value, minSp, maxSp)
+}
+
 /** The 270 degree gauge of the 1x1 widget (open at the bottom) with its label in the middle. */
 @Composable
 internal fun GaugeDial(model: GaugeModel, side: Dp) {
@@ -171,7 +190,8 @@ internal fun MeterBar(
 
 /**
  * Padding and type sizes of the 3x1 widgets. A launcher decides how high a row is, so [forHeight] picks the largest set whose three lines
- * (the eyebrow, the headline, the detail) still fit; the last set drops the eyebrow, which the headline can do without.
+ * (the eyebrow, the headline, the detail) still fit; the last two sets drop the eyebrow, which the headline can do without, and the very
+ * last one is for the smallest row a launcher can offer (40 dp).
  */
 internal class CompactMetrics private constructor(
     val padding: Dp,
@@ -190,6 +210,7 @@ internal class CompactMetrics private constructor(
             CompactMetrics(padding = 8.dp, eyebrow = 11.sp, title = 15.sp, detail = 12.sp),
             CompactMetrics(padding = 7.dp, eyebrow = 11.sp, title = 14.sp, detail = 11.sp),
             CompactMetrics(padding = 6.dp, eyebrow = 11.sp, title = 14.sp, detail = 11.sp, showsEyebrow = false),
+            CompactMetrics(padding = 4.dp, eyebrow = 10.sp, title = 13.sp, detail = 10.sp, showsEyebrow = false),
         )
 
         fun forHeight(height: Dp): CompactMetrics = Tiers.firstOrNull { height >= it.neededHeight } ?: Tiers.last()

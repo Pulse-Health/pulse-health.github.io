@@ -24,25 +24,35 @@ class WeeklySetsCompactWidget : PulseWidget() {
         val card = LockText.weeklySets(snapshot.weeklySets)
         val size = LocalSize.current
         val metrics = CompactMetrics.forHeight(size.height)
+        // The line under the bar goes when the row is too short for it (the smallest a launcher offers is 40 dp); the card still says it.
+        val barBlock = 2 * GAP + BAR_HEIGHT.value
+        val showsDetail = size.height >= metrics.padding * 2 + (TextFit.height(metrics.detail.value + metrics.eyebrow.value) + barBlock).dp
         WidgetCard(description = card.description, link = DeepLinks.hub, padding = metrics.padding) {
             Column(modifier = GlanceModifier.fillMaxWidth()) {
                 Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     PulseText(card.title, metrics.detail, GlanceModifier.defaultWeight(), FontWeight.Bold)
                     PulseText(card.value, metrics.detail, weight = FontWeight.Bold)
                 }
-                Spacer(GlanceModifier.height(4.dp))
+                Spacer(GlanceModifier.height(GAP.dp))
                 MeterBar(
                     fraction = card.fraction,
                     width = size.width - metrics.padding * 2,
-                    height = 8.dp,
+                    height = BAR_HEIGHT,
                     fill = GlanceTheme.colors.secondary,
                     track = GlanceTheme.colors.outline,
                     description = "${card.value} sets",
                 )
-                Spacer(GlanceModifier.height(4.dp))
-                PulseText(card.detail, metrics.eyebrow, color = GlanceTheme.colors.onSurfaceVariant)
+                if (showsDetail) {
+                    Spacer(GlanceModifier.height(GAP.dp))
+                    PulseText(card.detail, metrics.eyebrow, color = GlanceTheme.colors.onSurfaceVariant)
+                }
             }
         }
+    }
+
+    private companion object {
+        const val GAP = 4f
+        val BAR_HEIGHT = 8.dp
     }
 }
 

@@ -69,9 +69,9 @@ class WidgetRenderTest {
     /** A widget with the sizes it is checked at: the smallest a launcher offers, and a typical one. */
     private class Scenario(val name: String, val widget: PulseWidget, val sizes: Map<String, DpSize>)
 
-    private val oneByOne = mapOf("1x1-small" to DpSize(58.dp, 58.dp), "1x1" to DpSize(72.dp, 72.dp))
-    private val threeByOne = mapOf("3x1-small" to DpSize(180.dp, 58.dp), "3x1" to DpSize(220.dp, 72.dp))
-    private val fourByOne = mapOf("4x1-small" to DpSize(250.dp, 48.dp), "4x1" to DpSize(300.dp, 58.dp))
+    private val oneByOne = mapOf("1x1-min" to DpSize(40.dp, 40.dp), "1x1-small" to DpSize(58.dp, 58.dp), "1x1" to DpSize(72.dp, 72.dp))
+    private val threeByOne = mapOf("3x1-min" to DpSize(180.dp, 40.dp), "3x1-small" to DpSize(180.dp, 58.dp), "3x1" to DpSize(220.dp, 72.dp))
+    private val fourByOne = mapOf("4x1-min" to DpSize(250.dp, 40.dp), "4x1-small" to DpSize(250.dp, 48.dp), "4x1" to DpSize(300.dp, 58.dp))
     private val twoByTwo = mapOf("2x2-small" to DpSize(110.dp, 110.dp), "2x2" to DpSize(146.dp, 146.dp))
     private val fourByTwo = mapOf("4x2-small" to DpSize(250.dp, 110.dp), "4x2" to DpSize(320.dp, 146.dp), "4x2-tall" to DpSize(320.dp, 190.dp))
 
@@ -200,42 +200,48 @@ class WidgetRenderTest {
     }
 
     private fun checkStructure(label: String, view: View, bitmap: Bitmap) {
+        assertWithMessage("$label: rules of every widget").that(structuralProblems(view, bitmap)).isEmpty()
+    }
+
+    /** What every widget must hold in every state, as a list of what it breaks (empty when it holds). */
+    private fun structuralProblems(view: View, bitmap: Bitmap): List<String> {
+        val problems = mutableListOf<String>()
         val views = view.descendants()
         // Something is drawn: not just the ground colour.
         val ground = bitmap.getPixel(0, 0)
         val pixels = IntArray(bitmap.width * bitmap.height).also { bitmap.getPixels(it, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height) }
-        assertThat(pixels.count { it != ground }).isGreaterThan(pixels.size / 50)
+        if (pixels.count { it != ground } <= pixels.size / 50) problems += "almost nothing is drawn"
         // Every image says what it is, or is part of a card that does, or is marked as decoration.
         for (image in views.filterIsInstance<ImageView>()) {
             val decorative = image.importantForAccessibility == View.IMPORTANT_FOR_ACCESSIBILITY_NO
-            assertThat(decorative || image.hasDescribedAncestorOrSelf()).isTrue()
+            if (!decorative && !image.hasDescribedAncestorOrSelf()) problems += "an image has no description"
         }
-        // Every tap target is at least 48 dp each way.
-        val minimum = dp(48f) - 1
+        // Every tap target is at least 48 dp each way, or the whole widget where the launcher offers less (a 1x1 cell may be 40 dp).
         for (target in views.filter { it.hasOnClickListeners() }) {
-            assertThat(target.width).isAtLeast(minimum)
-            assertThat(target.height).isAtLeast(minimum)
+            if (target.width < minOf(dp(48f), view.width) - 1 || target.height < minOf(dp(48f), view.height) - 1) {
+                problems += "a tap target of ${target.width} by ${target.height} px"
+            }
         }
-        assertThat(views.any { it.hasOnClickListeners() }).isTrue()
-        assertThat(label).isNotEmpty()
+        if (views.none { it.hasOnClickListeners() }) problems += "nothing can be tapped"
+        return problems
     }
 
     private fun renderEverything(mode: String) {
-        val misfits = mutableListOf<String>()
+        val problems = mutableListOf<String>()
         for (scenario in scenarios) {
             for ((stateName, snapshot) in states()) {
                 for ((sizeName, size) in scenario.sizes) {
                     val (view, bitmap) = render(scenario.widget, snapshot, size)
                     val name = "${scenario.name}-$stateName-$sizeName"
                     save(bitmap, mode, name)
-                    checkStructure("$mode/$name", view, bitmap)
+                    problems += structuralProblems(view, bitmap).map { "$mode/$name: $it" }
                     // The long texts are meant to be shortened; every other state has to fit as it is.
                     val cut = if (stateName == "long") emptyList() else cutOffTexts(view)
-                    if (cut.isNotEmpty()) misfits += "$mode/$name: $cut"
+                    if (cut.isNotEmpty()) problems += "$mode/$name: text that does not fit $cut"
                 }
             }
         }
-        assertWithMessage("states with text that does not fit").that(misfits).isEmpty()
+        assertWithMessage("states that break a rule of every widget").that(problems).isEmpty()
     }
 
     @Test
@@ -327,6 +333,20 @@ class WidgetRenderTest {
         val (view, _) = render(LogSetWidget(), WidgetFixtures.preview.copy(active = stale), DpSize(320.dp, 146.dp))
         assertThat(view.descendants().filterIsInstance<Chronometer>()).isEmpty()
         assertThat(view.descendants().filterIsInstance<TextView>().map { it.text.toString() }).contains("Log set")
+    }
+
+    @Test
+    fun aLongBreakAndALongStreakStayOnTheirLineInTheSmallCircles() {
+        val preview = WidgetFixtures.preview
+        val lapsed = preview.copy(week = preview.week.copy(daysSinceLastWorkout = 104, streakWeeks = 104))
+        for ((sizeName, size) in oneByOne) {
+            val days = render(DaysSinceWidget(), lapsed, size).first
+            assertThat(texts(days)).contains("104d")
+            checkFits("days-since-104-$sizeName", days)
+            val streak = render(StreakWidget(), lapsed, size).first
+            assertThat(texts(streak)).contains("104 wk")
+            checkFits("streak-104-$sizeName", streak)
+        }
     }
 
     @Test
