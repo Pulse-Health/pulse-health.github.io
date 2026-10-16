@@ -445,12 +445,43 @@ class LiveRuntimeTest {
         assertThat(runtime.snapshots.current().generatedAt).isEqualTo(time)
     }
 
+    // endregion
+
+    // region Closing
+
+    /** The receivers of the runtimes in the application's registrations, newest last. */
+    private fun runtimeReceivers() = shadowOf(app).registeredReceivers
+        .map { it.broadcastReceiver }
+        .filter { it.javaClass.name.startsWith("health.pulse.strength.runtime.LiveRuntime") }
+
     @Test
-    fun aRuntimeThatWasClosedStopsFollowing() = runTest {
+    fun aRuntimeThatWasClosedStopsFollowingAndUnregistersItsReceiverAtOnce() = runTest {
+        val runtime = runtime()
+        val registered = runtimeReceivers().size
+        runtime.close()
+        assertThat(runtimeReceivers()).hasSize(registered - 1)
+
+        goal.value = 7
+        time = Instant.parse("2026-10-17T00:05:00Z")
+        app.sendBroadcast(Intent(Intent.ACTION_DATE_CHANGED))
+        shadowOf(Looper.getMainLooper()).idle()
+        assertThat(runtime.snapshots.current().week.goal).isEqualTo(4)
+        assertThat(runtime.snapshots.current().generatedAt).isNotEqualTo(time)
+    }
+
+    @Test
+    fun closingTwiceIsFine() = runTest {
         val runtime = runtime()
         runtime.close()
-        goal.value = 7
-        assertThat(runtime.snapshots.current().week.goal).isEqualTo(4)
+        runtime.close()
+    }
+
+    @Test
+    fun closingARuntimeWhoseReceiverIsAlreadyGoneIsFine() = runTest {
+        val runtime = runtime()
+        // What a context that was torn down meanwhile has done to the registration.
+        app.unregisterReceiver(runtimeReceivers().last())
+        runtime.close()
     }
 
     // endregion
@@ -460,13 +491,31 @@ class LiveRuntimeTest {
     @Test
     fun rebuildPublishesTheSnapshotOfTheCurrentTimeWithoutRefreshingTheSurfacesItself() = runTest {
         val runtime = runtime()
-        advanceTimeBy(1_001)
-        refreshes.clear()
-
-        time = time.plusSeconds(300)
+        time = Instant.parse("2026-10-17T00:05:00Z")
         runtime.rebuild()
         assertThat(runtime.snapshots.current().generatedAt).isEqualTo(time)
         assertThat(refreshes).isEmpty()
+    }
+
+    @Test
+    fun aRebuildThatShowsNothingNewDoesNotRefreshTheSurfacesLater() = runTest {
+        val runtime = runtime()
+        time = time.plusSeconds(300)
+        runtime.rebuild()
+        advanceTimeBy(1_001)
+        assertThat(runtime.snapshots.current().generatedAt).isEqualTo(time)
+        assertThat(refreshes).isEmpty()
+    }
+
+    @Test
+    fun aRebuildOnAnotherDayRefreshesTheSurfacesLater() = runTest {
+        val runtime = runtime()
+        time = Instant.parse("2026-10-17T00:05:00Z")
+        runtime.rebuild()
+        advanceTimeBy(999)
+        assertThat(refreshes).isEmpty()
+        advanceTimeBy(2)
+        assertThat(refreshes).hasSize(1)
     }
 
     @Test
@@ -491,20 +540,38 @@ class LiveRuntimeTest {
     // region Refreshing the surfaces
 
     @Test
+    fun theSurfacesAreNotRefreshedForTheSnapshotOfTheStart() = runTest {
+        runtime()
+        advanceTimeBy(60_000)
+        assertThat(refreshes).isEmpty()
+    }
+
+    @Test
     fun aBurstOfChangesRefreshesTheSurfacesOnceAfterTheDelay() = runTest {
         val runtime = runtime()
+        runtime.commands.startNext()
+        runtime.commands.logNextSet()
+        runtime.commands.adjustRest(15)
         advanceTimeBy(999)
         assertThat(refreshes).isEmpty()
         advanceTimeBy(2)
         assertThat(refreshes).hasSize(1)
 
-        runtime.commands.startNext()
-        runtime.commands.logNextSet()
-        runtime.commands.adjustRest(15)
+        runtime.commands.skipRest()
         advanceTimeBy(999)
         assertThat(refreshes).hasSize(1)
         advanceTimeBy(2)
         assertThat(refreshes).hasSize(2)
+    }
+
+    @Test
+    fun aChangeThatIsUndoneBeforeTheDelayRefreshesNothing() = runTest {
+        val runtime = runtime()
+        goal.value = 6
+        goal.value = WidgetContext.defaultWeeklyGoal
+        advanceTimeBy(60_000)
+        assertThat(runtime.snapshots.current().week.goal).isEqualTo(WidgetContext.defaultWeeklyGoal)
+        assertThat(refreshes).isEmpty()
     }
 
     @Test
@@ -531,10 +598,33 @@ class LiveRuntimeTest {
             attempts++
             if (attempts == 1) throw IllegalStateException("the widget host is gone")
         })
+        runtime.commands.startNext()
         advanceTimeBy(1_001)
         assertThat(attempts).isEqualTo(1)
 
+        runtime.commands.logNextSet()
+        advanceTimeBy(1_001)
+        assertThat(attempts).isEqualTo(2)
+    }
+
+    @Test
+    fun aRefreshThatFailedIsTriedAgainWithTheNextPublicationEvenForTheSameContent() = runTest {
+        var attempts = 0
+        val runtime = runtime(refresh = {
+            attempts++
+            if (attempts == 1) throw IllegalStateException("the widget host is gone")
+        })
         runtime.commands.startNext()
+        advanceTimeBy(1_001)
+        assertThat(attempts).isEqualTo(1)
+
+        time = time.plusSeconds(60)
+        runtime.rebuild()
+        advanceTimeBy(1_001)
+        assertThat(attempts).isEqualTo(2)
+
+        time = time.plusSeconds(60)
+        runtime.rebuild()
         advanceTimeBy(1_001)
         assertThat(attempts).isEqualTo(2)
     }
@@ -563,19 +653,17 @@ class LiveRuntimeTest {
     @Test
     fun theFactoryBuildsALiveRuntimeAroundTheEnvironmentOfTheApplication() {
         val runtime = RuntimeFactory.create(app)
-        try {
-            assertThat(runtime).isInstanceOf(LiveRuntime::class.java)
-            runBlocking { runtime.commands.startEmpty("Push day") }
-            assertThat(app.environment.controller.state.value?.name).isEqualTo("Push day")
-            assertThat(runtime.snapshots.current().active?.workoutName).isEqualTo("Push day")
+        assertThat(runtime).isInstanceOf(LiveRuntime::class.java)
+        runtimes += runtime as LiveRuntime
 
-            val settings = checkNotNull(app.environment.services).settings
-            settings.setWeeklyGoal(6)
-            val snapshot = runBlocking { withTimeout(10_000) { runtime.snapshots.snapshot.first { it.week.goal == 6 } } }
-            assertThat(snapshot.active?.workoutName).isEqualTo("Push day")
-        } finally {
-            (runtime as LiveRuntime).close()
-        }
+        runBlocking { runtime.commands.startEmpty("Push day") }
+        assertThat(app.environment.controller.state.value?.name).isEqualTo("Push day")
+        assertThat(runtime.snapshots.current().active?.workoutName).isEqualTo("Push day")
+
+        val settings = checkNotNull(app.environment.services).settings
+        settings.setWeeklyGoal(6)
+        val snapshot = runBlocking { withTimeout(10_000) { runtime.snapshots.snapshot.first { it.week.goal == 6 } } }
+        assertThat(snapshot.active?.workoutName).isEqualTo("Push day")
     }
 
     // endregion
