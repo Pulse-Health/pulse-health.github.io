@@ -252,12 +252,12 @@ final class SampleDataTests: XCTestCase {
         XCTAssertNil(bests["pullup"], "bodyweight exercises have no e1RM")
     }
 
-    func testBestsMatchTheLibraryValuesOfTheDesignExercises() throws {
+    func testBestsMatchTheBaselineOfTheDesignExercises() throws {
         let bests = SampleData.personalBests(now: now)
         for id in ["bench", "incline", "ohp", "lateral", "pushdown", "crossover"] {
-            let library = try XCTUnwrap(ExerciseLibrary.exercise(id: id)).previousBestE1RM
-            XCTAssertGreaterThan(library, 0)
-            XCTAssertEqual(try XCTUnwrap(bests[id]).estimated1RM, library, accuracy: 0.5, id)
+            let baseline = try XCTUnwrap(DesignBaseline.values[id]).e1RM
+            XCTAssertGreaterThan(baseline, 0)
+            XCTAssertEqual(try XCTUnwrap(bests[id]).estimated1RM, baseline, accuracy: 0.5, id)
         }
     }
 
@@ -266,8 +266,8 @@ final class SampleDataTests: XCTestCase {
     func testSeededDataReproducesThePreviousSetsOfTheDesign() throws {
         let data = StrengthData.demo(now: now)
         for id in ["bench", "incline", "ohp", "lateral", "pushdown", "crossover"] {
-            let library = try XCTUnwrap(ExerciseLibrary.exercise(id: id))
-            XCTAssertEqual(try XCTUnwrap(data.exercise(id: id)).previousSets, library.previousSets, id)
+            let baseline = try XCTUnwrap(DesignBaseline.exercise(id: id))
+            XCTAssertEqual(try XCTUnwrap(data.exercise(id: id)).previousSets, baseline.previousSets, id)
         }
     }
 
