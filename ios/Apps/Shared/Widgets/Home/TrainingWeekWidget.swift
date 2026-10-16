@@ -33,7 +33,7 @@ struct TrainingWeekView: View {
             Spacer(minLength: 4)
             HomeWeekStrip(days: HomeDates.weekDays(of: week), circleSize: 34)
             Spacer(minLength: 4)
-            TrainingWeekSessionCard(session: snapshot.lastSession, now: entry.date, timeZoneID: snapshot.timeZoneID)
+            TrainingWeekSessionCard(session: snapshot.lastSession, now: snapshot.generatedAt, timeZoneID: snapshot.timeZoneID)
             Spacer(minLength: 4)
             if let record = snapshot.latestPR {
                 TrainingWeekRecordRow(record: record)

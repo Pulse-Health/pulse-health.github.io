@@ -35,7 +35,7 @@ struct PRSpotlightView: View {
     @ViewBuilder
     private var content: some View {
         if let record {
-            PRSpotlightContent(record: record, now: entry.date, timeZoneID: entry.snapshot.timeZoneID)
+            PRSpotlightContent(record: record, now: entry.snapshot.generatedAt, timeZoneID: entry.snapshot.timeZoneID)
         } else {
             PRSpotlightEmptyContent()
         }

@@ -206,16 +206,20 @@ struct HomeTrophyTile: View {
 // MARK: - Links
 
 /// A Start button for the medium and larger families, where a `Link` is a tap target of its own. (A small widget has one tap target, the
-/// whole widget through `widgetURL`, so it draws a plain `PillLabel` instead.)
+/// whole widget through `widgetURL`, so it draws a plain `PillLabel` instead.) A pill lower than 44 pt keeps its look and gets a 44 pt hit area.
 struct HomeStartLink: View {
     let destination: URL
     let title: String
     let spokenTitle: String
     var height: CGFloat = 36
 
+    private static let minimumTarget: CGFloat = 44
+
     var body: some View {
         Link(destination: destination) {
             PillLabel(title: title, systemImage: "play.fill", height: height)
+                .padding(.vertical, max(0, (Self.minimumTarget - height) / 2))
+                .contentShape(Rectangle())
         }
         .accessibilityLabel(spokenTitle)
     }

@@ -100,7 +100,9 @@ enum HomeDates {
         return calendar
     }
 
-    /// Local midnights between `date` and `now`: 23:50 yesterday is 1 day ago, a date in the future is 0 (the rule of the snapshot).
+    /// Local midnights between `date` and `now`: 23:50 yesterday is 1 day ago, a date in the future is 0 (the rule of the snapshot). The widgets
+    /// pass the snapshot's `generatedAt` as `now`: every day count inside the snapshot is relative to it, the store rebuilds the snapshot on a new
+    /// day, and the views then depend on the snapshot alone, whatever the wall clock says in a preview.
     static func daysBetween(_ date: Date, and now: Date, timeZoneID: String) -> Int {
         let calendar = gregorian(in: timeZoneID)
         let components = calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: calendar.startOfDay(for: now))

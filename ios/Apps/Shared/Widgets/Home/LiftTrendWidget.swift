@@ -118,7 +118,7 @@ struct LiftTrendView: View {
     @ViewBuilder
     private var content: some View {
         if let lift {
-            LiftTrendContent(lift: lift, now: entry.date, timeZoneID: entry.snapshot.timeZoneID)
+            LiftTrendContent(lift: lift, now: entry.snapshot.generatedAt, timeZoneID: entry.snapshot.timeZoneID)
         } else {
             LiftTrendEmptyContent()
         }
@@ -248,7 +248,7 @@ private struct LiftTrendChart: View {
     }
 }
 
-/// No lift has two sessions in the last 90 days yet.
+/// No weight-tracked exercise in the last 90 days yet, so the snapshot has no lift to plot.
 private struct LiftTrendEmptyContent: View {
     var body: some View {
         HStack(spacing: 12) {
