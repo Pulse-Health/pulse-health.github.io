@@ -2,24 +2,47 @@ package health.pulse.strength.widgets
 
 import health.pulse.strength.core.MuscleGroup
 import health.pulse.strength.core.SnapshotPhase
+import health.pulse.strength.core.StrengthData
 import health.pulse.strength.core.TrackingKind
 import health.pulse.strength.core.WorkoutSnapshot
 import health.pulse.strength.core.widgets.BodyMap
 import health.pulse.strength.core.widgets.MuscleLevel
 import health.pulse.strength.core.widgets.MuscleSetsProgress
+import health.pulse.strength.core.widgets.PartnerWeek
+import health.pulse.strength.core.widgets.ReadinessSummary
 import health.pulse.strength.core.widgets.SetsStatus
 import health.pulse.strength.core.widgets.WeeklySetsSummary
+import health.pulse.strength.core.widgets.WidgetContext
 import health.pulse.strength.core.widgets.WidgetSnapshot
+import health.pulse.strength.core.widgets.WidgetSnapshotBuilder
 import health.pulse.strength.core.widgets.preview
 import java.time.Instant
+import java.time.ZoneId
 import java.util.UUID
 
-/** Snapshots the widget tests start from: the idealised preview, a fresh install, and a running workout in each phase. */
+/**
+ * Snapshots the widget tests start from: the idealised preview, a fresh install, what the real builder makes of the demo data, and a
+ * running workout in each phase.
+ */
 internal object WidgetFixtures {
     val preview: WidgetSnapshot get() = WidgetSnapshot.preview
 
     /** `generatedAt` of the preview: a Saturday, 2026-10-17 09:41 UTC. */
     val now: Instant = Instant.parse("2026-10-17T09:41:00Z")
+
+    /** The moment of the golden widget snapshot of the core tests: a Friday, 2026-10-16 09:41 UTC. */
+    private val builtAt: Instant = Instant.parse("2026-10-16T09:41:00Z")
+
+    /**
+     * The snapshot the real builder makes from the demo data, as the app publishes it. The standalone build adds nothing from the wider
+     * Pulse app, so the parameters stand for what a host with Health Connect and Pulse would add: a body weight, readiness and partners.
+     */
+    fun built(bodyweightKg: Double? = null, readiness: ReadinessSummary? = null, partners: List<PartnerWeek> = emptyList()): WidgetSnapshot =
+        WidgetSnapshotBuilder.make(
+            StrengthData.demo(builtAt),
+            WidgetContext(bodyweightKg = bodyweightKg, readiness = readiness, partners = partners, zone = ZoneId.of("UTC")),
+            builtAt,
+        )
 
     /** What a fresh install holds: the preview's shape with no history, no plan and nothing from the host app. */
     fun empty(): WidgetSnapshot {

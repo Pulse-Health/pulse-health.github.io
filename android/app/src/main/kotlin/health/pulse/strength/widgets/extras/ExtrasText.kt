@@ -233,13 +233,13 @@ internal object ExtrasText {
         val value = ratio.ratio
         val bodyweight = ratio.bodyweightKg
         if (value == null || bodyweight == null) {
-            val estimate = "${PulseFormat.kg(ratio.estimated1RM)} kg"
+            val estimate = "${PulseFormat.estimate(ratio.estimated1RM)} kg"
             return RatioModel(
                 eyebrow = eyebrow,
                 shortEyebrow = ratio.exerciseName,
                 figure = estimate,
                 fraction = null,
-                footers = listOf("Add your bodyweight in Health Connect", "Add your bodyweight"),
+                footers = listOf("Add your bodyweight in Health Connect", "Add your bodyweight", "Add weight"),
                 description = "${ratio.exerciseName}: estimated one-rep max $estimate. Add your bodyweight in Health Connect to see the ratio",
                 link = DeepLinks.weight,
             )

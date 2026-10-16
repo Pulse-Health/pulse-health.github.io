@@ -261,7 +261,7 @@ class ExtrasTextTest {
         assertThat(none.footer).isEqualTo("Log bench, squat, deadlift or press to see your ratio.")
         assertThat(none.footers.last()).isEqualTo("Log a main lift.")
         val noBodyweight = ExtrasText.strengthRatio(preview.strengthRatio!!.copy(bodyweightKg = null, ratio = null))
-        assertThat(noBodyweight.footers.last()).isEqualTo("Add your bodyweight")
+        assertThat(noBodyweight.footers).containsExactly("Add your bodyweight in Health Connect", "Add your bodyweight", "Add weight").inOrder()
     }
 
     // WI-08 year in iron

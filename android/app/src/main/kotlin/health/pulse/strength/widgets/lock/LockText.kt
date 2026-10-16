@@ -179,8 +179,10 @@ internal object LockText {
             )
         }
         val sets = PulseFormat.weightReps(pr.weightKg, pr.reps)
-        val estimate = "e1RM ${PulseFormat.kg(pr.estimated1RM)} kg"
-        val gain = if (pr.deltaKg >= 0.005) " · ${PulseFormat.signed(pr.deltaKg)} kg" else ""
+        // The one-rep max and its gain are computed, so they are shown with one decimal ("99.2", "+4.2") and not as long as the builder's.
+        val estimate = "e1RM ${PulseFormat.estimate(pr.estimated1RM)} kg"
+        val change = PulseFormat.signed(pr.deltaKg, maxDecimals = 1)
+        val gain = if (pr.deltaKg > 0 && change != "0") " · $change kg" else ""
         return CompactCard(
             eyebrow = if (pr.isFresh) "New PR" else "Latest PR",
             title = pr.exerciseName,
@@ -188,7 +190,7 @@ internal object LockText {
             detail = estimate + gain,
             link = DeepLinks.exercise(pr.exerciseID),
             description = "${if (pr.isFresh) "New" else "Latest"} personal record: ${pr.exerciseName}, " +
-                "${PulseFormat.kg(pr.weightKg)} kilograms for ${pr.reps} reps, estimated one-rep max ${PulseFormat.kg(pr.estimated1RM)} kilograms",
+                "${PulseFormat.kg(pr.weightKg)} kilograms for ${pr.reps} reps, estimated one-rep max ${PulseFormat.estimate(pr.estimated1RM)} kilograms",
             isHighlighted = pr.isFresh,
         )
     }

@@ -100,13 +100,22 @@ class WidgetRenderTest {
         Scenario("session-timeline", SessionTimelineWidget(), fourByTwo),
     )
 
-    /** The snapshots every widget is drawn from: the idealised preview (a rest day), the same on a training day, a fresh install, and long texts. */
+    /** The states whose texts are short and known, so that none of them may be shortened with an ellipsis. */
+    private val shortTextStates = setOf("preview", "training-day", "empty")
+
+    /**
+     * The snapshots every widget is drawn from: the idealised preview (a rest day), the same on a training day, a fresh install, long
+     * texts, and what the real snapshot builder makes of the demo data.
+     */
     private fun states(): Map<String, WidgetSnapshot> {
         val preview = WidgetFixtures.preview
         return mapOf(
             "preview" to preview,
             "training-day" to preview.copy(restDay = null),
             "empty" to WidgetFixtures.empty(),
+            // What the real builder makes of the demo data, on its own and with what a host with Health Connect and Pulse adds.
+            "built" to WidgetFixtures.built(),
+            "built-with-host" to WidgetFixtures.built(bodyweightKg = 80.0, readiness = preview.readiness, partners = preview.partners),
             "long" to preview.copy(
                 nextUp = preview.nextUp?.copy(
                     name = "Upper A · Incline Dumbbell Press and Cable Crossover Push",
@@ -238,8 +247,9 @@ class WidgetRenderTest {
                     val name = "${scenario.name}-$stateName-$sizeName"
                     save(bitmap, mode, name)
                     problems += structuralProblems(view, bitmap).map { "$mode/$name: $it" }
-                    // The long texts are meant to be shortened; every other state has to fit as it is.
-                    val cut = if (stateName == "long") emptyList() else cutOffTexts(view)
+                    // Nothing is ever clipped. The states with short, known text also keep every word whole; the long texts and the real
+                    // exercise names of the builder's output may be shortened with an ellipsis where the widget is small.
+                    val cut = cutOffTexts(view, ellipsisCounts = stateName in shortTextStates)
                     if (cut.isNotEmpty()) problems += "$mode/$name: text that does not fit $cut"
                 }
             }
@@ -275,7 +285,7 @@ class WidgetRenderTest {
                         for ((sizeName, size) in scenario.sizes) {
                             val (view, bitmap) = render(scenario.widget, snapshot, size)
                             save(bitmap, "font-$scale", "${scenario.name}-$stateName-$sizeName")
-                            val cut = cutOffTexts(view, ellipsisCounts = noEllipsis && stateName != "long")
+                            val cut = cutOffTexts(view, ellipsisCounts = noEllipsis && stateName in shortTextStates)
                             if (cut.isNotEmpty()) problems += "x$scale ${scenario.name}-$stateName-$sizeName: $cut"
                         }
                     }

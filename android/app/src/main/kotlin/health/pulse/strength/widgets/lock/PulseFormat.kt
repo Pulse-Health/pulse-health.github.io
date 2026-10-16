@@ -40,10 +40,14 @@ internal object PulseFormat {
     /** "82.5", "80": kilograms with at most two decimals. */
     fun kg(value: Double): String = number(value, 2)
 
-    /** "+2.5", "−3" (a real minus sign) or "0" for a change too small to show. */
-    fun signed(value: Double): String {
-        if (abs(value) < 0.005) return "0"
-        return (if (value > 0) "+" else "−") + kg(abs(value))
+    /** "99.2": a computed weight (an estimated one-rep max) with at most one decimal, not the two decimals a plate load can need. */
+    fun estimate(value: Double): String = number(value, 1)
+
+    /** "+2.5", "−3" (a real minus sign) or "0" for a change too small to show at [maxDecimals] places. */
+    fun signed(value: Double, maxDecimals: Int = 2): String {
+        val text = number(abs(value), maxDecimals)
+        if (text == "0") return "0"
+        return (if (value > 0) "+" else "−") + text
     }
 
     /** "85 × 5". */

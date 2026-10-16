@@ -154,6 +154,15 @@ class LockTextTest {
     }
 
     @Test
+    fun aComputedMaxAndItsGainAreShownWithOneDecimal() {
+        // The builder reports the estimate and the gain unrounded: 99.1666 and 4.1666.
+        val card = LockText.latestRecord(preview.latestPR!!.copy(estimated1RM = 99.1666, deltaKg = 4.1666))
+        assertThat(card.detail).isEqualTo("e1RM 99.2 kg · +4.2 kg")
+        // A gain that rounds to nothing is left out.
+        assertThat(LockText.latestRecord(preview.latestPR!!.copy(deltaKg = 0.04)).detail).isEqualTo("e1RM 99 kg")
+    }
+
+    @Test
     fun anOlderRecordIsLabelledLatestAndNotHighlighted() {
         val card = LockText.latestRecord(preview.latestPR!!.copy(isFresh = false, deltaKg = 0.0))
         assertThat(card.eyebrow).isEqualTo("Latest PR")
