@@ -756,7 +756,7 @@ source of the form photos (Free Exercise DB; they are placeholders with no clear
 
 ### 5.7 Widgets, controls and live surfaces
 
-The catalogue (66 designs, ids `HS-01` ... `WI-11`), the exact rule behind every figure and the platform mapping are [`../widgets/SPEC.md`](../widgets/SPEC.md); [`../widgets/README.md`](../widgets/README.md)
+The catalogue (68 designs, ids `HS-01` ... `WI-11`), the exact rule behind every figure and the platform mapping are [`../widgets/SPEC.md`](../widgets/SPEC.md); [`../widgets/README.md`](../widgets/README.md)
 maps the areas to files on both platforms. This section is the iOS contract.
 
 **Data (`PulseStrengthCore/Widgets/`, Foundation only, tested on Linux and macOS).**

@@ -126,7 +126,7 @@ list. The Android app is complete and shippable without them (v1 of the iOS app 
 
 ## Widgets, tiles and live surfaces
 
-The 66 designs of the canvas "Pulse Strength Widget Ideas" (ids `HS-01` ... `WI-11`) are implemented here and on iOS. The catalogue, the
+The 68 designs of the canvas "Pulse Strength Widget Ideas" (ids `HS-01` ... `WI-11`) are implemented here and on iOS. The catalogue, the
 exact rule behind every figure and the platform mapping are in [`../widgets/SPEC.md`](../widgets/SPEC.md); [`../widgets/README.md`](../widgets/README.md)
 maps every area to its files on both platforms.
 

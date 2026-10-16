@@ -1,7 +1,7 @@
 # Pulse Strength widgets, controls and live surfaces
 
 Every glanceable surface of Pulse Strength on iOS and Android, built from one data contract. The design is the canvas
-"Pulse Strength Widget Ideas" (<https://claude.ai/artifact/7FzgYpmWrz8cY1wfaHxpMM>); the catalogue with its 66 stable ids (`HS-01` ... `WI-11`), the
+"Pulse Strength Widget Ideas" (<https://claude.ai/artifact/7FzgYpmWrz8cY1wfaHxpMM>); the catalogue with its 68 stable ids (`HS-01` ... `WI-11`), the
 exact rule behind every number and the platform mapping are in [`SPEC.md`](SPEC.md). Read that first; this file is the map of where things are.
 
 ## The idea in four lines
