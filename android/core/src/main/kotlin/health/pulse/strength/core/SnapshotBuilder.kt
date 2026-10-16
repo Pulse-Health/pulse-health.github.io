@@ -111,15 +111,16 @@ object SnapshotBuilder {
     // region Superset, plates and coach tip
 
     /**
-     * The running superset of [shown], null when it is not in one. The members are tagged A1, A2, ... in workout order; the round is the
-     * number of sets the first member has logged plus one, at most its set count.
+     * The running superset of [shown], null when it is not in one. The members are tagged A1, A2, ... in workout order. The rounds are
+     * the first member's set count; the round in progress is one more than the sets the least advanced member has logged, so it only
+     * moves on once every member has logged its set of the round.
      */
     private fun superset(state: WorkoutState, shown: WorkoutExercise): SupersetBrief? {
         val group = shown.supersetGroup ?: return null
         val members = state.exercises.filter { it.supersetGroup == group }
         val first = members.firstOrNull() ?: return null
         val rounds = maxOf(1, first.sets.size)
-        val round = minOf(first.doneCount + 1, rounds)
+        val round = minOf(members.minOf { it.doneCount } + 1, rounds)
         return SupersetBrief(
             label = group,
             round = round,
