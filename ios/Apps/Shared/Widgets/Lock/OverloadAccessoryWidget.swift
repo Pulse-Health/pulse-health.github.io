@@ -34,11 +34,11 @@ struct OverloadAccessoryView: View {
 
     private var sentence: String {
         guard let target else { return "No target yet. Log a workout to see it." }
-        return LockText.overloadSentence(target)
+        return LockAccessoryText.overloadSentence(target)
     }
 
     var body: some View {
-        LockCard { lines }
+        LockAccessoryCard { lines }
             .lockContainerBackground()
             .widgetURL(link.url)
             .accessibilityElement(children: .ignore)
@@ -48,13 +48,13 @@ struct OverloadAccessoryView: View {
     @ViewBuilder
     private var lines: some View {
         if let target {
-            LockLines(eyebrow: "TODAY'S TARGET", detail: LockText.overloadDetail(target), detailFont: WidgetTheme.number(13, .regular)) {
-                LockHeadline(name: target.exerciseName, figure: LockText.overloadFigure(target))
+            LockAccessoryLines(eyebrow: "TODAY'S TARGET", detail: LockAccessoryText.overloadDetail(target), detailFont: WidgetTheme.number(13, .regular)) {
+                LockAccessoryHeadline(name: target.exerciseName, figure: LockAccessoryText.overloadFigure(target))
                     .widgetAccentable()
             }
         } else {
-            LockLines(eyebrow: "TODAY'S TARGET", detail: "Log a workout to see it", detailFont: WidgetTheme.text(12)) {
-                LockTitle(text: "No target yet")
+            LockAccessoryLines(eyebrow: "TODAY'S TARGET", detail: "Log a workout to see it", detailFont: WidgetTheme.text(12)) {
+                LockAccessoryTitle(text: "No target yet")
             }
         }
     }

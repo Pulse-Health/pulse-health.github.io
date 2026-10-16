@@ -34,7 +34,7 @@ struct StreakAccessoryView: View {
                 Image(systemName: week.streakWeeks > 0 ? "flame.fill" : "flame")
                     .font(.system(size: 22))
                     .widgetAccentable()
-                Text(LockText.streakFigure(week.streakWeeks))
+                Text(LockAccessoryText.streakFigure(week.streakWeeks))
                     .font(WidgetTheme.number(17))
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
@@ -45,7 +45,7 @@ struct StreakAccessoryView: View {
         .lockContainerBackground()
         .widgetURL(StrengthDeepLink.hub.url)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(LockText.streakSentence(week))
+        .accessibilityLabel(LockAccessoryText.streakSentence(week))
     }
 }
 #endif

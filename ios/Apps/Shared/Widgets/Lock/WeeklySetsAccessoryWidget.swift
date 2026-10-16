@@ -27,7 +27,7 @@ struct WeeklySetsAccessoryView: View {
     private var sets: WeeklySetsSummary { entry.snapshot.weeklySets }
 
     var body: some View {
-        LockCard {
+        LockAccessoryCard {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     Text("Sets this week")
@@ -37,9 +37,9 @@ struct WeeklySetsAccessoryView: View {
                     Text(String(sets.totalSets))
                         .font(WidgetTheme.number(13))
                 }
-                BarMeter(fraction: LockText.setsFraction(sets), color: .primary, track: Color.primary.opacity(0.3), height: 8)
+                BarMeter(fraction: LockAccessoryText.setsFraction(sets), color: .primary, track: Color.primary.opacity(0.3), height: 8)
                     .widgetAccentable()
-                Text(LockText.setsDetail(sets))
+                Text(LockAccessoryText.setsDetail(sets))
                     .font(WidgetTheme.text(12))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -50,7 +50,7 @@ struct WeeklySetsAccessoryView: View {
         .lockContainerBackground()
         .widgetURL(StrengthDeepLink.hub.url)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(LockText.setsSentence(sets))
+        .accessibilityLabel(LockAccessoryText.setsSentence(sets))
     }
 }
 #endif

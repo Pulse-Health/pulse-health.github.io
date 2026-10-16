@@ -34,11 +34,11 @@ struct PRAccessoryView: View {
 
     private var sentence: String {
         guard let pr else { return "No personal records yet. Beat a best to set one." }
-        return LockText.prSentence(pr)
+        return LockAccessoryText.prSentence(pr)
     }
 
     var body: some View {
-        LockCard {
+        LockAccessoryCard {
             HStack(spacing: 10) {
                 Image(systemName: pr == nil ? "trophy" : "trophy.fill")
                     .font(.system(size: 24))
@@ -55,13 +55,13 @@ struct PRAccessoryView: View {
     @ViewBuilder
     private var lines: some View {
         if let pr {
-            LockLines(eyebrow: "LATEST PR", detail: LockText.prDetail(pr), detailFont: WidgetTheme.number(12, .regular)) {
-                LockHeadline(name: pr.exerciseName, figure: WidgetText.weightReps(pr.weightKg, pr.reps))
+            LockAccessoryLines(eyebrow: "LATEST PR", detail: LockAccessoryText.prDetail(pr), detailFont: WidgetTheme.number(12, .regular)) {
+                LockAccessoryHeadline(name: pr.exerciseName, figure: WidgetText.weightReps(pr.weightKg, pr.reps))
                     .widgetAccentable()
             }
         } else {
-            LockLines(eyebrow: "LATEST PR", detail: "Beat a best to set one", detailFont: WidgetTheme.text(12)) {
-                LockTitle(text: "No records yet")
+            LockAccessoryLines(eyebrow: "LATEST PR", detail: "Beat a best to set one", detailFont: WidgetTheme.text(12)) {
+                LockAccessoryTitle(text: "No records yet")
             }
         }
     }

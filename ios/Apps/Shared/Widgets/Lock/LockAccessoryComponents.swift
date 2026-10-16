@@ -17,7 +17,7 @@ extension View {
 }
 
 /// The rounded plate of the rectangular family with the design's 8 x 12 pt of padding around left-aligned content.
-struct LockCard<Content: View>: View {
+struct LockAccessoryCard<Content: View>: View {
     @ViewBuilder var content: () -> Content
 
     var body: some View {
@@ -33,7 +33,7 @@ struct LockCard<Content: View>: View {
 
 /// The three lines of a rectangular card: a small upper-case label ("NEXT UP"), the bold title, and a detail one level dimmer.
 /// Every line stays on one line and shrinks a little before it is cut.
-struct LockLines<Title: View>: View {
+struct LockAccessoryLines<Title: View>: View {
     let eyebrow: String
     let detail: String
     var detailFont: Font = WidgetTheme.text(13)
@@ -57,7 +57,7 @@ struct LockLines<Title: View>: View {
 }
 
 /// The bold title of a card: a name, one line, shrunk a little before it is cut.
-struct LockTitle: View {
+struct LockAccessoryTitle: View {
     let text: String
 
     var body: some View {
@@ -69,7 +69,7 @@ struct LockTitle: View {
 }
 
 /// A bold title made of a name that may be cut and a figure that never is: "Bench Press 85 × 5", "Incline Dumbbell Pr… 28 × 10".
-struct LockHeadline: View {
+struct LockAccessoryHeadline: View {
     let name: String
     let figure: String
 

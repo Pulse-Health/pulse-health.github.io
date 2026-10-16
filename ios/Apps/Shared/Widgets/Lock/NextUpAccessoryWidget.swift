@@ -22,7 +22,7 @@ struct NextUpAccessoryWidget: Widget {
             NextUpAccessoryView(entry: entry)
         }
         .configurationDisplayName("Next workout")
-        .description("Start your next workout from the circle, or read it as a card or a line above the clock. On a rest day the line says when you are back.")
+        .description("Start your next workout, or see what is up next as a card or a line above the clock.")
         .supportedFamilies([.accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }
@@ -53,7 +53,7 @@ struct NextUpAccessoryView: View {
             quickStart
                 .widgetURL(quickStartLink.url)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(LockText.quickStartSentence(snapshot))
+                .accessibilityLabel(LockAccessoryText.quickStartSentence(snapshot))
                 .accessibilityAddTraits(.isButton)
         }
     }
@@ -70,7 +70,7 @@ struct NextUpAccessoryView: View {
         ZStack {
             AccessoryWidgetBackground()
             Image(systemName: snapshot.active == nil && snapshot.nextUp == nil ? "plus.circle" : "play.circle")
-                .font(.system(size: 36))
+                .font(.system(size: 36, weight: .medium))
                 .widgetAccentable()
         }
     }
@@ -79,19 +79,19 @@ struct NextUpAccessoryView: View {
 
     private var rectangularSentence: String {
         guard let next = snapshot.nextUp else { return "No workouts yet. Add one in the app." }
-        return LockText.nextUpSentence(next)
+        return LockAccessoryText.nextUpSentence(next)
     }
 
     private var rectangular: some View {
-        LockCard {
+        LockAccessoryCard {
             if let next = snapshot.nextUp {
-                LockLines(eyebrow: "NEXT UP", detail: LockText.nextUpDetail(next)) {
-                    LockTitle(text: next.name)
+                LockAccessoryLines(eyebrow: "NEXT UP", detail: LockAccessoryText.nextUpDetail(next)) {
+                    LockAccessoryTitle(text: next.name)
                         .widgetAccentable()
                 }
             } else {
-                LockLines(eyebrow: "NEXT UP", detail: "Add one in the app") {
-                    LockTitle(text: "No workouts yet")
+                LockAccessoryLines(eyebrow: "NEXT UP", detail: "Add one in the app") {
+                    LockAccessoryTitle(text: "No workouts yet")
                 }
             }
         }
@@ -102,11 +102,11 @@ struct NextUpAccessoryView: View {
     @ViewBuilder
     private var inline: some View {
         if let rest = snapshot.restDay {
-            Text(LockText.restLine(rest, tomorrow: snapshot.tomorrow))
-                .accessibilityLabel(LockText.restSentence(rest, tomorrow: snapshot.tomorrow))
+            Text(LockAccessoryText.restLine(rest, tomorrow: snapshot.tomorrow))
+                .accessibilityLabel(LockAccessoryText.restSentence(rest, tomorrow: snapshot.tomorrow))
         } else if let next = snapshot.nextUp {
-            Text(LockText.splitLine(next))
-                .accessibilityLabel(LockText.splitSentence(next))
+            Text(LockAccessoryText.splitLine(next))
+                .accessibilityLabel(LockAccessoryText.splitSentence(next))
         } else {
             Text("No workouts yet")
         }

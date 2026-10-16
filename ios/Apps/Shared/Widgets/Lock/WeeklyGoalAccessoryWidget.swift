@@ -37,13 +37,13 @@ struct WeeklyGoalAccessoryView: View {
             .lockContainerBackground()
             .widgetURL(StrengthDeepLink.hub.url)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel(LockText.weekSentence(week))
+            .accessibilityLabel(LockAccessoryText.weekSentence(week))
     }
 
     @ViewBuilder
     private var content: some View {
         if family == .accessoryInline {
-            Label(LockText.weekLine(week), systemImage: "dumbbell.fill")
+            Label(LockAccessoryText.weekLine(week), systemImage: "dumbbell.fill")
         } else {
             ZStack {
                 AccessoryWidgetBackground()
@@ -57,7 +57,7 @@ struct WeeklyGoalAccessoryView: View {
         Gauge(value: gaugeValue, in: 0...gaugeLimit) {
             Text("Workouts")
         } currentValueLabel: {
-            Text(LockText.goalFraction(week))
+            Text(LockAccessoryText.goalFraction(week))
                 .font(WidgetTheme.number(17))
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)

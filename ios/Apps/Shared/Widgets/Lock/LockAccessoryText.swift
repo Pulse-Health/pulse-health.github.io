@@ -1,4 +1,4 @@
-// LockText.swift
+// LockAccessoryText.swift
 //
 // The words and figures of the Lock Screen accessory widgets (LS-01...LS-11) and the sentences VoiceOver reads for them. Pure functions of
 // the WidgetSnapshot types, hand formatted and English like WidgetText, so a circle, a card and the inline line of one widget always agree
@@ -8,8 +8,9 @@
 import Foundation
 import PulseStrengthCore
 
-enum LockText {
-    /// Characters the inline slot shows before the system cuts the line. The longest line of the design ("Push day · last 5 days ago") has 26.
+enum LockAccessoryText {
+    /// About how many characters the inline slot fits before the system cuts the line. It is an estimate: the longest line of the design
+    /// ("Push day · last 5 days ago") has 26, and the system truncates anything longer anyway.
     static let inlineBudget = 26
 
     // MARK: Weekly goal (LS-01, LS-09)

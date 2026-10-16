@@ -38,7 +38,7 @@ struct DaysSinceAccessoryView: View {
         .lockContainerBackground()
         .widgetURL(StrengthDeepLink.hub.url)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(LockText.daysSinceSentence(days))
+        .accessibilityLabel(LockAccessoryText.daysSinceSentence(days))
     }
 
     /// The count scales down for three digits ("120d") instead of touching the edge of the circle.
