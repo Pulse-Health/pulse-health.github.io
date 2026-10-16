@@ -440,7 +440,7 @@ class WorkoutFuzzTests {
         // an undo entry always expires after it was created within the window
         val undo = s.undo
         if (undo != null && undo.expiresAt != b.undo?.expiresAt) {
-            assertWithMessage("undo title $context").that(undo.title == "Set deleted" || undo.title.startsWith("Removed ")).isTrue()
+            assertWithMessage("undo title $context").that(undo.title == "Set deleted" || undo.title.startsWith("Removed ") || undo.title.startsWith("Replaced ")).isTrue()
         }
     }
 

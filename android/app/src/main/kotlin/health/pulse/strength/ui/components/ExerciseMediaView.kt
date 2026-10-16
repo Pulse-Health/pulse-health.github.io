@@ -14,13 +14,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.layout.ContentScale
@@ -37,6 +38,12 @@ import androidx.compose.ui.unit.dp
 import health.pulse.strength.ui.theme.LocalReduceMotion
 import health.pulse.strength.ui.theme.PulseTheme
 import kotlinx.coroutines.delay
+
+/**
+ * False while something covers the screen (the hub under the full-screen workout): the media tiles hold their first frame instead of
+ * crossfading for ever behind a screen that is kept on for the whole workout.
+ */
+val LocalMediaAnimating = compositionLocalOf { true }
 
 /** The two form-demo frames of one exercise ("<mediaKey>-a" and "<mediaKey>-b"). */
 class ExerciseMediaFrames(val first: ImageBitmap?, val second: ImageBitmap?) {
@@ -49,13 +56,27 @@ class ExerciseMediaFrames(val first: ImageBitmap?, val second: ImageBitmap?) {
  */
 object ExerciseMediaStore {
     private const val folder = "ExerciseMedia"
-    private val images = object : LruCache<String, ImageBitmap>(24) {}
+    // Counted in bytes (a 480 x 320 frame is about 0.6 MB decoded): the whole library of 50 frames does not fit, but the rows on screen do.
+    private val images = object : LruCache<String, ImageBitmap>(24 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: ImageBitmap): Int = value.width * value.height * 4
+    }
     private val missing = mutableSetOf<String>()
 
-    fun frames(context: Context, mediaKey: String?): ExerciseMediaFrames {
-        if (mediaKey.isNullOrEmpty()) return ExerciseMediaFrames(null, null)
+    /** Tests turn the photos off to see what a release build without them looks like (the store screenshots). */
+    @Volatile
+    internal var enabled: Boolean = true
+
+    /**
+     * Whether this build ships any exercise photo. The release build does not unless it was built with `-Ppulse.includeExerciseMedia=true`
+     * (the photos are placeholders of unknown licence, see android/README.md), so everything that mentions the photos asks this first.
+     */
+    fun isShipped(context: Context): Boolean = enabled && runCatching { context.applicationContext.assets.list(folder)?.isNotEmpty() == true }.getOrDefault(false)
+
+    /** The frames of [mediaKey]; the second one is only decoded when [needsSecond] (a static tile never shows it). */
+    fun frames(context: Context, mediaKey: String?, needsSecond: Boolean = true): ExerciseMediaFrames {
+        if (!enabled || mediaKey.isNullOrEmpty()) return ExerciseMediaFrames(null, null)
         val a = image(context, "$mediaKey-a")
-        val b = image(context, "$mediaKey-b")
+        val b = if (needsSecond || a == null) image(context, "$mediaKey-b") else null
         // With a single frame, show it as the (static) first frame.
         if (a == null && b != null) return ExerciseMediaFrames(b, null)
         return ExerciseMediaFrames(a, b)
@@ -86,8 +107,8 @@ fun ExerciseMediaView(
     animated: Boolean = true,
 ) {
     val context = LocalContext.current
-    val frames = remember(mediaKey) { ExerciseMediaStore.frames(context, mediaKey) }
-    val reduceMotion = LocalReduceMotion.current
+    val animating = animated && LocalMediaAnimating.current && !LocalReduceMotion.current
+    val frames = remember(mediaKey, animating) { ExerciseMediaStore.frames(context, mediaKey, needsSecond = animating) }
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(cornerRadius))
@@ -97,7 +118,7 @@ fun ExerciseMediaView(
         val first = frames.first
         val second = frames.second
         if (first != null) {
-            if (second != null && animated && !reduceMotion) {
+            if (second != null && animating) {
                 ExerciseMediaCrossfade(first, second)
             } else {
                 ExerciseMediaFill(first)
@@ -127,10 +148,11 @@ private fun ExerciseMediaCrossfade(first: ImageBitmap, second: ImageBitmap) {
             showSecond = !showSecond
         }
     }
-    val secondAlpha by animateFloatAsState(if (showSecond) 1f else 0f, animationSpec = tween(350), label = "mediaFade")
+    // Read in the draw phase (graphicsLayer), so the fade does not recompose the tile on every frame.
+    val secondAlpha = animateFloatAsState(if (showSecond) 1f else 0f, animationSpec = tween(350), label = "mediaFade")
     Box(Modifier.fillMaxSize()) {
         ExerciseMediaFill(first)
-        ExerciseMediaFill(second, Modifier.alpha(secondAlpha))
+        ExerciseMediaFill(second, Modifier.graphicsLayer { alpha = secondAlpha.value })
     }
 }
 

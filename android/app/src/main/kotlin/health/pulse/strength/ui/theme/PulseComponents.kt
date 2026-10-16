@@ -3,6 +3,7 @@ package health.pulse.strength.ui.theme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,8 +20,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
@@ -34,7 +40,8 @@ import androidx.compose.ui.unit.sp
 
 /**
  * A clickable surface that fades while pressed (the design's plain button style: rows, cells), without the ripple.
- * Its [role] and [onClickLabel] are what TalkBack announces.
+ * Its [role] and [onClickLabel] are what TalkBack announces. A faint wash over the whole surface shows the press on a button whose
+ * fill sits outside this modifier, and a ring shows keyboard / D-pad focus (the ripple would have drawn it).
  */
 @Composable
 fun Modifier.pulseClickable(
@@ -46,8 +53,25 @@ fun Modifier.pulseClickable(
 ): Modifier {
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
+    val focused by source.collectIsFocusedAsState()
+    val colors = PulseTheme.colors
     return this
         .graphicsLayer { alpha = if (pressed && enabled) pressedAlpha else 1f }
+        .drawWithContent {
+            drawContent()
+            val radius = CornerRadius(10.dp.toPx())
+            if (pressed && enabled) drawRoundRect(colors.ink.copy(alpha = 0.08f), cornerRadius = radius)
+            if (focused && enabled) {
+                val width = 2.dp.toPx()
+                drawRoundRect(
+                    colors.green,
+                    topLeft = Offset(width / 2, width / 2),
+                    size = Size(size.width - width, size.height - width),
+                    cornerRadius = radius,
+                    style = Stroke(width),
+                )
+            }
+        }
         .clickable(
             interactionSource = source,
             indication = null,
@@ -136,7 +160,7 @@ fun PulsePillButton(text: String, onClick: () -> Unit, modifier: Modifier = Modi
     Row(
         modifier = modifier
             .pulseMinHeight(48.dp)
-            .background(PulseTheme.colors.blue.copy(alpha = if (enabled) 1f else 0.4f), CircleShape)
+            .background(PulseTheme.colors.pillFill.copy(alpha = if (enabled) 1f else 0.4f), CircleShape)
             .pulseClickable(enabled = enabled, pressedAlpha = 0.8f, onClick = onClick)
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.Center,
@@ -189,7 +213,7 @@ fun <T> PulseSegmented(
                     .pulseMinHeight(40.dp)
                     .then(
                         if (isSelected) {
-                            Modifier.shadow(2.dp, RoundedCornerShape(7.dp), clip = false).background(colors.card, RoundedCornerShape(7.dp))
+                            Modifier.shadow(2.dp, RoundedCornerShape(7.dp), clip = false).background(colors.segmentThumb, RoundedCornerShape(7.dp))
                         } else {
                             Modifier
                         },

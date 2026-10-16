@@ -40,13 +40,21 @@ sealed interface UndoPayload {
     @Serializable
     @SerialName("set")
     data class DeletedSet(val exerciseID: UUID, val index: Int, val set: LoggedSet) : UndoPayload
+
+    /**
+     * An exercise that was replaced by another one (the replacement keeps the entry id): undoing swaps the original back, with its
+     * logged sets and its note. (Swift `.replaced`.)
+     */
+    @Serializable
+    @SerialName("replaced")
+    data class ReplacedExercise(val exercise: WorkoutExercise) : UndoPayload
 }
 
 /** One kept heart-rate reading: [bpm] at the moment [at] the reducer received it. */
 @Serializable
 data class HeartRateSample(val bpm: Int, val at: Instant)
 
-/** The last destructive edit (removed exercise / deleted set), restorable until [expiresAt]. */
+/** The last destructive edit (removed or replaced exercise / deleted set), restorable until [expiresAt]. */
 @Serializable
 data class UndoEntry(
     val payload: UndoPayload,
