@@ -110,7 +110,6 @@ final class StrengthTour: UIDriver {
         layout = report
 
         hubSteps()
-        walkthroughStep()
         startStep()
         restDockStep()
         keypadStep()
@@ -122,6 +121,8 @@ final class StrengthTour: UIDriver {
         summaryStep()
         hubAfterFinishStep()
         libraryStep()
+        // Last on purpose: a failure here can never cost the screenshots and the layout report of the steps above.
+        walkthroughStep()
 
         report.finish()
         output.log(
@@ -295,14 +296,22 @@ final class StrengthTour: UIDriver {
 
     /// Opens the walkthrough from the hub's More menu (the UI-test mode never opens it by itself), photographs each of its
     /// seven pages (the pictures and the tips must fit every configuration of the matrix) and closes it with "Get Started".
+    ///
+    /// Runs last, from a freshly launched app (the UI-test mode starts from the hub), and taps by coordinate (see `tapMiddle`):
+    /// the first version tapped the toolbar's More button with `XCUIElement.tap()`, which made XCTest end the whole tour.
     private func walkthroughStep() {
-        step("Walkthrough: open it from the More menu, page through it, then Get Started") {
-            ensureHub("open the walkthrough")
-            if !tap(anyOf: [.button("hub-more"), .button("More")], timeout: 10) {
+        step("Walkthrough: open it from the More menu, page through it, then Get Started", checkApp: false) {
+            relaunch()
+            if waitFor(.button("Start Workout"), timeout: 40) == nil {
+                fail("The hub did not appear after launching the app again for the walkthrough: no 'Start Workout' button within 40 s")
+                return
+            }
+            if !tapMiddle(of: [.button("hub-more"), .button("More")]) {
+                failShot("walkthrough-more-missing")
                 return
             }
             let item: [Target] = [.button("App Walkthrough", .contains), .element("App Walkthrough", .contains)]
-            if !tap(anyOf: item, timeout: 8) {
+            if !tapMiddle(of: item, timeout: 8) {
                 failShot("walkthrough-menu-missing")
                 recoverMenu()
                 return
@@ -319,7 +328,7 @@ final class StrengthTour: UIDriver {
                 if page == pages.count - 1 {
                     break
                 }
-                if !tap(.button("Next")) {
+                if !tapMiddle(of: [.button("Next")]) {
                     closeWalkthrough()
                     return
                 }
@@ -330,7 +339,7 @@ final class StrengthTour: UIDriver {
                 closeWalkthrough()
                 return
             }
-            if !tap(.button("Get Started")) {
+            if !tapMiddle(of: [.button("Get Started")]) {
                 return
             }
             if !waitUntilGone(.button("Get Started"), timeout: 8) {
@@ -340,12 +349,38 @@ final class StrengthTour: UIDriver {
         }
     }
 
+    /// Taps the middle of the first of the targets that exists, by coordinate.
+    ///
+    /// `XCUIElement.tap()` first asks the accessibility layer to scroll the element into view. For the toolbar's More button
+    /// that fails ("Failed to scroll to visible (by AX action) ... kAXErrorCannotComplete") and XCTest then ends the whole test,
+    /// whatever continueAfterFailure says. A tap at a coordinate never scrolls. The element must exist and have a frame whose
+    /// middle is on screen; otherwise an ordinary failure is recorded and the walk goes on.
+    @discardableResult
+    private func tapMiddle(of targets: [Target], timeout: TimeInterval = 10) -> Bool {
+        guard let index = waitForAny(targets, timeout: timeout), let element = find(targets[index]) else {
+            fail("Not found within " + String(Int(timeout)) + " s: " + targets.map { $0.summary }.joined(separator: " or "))
+            return false
+        }
+        guard element.exists else {
+            fail("The element to tap vanished between finding it and tapping it: " + targets[index].summary)
+            return false
+        }
+        let frame = element.frame
+        let middle = CGPoint(x: frame.midX, y: frame.midY)
+        guard frame.width > 1 && frame.height > 1 && app.frame.contains(middle) else {
+            fail("The element to tap has frame " + String(describing: frame) + ", whose middle is not on screen: " + targets[index].summary)
+            return false
+        }
+        element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        return true
+    }
+
     /// Leaves the walkthrough with "Skip" (or "Get Started" on its last page) after a failure.
     private func closeWalkthrough() {
-        if let skipButton = find(.button("Skip")), skipButton.isHittable {
-            press(skipButton, failIfGone: false)
-        } else if let startButton = find(.button("Get Started")) {
-            press(startButton, failIfGone: false)
+        if exists(.button("Skip")) {
+            tapMiddle(of: [.button("Skip")], timeout: 2)
+        } else if exists(.button("Get Started")) {
+            tapMiddle(of: [.button("Get Started")], timeout: 2)
         }
         pause(0.8)
     }
