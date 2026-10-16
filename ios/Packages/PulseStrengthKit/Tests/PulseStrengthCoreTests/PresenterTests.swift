@@ -20,10 +20,10 @@ enum PresFix {
         return UUID(uuidString: "00000000-0000-0000-\(hex(high, 4))-\(hex(low, 12))")!
     }
 
-    /// A built-in exercise of the library with the demo previous results (bench: best 99, last sets 50 × 8 ... 80 × 5).
+    /// A built-in exercise of the library with the design's previous results (`DesignBaseline`; bench: best 99, last sets 50 × 8 ... 80 × 5).
     static func lib(_ id: String) -> Exercise {
-        guard let exercise = ExerciseLibrary.exercise(id: id) else { preconditionFailure("unknown exercise \(id)") }
-        return DemoPreviousResults.applying(to: exercise)
+        guard let exercise = DesignBaseline.exercise(id: id) else { preconditionFailure("unknown exercise \(id)") }
+        return exercise
     }
 
     /// `exercise` with another previous best estimated 1RM.

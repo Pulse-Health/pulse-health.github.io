@@ -31,12 +31,12 @@ final class LibraryTests: XCTestCase {
     }
 
     /// All 36 rows of the design array `L`, in design order (id, muscle, equipment, tracking, media key,
-    /// previous best e1RM and number of previous sets of the demo data, default sets, kg, reps, rest, number of cues).
+    /// previous best e1RM, number of previous sets, default sets, kg, reps, rest, number of cues).
     private var designTable: [Row] {
         [
         row("bench", .chest, .barbell, .weightReps, "bench", 99, 5, 3, 60, 8, 150, 3),
         row("incline", .chest, .dumbbell, .weightReps, "incline", 38, 3, 3, 24, 10, 90, 3),
-        row("crossover", .chest, .cable, .weightReps, "crossover", 21, 3, 3, 15, 12, 60, 3),
+        row("crossover", .chest, .cable, .weightReps, "crossover", 22, 3, 3, 15, 12, 60, 3),
         row("pushup", .chest, .bodyweight, .repsOnly, "pushup", 0, 1, 3, 0, 12, 60, 3),
         row("cpress", .chest, .machine, .weightReps, nil, 0, 0, 3, 40, 10, 90, 2),
         row("dips", .chest, .bodyweight, .repsOnly, nil, 0, 0, 3, 0, 8, 90, 2),
@@ -49,12 +49,12 @@ final class LibraryTests: XCTestCase {
         row("facepull", .shoulders, .cable, .weightReps, "facepull", 0, 1, 3, 20, 15, 60, 3),
         row("ohp", .shoulders, .barbell, .weightReps, "ohp", 58, 3, 3, 40, 8, 120, 3),
         row("dbpress", .shoulders, .dumbbell, .weightReps, nil, 0, 0, 3, 18, 10, 90, 2),
-        row("lateral", .shoulders, .dumbbell, .weightReps, "lateral", 0, 3, 3, 8, 15, 60, 3),
+        row("lateral", .shoulders, .dumbbell, .weightReps, "lateral", 12.5, 3, 3, 8, 15, 60, 3),
         row("rdelt", .shoulders, .machine, .weightReps, nil, 0, 0, 3, 25, 12, 60, 2),
         row("curl", .arms, .barbell, .weightReps, "curl", 0, 1, 3, 30, 10, 75, 3),
         row("dbcurl", .arms, .dumbbell, .weightReps, "dbcurl", 0, 1, 3, 12, 10, 75, 3),
         row("hammer", .arms, .dumbbell, .weightReps, nil, 0, 0, 3, 12, 10, 75, 2),
-        row("pushdown", .arms, .cable, .weightReps, "pushdown", 42, 3, 3, 30, 12, 60, 3),
+        row("pushdown", .arms, .cable, .weightReps, "pushdown", 43, 3, 3, 30, 12, 60, 3),
         row("skull", .arms, .barbell, .weightReps, "skull", 0, 1, 3, 25, 10, 75, 3),
         row("ohtri", .arms, .cable, .weightReps, nil, 0, 0, 3, 20, 12, 60, 2),
         row("preacher", .arms, .machine, .weightReps, nil, 0, 0, 3, 25, 10, 75, 2),
@@ -112,20 +112,19 @@ final class LibraryTests: XCTestCase {
         XCTAssertEqual(actual.equipment, expected.equipment, "equipment \(tag)", file: file, line: line)
         XCTAssertEqual(actual.tracking, expected.tracking, "tracking \(tag)", file: file, line: line)
         XCTAssertEqual(actual.mediaKey, expected.mediaKey, "mediaKey \(tag)", file: file, line: line)
-        XCTAssertEqual(actual.previousBestE1RM, expected.previousBestE1RM, "previousBestE1RM \(tag)", file: file, line: line)
-        XCTAssertEqual(actual.previousSets, expected.previousSets, "previousSets \(tag)", file: file, line: line)
+        // The library carries no history; the design's previous results are the explicit baseline of the tests (DesignBaseline).
+        XCTAssertEqual(actual.previousBestE1RM, 0, "previousBestE1RM \(tag)", file: file, line: line)
+        XCTAssertEqual(actual.previousSets, [], "previousSets \(tag)", file: file, line: line)
+        let baseline = DesignBaseline.apply(actual)
+        XCTAssertEqual(baseline.previousBestE1RM, expected.previousBestE1RM, "baseline previousBestE1RM \(tag)", file: file, line: line)
+        XCTAssertEqual(baseline.previousSets, expected.previousSets, "baseline previousSets \(tag)", file: file, line: line)
         XCTAssertEqual(actual.defaults, expected.defaults, "defaults \(tag)", file: file, line: line)
         XCTAssertEqual(actual.cues, expected.cues, "cues \(tag)", file: file, line: line)
         XCTAssertEqual(actual.barKg, expected.barKg, "barKg \(tag)", file: file, line: line)
         XCTAssertEqual(actual.isCustom, expected.isCustom, "isCustom \(tag)", file: file, line: line)
     }
 
-    /// The built-in exercise with the demo previous results: the design table lists them in its previous best / previous sets columns.
-    private func demoExercise(_ id: String) -> Exercise? {
-        ExerciseLibrary.exercise(id: id).map { DemoPreviousResults.applying(to: $0) }
-    }
-
-    /// The previous sets of the demo data; the first `warmups` of them are warm-ups.
+    /// The previous sets of the baseline; the first `warmups` of them are warm-ups.
     private func sets(_ pairs: [(Double, Int)], warmups: Int = 0) -> [PreviousSet] {
         pairs.enumerated().map { PreviousSet(weightKg: $0.element.0, reps: $0.element.1, type: $0.offset < warmups ? .warmup : nil) }
     }
@@ -148,15 +147,18 @@ final class LibraryTests: XCTestCase {
     }
 
     func testEveryRowMatchesDesignTable() {
-        for (exercise, expected) in zip(ExerciseLibrary.demoBuiltIn, designTable) {
+        for (exercise, expected) in zip(ExerciseLibrary.builtIn, designTable) {
             let tag = expected.id
             XCTAssertEqual(exercise.id, expected.id, tag)
             XCTAssertEqual(exercise.muscle, expected.muscle, "muscle \(tag)")
             XCTAssertEqual(exercise.equipment, expected.equipment, "equipment \(tag)")
             XCTAssertEqual(exercise.tracking, expected.tracking, "tracking \(tag)")
             XCTAssertEqual(exercise.mediaKey, expected.media, "media \(tag)")
-            XCTAssertEqual(exercise.previousBestE1RM, expected.e1RM, "e1RM \(tag)")
-            XCTAssertEqual(exercise.previousSets.count, expected.previousSetCount, "previous sets \(tag)")
+            XCTAssertEqual(exercise.previousBestE1RM, 0, "the library carries no best \(tag)")
+            XCTAssertTrue(exercise.previousSets.isEmpty, "the library carries no previous sets \(tag)")
+            let baseline = DesignBaseline.apply(exercise)
+            XCTAssertEqual(baseline.previousBestE1RM, expected.e1RM, "baseline e1RM \(tag)")
+            XCTAssertEqual(baseline.previousSets.count, expected.previousSetCount, "baseline previous sets \(tag)")
             XCTAssertEqual(exercise.defaults.sets, expected.sets, "default sets \(tag)")
             XCTAssertEqual(exercise.defaults.weightKg, expected.kg, "default kg \(tag)")
             XCTAssertEqual(exercise.defaults.reps, expected.reps, "default reps \(tag)")
@@ -172,8 +174,16 @@ final class LibraryTests: XCTestCase {
         }
     }
 
-    func testDataInvariants() {
+    /// A new user starts without a PREVIOUS column and without a record to beat: the shipped library carries no history at all.
+    func testTheLibraryShipsNoHistory() {
         for exercise in ExerciseLibrary.builtIn {
+            XCTAssertEqual(exercise.previousBestE1RM, 0, exercise.id)
+            XCTAssertTrue(exercise.previousSets.isEmpty, exercise.id)
+        }
+    }
+
+    func testDataInvariants() {
+        for exercise in DesignBaseline.library {
             XCTAssertFalse(exercise.name.isEmpty, exercise.id)
             XCTAssertFalse(exercise.secondary.isEmpty, exercise.id)
             XCTAssertGreaterThanOrEqual(exercise.cues.count, 2, exercise.id)
@@ -208,7 +218,7 @@ final class LibraryTests: XCTestCase {
     // MARK: - Spot checks against the prototype
 
     func testBenchPress() {
-        assertSame(demoExercise("bench"), Exercise(
+        assertSame(ExerciseLibrary.exercise(id: "bench"), Exercise(
             id: "bench", name: "Barbell bench press", muscle: .chest, secondary: "Shoulders · Triceps",
             equipment: .barbell, tracking: .weightReps, mediaKey: "bench", previousBestE1RM: 99,
             previousSets: sets([(50, 8), (70, 5), (80, 6), (80, 6), (80, 5)], warmups: 2),
@@ -222,7 +232,7 @@ final class LibraryTests: XCTestCase {
     }
 
     func testInclineDumbbellPress() {
-        assertSame(demoExercise("incline"), Exercise(
+        assertSame(ExerciseLibrary.exercise(id: "incline"), Exercise(
             id: "incline", name: "Incline dumbbell press", muscle: .chest, secondary: "Shoulders · Triceps",
             equipment: .dumbbell, tracking: .weightReps, mediaKey: "incline", previousBestE1RM: 38,
             previousSets: sets([(26, 10), (26, 10), (26, 9)]),
@@ -236,7 +246,7 @@ final class LibraryTests: XCTestCase {
     }
 
     func testPushUpIsRepsOnly() {
-        assertSame(demoExercise("pushup"), Exercise(
+        assertSame(ExerciseLibrary.exercise(id: "pushup"), Exercise(
             id: "pushup", name: "Push-up", muscle: .chest, secondary: "Shoulders · Triceps",
             equipment: .bodyweight, tracking: .repsOnly, mediaKey: "pushup", previousBestE1RM: 0,
             previousSets: sets([(0, 15)]),
@@ -263,7 +273,7 @@ final class LibraryTests: XCTestCase {
     }
 
     func testSkullCrusherUsesTenKiloBar() {
-        assertSame(demoExercise("skull"), Exercise(
+        assertSame(ExerciseLibrary.exercise(id: "skull"), Exercise(
             id: "skull", name: "Skull crusher", muscle: .arms, secondary: "Triceps · Forearms",
             equipment: .barbell, tracking: .weightReps, mediaKey: "skull", previousBestE1RM: 0,
             previousSets: sets([(25, 10)]),
@@ -277,7 +287,7 @@ final class LibraryTests: XCTestCase {
     }
 
     func testPlankTracksDuration() {
-        assertSame(demoExercise("plank"), Exercise(
+        assertSame(ExerciseLibrary.exercise(id: "plank"), Exercise(
             id: "plank", name: "Plank", muscle: .core, secondary: "Abs",
             equipment: .bodyweight, tracking: .duration, mediaKey: "plank", previousBestE1RM: 0,
             previousSets: sets([(0, 45)]),
@@ -291,7 +301,7 @@ final class LibraryTests: XCTestCase {
     }
 
     func testStandingCalfRaiseHasFourDefaultSets() {
-        assertSame(demoExercise("calf"), Exercise(
+        assertSame(ExerciseLibrary.exercise(id: "calf"), Exercise(
             id: "calf", name: "Standing calf raise", muscle: .legs, secondary: "Calves",
             equipment: .machine, tracking: .weightReps, mediaKey: "calf", previousBestE1RM: 0,
             previousSets: sets([(60, 12)]),
@@ -305,7 +315,7 @@ final class LibraryTests: XCTestCase {
     }
 
     func testLegExtensionKeepsApostrophes() {
-        assertSame(demoExercise("legext"), Exercise(
+        assertSame(ExerciseLibrary.exercise(id: "legext"), Exercise(
             id: "legext", name: "Leg extension", muscle: .legs, secondary: "Quads",
             equipment: .machine, tracking: .weightReps, mediaKey: "legext", previousBestE1RM: 0,
             previousSets: sets([(45, 12)]),
@@ -319,9 +329,9 @@ final class LibraryTests: XCTestCase {
     }
 
     func testLateralRaiseHasHistoryAndApostrophe() {
-        assertSame(demoExercise("lateral"), Exercise(
+        assertSame(ExerciseLibrary.exercise(id: "lateral"), Exercise(
             id: "lateral", name: "Dumbbell lateral raise", muscle: .shoulders, secondary: "Side delts",
-            equipment: .dumbbell, tracking: .weightReps, mediaKey: "lateral", previousBestE1RM: 0,   // 8 x 15 is above the 12-rep cap: no estimate
+            equipment: .dumbbell, tracking: .weightReps, mediaKey: "lateral", previousBestE1RM: 12.5,
             previousSets: sets([(8, 15), (8, 15), (8, 14)]),
             defaults: ExerciseDefaults(sets: 3, weightKg: 8, reps: 15, restSeconds: 60),
             cues: [
@@ -347,9 +357,12 @@ final class LibraryTests: XCTestCase {
 
     func testPersonalBestsOfTheDesign() {
         let expected: [String: Double] = [
-            "bench": 99, "incline": 38, "crossover": 21, "ohp": 58, "lateral": 0, "pushdown": 42,
+            "bench": 99, "incline": 38, "crossover": 22, "ohp": 58, "lateral": 12.5, "pushdown": 43,
         ]
-        for exercise in ExerciseLibrary.demoBuiltIn {
+        for exercise in ExerciseLibrary.builtIn {
+            XCTAssertEqual(exercise.previousBestE1RM, 0, "the library carries no best \(exercise.id)")
+        }
+        for exercise in DesignBaseline.library {
             XCTAssertEqual(exercise.previousBestE1RM, expected[exercise.id] ?? 0, exercise.id)
         }
     }

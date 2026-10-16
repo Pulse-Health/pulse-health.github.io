@@ -32,14 +32,22 @@ public extension StrengthData {
         return .success(())
     }
 
-    /// Removes a template. Finished workouts keep their `templateID` and name.
+    /// Removes a template. Finished workouts keep their `templateID` and name. The template also leaves the rotation of every plan
+    /// (see `WorkoutPlan.removeTemplate`); a plan left without workouts stays, empty.
     mutating func deleteTemplate(id: UUID) -> Result<Void, StrengthStoreError> {
         guard let index = templates.firstIndex(where: { $0.id == id }) else { return .failure(.notFound) }
         templates.remove(at: index)
+        removeFromPlans(templateID: id)
         return .success(())
     }
 
+    /// Takes the template out of the rotation of every plan.
+    internal mutating func removeFromPlans(templateID: UUID) {
+        for index in plans.indices { plans[index].removeTemplate(templateID) }
+    }
+
     /// Adds a copy of a template right after the original: new template id, new entry ids, never performed. The copy is returned.
+    /// Plans hold template ids, so the copy is in no plan: the rotations stay as they are.
     mutating func duplicateTemplate(id: UUID, name: String) -> Result<WorkoutTemplate, StrengthStoreError> {
         guard let index = templates.firstIndex(where: { $0.id == id }) else { return .failure(.notFound) }
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -207,7 +215,8 @@ public extension StrengthData {
     }
 
     /// Replaces a custom exercise (the one with the same id) and refreshes its copies in the templates. The remembered previous
-    /// results of each copy stay as they are. Finished workouts keep the old name and muscle.
+    /// results of each copy stay as they are. Finished workouts keep the old name and muscle. Plans hold template ids only, so they
+    /// are not affected.
     mutating func updateCustomExercise(_ exercise: Exercise) -> Result<Void, StrengthStoreError> {
         guard let index = customExercises.firstIndex(where: { $0.id == exercise.id }) else { return .failure(.notFound) }
         let name = exercise.name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -242,11 +251,12 @@ public extension StrengthDataModel {
         return commit(templates: true)
     }
 
-    /// Deletes a template and saves the templates.
+    /// Deletes a template and saves the templates and, when the template was in a plan, the plans.
     @discardableResult
     func deleteTemplate(id: UUID) -> Result<Void, Error> {
+        let plansBefore = data.plans
         if case let .failure(error) = data.deleteTemplate(id: id) { return .failure(error) }
-        return commit(templates: true)
+        return commit(templates: true, plans: data.plans != plansBefore)
     }
 
     /// Adds a copy of a template after the original (see `StrengthData.duplicateTemplate`), saves the templates and returns the copy.

@@ -121,7 +121,11 @@ final class PublicInitializerTests: XCTestCase {
 
     /// Workouts that exercise every optional: nothing logged, a rest running, paused, a personal record, an undo entry, empty.
     private func states() -> [WorkoutState] {
-        let template = SampleData.templates()[0]
+        var template = SampleData.templates()[0]
+        // The shipped library carries no history; this test needs records and a coach tip, so it uses the design's baseline.
+        for index in template.entries.indices {
+            template.entries[index].exercise = DesignBaseline.apply(template.entries[index].exercise)
+        }
         let fresh = WorkoutFactory.makeWorkout(from: template, now: SvcSyncFix.epoch, id: SvcSyncFix.uuid(1))
 
         var resting = fresh

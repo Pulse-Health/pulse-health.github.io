@@ -138,23 +138,22 @@ final class HealthKitWorkoutWriter: WorkoutSideEffect {
 
     // MARK: Authorization
 
-    /// Asks to share workouts and to read heart rate and active energy, then reports a denied share status.
-    func requestAuthorization() async {
-        guard let store = healthStore else { return }
-        var readTypes = Set<HKObjectType>()
-        if let heartRate = HKObjectType.quantityType(forIdentifier: .heartRate) {
-            readTypes.insert(heartRate)
-        }
-        if let activeEnergy = HKObjectType.quantityType(forIdentifier: .activeEnergyBurned) {
-            readTypes.insert(activeEnergy)
-        }
+    /// Asks to share workouts, then reports a denied share status. The iPhone reads nothing here: the heart rate reaches it from the
+    /// Watch over WatchConnectivity, and the active energy is only collected by the Watch. (The body weight sync asks for its own read.)
+    /// Returns true when Health is available, the request went through and sharing workouts was allowed.
+    @discardableResult
+    func requestAuthorization() async -> Bool {
+        guard let store = healthStore else { return false }
         let shareTypes: Set<HKSampleType> = [HKObjectType.workoutType()]
+        var requested = true
         do {
-            try await hkRequestAuthorization(store: store, share: shareTypes, read: readTypes)
+            try await hkRequestAuthorization(store: store, share: shareTypes, read: [])
         } catch {
             ServiceLog.error("Health authorization failed: \(error.localizedDescription)")
+            requested = false
         }
         refreshAuthorizationStatus()
+        return requested && store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized
     }
 
     /// Reads the current share status of workouts and tells `onAuthorizationDenied` when it changed.

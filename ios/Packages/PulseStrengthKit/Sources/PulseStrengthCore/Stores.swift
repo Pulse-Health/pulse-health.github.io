@@ -104,7 +104,7 @@ public final class FileStrengthPersistence: @unchecked Sendable {
     /// The data files, by name. Backups (`*.corrupt-*.json`) and `schema.json` are not data files.
     static let dataFileNames = [
         FileName.activeWorkout, FileName.templates, FileName.history, FileName.customExercises,
-        FileName.personalBests, FileName.bodyWeights, FileName.weighInPreferences, FileName.preferences,
+        FileName.personalBests, FileName.plans, FileName.bodyWeights, FileName.weighInPreferences, FileName.preferences,
         FileName.acknowledgedCommands,
     ]
 
@@ -112,7 +112,7 @@ public final class FileStrengthPersistence: @unchecked Sendable {
     /// The workout in progress and the acknowledged command ids are transient and exempt.
     static let protectedFileNames = [
         FileName.templates, FileName.history, FileName.customExercises,
-        FileName.personalBests, FileName.bodyWeights, FileName.weighInPreferences, FileName.preferences,
+        FileName.personalBests, FileName.plans, FileName.bodyWeights, FileName.weighInPreferences, FileName.preferences,
     ]
 
     /// At most this many `.corrupt-` copies are kept per file.
@@ -124,6 +124,7 @@ public final class FileStrengthPersistence: @unchecked Sendable {
         static let history = "history.json"
         static let customExercises = "custom-exercises.json"
         static let personalBests = "personal-bests.json"
+        static let plans = "plans.json"
         static let bodyWeights = "body-weights.json"
         static let weighInPreferences = "weigh-in-preferences.json"
         static let preferences = "preferences.json"
@@ -296,6 +297,14 @@ public final class FileStrengthPersistence: @unchecked Sendable {
 
     /// Replaces the saved workout templates. The array order is the user's order.
     public func saveTemplates(_ templates: [WorkoutTemplate]) throws { try write(templates, to: FileName.templates) }
+
+    // MARK: Plans
+
+    /// The saved training plans (empty when none or unreadable).
+    public func loadPlans() -> [WorkoutPlan] { loadList(FileName.plans) }
+
+    /// Replaces the saved training plans.
+    public func savePlans(_ plans: [WorkoutPlan]) throws { try write(plans, to: FileName.plans) }
 
     // MARK: History
 

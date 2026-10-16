@@ -25,7 +25,9 @@ ios/
       PulseStrengthCore/     platform neutral (Foundation only): models, reducer, presenter, stores, sync
       PulseStrengthActivity/ iOS: ActivityAttributes + command bus (shared by app and widget)
       PulseStrengthIOS/      iOS: SwiftUI screens, services (Live Activity manager, notifications, HealthKit, Watch bridge)
-        Resources/ExerciseMedia/*.jpg   form demo frames "<mediaKey>-a.jpg" / "-b.jpg" (public domain)
+        Onboarding/          the first-run flow (5.6)
+        Resources/ExerciseMedia/*.jpg   form demo frames "<mediaKey>-a.jpg" / "-b.jpg" (placeholders of unverified provenance, see README "Exercise photos")
+        Resources/Onboarding/           the hero clip "onboarding-hero.mp4" and its poster
       PulseStrengthWatchUI/  watchOS: SwiftUI screens, workout session, WatchConnectivity client
     Tests/PulseStrengthCoreTests/
   Apps/
@@ -110,9 +112,9 @@ else 20. `Exercise.weightStep(in:)` is the stepper increment of a unit (kg: `wei
 bodyweight and other) and `Exercise.barWeight(in:)` the empty bar for the plate calculator (kg: `barKg`; lb: the next multiple of 5 above it,
 up to half a pound of tolerance: 20 kg is 45 lb, 15 kg 35 lb, 10 kg 25 lb). `Exercise.custom(...)` takes `restSeconds` (default 90, see
 `StrengthPreferences.defaultRestSeconds`). `Exercise.allowsAddedWeight` (`decodeIfPresent`, default false, only written when true) marks a reps-only exercise that can carry an added load or be done with
-assistance: the built-in `pullup` and `dips` and every custom reps-only exercise (`Exercise.custom`); `carriesLoad` is `tracking == .repsOnly && allowsAddedWeight` and `hasEditableWeight` is `tracksWeight || carriesLoad`. The library carries NO results of the user: `previousBestE1RM` is 0 and `previousSets` is empty for every built-in exercise. The design's
-invented previous results (bench best 99 kg, 25 exercises with last sets) live in `DemoPreviousResults` (`SampleData.swift`) and in
-`ExerciseLibrary.demoBuiltIn`, for previews, UI tests and the tests of the demo data (see "No invented data" in section 3.4).
+assistance: the built-in `pullup` and `dips` and every custom reps-only exercise (`Exercise.custom`); `carriesLoad` is `tracking == .repsOnly && allowsAddedWeight` and `hasEditableWeight` is `tracksWeight || carriesLoad`. The library carries NO results of the user: `previousBestE1RM` is 0 and `previousSets` is empty for every built-in exercise; those come from the user's own history through
+`StrengthData.overlay`, so a new user has nothing to compare with. The design's previous results (bench best 99 kg, last sets for 25 exercises) exist only as `DesignBaseline` in the tests,
+which the design-parity tests apply explicitly; previews and the UI tests get previous results from the sample history like any user (see "No invented data" in section 3.4).
 
 ### 3.2 `WorkoutTargets.swift`, `WorkoutReducer.swift`, `WorkoutFactory.swift` (area: reducer)
 
@@ -182,7 +184,10 @@ Reducer rules (ported from `Active.dc.html`; `S` = state):
    group goes behind that group's block when it moved down and in front of it when it moved up. (A state that broke the rule, for example by a sync replay, is repaired the same way; the work is
    bounded by the number of exercises.)
    `replaceExercise` keeps the entry id and superset group, takes the new exercise with default sets (not done),
-   its default rest, empty note; clears `lastLogged` if it pointed at it. `addExercises` appends entries with default
+   its default rest, empty note; clears `lastLogged` if it pointed at it. When the old entry had a logged set or a note it sets
+   `undo = UndoEntry(.replaced(exercise), title "Replaced <name>", expiresAt now + undoWindow)`; that undo swaps the original
+   back (keeping the entry's current superset group) unless a set was logged or a note typed on the replacement in the
+   meantime, in which case the undo is just spent. `addExercises` appends entries with default
    sets and default rest; into an empty workout it sets `currentIndex = 0`. **Default sets** (also for `replaceExercise` and `addSet` without sets): `defaults.sets` pending normal sets, all
    starting from the LAST WORKING set of the exercise's `previousSets` (warm-ups are never copied; a trailing drop set is skipped while an earlier working set exists, because its lighter load is not where
    the next session starts; a set without reps is ignored), else from `defaults`. The reps (seconds for a timed exercise) are copied; the weight only for an exercise with an editable weight, so a push-up
@@ -287,7 +292,7 @@ Presenter rules (port of `renderVals` in `Active.dc.html`):
   matching exercise; reordered = the relative order of the common ids differs from the baseline. `compute(for:against:)` adds `changedExercises: [ChangedExercise]` (entry id, name,
   `kinds: Set<Change>` with `setCount`, `weight`, `reps`, `restSeconds`, `setType`; in workout order; `decodeIfPresent`) for every KEPT exercise whose sets (logged and planned alike) or rest differ from the
   template's entry: `setCount` = another number of sets (warm-ups count); `setType` = the same number but a set with another type; `weight` / `reps` = a WORKING set (warm-ups are left out) with another weight (compared
-  in kilograms rounded to 0.01; exercises with an editable weight only) or reps / seconds, compared set by set when both have as many working sets (otherwise only the count counts); `restSeconds` = another rest.
+  in kilograms rounded to 0.01; exercises with an editable weight only) or reps / seconds (a planned set with a rep range, `PlannedSet.repsMax`, accepts any number from its reps to the top of the range), compared set by set when both have as many working sets (otherwise only the count counts); `restSeconds` = another rest.
   Notes and superset groups are not compared; an entry the template no longer has is skipped. `summary` names the structure first and then the first two changed exercises ("1 added, Bench Press weight, Squat sets and
   2 more"); `structureSummary` is the structure alone; both say "none" when empty. `WorkoutFactory.updatedTemplate` rebuilds the planned sets from the current sets, so an accepted update stores the new loads.
 * `SummaryBuilder`: only logged sets; volume as above; averageRIR over recorded rir; `durationSeconds` = elapsed at `finishedAt`;
@@ -352,6 +357,7 @@ public final class FileStrengthPersistence: @unchecked Sendable {
     public func loadHistory() -> [CompletedWorkout];       public func saveHistory(_ v: [CompletedWorkout]) throws   // newest first
     public func loadCustomExercises() -> [Exercise];       public func saveCustomExercises(_ v: [Exercise]) throws
     public func loadPersonalBests() -> [String: PersonalBest]; public func savePersonalBests(_ v: [String: PersonalBest]) throws
+    public func loadPlans() -> [WorkoutPlan];              public func savePlans(_ v: [WorkoutPlan]) throws         // plans.json (section 3.7)
     public func loadPreferences() -> StrengthPreferences?;  public func savePreferences(_ v: StrengthPreferences) throws    // preferences.json (section 3.6); nil when missing or unreadable
     public func loadAcknowledgedCommands() -> [UUID];      public func saveAcknowledgedCommands(_ v: [UUID]) throws   // acknowledged-commands.json, the last 256 ids, oldest first
 }
@@ -369,8 +375,8 @@ JSON (ISO-8601 dates, sorted keys), atomic writes per file, a missing file reads
 * **No silent loss.** When a file cannot be decoded completely (a list or dictionary element that fails to decode, or a file that fails as a whole), the load (1) copies the
   original bytes to `<name>.corrupt-<yyyyMMdd-HHmmss>.json` (UTC; a copy with identical bytes is reused, a collision moves the second on; at most 3 copies per file, the oldest
   deleted), (2) keeps every element that did decode, (3) records a `PersistenceIssue(fileName:, kind:, backupFileName:)` with kind `.unreadableFile` or `.skippedElements(n)`.
-  The damaged file itself stays untouched until the next legitimate save of that file. This covers all nine files (active workout, templates, history, custom exercises,
-  personal bests, body weights, weigh-in preferences, preferences, acknowledged commands). `loadIssues` holds one issue per file, ordered by name; a clean load of a file clears its entry.
+  The damaged file itself stays untouched until the next legitimate save of that file. This covers all ten files (active workout, templates, history, custom exercises,
+  personal bests, plans, body weights, weigh-in preferences, preferences, acknowledged commands). `loadIssues` holds one issue per file, ordered by name; a clean load of a file clears its entry.
   A file that exists but cannot be read at all (not a regular file) is an issue without a backup. A save of a user-data file (not the active workout or the acknowledged
   commands) whose issue has no backup first tries to copy the original again; when that fails the save throws `PersistenceError.originalNotPreserved(fileName:)` and nothing is
   replaced, until the copy works or `acknowledgePersistenceIssues()` clears the issues.
@@ -384,7 +390,7 @@ JSON (ISO-8601 dates, sorted keys), atomic writes per file, a missing file reads
   `StrengthData.historyIsIncomplete` is set (kept across reloads, cleared by `acknowledgePersistenceIssues()`) and `recomputePersonalBests()` only raises the bests meanwhile. Template copies of built-in exercises take
   over the current library (`StrengthData.refreshTemplateExercises()`, in memory; remembered previous results are not library data and stay).
 * **Writes.** Each file is written atomically; a save touching several files is not transactional. `StrengthDataModel.persist` writes only the files a change touched, in the order
-  history, custom exercises, personal bests, templates, body weights, weigh-in preferences, workout preferences (the sets exist only in the history; the bests can be recomputed; `preferences.json` is also written with the first save of anything while it does not exist yet, see 3.6), attempts every file even
+  history, custom exercises, personal bests, templates, plans, body weights, weigh-in preferences, workout preferences (the sets exist only in the history; the bests can be recomputed; `preferences.json` is also written with the first save of anything while it does not exist yet, see 3.6), attempts every file even
   when one fails, sets `lastPersistenceError` to the first error and writes a file whose earlier write failed again with the next save. `record` writes the templates only when
   a template changed and the bests only when a best changed. The `Result` of a call reports only the files that call asked to write (`record`: the history file); the error of a
   file left over from an earlier save reaches `lastPersistenceError` only.
@@ -397,6 +403,7 @@ public final class StrengthStore: ObservableObject {
     @Published public private(set) var history: [CompletedWorkout]          // newest first
     @Published public private(set) var customExercises: [Exercise]
     @Published public private(set) var personalBests: [String: PersonalBest]
+    @Published public private(set) var plans: [WorkoutPlan]                // training plans (section 3.7)
     @Published public private(set) var lastPersistenceError: Error?        // the first error of the last save that failed; nil when it worked
     @Published public private(set) var persistenceIssues: [PersistenceIssue]   // files that were damaged at load, until acknowledged
     @Published public private(set) var preferences: StrengthPreferences     // the user's workout preferences (section 3.6)
@@ -410,9 +417,13 @@ public final class StrengthStore: ObservableObject {
     public func saveTemplate(_ template: WorkoutTemplate) -> Result<Void, Error>      // an existing id keeps its position, a new one is appended
     public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error>   // history, bests, template.lastPerformed, persists
     public func renameTemplate(id: UUID, to name: String) -> Result<Void, Error>
-    public func deleteTemplate(id: UUID) -> Result<Void, Error>
+    public func deleteTemplate(id: UUID) -> Result<Void, Error>                       // also leaves the rotation of every plan
     public func duplicateTemplate(id: UUID, name: String) -> Result<WorkoutTemplate, Error>   // right after the original; new ids, notes copied, lastPerformed nil
     public func moveTemplates(fromOffsets: IndexSet, toOffset: Int) -> Result<Void, Error>    // SwiftUI onMove semantics
+    public var activePlan: WorkoutPlan? { get };  public var nextTemplate: WorkoutTemplate? { get }   // what the hub follows / recommends (section 3.7)
+    public func savePlan(_ plan: WorkoutPlan) -> Result<Void, Error>;  public func activatePlan(id: UUID) -> Result<Void, Error>
+    public func deletePlan(id: UUID) -> Result<Void, Error>;  public func skipNextWorkout(planID: UUID) -> Result<Void, Error>
+    public func importPlan(from fileData: Data) -> Result<PlanImportSummary, PlanImportError>
     public func setTemplateOrder(_ ids: [UUID]) -> Result<Void, Error>
     public func deleteWorkout(id: UUID) -> Result<Void, Error>                       // then recomputePersonalBests; the template gets its earlier lastPerformed back
     public func updateWorkout(_ workout: CompletedWorkout) -> Result<Void, Error>    // see below
@@ -422,7 +433,7 @@ public final class StrengthStore: ObservableObject {
     public var hasSampleData: Bool { get }                                           // sample templates / workouts of an older build's demo data are stored
     public func removeSampleData() -> Result<SampleDataRemoval, Error>               // deletes exactly SampleData.templateIDs / workoutIDs and the sample bests, recomputes the bests
     public func addStarterTemplates() -> Result<Int, Error>                          // Push / Pull / Legs; success = how many were added (0 when all exist)
-    public func resetData(_ scope: ResetScope) -> Result<Void, Error>                // .templates .history .customExercises .bodyWeights .preferences .all
+    public func resetData(_ scope: ResetScope) -> Result<Void, Error>                // .templates .history .customExercises .bodyWeights .preferences .plans .all
     public func recoveryEstimates(now: Date = Date()) -> [MuscleGroup: RecoveryEstimate]   // percent + hasData per muscle group
     public func readinessPercent(now: Date = Date()) -> Int?                         // mean of the six percents; nil without a workout in the last 21 days
     public func recoveryProvider(now: Date = Date()) -> RecoveryProvider
@@ -565,7 +576,7 @@ another workout replaces the kept file; the history is rewritten in full by the 
 `SampleData`: `public enum SampleData { static func templates() -> [WorkoutTemplate]  // "Upper A · Push" (the 6 exercises of the design with
 the same sets), "Lower A · Quads", "Upper B · Pull"; static func history(now: Date) -> [CompletedWorkout]; static func personalBests(now:) }`
 used for `seedDemoData` and SwiftUI previews only (a real user's store is never seeded). `SampleData.templateIDs` (3) and `SampleData.workoutIDs` (5) list the fixed ids
-of the sample items in one place; the sample templates' exercises carry the demo previous results. Make the sample data consistent: today is the `now` argument; "Upper A · Push" was last done
+of the sample items in one place; the sample templates' exercises are the plain library entries (the previous results the demo shows come from its sample history, like anyone's). Make the sample data consistent: today is the `now` argument; "Upper A · Push" was last done
 5 days ago (the Strength hub says so), bench sessions exist 5 days ago (W 50×8, W 70×5, 80×6, 80×6, 80×5), 10 days ago (…, 82.5×5, 85×5 = personal
 record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads" 7 days ago; personal best bench e1RM 99 (85 kg × 5, 10 days ago).
 `seedDemoData` also seeds templates and history only when the store is empty and the data directory holds no data files and no load issues (see "Persistence integrity"). The "Upper A · Push" template is the design's workout: bench
@@ -573,18 +584,18 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
 3×30×12 (both rest 60, superset A), crossover 3×15×12 (rest 60).
 
 **No invented data** (`SampleData.swift`, `StrengthData.swift`, `StrengthData+Reset.swift`, `StarterTemplates.swift`, `RecoveryEstimator.swift`).
-* A real user never sees invented workouts, previous results, personal-record baselines or recovery. `DemoPreviousResults.byExerciseID` is the exercise id -> best e1RM + last sets table of the
-  design (its estimates follow the 12-rep cap: lateral raise 0, pushdown 42, crossover 21; the bench sets carry their two warm-ups as `type: .warmup`) (`applying(to:)` puts it onto an `Exercise`; `ExerciseLibrary.demoBuiltIn` is the whole library with it). `StrengthData.usesDemoPreviousResults` (not stored, never encoded) is true
-  only when `seedDemoDataIfEmpty` seeded this store in this process: the overlay (`exercises()`, `exercise(id:)`, `overlay(_:)`) then starts from the demo numbers; remembered history and
-  personal bests still win. In every other store the overlay uses only the user's own history and bests, so the PREVIOUS column is empty, no set is flagged as a record, no coach tip appears and
-  `PersonalRecord.previousBest` is never invented for a first session. A reload keeps the flag; `removeSampleData()` and a history reset switch it off.
+* A real user never sees invented workouts, previous results, personal-record baselines or recovery. There is ONE mechanism for previous results: the overlay (`exercises()`, `exercise(id:)`,
+  `overlay(_:)`) takes them from the store's own history and personal bests, and an exercise with nothing remembered keeps what it carries, which for the library is nothing. There is no demo
+  flag and no table of invented numbers: the demo store (`seedDemoDataIfEmpty`, previews and the UI tests only) shows previous results and a record baseline because its sample history says so
+  (bench: best 99, five previous sets with the first two as warm-ups), and an exercise the sample history never did has none. In every other store the PREVIOUS column is empty, no set is flagged as a record, no
+  coach tip appears and `PersonalRecord.previousBest` is never invented for a first session. The design's numbers survive only as the test helper `DesignBaseline` (`Tests/`).
 * `WorkoutEngine.restore()` refreshes the exercises of the restored workout like `start(template:)` does (previous best and last sets from the store) and saves the file again when that changed
   something, so a workout that an older build saved does not keep the invented previous results or record baseline.
 * Older builds seeded the sample items into real files. `StrengthData.hasSampleData` (also on the model and the store) is true while a template or workout with an id of `SampleData.templateIDs` /
   `workoutIDs` is stored, or (only while `historyIsIncomplete`, when stored bests are kept) while a stored personal best is one the demo seeding wrote: same estimate, weight and reps as
   `SampleData.personalBests(now:)` and the sample's distance in time from one shared seeding day (to the second), at least two of them; the sample bests without an estimate (the pull-up's reps, the lateral
   raise's weights) are then recognised by that day and their marks. `removeSampleData()` deletes exactly the sample templates and
-  workouts (also when the user edited a sample template; finished workouts started from one stay, with their template id) and those sample bests, then runs `recomputePersonalBests()` so the sample
+  workouts (also when the user edited a sample template; finished workouts started from one stay, with their template id; the user's plans stay, and only a deleted sample template leaves the rotation of the plans that held it) and those sample bests, then runs `recomputePersonalBests()` so the sample
   records of a readable history go too (while `historyIsIncomplete` the other bests are only raised), and returns `SampleDataRemoval(templates:workouts:personalBests:)`. The model saves the templates
   when any went, the history when a workout went and the bests when they changed; nothing is written when nothing was there.
 * `StarterTemplates.all` is Push, Pull and Legs (5-6 library exercises each; sets, reps, weight and rest are `Exercise.defaults`; no `lastPerformed`, no previous results). Their ids are fixed
@@ -598,8 +609,8 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
   `WorkoutDataProviding.recoveryProvider(now:)` lets the engine use it (`recoveryHasData(now:)` says whether the estimate has data; default true for a provider that does not estimate): unless a provider was passed to `WorkoutEngine` / `WorkoutController` (or assigned to `recovery`) the engine estimates from the
   store's history at the time of each call, and `ActiveWorkoutPresentation.Card.recoveryHasData` is false while that history has no recent workout (an injected provider counts as data), so the card
   leaves its recovery line out instead of showing the default 100 %. `DemoRecovery.provider` stays for previews, `StrengthAppEnvironment.preview` and tests.
-* `StrengthStore.resetData(_ scope: ResetScope)` (an `OptionSet`: `.templates`, `.history`, `.customExercises`, `.bodyWeights`, `.preferences`, `.all`) erases and saves: `.history` also clears the personal
-  bests, the `lastPerformed` of every template, `historyIsIncomplete` and the demo flag; `.customExercises` leaves the copies inside templates and the names inside finished workouts; `.bodyWeights` does
+* `StrengthStore.resetData(_ scope: ResetScope)` (an `OptionSet`: `.templates`, `.history`, `.customExercises`, `.bodyWeights`, `.preferences`, `.plans`, `.all`) erases and saves: `.history` also clears the personal
+  bests, the `lastPerformed` of every template and `historyIsIncomplete`; `.templates` also takes every template out of the rotation of every plan (the plans stay, empty); `.plans` deletes the plans and leaves the templates; `.customExercises` leaves the copies inside templates and the names inside finished workouts; `.bodyWeights` does
   not touch Apple Health and switches `weighIn.syncWithHealth` off (otherwise the next read from Health would import the weigh-ins again; the preferences file is saved too); `.preferences` puts every stored preference back to its default (the weigh-in reminder and the workout preferences of section 3.6, the unit by `deviceLocale`; new preference fields are reset in the private `resetPreferences(deviceLocale:)` of `StrengthData+Reset.swift`). The files of
   the named parts are written empty; for `.all` (every option set) the model calls `FileStrengthPersistence.deleteAll()` instead, which removes every data file (also `active-workout.json` and
   `acknowledged-commands.json`) but keeps `schema.json`, the `*.corrupt-*.json` copies and the `schema-vN-backup` folders. Like a write, `deleteAll` is refused for a newer data format and for an
@@ -607,7 +618,8 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
 
 **Managing what is stored** (`StrengthData+Management.swift`; pure functions on `StrengthData`, forwarded by `StrengthDataModel` and `StrengthStore`).
 * The order of `templates` (the array order of `templates.json`) is the user's order. `saveTemplate` keeps the position of a known id and appends a new one; `duplicateTemplate`
-  inserts the copy after the original; `moveTemplates` / `setTemplateOrder` reorder (unknown ids and offsets are ignored, unlisted templates keep their relative order).
+  inserts the copy after the original (it is in no plan: plans hold template ids); `deleteTemplate` also takes the template out of every plan (`WorkoutPlan.removeTemplate`) and the model saves
+  `plans.json` when a plan changed; `updateCustomExercise` and `deleteCustomExercise` leave the plans alone (they hold template ids only); `moveTemplates` / `setTemplateOrder` reorder (unknown ids and offsets are ignored, unlisted templates keep their relative order).
 * `deleteWorkout(id:)` and `updateWorkout(_:)` end with `recomputePersonalBests()`. `updateWorkout` keeps the id, the dates, the duration, the heart rate and the template of the stored
   workout and takes the name (blank keeps the old one) and the exercises (sets with weight, reps, RIR and type, notes, order) from its argument; an exercise without sets disappears.
   Values are clamped (weight 0...1,000,000 kg rounded to 0.01, reps 0...10,800, RIR 0...4). Derived fields are rebuilt by `SummaryBuilder` itself (volume, logged sets, mean RIR, sets per
@@ -633,7 +645,7 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
 * `deleteCustomExercise(id:)` removes the exercise from the library and its entries from the templates (the result is the number of templates that changed); the history keeps the
   names. `updateCustomExercise(_:)` replaces the library entry and the copies in the templates (the remembered previous results of a copy stay); the history keeps the old names.
   `WorkoutEngine.start` gives the exercises of a started template the library's current version for built-in exercises (name, cues, media), plus the latest previous results for all.
-* Exercise notes: `CompletedExercise.note` and `TemplateEntry.note` (`decodeIfPresent`, default ""); `WorkoutFactory.makeWorkout` starts a workout with the template's notes,
+* Exercise notes: `CompletedExercise.note` (`decodeIfPresent`, default "") and `TemplateEntry.note` (`String?`, `decodeIfPresent`: nil, and then absent from the file, when there is none; a blank note is stored as nil); `WorkoutFactory.makeWorkout` starts a workout with the template's notes,
   `updatedTemplate` / `template(from:name:)` copy the workout's notes back, `SummaryBuilder` copies them into the finished workout.
 * The raw values of `MuscleGroup`, `Equipment`, `TrackingKind` and `SetType` are storage keys and never change; the text shown to the user comes from `title`
   (`CodableEvolutionTests` pins them).
@@ -686,8 +698,8 @@ latest weigh-in on or before the date, or the first one ever for earlier dates. 
 
 iOS (`PulseStrengthIOS`): `WeightReminderScheduler` (internal) subscribes to the store and keeps up to three non-repeating `UNCalendarNotificationTrigger` requests
 (`StrengthConfig.weightReminderIDPrefix` + ".0", ".1", ".2") in step with it; it is created by `StrengthAppEnvironment.live()` only (previews and UI tests have none: no
-notifications, no prompts) and refreshed when the app becomes active. The notification permission is requested when the user turns the reminder on
-(`StrengthAppEnvironment.requestWeightReminderPermission()`), not at launch. The notification carries a "Log weight" text-input action (category
+notifications, no prompts) and refreshed when the app becomes active. The weigh-in code does not ask for the notification permission at launch (the launch request of `PulseServices.requestPermissions()` is for the rest alert and also
+covers the reminder); turning the reminder on asks again if the user has not decided yet (`StrengthAppEnvironment.requestWeightReminderPermission()`). The notification carries a "Log weight" text-input action (category
 `weightReminderCategoryID`): a typed weight is recorded without opening the app, anything that does not parse opens the entry instead. Tapping the notification, or opening
 `pulse-strength://weight`, sets `StrengthAppEnvironment.showsWeightEntry`, which `PulseStrengthRootView` presents as `BodyWeightEntrySheet` (not while a workout is in progress).
 `UNUserNotificationCenter` has one delegate, so `StrengthNotificationDelegate.shared` serves the rest alert and the weigh-in reminder. Screens: `StrengthSettingsView` (hub "More" menu >
@@ -766,11 +778,83 @@ public struct WeightFormatter: Equatable, Sendable {                  // every f
   (`WorkoutDataProviding.preferences`, default `StrengthPreferences()`). A rest timer toggle the user makes DURING a workout (`.setAutoStartRest`, `.setAlertWhenRestEnds`, from the phone, the Watch or the Live
   Activity) is saved back to the preferences by the authority, so the next workout starts the same way; a mirror never writes. `WorkoutController.updatePreferences(_:)` saves preferences
   and, when a workout is running in another unit, sends `.setWeightUnit` (the screen, the Watch and the Live Activity switch at once); a running workout keeps its own rest toggles.
+### 3.7 Plans, rep ranges, entry notes, plan import (`WorkoutPlan.swift`, `Models.swift`, `StrengthData.swift`, `WorkoutFactory.swift`)
+
+A **plan** is a rotation of saved templates, deliberately not a calendar: nothing in it knows a weekday.
+
+```swift
+public struct WorkoutPlan: Identifiable, Codable, Hashable, Sendable {
+    var id: UUID; var name: String
+    var templateIDs: [UUID]      // rotation order; an id without a template is passed over
+    var nextIndex: Int           // index into templateIDs of the workout that is next
+    var daysPerWeek: Int?        // only a target the hub shows next to "done in the last 7 days"
+    var isActive: Bool           // at most one plan is active
+}
+```
+
+* `nextWorkout(in:)` is the workout at `nextIndex` (the first existing one after it, wrapping). `advance(after:)` moves `nextIndex` to the
+  workout after the given template, so doing Push before Upper simply continues after Push. `skip(in:)` passes over the next workout.
+* `StrengthData.record` advances every plan that contains the finished workout's template, once per workout id (recording the same workout
+  again does not move the rotation again). A workout without a template changes no plan.
+* `StrengthData.nextTemplate()` is what the hub recommends: the active plan's next workout; without an active plan (or when none of its
+  templates exists) `TemplateRotation.next(in:)`, the rotation over all templates (the one after the most recently performed) that the hub
+  had before plans existed.
+* Plans are stored in `plans.json` (`FileStrengthPersistence.loadPlans/savePlans`) and are under the same persistence machinery as every file (section 3.4): a plan list that does not
+  decode completely is copied to `plans.json.corrupt-...` and reported as a `PersistenceIssue` (undecodable plans are skipped, the rest kept), the file is protected (a save over a damaged file first
+  preserves the original), it is part of the schema backup, of `hasDataFiles` (so nothing is seeded over it), of `ResetScope.plans` and `.all`, and `persist` writes it only when a plan changed
+  (`record`: when a rotation advanced). `StrengthStore` publishes `plans` and offers `savePlan`, `activatePlan`, `deletePlan` (the templates stay), `skipNextWorkout`, each a `Result<Void, Error>`
+  (`.failure` when the file could not be written; the change stays in memory), and `importPlan` (a write error of the files it changed reaches `lastPersistenceError`).
+* A deleted template leaves every rotation. `removeTemplate(_:)` takes every occurrence of the id out of `templateIDs` and keeps `nextIndex` on the workout that was next; when that workout is the
+  one removed, the workout after it is next (the first when it was the last); an empty rotation has `nextIndex` 0. A plan left without workouts stays (the hub shows no plan section for it).
+  Deleting a finished workout does not move a rotation back.
+
+Two optional fields carry what a coach's plan says about a workout: `PlannedSet.repsMax` (a rep range: `reps` is the lower end,
+`repsText` prints "8–10") and `TemplateEntry.note` (technique cues, substitutions). Both are **optional on purpose**: the stores skip a list
+element that does not decode, so a new required key would have made every older saved template disappear. `WorkoutFactory.makeWorkout` copies
+the note into the workout exercise's note; `updatedTemplate` / `template(from:)` copy a non-blank note back, and `updatedTemplate` keeps a
+set's range until the reps done reach its top. The template diff (3.3) reads a range as "any number of reps from `reps` to `repsMax`": a set inside it is no change, one outside it is a `reps`
+change. The workout itself still has one target per set (`LoggedSet.reps`), so nothing in the Watch
+sync or the Live Activity changed.
+
+**Import.** `PlanBundle` (`version`, `plans`, `templates`, `customExercises`) is the file format of `yt_workout.py`'s `pulse-import.json`;
+the hub's "Import Plan…" (a `fileImporter` for JSON) calls `StrengthStore.importPlan(from:)`. `PlanBundle.decode` refuses a file that is not
+a bundle (`PlanImportError.unreadable`), is newer than `currentVersion` or holds no templates. `StrengthData.importBundle` then
+`sanitized()`s it (names trimmed, reps/weights/rest clamped to what the reducer accepts, a range only when its top is above its bottom,
+built-in exercises replaced by the library's definition, custom exercises never over a built-in id, every custom reps-only exercise marked `allowsAddedWeight` as `Exercise.custom` does, unknown plan entries dropped) and merges
+by id: a known template is replaced but keeps its `lastPerformed`; a known plan keeps its place in the rotation and its active flag; a new
+plan becomes the active one. Importing the same file twice therefore changes nothing but the content it carries.
+
+### 3.8 Onboarding: `OnboardingModels.swift`, `OnboardingFlow.swift`, `OnboardingModel.swift`, `OnboardingServices.swift` and friends (area: first run)
+
+The first-run flow follows the same split as the workout: a pure state machine in Core, a thin observable wrapper, and views that only render it.
+Contract (all `public`, Foundation only; the prototype in `design/` is the reference for the screens):
+
+* `OnboardingStep` (`welcome`, `auth`, `profile`, `health`, `coach`, `notify`, `done`; `setupSteps`, `setupNumber`, `isSetup`, `previous`, `next`),
+  `AuthMode` (`signUp`, `logIn`), `TrainingGoal`, `ExperienceLevel`, `OnboardingAnswers` (goal, level and three optional yes/no answers: `nil` is "not asked yet"),
+  `OnboardingOutcome` (`finished(answers)` for a new account, `signedIn` for an existing one), `OnboardingBrand.name`.
+* `OnboardingState` + `OnboardingAction` -> `OnboardingReducer.reduce(_:_:)`. An action that does not fit the screen (an answer to a step that is not showing,
+  `finish` before the last screen, `continueFromProfile` without a goal and a level) returns the state unchanged. `.authenticated` leads to `profile` on the
+  sign-up tab and ends the flow (`outcome = .signedIn`) on the log-in tab. AI Coaching is never implied: `OnboardingState.preview(at:)` leaves it off.
+* `OnboardingModel` (`@MainActor`, `ObservableObject`, compiled with Combine or the stand-in): `state`, the form (`email`, `password`, `isPasswordVisible`,
+  `emailIsInvalid`, `passwordIsInvalid`, `authError`, `focusRequest`), `busy` (`submit`, `apple`, `reset`, `health`, `notifications`), `notice` (the toast),
+  `isMotionPaused`, and one method per button (`submit()`, `continueWithApple()`, `forgotPassword()`, `connectHealth()`, `answerCoach(_:)`, `enableNotifications()`, ...).
+  While a request or a system sheet is up nothing else starts, the sheet cannot be closed and the tabs cannot be switched. The password is cleared
+  when the form is used or closed. `onComplete` is called once with the outcome.
+* `OnboardingServices` (`@MainActor` protocol): `authenticate(mode:email:password:)`, `authenticateWithApple(mode:)`, `sendPasswordReset(to:)` (all throw
+  `OnboardingAuthError`: `invalidCredentials`, `accountExists`, `cancelled`, `failed`), `requestHealthAccess() -> Bool`, `requestNotificationAccess() -> Bool`.
+  `SimulatedOnboardingServices` answers as told after a pause (previews, UI tests, the app until an account service exists).
+* `OnboardingCopy(language:)`: every string in English and German (`OnboardingText` has one case per plain string; `OnboardingCopyTables.swift` is generated from
+  `design/app.js` with an exhaustive `switch` per language, so a missing translation does not compile), plus the sentences with links and bold parts
+  (`[OnboardingRun]`), the parameterised texts and the account messages. German is the informal "du". `OnboardingLegal` maps the two documents to the pages of the website.
+* `CredentialsValidator` (an email needs one "@" and a dotted domain; a new password needs 8 characters, a log-in only a password), `HighlightPlayback`
+  (the clock of the three bars: 6.5 s each, the remainder carries over, one tick never moves it more than 0.5 s so a returning app does not skip highlights),
+  `OnboardingSummary` (the chips of the last screen), `OnboardingRecord` + `OnboardingRecordStore` (what is kept in `UserDefaults` once the flow is over, and the
+  `askedForPermissions` rule), `OnboardingLaunchMode` (`firstLaunch`, `skip`, `always`, from the launch arguments).
 
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
-  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 1083 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 1124 (the controller and
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 1481 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 1551 (the controller and
   store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
   phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
   40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice. `SyncHardeningTests.swift` holds one
@@ -784,6 +868,10 @@ public struct WeightFormatter: Equatable, Sendable {                  // every f
   notice after a workout was adopted. `SyncWatchHealth2Tests.swift` covers when the phone ended the workout (`lastEndNoticeSentAt`: late, legacy and ghost notices,
   ignored notices, workouts that ended on the Watch itself, the controller forwards) with the Health end time rule (`SyncReconciler.healthWorkoutEnd`), and the rule
   that decides whether an end notice received without a workout belongs to a Health session nobody claimed (`SyncReconciler.endNotice(sentAt:settlesSessionStartedAt:)`).
+  The onboarding (3.8) has `OnboardingFlowTests.swift` (every path through the reducer, ignored actions, Back, AI Coaching never implied), `OnboardingModelTests.swift`
+  (the model against scripted services that can hold a call: busy states, failures, permission answers, the toast; Combine or the stand-in), `OnboardingCredentialsTests.swift`,
+  `OnboardingCopyTests.swift` (both languages complete, no leftover product name, the legal sentences, summary), `HighlightPlaybackTests.swift` and `OnboardingRecordTests.swift`
+  (record store, simulated services, launch arguments).
 * Apple-only files cannot be compiled on Linux: they are syntax-checked with `swiftc -parse` while writing, reviewed adversarially against the
   iOS 17 / watchOS 10 SDK APIs, and compiled and exercised by the macOS CI jobs (`apple`, `visual`, `matrix`). The README's "Verification status"
   lists what is verified and what needs real hardware.
@@ -800,7 +888,7 @@ conservative, documented SwiftUI/ActivityKit/HealthKit/WatchConnectivity code fo
 
 * Bundle ids: app `health.pulse.strength`, widget extension `health.pulse.strength.widgets`, watch app `health.pulse.strength.watchkitapp`.
   `StrengthConfig.appGroupID` = `group.health.pulse.strength` is reserved for sharing data with the Pulse app (the standalone build declares no App Group); URL scheme `pulse-strength`. The bundle id and the team live in `Config/Signing.xcconfig`. All are placeholders to replace.
-* iOS app: HealthKit (read heart rate; share workouts and active energy), Push-less Live Activities
+* iOS app: HealthKit (share workouts; it reads nothing during a workout, the heart rate arrives from the Watch over WatchConnectivity; body weight is read and written only when Sync with Apple Health is on), Push-less Live Activities
   (`NSSupportsLiveActivities` = YES, `NSSupportsLiveActivitiesFrequentUpdates` = YES), `NSHealthShareUsageDescription`,
   `NSHealthUpdateUsageDescription`, URL type for the scheme, Notifications (time-sensitive rest alert).
 * Watch app: HealthKit, `WKBackgroundModes` = `workout-processing`, `WKCompanionAppBundleIdentifier` = the iOS bundle id, usage descriptions.
@@ -879,7 +967,7 @@ The keypad keeps its text buffer locally and dispatches `setWeight` / `setReps` 
     @Published public var watchStatus: WatchStatus
     public static let shared: StrengthAppEnvironment            // live(); created lazily on the main actor; also registers the WorkoutCommandBus handler
     public static func live(seedDemoData: Bool = false) -> StrengthAppEnvironment   // app-group persistence, fallback Application Support/PulseStrength; installs services; restoreFromDisk(); never seeds by default
-    public static func preview(withActiveWorkout: Bool = false) -> StrengthAppEnvironment  // temporary persistence + sample data + DemoRecovery, no services (also the -PulseUITest launch)
+    public static func preview(withActiveWorkout: Bool = false) -> StrengthAppEnvironment  // temporary persistence + sample data (previous results come from its sample history) + DemoRecovery, no services (also the -PulseUITest launch)
 }
 public struct StrengthHubView: View { public init(environment: StrengthAppEnvironment, onStart: @escaping (WorkoutTemplate?) -> Void, onResume: @escaping () -> Void) }
 public struct ExerciseDetailView: View { public init(exercise: Exercise, store: StrengthStore) }
@@ -985,11 +1073,32 @@ phone ends the workout.
   session runs does not turn the pending save into a discard. Known limit: the notice names the workout that ended LAST; if the phone also started and discarded a
   later workout before the Watch recovered, its flag decides for the recovered one.
 
-### 5.6 Project, CI, docs
+### 5.6 Onboarding screens (`Sources/PulseStrengthIOS/Onboarding/`)
+
+Dark only (the clip is the surface): `OnboardingTheme.swift` holds the dark values of `PulseTheme` as fixed colours, the glass and button styles, the rich-text helper
+and the Rebase mark. Every file is wrapped in `#if os(iOS)` and uses only iOS 17 APIs (no iOS 26 glass).
+
+| File | Public API / contents |
+| --- | --- |
+| `OnboardingFlowView.swift` | `OnboardingFlowView(services:copy:state:onComplete:)`: backdrop, welcome screen, the five setup screens (each waits right of the middle, slides in, leaves left; going back reverses it), top bar, toast, and the account `.sheet` |
+| `OnboardingGate.swift` | `OnboardingGate(services:store:showsAlways:content:)`: the flow while there is no `OnboardingRecord`, then `content(record)`; `PulseOnboardingServices(system:simulatedLatency:)`: permissions through `PulseServices.requestHealthPermission()` / `requestNotificationPermission()`, account calls simulated |
+| `OnboardingBackdrop.swift` | the poster, the muted looping clip (`AVPlayerLooper` in an `AVPlayerLayer`, no audio session), two dark gradients, the veil; the clip plays on welcome and auth only and stops for Reduce Motion, Low Power Mode, the pause button and a backgrounded app |
+| `OnboardingWelcomeView.swift`, `OnboardingProofCards.swift` | three highlights driven by `HighlightPlayback` (tap a bar or swipe to move, hold to pause) with their preview cards (plan + readiness ring, rest timer + heart rate, new PR + sparkline); previews are decorative and hidden from VoiceOver; at accessibility text sizes the screen scrolls (below the top bar) and drops the previews |
+| `OnboardingAuthSheet.swift` | Sign up / Log in switch, Continue with Apple, email and password fields with inline errors, a system sheet whose first detent is as tall as the form (measured by the sheet itself, kept at the tallest it has been, never shorter than 540 pt; full height at accessibility text sizes), the focused field is scrolled to the middle of the room above the keyboard (`ScrollViewReader`), `interactiveDismissDisabled` while busy |
+| `OnboardingSetupLayout.swift`, `OnboardingSetupScreens.swift`, `OnboardingDoneView.swift` | head + scrolling body (bottom fade while there is more) + pinned buttons; at accessibility text sizes everything scrolls together. Profile, Health, Coach, Notify, Done |
+| `OnboardingChrome.swift` | top bar (brand or Back, whichever is not shown is left out of the view tree instead of being faded and hidden; four progress bars; pause button) and toast |
+
+* **Accessibility.** Titles are headings and receive VoiceOver focus when their step appears; hidden steps are `accessibilityHidden`; the pager bars are buttons with
+  "Show highlight 2 of 3"; errors are announced; every control has an `accessibilityIdentifier` of the form `onboarding.<name>` for the UI tests.
+* **Short phones** (under 760 pt, the iPhone SE) drop the preview cards and the option subtitles, like the prototype's container query.
+* **Host wiring.** `PulseStrengthApp` creates the services and the record store once; `-PulseUITest` skips the flow unless `-PulseShowOnboarding` is also passed.
+  `PulseStrengthRootView(environment:requestsPermissionsAtLaunch:)` no longer asks for Health and notifications at launch after the setup steps did.
+
+### 5.7 Project, CI, docs
 
 `project.yml` (XcodeGen) defines targets PulseStrength (iOS app, embeds the widget extension and the Watch app; sources `Apps/PulseStrength` + `Apps/Shared/Intents`), PulseStrengthWidgets
 (app-extension; sources `Apps/PulseStrengthWidgets` + `Apps/Shared/Intents` + `Apps/Shared/LiveActivity`), PulseStrengthWatch (watchOS app) with the package products as dependencies, entitlements and Info.plist properties from 5.1, schemes. `Apps/*` contains the `@main` entry points, plists, entitlements,
 asset catalogs (AccentColor, placeholder AppIcon). `.github/workflows/strength-ios.yml`: Linux job (`swift test`, with and without `-Xswiftc -DPULSE_COMBINE_SHIM`) and a macOS job
 (`swift test` of the package on macOS, `xcodegen generate` plus a check that the committed `PulseStrength.xcodeproj` is unchanged, `xcodebuild build` of the iOS and watchOS schemes for the simulators with `CODE_SIGNING_ALLOWED=NO`). `README.md`
 documents setup, what is verified and what is not, integration with the Pulse app (replace `RecoveryProvider`, the App Group id, the bundle ids, the media source), and the
-public-domain attribution of the form photos (Free Exercise DB, Unlicense).
+source of the form photos (Free Exercise DB; they are placeholders with no cleared image licence, see "Exercise photos").

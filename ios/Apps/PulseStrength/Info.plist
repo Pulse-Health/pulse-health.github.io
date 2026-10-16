@@ -38,7 +38,7 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Pulse Strength reads your heart rate and active energy during a strength workout and shows them on your iPhone, Apple Watch and Lock Screen. If you turn on Sync with Apple Health in Settings, it also reads your body weight to keep your weigh-ins up to date.</string>
+	<string>If you turn on Sync with Apple Health in Settings, Pulse Strength reads your body weight from the Health app to keep your weigh-ins up to date.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Pulse Strength saves your finished strength workouts to the Health app. If you turn on Sync with Apple Health in Settings, it also saves the body weight you enter.</string>
 	<key>NSSupportsLiveActivities</key>

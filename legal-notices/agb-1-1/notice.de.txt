@@ -1,0 +1,119 @@
+Betreff: Pulse: Änderung der AGB ab {{EFFECTIVE_DATE}} – Widerspruch bis {{OBJECTION_DEADLINE}} möglich
+
+Guten Tag,
+
+wir ändern die Allgemeinen Geschäftsbedingungen (AGB) für die Nutzung von Pulse. Diese Nachricht ist die Änderungsmitteilung nach § 15 Abs. 2 AGB und ergeht in Textform. Sie enthält den Wortlaut aller geänderten Bestimmungen. Maßgeblich ist die deutsche Fassung dieser Mitteilung; eine englische Übersetzung dient nur Ihrer Information.
+
+
+1. DAS WICHTIGSTE IN KÜRZE
+
+- Die AGB beschreiben jetzt auch die KI-gestützte Erstellung von Trainings- und Ernährungsplänen. Neu ist außerdem ein Hinweis: Diese Pläne sind allgemeine Vorschläge und keine individuelle medizinische Beratung (§ 2, § 7 und § 8).
+- Die Verarbeitung der Daten, die für das KI-Coaching und die Erstellung von Trainings- und Ernährungsplänen an die eingesetzten KI-Anbieter übermittelt werden, erfolgt ausschließlich auf Servern innerhalb der Europäischen Union. Die bisherige Angabe einer Übermittlung an einen Anbieter in den USA entfällt (§ 8 Abs. 3).
+- Die AGB nennen keinen bestimmten KI-Anbieter mehr. Welche Anbieter und Modelle derzeit eingesetzt werden, steht in der Datenschutzerklärung (§ 8 Abs. 1).
+- Wir dürfen das KI-Modell, den Modellanbieter und den Zugangsweg wechseln, ergänzen oder ersetzen, aber nur, solange die Verarbeitung weiterhin ausschließlich auf Servern innerhalb der EU erfolgt (§ 8 Abs. 4).
+- Es werden keine Entgelte eingeführt. An den Regelungen zu Preisen und Premium (§ 5) ändert sich nichts.
+- Auch die Datenschutzerklärung wurde aktualisiert.
+
+
+============================================================
+2. WICHTIGER HINWEIS: IHR WIDERSPRUCHSRECHT UND DIE FOLGEN
+   (gesonderter Hinweis nach § 15 Abs. 2 AGB)
+============================================================
+
+Die geänderten AGB (Version 1.1) sollen ab dem {{EFFECTIVE_DATE}} auch für Ihr bestehendes Nutzungsverhältnis gelten.
+
+a) Sie sind einverstanden? Dann müssen Sie nichts tun. Wenn Sie den Änderungen nicht bis zum {{OBJECTION_DEADLINE}} widersprechen und Pulse weiter nutzen, gelten die Änderungen als von Ihnen angenommen.
+
+b) Sie sind nicht einverstanden? Dann können Sie den Änderungen bis zum {{OBJECTION_DEADLINE}} widersprechen (sechs Wochen ab Zugang dieser Mitteilung). Der Widerspruch ist formlos möglich, zum Beispiel per E-Mail an robin.juengerich@icloud.com (Betreff: „Widerspruch AGB 1.1“) oder per Post an Robin Jüngerich, Dorfstraße 179, 24222 Schwentinental, Deutschland. Zur Wahrung der Frist genügt es, wenn Sie Ihren Widerspruch rechtzeitig absenden.
+
+c) Folgen eines Widerspruchs: Es gelten für Sie dann bis zu einer Beendigung des Vertrags weiter die bisherigen AGB (Version 1.0). Jede Vertragspartei kann den Vertrag dann kündigen (§ 15 Abs. 3 AGB), also auch wir. Eine Kündigung durch uns erfolgt in Textform mit einer Frist von 14 Tagen zum Monatsende (§ 13 Abs. 3 AGB).
+
+d) Unabhängig davon können Sie den Vertrag jederzeit ohne Frist beenden, indem Sie Ihr Konto in der App löschen (§ 13 Abs. 2 AGB). Ihre Daten werden dann nach Maßgabe der Datenschutzerklärung gelöscht.
+
+
+3. GRUND DER ÄNDERUNG (§ 15 ABS. 1 AGB)
+
+Die Änderungen sind aus triftigem Grund erforderlich, nämlich wegen einer Änderung des Leistungsumfangs und technischer Anforderungen:
+
+- Pulse bietet inzwischen die KI-gestützte Erstellung von Trainings- und Ernährungsplänen an. Die AGB müssen diesen Leistungsumfang samt dem zugehörigen gesundheitlichen Hinweis zutreffend beschreiben.
+- Die KI-Verarbeitung erfolgt ausschließlich auf Servern innerhalb der EU. Die AGB müssen das zutreffend beschreiben; die bisherige Angabe eines Anbieters in den USA ist überholt.
+- KI-Modelle und -Anbieter wechseln in kurzen Abständen (Modelle werden ersetzt oder eingestellt, Zugangswege ändern sich). Wir stellen deshalb ausdrücklich klar, dass Modell, Modellanbieter und Zugangsweg gewechselt werden dürfen, allerdings nur unter der festen Bedingung, dass die Verarbeitung ausschließlich in der EU bleibt.
+
+Wir sind der Auffassung, dass Sie dadurch nicht unangemessen benachteiligt werden: Der Funktionsumfang wächst, der EU-Standort der KI-Verarbeitung wird verbindlich zugesagt, Sie können das KI-Coaching in den Einstellungen deaktivieren (§ 8 Abs. 3 AGB) und den Vertrag jederzeit beenden (§ 13 Abs. 2 AGB).
+
+
+4. DIE GEÄNDERTEN BESTIMMUNGEN IM WORTLAUT
+
+Nachfolgend finden Sie jede geänderte Bestimmung in der bisherigen Fassung (Version 1.0) und in der neuen Fassung (Version 1.1). Alle übrigen Bestimmungen der AGB bleiben unverändert. Außerdem wurden Stand und Versionsnummer angepasst (Version 1.1, Stand 13. Oktober 2026, Erstfassung vom 24. Juni 2026).
+
+§ 2 Abs. 1 – Vertragsgegenstand und Leistungsbeschreibung
+Änderung: Ergänzt um die KI-gestützte Erstellung von Trainings- und Ernährungsplänen.
+
+Bisher (Version 1.0):
+> (1) Pulse ist eine Anwendung zum persönlichen Tracking von Fitness, Ernährung, Schlaf und ausgewählten Gesundheits- und Erholungsmetriken (z. B. Herzfrequenz, Herzfrequenzvariabilität). Die App berechnet daraus Auswertungen, Trends und Wellness-Scores und bietet eine optionale, KI-gestützte Coaching-Funktion (siehe § 8).
+
+Neu (Version 1.1):
+> (1) Pulse ist eine Anwendung zum persönlichen Tracking von Fitness, Ernährung, Schlaf und ausgewählten Gesundheits- und Erholungsmetriken (z. B. Herzfrequenz, Herzfrequenzvariabilität). Die App berechnet daraus Auswertungen, Trends und Wellness-Scores und bietet eine optionale, KI-gestützte Coaching-Funktion sowie die KI-gestützte Erstellung von Trainings- und Ernährungsplänen (siehe § 8).
+
+§ 7 Abs. 1 – Gesundheitlicher Hinweis
+Änderung: Ergänzt um Trainings- und Ernährungspläne.
+
+Bisher (Version 1.0):
+> (1) Die in der App angezeigten Auswertungen, Scores und Empfehlungen sind ausschließlich informativer Natur und dienen der allgemeinen Unterstützung eines gesunden Lebensstils.
+
+Neu (Version 1.1):
+> (1) Die in der App angezeigten Auswertungen, Scores, Empfehlungen sowie Trainings- und Ernährungspläne sind ausschließlich informativer Natur und dienen der allgemeinen Unterstützung eines gesunden Lebensstils.
+
+§ 8 Abs. 1 – KI-gestütztes Coaching und KI-generierte Inhalte
+Änderung: Die KI-Funktionen umfassen jetzt auch die Erstellung von Trainings- und Ernährungsplänen. Der bisher genannte Anbieter (OpenAI) wird in den AGB nicht mehr genannt; stattdessen wird auf die Datenschutzerklärung verwiesen.
+
+Bisher (Version 1.0):
+> (1) Die optionale Coaching-Funktion erzeugt Antworten mithilfe eines KI-Sprachmodells eines Drittanbieters (derzeit OpenAI). Sie interagieren dabei mit einer künstlichen Intelligenz, nicht mit einem Menschen.
+
+Neu (Version 1.1):
+> (1) Die optionalen KI-Funktionen (Coaching sowie Erstellung von Trainings- und Ernährungsplänen) erzeugen Antworten und Inhalte mithilfe von KI-Sprachmodellen von Drittanbietern. Welche Anbieter und Modelle derzeit eingesetzt werden, ergibt sich aus der Datenschutzerklärung. Sie interagieren dabei mit einer künstlichen Intelligenz, nicht mit einem Menschen.
+
+§ 8 Abs. 2
+Änderung: Der letzte Satz ist neu (Hinweis zu KI-erstellten Trainings- und Ernährungsplänen).
+
+Bisher (Version 1.0):
+> (2) KI-generierte Inhalte können unzutreffend, unvollständig oder missverständlich sein („Halluzinationen“). Der Anbieter übernimmt keine Gewähr für die Richtigkeit, Vollständigkeit oder Eignung der KI-Ausgaben für einen bestimmten Zweck. Prüfen Sie wichtige Informationen eigenverantwortlich und verlassen Sie sich nicht allein auf die Coaching-Ausgaben.
+
+Neu (Version 1.1):
+> (2) KI-generierte Inhalte können unzutreffend, unvollständig oder missverständlich sein („Halluzinationen“). Der Anbieter übernimmt keine Gewähr für die Richtigkeit, Vollständigkeit oder Eignung der KI-Ausgaben für einen bestimmten Zweck. Prüfen Sie wichtige Informationen eigenverantwortlich und verlassen Sie sich nicht allein auf die Coaching-Ausgaben. KI-erstellte Trainings- und Ernährungspläne sind allgemeine Vorschläge und keine individuelle medizinische Beratung: Passen Sie eine Übung an oder brechen Sie sie ab, wenn sie Schmerzen verursacht oder nicht zu Ihrer gesundheitlichen Situation passt, und holen Sie im Zweifel fachlichen Rat ein.
+
+§ 8 Abs. 3
+Änderung: Die Erstellung von Trainings- und Ernährungsplänen ist einbezogen. Statt der Übermittlung an einen Anbieter in den USA gilt: Die Verarbeitung erfolgt ausschließlich auf Servern innerhalb der Europäischen Union.
+
+Bisher (Version 1.0):
+> (3) Für das KI-Coaching werden ausgewählte Profil- und Coaching-Daten an den Drittanbieter in den USA übermittelt. Einzelheiten, Rechtsgrundlagen und Schutzmaßnahmen ergeben sich aus der Datenschutzerklärung. Sie können das KI-Coaching in den Einstellungen deaktivieren; das übrige Tracking bleibt davon unberührt.
+
+Neu (Version 1.1):
+> (3) Für das KI-Coaching und die KI-gestützte Erstellung von Trainings- und Ernährungsplänen werden ausgewählte Profil-, Coaching- und Plan-Einstellungsdaten an den bzw. die eingesetzten KI-Drittanbieter übermittelt. Diese Verarbeitung erfolgt ausschließlich auf Servern innerhalb der Europäischen Union. Einzelheiten, Rechtsgrundlagen und Schutzmaßnahmen ergeben sich aus der Datenschutzerklärung. Sie können das KI-Coaching in den Einstellungen deaktivieren; das übrige Tracking bleibt davon unberührt.
+
+§ 8 Abs. 4
+Änderung: Neu eingefügt (Wechsel von KI-Modell, Modellanbieter und Zugangsweg bei weiterhin ausschließlicher Verarbeitung in der EU).
+
+Bisher (Version 1.0): Diesen Absatz gab es nicht.
+
+Neu (Version 1.1):
+> (4) Der Anbieter darf das eingesetzte KI-Modell, den Modellanbieter und den Zugangsweg (z. B. über einen KI-Vermittlungsdienst oder direkt über die Schnittstelle des Modellanbieters) wechseln, ergänzen oder ersetzen (siehe § 9 Abs. 2), sofern die Verarbeitung für diese KI-Funktionen weiterhin ausschließlich auf Servern innerhalb der Europäischen Union erfolgt.
+
+
+5. WEITERE INFORMATIONEN
+
+- Die auf der Website veröffentlichte Fassung der AGB ist Version 1.1. Für Ihr bestehendes Nutzungsverhältnis gilt sie erst ab dem {{EFFECTIVE_DATE}} (siehe Abschnitt 2).
+- Vollständige AGB, Version 1.1 (Deutsch, maßgeblich): https://pulse-health.github.io/agb.html
+- Terms of Service, Version 1.1 (English, Übersetzung): https://pulse-health.github.io/terms.html
+- Datenschutzerklärung mit den derzeit eingesetzten KI-Anbietern und Modellen, Rechtsgrundlagen und Schutzmaßnahmen: https://pulse-health.github.io/datenschutz.html
+- Die bisherigen AGB (Version 1.0) senden wir Ihnen auf Anfrage gern zu.
+- Fragen zu dieser Änderung? Schreiben Sie uns an robin.juengerich@icloud.com.
+
+Mit freundlichen Grüßen
+
+Robin Jüngerich
+Anbieter von Pulse
+Dorfstraße 179, 24222 Schwentinental, Deutschland
+robin.juengerich@icloud.com
+
+Diese Mitteilung wurde am {{SEND_DATE}} versandt.

@@ -342,7 +342,7 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
     public var navigator: Navigator?
     public var card: Card?
     public var dock: Dock?
-    /// Undo snackbar text ("Removed Cable crossover") while an undo entry is still valid.
+    /// Undo snackbar text ("Removed Cable crossover", "Replaced Barbell bench press", "Set deleted") while an undo entry is still valid.
     public var undoText: String?
     public var isEmpty: Bool
     public var totals: Totals

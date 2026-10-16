@@ -29,13 +29,21 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// The root view presents the entry and clears the flag.
     @Published public var showsWeightEntry = false
 
+    /// True while the walkthrough should be on screen. The root view presents it and clears the flag when it closes.
+    @Published public var showsWalkthrough = false
+
     /// Keeps the weigh-in reminder notifications up to date; nil for previews and UI tests (no notifications, no permission prompts).
     let weightReminders: WeightReminderScheduler?
+
+    /// Remembers that the user has seen the walkthrough; nil for previews and UI tests (they never open it by themselves
+    /// and never touch the real defaults).
+    let walkthroughMemory: WalkthroughMemory?
 
     /// Exchanges the body weight with Apple Health when the user turned that on; nil for previews and UI tests (no Health access, no prompts).
     let healthSync: BodyWeightHealthSync?
 
-    /// The live environment of the running app (persistence in Application Support or the App Group container; never seeded with demo data).
+    /// The live environment of the running app (persistence in Application Support or the App Group container). A new user starts with an
+    /// empty store: no demo workouts, no invented records.
     public static let shared: StrengthAppEnvironment = StrengthAppEnvironment.live()
 
     private init(
@@ -46,7 +54,8 @@ public final class StrengthAppEnvironment: ObservableObject {
         hasSystemServices: Bool,
         watchStatus: WatchStatus,
         weightReminders: WeightReminderScheduler?,
-        healthSync: BodyWeightHealthSync?
+        healthSync: BodyWeightHealthSync?,
+        walkthroughMemory: WalkthroughMemory?
     ) {
         self.persistence = persistence
         self.store = store
@@ -56,14 +65,18 @@ public final class StrengthAppEnvironment: ObservableObject {
         self.watchStatus = watchStatus
         self.weightReminders = weightReminders
         self.healthSync = healthSync
+        self.walkthroughMemory = walkthroughMemory
     }
 
     // MARK: Live
 
     /// Builds the environment of the running app: persistence in the App Group container when the app is
     /// entitled to one, otherwise in Application Support/PulseStrength (the standalone build), the platform services, the command-bus handler for the Live Activity
-    /// buttons, and restores a workout that was running when the app was last closed. A real user's store starts empty,
-    /// so `seedDemoData` is false.
+    /// buttons, and restores a workout that was running when the app was last closed.
+    ///
+    /// `seedDemoData` fills an empty store with demo templates, five invented workouts and invented personal bests. It is off by
+    /// default because those would be shown (and compared against) as the user's own data; previews and the UI tests get the demo
+    /// data through `preview(withActiveWorkout:)`.
     public static func live(seedDemoData: Bool = false) -> StrengthAppEnvironment {
         let persistence = makeLivePersistence()
         let store = StrengthStore(persistence: persistence, seedDemoData: seedDemoData, deviceLocale: Locale.current)
@@ -78,7 +91,8 @@ public final class StrengthAppEnvironment: ObservableObject {
             hasSystemServices: true,
             watchStatus: services.watchStatus,
             weightReminders: WeightReminderScheduler(store: store),
-            healthSync: BodyWeightHealthSync.make(store: store)
+            healthSync: BodyWeightHealthSync.make(store: store),
+            walkthroughMemory: WalkthroughMemory()
         )
         environment.connectWeightReminders()
         environment.connectHealthSync()
@@ -111,12 +125,35 @@ public final class StrengthAppEnvironment: ObservableObject {
             hasSystemServices: false,
             watchStatus: .connected,
             weightReminders: nil,
-            healthSync: nil
+            healthSync: nil,
+            walkthroughMemory: nil
         )
         if withActiveWorkout {
             controller.startWorkout(template: store.templates.first)
         }
         return environment
+    }
+
+    // MARK: Walkthrough
+
+    /// Opens the walkthrough now (the hub's More > App Walkthrough replays it). Do not call it while the active-workout screen
+    /// is up: the sheet would sit behind it.
+    public func startWalkthrough() {
+        showsWalkthrough = true
+    }
+
+    /// The hook for the end of onboarding: opens the walkthrough the first time it is called (and again only after the tour
+    /// has been revised, see `Walkthrough.version`). Later calls do nothing, so the host can call it every time onboarding
+    /// ends or on every launch. It also stays out of the way of a running workout, and of previews and UI tests (no memory).
+    public func showWalkthroughAfterOnboarding() {
+        guard let memory = walkthroughMemory, memory.shouldShow else { return }
+        guard controller.state == nil else { return }
+        showsWalkthrough = true
+    }
+
+    /// Called when the walkthrough has closed (finished, skipped or swiped away): it will not open by itself again.
+    func walkthroughClosed() {
+        walkthroughMemory?.markSeen()
     }
 
     // MARK: Weigh-in reminder

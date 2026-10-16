@@ -21,55 +21,16 @@ final class LibraryWithoutInventedHistoryTests: XCTestCase {
         XCTAssertEqual(ExerciseLibrary.exercise(id: "bench")?.previousBestE1RM, 0)
     }
 
-    func testTheDemoLibraryReproducesTheOldNumbersExactly() throws {
-        XCTAssertEqual(ExerciseLibrary.demoBuiltIn.count, 36)
-        let bests: [String: Double] = ["bench": 99, "incline": 38, "ohp": 58, "pushdown": 42, "crossover": 21]
-        for exercise in ExerciseLibrary.demoBuiltIn {
-            XCTAssertEqual(exercise.previousBestE1RM, bests[exercise.id] ?? 0, exercise.id)
-        }
-        func sets(_ id: String) throws -> [PreviousSet] {
-            try XCTUnwrap(ExerciseLibrary.demoBuiltIn.first { $0.id == id }).previousSets
-        }
-        XCTAssertEqual(try sets("bench"), [
-            PreviousSet(weightKg: 50, reps: 8, type: .warmup), PreviousSet(weightKg: 70, reps: 5, type: .warmup),
-            PreviousSet(weightKg: 80, reps: 6), PreviousSet(weightKg: 80, reps: 6), PreviousSet(weightKg: 80, reps: 5),
-        ])
-        XCTAssertEqual(try sets("incline"), [(26.0, 10), (26, 10), (26, 9)].map { PreviousSet(weightKg: $0.0, reps: $0.1) })
-        XCTAssertEqual(try sets("plank"), [PreviousSet(weightKg: 0, reps: 45)])
-        XCTAssertEqual(try sets("deadlift"), [PreviousSet(weightKg: 100, reps: 5)])
-        XCTAssertEqual(try sets("cpress"), [])
-        XCTAssertEqual(ExerciseLibrary.demoBuiltIn.filter { !$0.previousSets.isEmpty }.count, 25)
-    }
-
-    func testTheDemoLibraryDiffersFromTheLibraryOnlyInThePreviousResults() {
-        for (demo, plain) in zip(ExerciseLibrary.demoBuiltIn, ExerciseLibrary.builtIn) {
-            var stripped = demo
-            stripped.previousBestE1RM = 0
-            stripped.previousSets = []
-            XCTAssertEqual(stripped, plain, plain.id)
-        }
-    }
-
-    func testTheDemoTableOnlyNamesBuiltInExercises() {
-        for id in DemoPreviousResults.byExerciseID.keys {
-            XCTAssertNotNil(ExerciseLibrary.exercise(id: id), id)
-        }
-    }
-
-    func testApplyingTheDemoResultsLeavesOtherExercisesAlone() {
-        let custom = Exercise.custom(name: "Hex press", muscle: .chest, equipment: .dumbbell, tracking: .weightReps, id: "custom-hex")
-        XCTAssertEqual(DemoPreviousResults.applying(to: custom), custom)
-        XCTAssertEqual(DemoPreviousResults.applying(to: [custom, ExerciseLibrary.builtIn[0]]).map { $0.previousBestE1RM }, [0, 99])
-        let machinePress = ExerciseLibrary.builtIn.first { $0.id == "cpress" }!
-        XCTAssertEqual(DemoPreviousResults.applying(to: machinePress), machinePress, "no demo entry, nothing changes")
-    }
-
-    func testSampleTemplatesAndHistoryAreStillTheDemoNumbers() throws {
+    /// The demo store (previews, UI tests) shows previous results only because its sample history says so, like any user's.
+    func testTheDemoGetsItsPreviousResultsFromItsHistory() throws {
         let upperA = try XCTUnwrap(SampleData.templates().first)
-        XCTAssertEqual(upperA.entries[0].exercise.previousBestE1RM, 99)
-        XCTAssertEqual(upperA.entries[0].exercise.previousSets.count, 5)
-        let bench = try XCTUnwrap(SampleData.history(now: SvcSyncFix.epoch).first { $0.name == "Upper A · Push" }?.exercises.first)
-        XCTAssertEqual(bench.exerciseID, "bench")
+        XCTAssertEqual(upperA.entries[0].exercise, ExerciseLibrary.exercise(id: "bench"), "the template carries the plain library entry")
+        let demo = StrengthData.demo(now: SvcSyncFix.epoch)
+        let bench = try XCTUnwrap(demo.exercise(id: "bench"))
+        XCTAssertEqual(bench.previousBestE1RM, 99.1667, accuracy: 0.001)
+        XCTAssertEqual(bench.previousSets.count, 5)
+        XCTAssertEqual(bench.previousSets.map { $0.type }, [.warmup, .warmup, nil, nil, nil])
+        XCTAssertEqual(try XCTUnwrap(demo.exercise(id: "cpress")).previousSets, [], "an exercise the sample history has not done has none")
     }
 
     /// The ids that older builds wrote into users' files. `removeSampleData()` finds the sample data by them, so they must never change.
@@ -97,14 +58,13 @@ final class LibraryWithoutInventedHistoryTests: XCTestCase {
     }
 }
 
-// MARK: - The overlay with and without the demo flag
+// MARK: - The overlay: previous results come from history only
 
 final class DemoOverlayTests: XCTestCase {
     private typealias F = SvcDataFix
 
     func testAnEmptyStoreHasNoPreviousResultsAtAll() {
         let data = StrengthData()
-        XCTAssertFalse(data.usesDemoPreviousResults)
         XCTAssertEqual(data.exercises(), ExerciseLibrary.builtIn)
         for exercise in data.exercises() {
             XCTAssertEqual(exercise.previousBestE1RM, 0, exercise.id)
@@ -113,88 +73,65 @@ final class DemoOverlayTests: XCTestCase {
         XCTAssertEqual(data.exercise(id: "bench")?.previousBestE1RM, 0)
     }
 
-    func testTheDemoFlagShowsTheDemoNumbersForExercisesWithoutHistory() {
-        let data = StrengthData(usesDemoPreviousResults: true)
-        XCTAssertEqual(data.exercises(), ExerciseLibrary.demoBuiltIn)
-        XCTAssertEqual(data.exercise(id: "bench")?.previousBestE1RM, 99)
-        XCTAssertEqual(data.exercise(id: "plank")?.previousSets, [PreviousSet(weightKg: 0, reps: 45)])
-        XCTAssertEqual(data.overlay(ExerciseLibrary.builtIn[0]).previousBestE1RM, 99)
+    func testRealHistoryWinsAndOtherExercisesStayEmpty() throws {
+        var data = StrengthData()
+        data.history = [F.workout(1, finishedAt: F.daysAgo(2), [F.entry("bench", [F.work(100, 3)], n: 1)])]
+        let bench = try XCTUnwrap(data.exercise(id: "bench"))
+        XCTAssertEqual(bench.previousBestE1RM, 110, accuracy: 1e-9)
+        XCTAssertEqual(bench.previousSets, [PreviousSet(weightKg: 100, reps: 3)])
+        let incline = try XCTUnwrap(data.exercise(id: "incline"))
+        XCTAssertEqual(incline.previousBestE1RM, 0)
+        XCTAssertTrue(incline.previousSets.isEmpty)
     }
 
-    func testRealHistoryAlwaysWinsOverTheDemoNumbers() throws {
-        for demo in [false, true] {
-            var data = StrengthData(usesDemoPreviousResults: demo)
-            data.history = [F.workout(1, finishedAt: F.daysAgo(2), [F.entry("bench", [F.work(100, 3)], n: 1)])]
-            let bench = try XCTUnwrap(data.exercise(id: "bench"))
-            XCTAssertEqual(bench.previousBestE1RM, 110, accuracy: 1e-9)
-            XCTAssertEqual(bench.previousSets, [PreviousSet(weightKg: 100, reps: 3)])
-            let incline = try XCTUnwrap(data.exercise(id: "incline"))
-            XCTAssertEqual(incline.previousBestE1RM, demo ? 38 : 0)
-            XCTAssertEqual(incline.previousSets.isEmpty, !demo)
-        }
-    }
-
-    func testCustomExercisesNeverGetDemoNumbers() throws {
-        var data = StrengthData(usesDemoPreviousResults: true)
+    func testCustomExercisesStartWithoutPreviousResults() throws {
+        var data = StrengthData()
         let custom = F.customExercise("Hex press")
         data.addCustomExercise(custom)
         XCTAssertEqual(try XCTUnwrap(data.exercise(id: custom.id)).previousBestE1RM, 0)
         XCTAssertEqual(data.exercises().count, 37)
     }
 
-    func testSeedingSwitchesTheFlagOnAndOnlyWhenItSeeds() {
+    func testOnlyAnEmptyStoreIsSeeded() {
         var empty = StrengthData()
         XCTAssertTrue(empty.seedDemoDataIfEmpty(now: SvcSyncFix.epoch))
-        XCTAssertTrue(empty.usesDemoPreviousResults)
-        XCTAssertTrue(StrengthData.demo(now: SvcSyncFix.epoch).usesDemoPreviousResults)
+        XCTAssertEqual(empty.templates.count, 3)
+        XCTAssertEqual(empty.history.count, 5)
 
         var used = StrengthData(templates: [StarterTemplates.all[0]])
         XCTAssertFalse(used.seedDemoDataIfEmpty(now: SvcSyncFix.epoch))
-        XCTAssertFalse(used.usesDemoPreviousResults)
+        XCTAssertEqual(used.templates, [StarterTemplates.all[0]])
+        XCTAssertTrue(used.history.isEmpty)
     }
 
-    func testTheFlagIsNeverStored() throws {
-        let persistence = FileStrengthPersistence(directory: makeDirectory(self))
-        svcMain {
-            let model = StrengthDataModel(persistence: persistence, seedDemoData: true, now: SvcSyncFix.epoch)
-            XCTAssertTrue(model.data.usesDemoPreviousResults)
-        }
-        for name in FileStrengthPersistence.dataFileNames {
-            let url = persistence.directory.appendingPathComponent(name)
-            guard let data = try? Data(contentsOf: url) else { continue }
-            XCTAssertFalse(String(decoding: data, as: UTF8.self).lowercased().contains("demo"), name)
-        }
-    }
-
-    func testAStoreSeededInThisProcessKeepsTheFlagAcrossReloads() {
+    func testASeededStoreKeepsItsPreviousResultsAcrossReloads() {
         let persistence = FileStrengthPersistence(directory: makeDirectory(self))
         svcMain {
             let model = StrengthDataModel(persistence: persistence, seedDemoData: true, now: SvcSyncFix.epoch)
             model.reload()
-            XCTAssertTrue(model.data.usesDemoPreviousResults)
-            XCTAssertEqual(model.exercise(id: "deadlift")?.previousSets, [PreviousSet(weightKg: 100, reps: 5)])
+            XCTAssertEqual(model.exercise(id: "bench")?.previousSets.count, 5)
+            XCTAssertEqual(model.exercise(id: "deadlift")?.previousSets, [], "the sample history has no deadlift: nothing is invented")
         }
     }
 
-    func testAnotherProcessOnTheSeededFilesShowsOnlyWhatTheHistoryTells() {
+    func testALaterLaunchOnTheSeededFilesShowsOnlyWhatTheHistoryTells() {
         let persistence = FileStrengthPersistence(directory: makeDirectory(self))
         svcMain {
             _ = StrengthDataModel(persistence: persistence, seedDemoData: true, now: SvcSyncFix.epoch)
-            // A later launch of a build that seeded: the sample files are there, nothing is seeded again, the flag is off.
+            // A later launch of a build that seeded: the sample files are there, nothing is seeded again.
             let later = StrengthDataModel(persistence: persistence, seedDemoData: false, now: SvcSyncFix.epoch)
-            XCTAssertFalse(later.data.usesDemoPreviousResults)
-            XCTAssertEqual(later.exercise(id: "deadlift")?.previousSets, [], "the invented deadlift numbers are gone")
+            XCTAssertEqual(later.exercise(id: "deadlift")?.previousSets, [])
             XCTAssertEqual(later.exercise(id: "bench")?.previousBestE1RM ?? 0, 99.1667, accuracy: 0.001, "the stored sample history still counts")
         }
     }
 
-    func testSeedingNeverHappensOverExistingFilesSoTheFlagStaysOff() throws {
+    func testSeedingNeverHappensOverExistingFiles() throws {
         let persistence = FileStrengthPersistence(directory: makeDirectory(self))
         try persistence.saveTemplates([StarterTemplates.all[1]])
         svcMain {
             let model = StrengthDataModel(persistence: persistence, seedDemoData: true, now: SvcSyncFix.epoch)
-            XCTAssertFalse(model.data.usesDemoPreviousResults)
             XCTAssertEqual(model.data.templates.map { $0.name }, ["Pull"])
+            XCTAssertTrue(model.data.history.isEmpty)
         }
     }
 
@@ -202,13 +139,12 @@ final class DemoOverlayTests: XCTestCase {
         svcMain {
             let model = StrengthDataModel(persistence: FileStrengthPersistence(directory: makeDirectory(self)))
             XCTAssertTrue(model.data.isEmpty)
-            XCTAssertFalse(model.data.usesDemoPreviousResults)
             XCTAssertEqual(model.exercises, ExerciseLibrary.builtIn)
             XCTAssertFalse(model.hasSampleData)
         }
     }
 
-    func testTheSeededMemoryStoreStaysEquivalentToTheOldBehaviour() {
+    func testTheSeededMemoryStoreShowsTheSampleHistory() {
         svcMain {
             let model = StrengthDataModel(persistence: nil, seedDemoData: true, now: SvcSyncFix.epoch)
             XCTAssertEqual(model.data.templates.count, 3)
@@ -216,7 +152,6 @@ final class DemoOverlayTests: XCTestCase {
             XCTAssertEqual(model.exercise(id: "bench")?.previousBestE1RM ?? 0, 99.1667, accuracy: 0.001)
             XCTAssertEqual(model.exercise(id: "bench")?.previousSets.count, 5)
             XCTAssertEqual(model.exercise(id: "cpress")?.previousSets, [])
-            XCTAssertEqual(model.exercise(id: "pushup")?.previousSets, [PreviousSet(weightKg: 0, reps: 15)])
             XCTAssertEqual(model.exercises.count, 36)
         }
     }
@@ -369,7 +304,6 @@ final class SampleDataRemovalTests: XCTestCase {
         XCTAssertEqual(data.customExercises, [custom])
         XCTAssertEqual(data.bodyWeights.count, 1)
         XCTAssertFalse(data.hasSampleData)
-        XCTAssertFalse(data.usesDemoPreviousResults)
     }
 
     func testThePersonalBestsAreRecomputedFromWhatIsLeft() throws {
@@ -435,8 +369,7 @@ final class SampleDataRemovalTests: XCTestCase {
         StrengthData(
             templates: SampleData.templates(now: now),
             personalBests: bests ?? SampleData.personalBests(now: now),
-            historyIsIncomplete: true,
-            usesDemoPreviousResults: false
+            historyIsIncomplete: true
         )
     }
 

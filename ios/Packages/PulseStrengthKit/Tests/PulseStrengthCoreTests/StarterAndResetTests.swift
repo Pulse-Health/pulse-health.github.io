@@ -52,7 +52,7 @@ final class StarterTemplatesTests: XCTestCase {
                 XCTAssertTrue(entry.plannedSets.allSatisfy { $0.type == .normal && $0.weightKg == library.defaults.weightKg && $0.reps == library.defaults.reps })
                 XCTAssertEqual(entry.restSeconds, library.defaults.restSeconds)
                 XCTAssertNil(entry.supersetGroup)
-                XCTAssertEqual(entry.note, "")
+                XCTAssertNil(entry.note)
             }
         }
     }
@@ -273,7 +273,6 @@ final class ResetDataTests: XCTestCase {
     func testEverythingIsEmptyAfterAll() {
         var data = populated()
         data.historyIsIncomplete = true
-        data.usesDemoPreviousResults = true
         data.resetData(.all)
         XCTAssertEqual(data, StrengthData())
         XCTAssertTrue(data.isEmpty)
@@ -297,22 +296,22 @@ final class ResetDataTests: XCTestCase {
         XCTAssertEqual(data.weighIn, preferencesWithoutHealthSync())
     }
 
-    func testResettingTheHistoryEndsTheDemoPreviousResultsAndTheIncompleteMark() {
+    func testResettingTheHistoryEndsThePreviousResultsAndTheIncompleteMark() {
         var data = StrengthData.demo(now: F.now)
         data.historyIsIncomplete = true
         data.resetData(.templates)
-        XCTAssertTrue(data.usesDemoPreviousResults, "other scopes leave the demo numbers")
+        XCTAssertEqual(data.exercise(id: "bench")?.previousSets.count, 5, "other scopes leave the history, so the previous results")
         XCTAssertTrue(data.historyIsIncomplete)
         data.resetData(.history)
-        XCTAssertFalse(data.usesDemoPreviousResults)
+        XCTAssertEqual(data.exercise(id: "bench")?.previousSets, [])
         XCTAssertFalse(data.historyIsIncomplete)
         XCTAssertEqual(data.exercise(id: "bench")?.previousBestE1RM, 0)
         XCTAssertEqual(data.personalBests, [:])
     }
 
     func testTheScopeConstants() {
-        XCTAssertEqual(ResetScope.all, [.templates, .history, .customExercises, .bodyWeights, .preferences])
-        XCTAssertEqual(Set([ResetScope.templates, .history, .customExercises, .bodyWeights, .preferences].map { $0.rawValue }).count, 5)
+        XCTAssertEqual(ResetScope.all, [.templates, .history, .customExercises, .bodyWeights, .preferences, .plans])
+        XCTAssertEqual(Set([ResetScope.templates, .history, .customExercises, .bodyWeights, .preferences, .plans].map { $0.rawValue }).count, 6)
         XCTAssertTrue(ResetScope.all.contains(.history))
     }
 
@@ -412,13 +411,13 @@ final class ResetDataTests: XCTestCase {
     func testTheModelCachesAreDroppedSoTheExercisesFollow() {
         svcMain {
             let model = StrengthDataModel(persistence: nil, seedDemoData: true, now: F.now)
-            XCTAssertEqual(model.exercise(id: "deadlift")?.previousSets.count, 1)
+            XCTAssertEqual(model.exercise(id: "bench")?.previousSets.count, 5)
             let custom = F.customExercise("Hex press")
             model.addCustomExercise(custom)
             XCTAssertNotNil(model.exercise(id: custom.id))
             model.resetData([.customExercises, .history])
             XCTAssertNil(model.exercise(id: custom.id))
-            XCTAssertEqual(model.exercise(id: "deadlift")?.previousSets, [])
+            XCTAssertEqual(model.exercise(id: "bench")?.previousSets, [])
             XCTAssertEqual(model.exercises.count, 36)
         }
     }
@@ -553,6 +552,7 @@ final class DeleteAllTests: XCTestCase {
         try persistence.saveHistory([])
         try persistence.saveCustomExercises([])
         try persistence.savePersonalBests([:])
+        try persistence.savePlans([])
         try persistence.saveBodyWeights([])
         try persistence.saveWeighInPreferences(WeighInPreferences())
         try persistence.savePreferences(StrengthPreferences())
@@ -575,6 +575,7 @@ final class DeleteAllTests: XCTestCase {
         try persistence.saveHistory([])
         try persistence.saveCustomExercises([])
         try persistence.savePersonalBests([:])
+        try persistence.savePlans([])
         try persistence.saveBodyWeights([])
         try persistence.saveWeighInPreferences(WeighInPreferences())
         try persistence.savePreferences(StrengthPreferences())

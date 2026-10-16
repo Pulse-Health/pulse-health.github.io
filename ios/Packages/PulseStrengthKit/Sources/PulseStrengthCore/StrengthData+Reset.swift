@@ -35,8 +35,9 @@ public extension StrengthData {
 
     /// Deletes exactly the sample templates, the sample workouts (found by their fixed ids; a sample template that the user
     /// edited is deleted too) and the sample personal bests, and recomputes the personal bests from what is left, so the sample
-    /// records go with them. Everything else stays: the user's templates, workouts, exercises and weigh-ins, and the finished
-    /// workouts that were started from a sample template. The demo previous results are switched off.
+    /// records go with them. Everything else stays: the user's templates, workouts, exercises, plans and weigh-ins, and the finished
+    /// workouts that were started from a sample template. A plan is never deleted or switched off; a deleted sample template only
+    /// leaves the rotation of the plans that held it (see `WorkoutPlan.removeTemplate`).
     ///
     /// While `historyIsIncomplete` the other stored bests are kept and only raised (see `recomputePersonalBests()`).
     mutating func removeSampleData() -> SampleDataRemoval {
@@ -46,10 +47,10 @@ public extension StrengthData {
         let workoutCount = history.filter { workoutIDs.contains($0.id) }.count
         let bestIDs = sampleBestIDs
         templates.removeAll { templateIDs.contains($0.id) }
+        for id in templateIDs { removeFromPlans(templateID: id) }
         history.removeAll { workoutIDs.contains($0.id) }
         for id in bestIDs { personalBests[id] = nil }
         if workoutCount > 0 || !bestIDs.isEmpty { recomputePersonalBests() }
-        usesDemoPreviousResults = false
         return SampleDataRemoval(templates: templateCount, workouts: workoutCount, personalBests: bestIDs.count)
     }
 
@@ -112,27 +113,36 @@ public struct ResetScope: OptionSet, Sendable {
     public static let bodyWeights = ResetScope(rawValue: 8)
     /// The user's preferences: back to their defaults (the weigh-in reminder and the workout preferences: unit, rest timer, goal, ...).
     public static let preferences = ResetScope(rawValue: 16)
+    /// The training plans. The templates they rotate over are not touched.
+    public static let plans = ResetScope(rawValue: 32)
     /// Everything above.
-    public static let all: ResetScope = [.templates, .history, .customExercises, .bodyWeights, .preferences]
+    public static let all: ResetScope = [.templates, .history, .customExercises, .bodyWeights, .preferences, .plans]
 }
 
 public extension StrengthData {
     /// Erases the parts named by `scope`. Clearing the history also clears the personal bests, the `lastPerformed` date of every
-    /// template, the incomplete-history mark (there is nothing left to protect) and the demo previous results. Clearing the weigh-ins
-    /// also turns the Health exchange off, so they are not read back from Health.
+    /// template and the incomplete-history mark (there is nothing left to protect). Clearing the templates also takes them out of the
+    /// rotation of every plan (the plans stay, see `WorkoutPlan.removeTemplate`). Clearing the weigh-ins also turns the Health exchange
+    /// off, so they are not read back from Health.
     ///
     /// Clearing the preferences restores the defaults of a new install: the weight unit is the one `deviceLocale` calls for
     /// (kilograms without a locale), everything else as in `StrengthPreferences()`.
     mutating func resetData(_ scope: ResetScope, deviceLocale: Locale? = nil) {
-        if scope.contains(.templates) { templates = [] }
+        if scope.contains(.templates) {
+            templates = []
+            for index in plans.indices {
+                plans[index].templateIDs = []
+                plans[index].nextIndex = 0
+            }
+        }
         if scope.contains(.history) {
             history = []
             personalBests = [:]
             historyIsIncomplete = false
-            usesDemoPreviousResults = false
             for index in templates.indices { templates[index].lastPerformed = nil }
         }
         if scope.contains(.customExercises) { customExercises = [] }
+        if scope.contains(.plans) { plans = [] }
         if scope.contains(.bodyWeights) {
             bodyWeights = []
             weighIn.syncWithHealth = false
@@ -158,13 +168,15 @@ public extension StrengthDataModel {
     @discardableResult
     func removeSampleData() -> Result<SampleDataRemoval, Error> {
         let bestsBefore = data.personalBests
+        let plansBefore = data.plans
         let removal = data.removeSampleData()
         cache = nil
         guard !removal.isEmpty else { return .success(removal) }
         return commit(
             templates: removal.templates > 0,
             history: removal.workouts > 0,
-            personalBests: data.personalBests != bestsBefore
+            personalBests: data.personalBests != bestsBefore,
+            plans: data.plans != plansBefore
         ).map { removal }
     }
 
@@ -179,6 +191,7 @@ public extension StrengthDataModel {
     func resetData(_ scope: ResetScope) -> Result<Void, Error> {
         guard !scope.isEmpty else { return .success(()) }
         let templatesBefore = data.templates
+        let plansBefore = data.plans
         data.resetData(scope, deviceLocale: deviceLocale)
         cache = nil
         if scope.isSuperset(of: .all) { return removeAllFiles() }
@@ -187,6 +200,7 @@ public extension StrengthDataModel {
             history: scope.contains(.history),
             customExercises: scope.contains(.customExercises),
             personalBests: scope.contains(.history),
+            plans: scope.contains(.plans) || data.plans != plansBefore,
             bodyWeights: scope.contains(.bodyWeights),
             weighIn: scope.contains(.preferences) || scope.contains(.bodyWeights),
             preferences: scope.contains(.preferences),

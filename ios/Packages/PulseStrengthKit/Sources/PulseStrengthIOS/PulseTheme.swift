@@ -44,10 +44,14 @@ public enum PulseTheme {
     // Text
     public static let ink = Color(light: 0x000000, dark: 0xFFFFFF)
     public static let inkSecondary = Color(light: 0x6B6B70, dark: 0x98989D)
-    public static let inkTertiary = Color(light: 0x8E8E93, dark: 0x636366)
+    /// Quiet text and glyphs. 4.5:1 or better on the card, row and grouped background in light mode and on the card and cell in dark
+    /// mode (4.4:1 on the light chip fill, 3.95:1 on the dark `cellOnTint`), so it is now close to `inkSecondary`; the earlier values
+    /// (3.3:1 light, 2.8:1 dark on a card) failed WCAG AA for the small text that uses it.
+    public static let inkTertiary = Color(light: 0x6E6E73, dark: 0x98989D)
 
     // Accents
-    public static let green = Color(light: 0x1B8448, dark: 0x30D158)
+    /// The accent (nav-bar buttons, fills). 4.8:1 on the grouped background and 5.4:1 against white text (the earlier 0x1B8448 gave 4.2:1 as text).
+    public static let green = Color(light: 0x187A42, dark: 0x30D158)
     /// Green text on grey fills (higher contrast than `green`).
     public static let greenText = Color(light: 0x146638, dark: 0x30D158)
     public static let greenTint = Color(light: 0x1B8448, dark: 0x30D158, lightAlpha: 0.10, darkAlpha: 0.18)
@@ -56,6 +60,8 @@ public enum PulseTheme {
     /// Text / icon colour on a `green` fill.
     public static let onGreen = Color(light: 0xFFFFFF, dark: 0x000000)
     public static let blue = Color(light: 0x0066D6, dark: 0x0A84FF)
+    /// Background of the blue "Finish" pill (white label): 4.9:1 against white in dark mode (`blue` gave 3.65:1 there).
+    public static let pillFill = Color(light: 0x0066D6, dark: 0x006FDD)
     public static let blueText = Color(light: 0x0057B8, dark: 0x64D2FF)
     public static let blueTint = Color(light: 0x007AFF, dark: 0x0A84FF, lightAlpha: 0.15, darkAlpha: 0.28)
     /// The superset pill's wash (the design's rgba(0,122,255,0.12)); `blueTint` is the stronger picker-chip value.
@@ -311,7 +317,7 @@ public struct PulsePillButtonStyle: ButtonStyle {
             .foregroundStyle(Color.white)
             .padding(.horizontal, 16)
             .pulseScaledFrame(minHeight: 44, relativeTo: PulseDynamicType.controlHeightStyle)
-            .background(PulseTheme.blue, in: Capsule())
+            .background(PulseTheme.pillFill, in: Capsule())
             .opacity(configuration.isPressed ? 0.8 : 1)
     }
 }

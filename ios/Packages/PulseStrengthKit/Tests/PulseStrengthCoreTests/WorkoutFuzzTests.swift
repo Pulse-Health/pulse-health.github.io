@@ -534,7 +534,7 @@ final class WorkoutFuzzTests: XCTestCase {
 
         // an undo entry always expires after it was created within the window
         if let undo = s.undo, undo.expiresAt != b.undo?.expiresAt {
-            XCTAssertTrue(undo.title == "Set deleted" || undo.title.hasPrefix("Removed "), "undo title \(context)")
+            XCTAssertTrue(undo.title == "Set deleted" || undo.title.hasPrefix("Removed ") || undo.title.hasPrefix("Replaced "), "undo title \(context)")
         }
     }
 }

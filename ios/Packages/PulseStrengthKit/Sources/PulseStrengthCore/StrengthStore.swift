@@ -19,6 +19,8 @@ public final class StrengthStore: ObservableObject {
     @Published public private(set) var customExercises: [Exercise] = []
     /// Best estimated 1RM per exercise id.
     @Published public private(set) var personalBests: [String: PersonalBest] = [:]
+    /// Training plans (rotations of templates).
+    @Published public private(set) var plans: [WorkoutPlan] = []
     /// The user's body weight over time, newest first.
     @Published public private(set) var bodyWeights: [BodyWeightEntry] = []
     /// How often the app asks the user to update their weight.
@@ -39,8 +41,8 @@ public final class StrengthStore: ObservableObject {
 
     private let model: StrengthDataModel
 
-    /// Loads the saved data from `persistence` (nil keeps everything in memory). `seedDemoData` fills an empty store with demo data and
-    /// shows the invented demo previous results; only previews and tests pass true.
+    /// Loads the saved data from `persistence` (nil keeps everything in memory). `seedDemoData` fills an empty store with demo
+    /// templates, workouts and personal bests; only previews, the UI tests and tests pass true.
     ///
     /// `deviceLocale` picks the weight unit of the preferences of a first launch (`WeightUnit.defaultFor(locale:)`); the app passes
     /// `Locale.current`. The default, nil, means kilograms, so previews and tests do not depend on the machine's region.
@@ -70,6 +72,52 @@ public final class StrengthStore: ObservableObject {
     @discardableResult
     public func saveTemplate(_ template: WorkoutTemplate) -> Result<Void, Error> {
         let result = model.saveTemplate(template)
+        publish()
+        return result
+    }
+
+    /// The plan the hub follows, if any.
+    public var activePlan: WorkoutPlan? { plans.first { $0.isActive } }
+
+    /// The workout to recommend next: the active plan's next workout, else the one after the most recently performed template.
+    public var nextTemplate: WorkoutTemplate? { model.nextTemplate() }
+
+    /// Adds a plan, or replaces the one with the same id, and saves it. `.failure` when the file could not be written (the plan is
+    /// saved in memory).
+    @discardableResult
+    public func savePlan(_ plan: WorkoutPlan) -> Result<Void, Error> {
+        let result = model.savePlan(plan)
+        publish()
+        return result
+    }
+
+    /// Makes a plan the active one.
+    @discardableResult
+    public func activatePlan(id: UUID) -> Result<Void, Error> {
+        let result = model.activatePlan(id: id)
+        publish()
+        return result
+    }
+
+    /// Removes a plan; its templates stay.
+    @discardableResult
+    public func deletePlan(id: UUID) -> Result<Void, Error> {
+        let result = model.deletePlan(id: id)
+        publish()
+        return result
+    }
+
+    /// Passes over the next workout of a plan.
+    @discardableResult
+    public func skipNextWorkout(planID: UUID) -> Result<Void, Error> {
+        let result = model.skipNextWorkout(planID: planID)
+        publish()
+        return result
+    }
+
+    /// Imports a plan file (see `PlanBundle`): its plan, workouts and new exercises are added, or replaced by the same ids.
+    public func importPlan(from fileData: Data) -> Result<PlanImportSummary, PlanImportError> {
+        let result = model.importPlan(from: fileData)
         publish()
         return result
     }
@@ -301,6 +349,7 @@ public final class StrengthStore: ObservableObject {
         if history != data.history { history = data.history }
         if customExercises != data.customExercises { customExercises = data.customExercises }
         if personalBests != data.personalBests { personalBests = data.personalBests }
+        if plans != data.plans { plans = data.plans }
         if bodyWeights != data.bodyWeights { bodyWeights = data.bodyWeights }
         if weighIn != data.weighIn { weighIn = data.weighIn }
         if preferences != data.preferences { preferences = data.preferences }

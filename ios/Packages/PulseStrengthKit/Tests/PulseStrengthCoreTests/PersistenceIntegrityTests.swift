@@ -69,6 +69,12 @@ enum V1Files {
         """
     }
 
+    static func plan(_ number: Int, name: String) -> String {
+        """
+        {"id":"0000FEED-0000-4000-8000-0000000007\(String(format: "%02d", number))","isActive":false,"name":"\(name)","nextIndex":0,"templateIDs":["0000FEED-0000-4000-8000-0000000000\(String(format: "%02d", number))"]}
+        """
+    }
+
     static let bests = """
     {"bench":{"date":"2026-10-13T19:30:00.000Z","estimated1RM":76.2,"exerciseID":"bench","reps":6,"weightKg":63.5}}
     """
@@ -167,7 +173,7 @@ final class PersistenceIntegrityTests: XCTestCase {
         XCTAssertEqual(persistence.schemaVersion, 1)
         XCTAssertTrue(persistence.canWrite)
         XCTAssertEqual(persistence.loadTemplates().map { $0.name }, ["Push", "Pull"])
-        XCTAssertEqual(persistence.loadTemplates().first?.entries.first?.note, "", "a template written before notes reads without one")
+        XCTAssertNil(persistence.loadTemplates().first?.entries.first?.note, "a template written before notes reads without one")
         XCTAssertEqual(persistence.loadHistory().map { $0.name }, ["Upper A", "Upper A"])
         XCTAssertEqual(persistence.loadHistory().first?.exercises.first?.note, "", "a workout written before notes reads without one")
         XCTAssertEqual(persistence.loadHistory().first?.exercises.first?.sets.first?.weightKg, 63.5)
@@ -377,9 +383,11 @@ final class PersistenceIntegrityTests: XCTestCase {
         let bests = "{\"a\":{\"date\":\"2026-10-13T19:30:00.000Z\",\"estimated1RM\":70,\"exerciseID\":\"a\",\"reps\":5,\"weightKg\":60},\"b\":\"broken\",\"c\":{\"date\":\"2026-10-13T19:30:00.000Z\",\"estimated1RM\":80,\"exerciseID\":\"c\",\"reps\":5,\"weightKg\":70}}"
         let weights = "[{\"date\":\"2026-10-12T07:00:00.000Z\",\"id\":\"0000FEED-0000-4000-8000-000000000401\",\"kg\":82.4},{\"kg\":\"x\"},{\"date\":\"2026-10-11T07:00:00.000Z\",\"id\":\"0000FEED-0000-4000-8000-000000000402\",\"kg\":82}]"
         let acknowledged = "[\"0000FEED-0000-4000-8000-000000000501\",\"not a uuid\",\"0000FEED-0000-4000-8000-000000000502\"]"
+        let plans = "[\(V1Files.plan(1, name: "A")),{\"id\":\"oops\",\"name\":5},\(V1Files.plan(2, name: "B"))]"
         return [
             Case(file: "templates.json", withBrokenElement: templates, keptCount: 2) { $0.loadTemplates().count },
             Case(file: "history.json", withBrokenElement: history, keptCount: 2) { $0.loadHistory().count },
+            Case(file: "plans.json", withBrokenElement: plans, keptCount: 2) { $0.loadPlans().count },
             Case(file: "custom-exercises.json", withBrokenElement: custom, keptCount: 2) { $0.loadCustomExercises().count },
             Case(file: "personal-bests.json", withBrokenElement: bests, keptCount: 2) { $0.loadPersonalBests().count },
             Case(file: "body-weights.json", withBrokenElement: weights, keptCount: 2) { $0.loadBodyWeights().count },
@@ -596,7 +604,7 @@ final class PersistenceIntegrityTests: XCTestCase {
             try write("[]", name, in: directory)
             XCTAssertTrue(persistence.hasDataFiles, name)
         }
-        XCTAssertEqual(FileStrengthPersistence.dataFileNames.count, 9)
+        XCTAssertEqual(FileStrengthPersistence.dataFileNames.count, 10)
     }
 
     func testHasPersonalBestsFile() throws {

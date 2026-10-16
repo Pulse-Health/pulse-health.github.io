@@ -360,7 +360,7 @@ public struct ExerciseDetailView: View {
     // MARK: Attribution
 
     private var attribution: some View {
-        Text("Demo photos: Free Exercise DB (public domain).")
+        Text("Demo photos from the Free Exercise DB.")
             .pulseFont(11, relativeTo: .caption2)
             .foregroundStyle(PulseTheme.inkSecondary)
             .fixedSize(horizontal: false, vertical: true)

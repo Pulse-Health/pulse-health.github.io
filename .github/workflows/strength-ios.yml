@@ -785,7 +785,7 @@ jobs:
           tidy() { LC_ALL=C sed -E 's#/Users/runner/work/[^/]+/[^/]+/##g' | LC_ALL=C cut -c1-300; }
           {
             echo "strength-ios visual digest"
-            echo "PNGs: ui=$(count 'ui-*.png') live=$(count 'live-*.png') watch=$(count 'watch-*.png') total=$(count '*.png')"
+            echo "PNGs: ui=$(count 'ui-*.png') onboarding=$(count 'onboarding-*.png') live=$(count 'live-*.png') watch=$(count 'watch-*.png') total=$(count '*.png')"
 
             for name in xcodegen xcodebuild-live xcodebuild-ui xcodebuild-watch; do
               log="$LOG_DIR/$name.log"
@@ -813,6 +813,12 @@ jobs:
               grep "SUMMARY:" "$SCREENS_DIR/ui-flow-log.txt" | cut -c1-300 || true
               grep -A2 -E "\] (FAILED|SKIPPED)" "$SCREENS_DIR/ui-flow-log.txt" | cut -c1-300 | head -n 120 || true
             fi
+            if [ -f "$SCREENS_DIR/onboarding-default-flow-log.txt" ]; then
+              echo ""
+              echo "===== onboarding-default-flow-log.txt: summary and FAILED / SKIPPED steps ====="
+              grep "SUMMARY:" "$SCREENS_DIR/onboarding-default-flow-log.txt" | cut -c1-300 || true
+              grep -A2 -E "\] (FAILED|SKIPPED)" "$SCREENS_DIR/onboarding-default-flow-log.txt" | cut -c1-300 | head -n 120 || true
+            fi
             if [ -f "$SCREENS_DIR/live-measurements.txt" ]; then
               echo ""
               echo "===== live-measurements.txt: VIOLATION / note lines ====="
@@ -824,7 +830,7 @@ jobs:
               grep "BLANK" "$SCREENS_DIR/watch-manifest.txt" | cut -c1-200 | head -n 60 || true
             fi
 
-            for suite in ui live watch; do
+            for suite in ui onboarding live watch; do
               echo ""
               echo "===== $suite: $(count "$suite-*.png") PNG file names ====="
               find "$SCREENS_DIR" -maxdepth 1 -type f -name "$suite-*.png" | sed 's#.*/##' | sort | paste -s -d ' ' - | fold -s -w 180 || true
@@ -848,7 +854,7 @@ jobs:
             echo "| xcodegen generate | ${{ steps.generate.outcome }} | |"
             echo "| iPhone simulator | ${{ steps.iphone.outcome }} | |"
             echo "| Lock Screen and Dynamic Island snapshots | ${{ steps.live.outcome }} | $(count 'live-*.png') |"
-            echo "| UI flow of the iPhone app | ${{ steps.ui.outcome }} | $(count 'ui-*.png') |"
+            echo "| UI flow of the iPhone app (and the onboarding tour) | ${{ steps.ui.outcome }} | $(count 'ui-*.png') + $(count 'onboarding-*.png') |"
             echo "| watchOS simulator | ${{ steps.watchsim.outcome }} | |"
             echo "| Watch page snapshots | ${{ steps.watch.outcome }} | $(count 'watch-*.png') |"
             echo ""
@@ -900,7 +906,7 @@ jobs:
           fi
           echo "OK: $total screenshot(s) in the artifact strength-screens"
 
-  # A SHORT second screenshot tour (ios/Apps/PulseStrengthUITests/StrengthTourTests.swift, 14 screenshots, about 3 minutes) under
+  # A SHORT second screenshot tour (ios/Apps/PulseStrengthUITests/StrengthTourTests.swift, 21 screenshots, about 4 minutes) under
   # four conditions the long flow of `visual` never looks at. One runner per entry, in parallel, and no entry stops the others:
   #   dark    iPhone 16 Pro, dark appearance               (the dark values of PulseTheme)
   #   xxl     iPhone 16 Pro, content size accessibility-extra-large   (layouts at Dynamic Type accessibility sizes)
@@ -1362,6 +1368,7 @@ jobs:
             -configuration Debug \
             -destination "id=$TOUR_UDID" \
             -only-testing:PulseStrengthUITests/StrengthTourTests \
+            -only-testing:PulseStrengthUITests/OnboardingTourTests \
             -parallel-testing-enabled NO \
             -resultBundlePath "$RESULTS_DIR/tour.xcresult" \
             CODE_SIGNING_ALLOWED=NO

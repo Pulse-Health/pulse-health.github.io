@@ -83,11 +83,14 @@ final class RestNotificationScheduler: WorkoutSideEffect {
     }
 
     /// Asks for permission to show alerts and play the sound (the time-sensitive level needs no extra option).
-    func requestAuthorization() async {
+    /// Returns whether the user allowed alerts (false when the prompt failed).
+    @discardableResult
+    func requestAuthorization() async -> Bool {
         do {
-            _ = try await center.requestAuthorization(options: [.alert, .sound])
+            return try await center.requestAuthorization(options: [.alert, .sound])
         } catch {
             ServiceLog.error("Notification authorization failed: \(error.localizedDescription)")
+            return false
         }
     }
 

@@ -3,8 +3,8 @@ import SwiftUI
 import UIKit
 import PulseStrengthCore
 
-/// The dark snackbar that offers "Undo" after an exercise was removed or a set was deleted
-/// ("Removed Cable crossover", "Set deleted"). The caller shows it while
+/// The dark snackbar that offers "Undo" after an exercise was removed or replaced or a set was deleted
+/// ("Removed Cable crossover", "Replaced Barbell bench press", "Set deleted"). The caller shows it while
 /// `ActiveWorkoutPresentation.undoText` is non-nil and dispatches `.undo` from `onUndo`.
 public struct UndoToastView: View {
     public var text: String

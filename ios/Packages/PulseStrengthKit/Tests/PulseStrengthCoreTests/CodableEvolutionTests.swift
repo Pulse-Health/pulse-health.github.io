@@ -28,11 +28,11 @@ final class CodableEvolutionTests: XCTestCase {
         XCTAssertEqual(try decoder.decode(CompletedWorkout.self, from: rewritten), workout)
     }
 
-    func testATemplateWrittenBeforeNotesDecodesWithEmptyNotes() throws {
+    func testATemplateWrittenBeforeNotesDecodesWithoutANote() throws {
         let template = try decoder.decode(WorkoutTemplate.self, from: Data(V1Files.template(3, name: "Push").utf8))
         XCTAssertEqual(template.name, "Push")
         XCTAssertEqual(template.entries.count, 1)
-        XCTAssertEqual(template.entries[0].note, "")
+        XCTAssertNil(template.entries[0].note)
         XCTAssertEqual(template.entries[0].plannedSets, [PlannedSet(weightKg: 60, reps: 8)])
         XCTAssertEqual(template.entries[0].restSeconds, 150)
         XCTAssertNil(template.entries[0].supersetGroup)

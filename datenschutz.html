@@ -51,6 +51,16 @@
             text-align: left;
         }
         th { background: #f5f5f5; }
+
+        /* A table wider than its box scrolls sideways inside the page (words stay whole) instead of sticking out of it or stretching the page. */
+        table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        h1, h2, h3 { overflow-wrap: anywhere; }
+        @media (max-width: 1100px) {
+            th, td { padding: 8px; }
+        }
+        @media (max-width: 720px) {
+            .container { padding: 24px 14px; }
+        }
     </style>
 </head>
 <body>
@@ -60,7 +70,7 @@
         <h1>Datenschutzerklärung</h1>
         
         <div class="meta">
-            <strong>Gültig ab:</strong> 23. Juni 2026 &middot; <strong>Zuletzt aktualisiert:</strong> 13. Oktober 2026<br>
+            <strong>Gültig ab:</strong> 23. Juni 2026 &middot; <strong>Zuletzt aktualisiert:</strong> 16. Oktober 2026<br>
             <strong>Sprache:</strong> Deutsch | <a href="privacy-policy.html">English</a><br>
             <strong>Siehe auch:</strong> <a href="agb.html">AGB</a> · <a href="impressum.html">Impressum</a>
         </div>
@@ -124,6 +134,12 @@
                 <td>Gesonderte ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO); Einzeleinträge werden nie übermittelt</td>
             </tr>
             <tr>
+                <td>Körpergewicht (Strength-Wiegeeinträge &amp; Erinnerungs-Einstellungen)</td>
+                <td>Von Ihnen eingegeben; Apple Health, wenn Sie den Abgleich einschalten</td>
+                <td>Bleibt auf Ihrem Gerät</td>
+                <td>Ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO); wird nie an den KI-Coach übermittelt &mdash; siehe Abschnitt 4d</td>
+            </tr>
+            <tr>
                 <td>KI-Coaching-Anfragen (inkl. Gesundheitsmetriken)</td>
                 <td>Ihre Abfragen</td>
                 <td>EU-gehostete KI-Modelle (Mistral AI 🇫🇷 FR) über Eden AI (🇫🇷 FR) — EU-intern</td>
@@ -172,7 +188,9 @@
             <strong>Daten:</strong> Herzdaten, Trainings- und Fitnessdaten, Schlafmetriken,
             Aktivitydaten sowie Ihr Geburtsdatum und biologisches Geschlecht von Apple Watch und iPhone.
             Ihr Geburtsdatum wird nur auf Ihrem Gerät verwendet (zur Ableitung eines Altersbereichs)
-            und niemals an den KI-Anbieter übermittelt.
+            und niemals an den KI-Anbieter übermittelt. Wenn Sie in den Strength-Einstellungen den Körpergewicht-Abgleich
+            einschalten, wird zusätzlich Ihr Körpergewicht aus Apple Health gelesen und dorthin geschrieben
+            (Abschnitt 4d).
         </p>
         <p>
             <strong>Speicherort:</strong> Diese Daten bleiben auf Ihrem Gerät und Ihrer privaten iCloud. 
@@ -260,6 +278,53 @@
                 Erkrankungen oder körperliche Einschränkungen Gesundheitsinformationen offenbaren können.</li>
             <li><strong>Keine medizinische Beratung:</strong> Pläne sind allgemeine Vorschläge; siehe
                 §&nbsp;7 und §&nbsp;8 der <a href="agb.html">AGB</a>.</li>
+        </ul>
+
+        <h2>4d. Körpergewicht (Strength, optional)</h2>
+        <p>
+            Wenn Sie die Strength-Funktion nutzen, können Sie in Pulse Ihr Körpergewicht über die Zeit
+            festhalten und sich daran erinnern lassen, es zu aktualisieren. Ihre Wiegeeinträge dienen dazu,
+            Ihren Verlauf anzuzeigen und &mdash; sobald Sie ein Gewicht eingetragen haben &mdash; auf der
+            Rekordseite einer Übung zwei Schätzungen zu berechnen: Ihre Kraft im Verhältnis zum Körpergewicht
+            (Langhantelübungen) und eine geschätzte Last bei Körpergewichtsübungen wie Liegestützen, Dips und
+            Klimmzügen. Beides wird auf Ihrem Gerät berechnet.
+        </p>
+        <ul>
+            <li><strong>Opt-in:</strong> Es wird nichts erfasst, was Sie nicht selbst eintragen (in den
+                Strength-Einstellungen oder mit der Aktion &bdquo;Log weight&ldquo; einer Erinnerung) oder
+                über den unten beschriebenen Apple-Health-Abgleich einschalten.</li>
+            <li><strong>Was gespeichert wird:</strong> Datum, Uhrzeit und Gewicht (kg) jedes Wiegeeintrags,
+                ob er in Pulse eingegeben wurde oder aus Apple Health stammt, sowie Ihre
+                Erinnerungs-Einstellungen (an/aus, wie oft, Uhrzeit).</li>
+            <li><strong>Speicherort:</strong> ausschließlich auf Ihrem Gerät. Wiegeeinträge werden
+                <strong>nie</strong> an unsere Server (Supabase) oder an andere Empfänger übermittelt und sind
+                <strong>nicht Teil einer Anfrage an den KI-Coach</strong>. Sie sind getrennt von Größe und Gewicht
+                in Ihrem Profil (Abschnitt 7). Wie andere App-Daten können sie in einem Backup Ihres iPhones
+                enthalten sein, das Apple erstellt (iCloud- oder Computer-Backup); wir haben darauf keinen
+                Zugriff.</li>
+            <li><strong>Erinnerung:</strong> eine lokale Mitteilung, die Ihr iPhone plant &mdash; es ist kein
+                Server beteiligt. Es wird nichts geplant, solange Sie die Erinnerung nicht in den
+                Strength-Einstellungen einschalten. Sie nutzt die Mitteilungs-Berechtigung der App (dieselbe wie
+                für den Pausen-Alarm), die Sie jederzeit in den iOS-Einstellungen ändern können. Solange die
+                Erinnerung an ist, wird ein fälliger Wiegeeintrag zusätzlich als Karte in der App angezeigt.</li>
+            <li><strong>Apple Health (optional, standardmäßig aus):</strong> Wenn Sie in den
+                Strength-Einstellungen &bdquo;Sync with Apple Health&ldquo; einschalten, fragt Pulse Ihre
+                Erlaubnis ab, Ihr Körpergewicht in Apple Health zu lesen und zu schreiben. Solange der Abgleich
+                an ist, speichert Pulse jedes von Ihnen eingegebene Gewicht in Apple Health, entfernt den
+                Eintrag dort wieder, wenn Sie ihn in Pulse löschen, und übernimmt die Körpergewichte, die Apple
+                Health bereits hat (z.&nbsp;B. von einer smarten Waage oder einer anderen App), in Ihren Verlauf
+                in Pulse. Sie können die Erlaubnis jederzeit in den iOS-Einstellungen (Health &rarr; Datenzugriff
+                &amp; Geräte) widerrufen oder den Abgleich in Pulse ausschalten.</li>
+            <li><strong>Keine Weitergabe:</strong> Ihr Körpergewicht wird nicht verkauft, nicht für Werbung
+                verwendet und nicht an Dritte weitergegeben.</li>
+            <li><strong>Rechtsgrundlage:</strong> ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO), die
+                Sie jederzeit mit Wirkung für die Zukunft widerrufen können &mdash; indem Sie die Erinnerung oder
+                den Abgleich ausschalten, Ihre Wiegeeinträge löschen oder die App deinstallieren.</li>
+            <li><strong>Speicherdauer:</strong> auf Ihrem Gerät, bis Sie den Wiegeeintrag löschen oder die App
+                deinstallieren. Selbst eingegebene Wiegeeinträge können Sie in den Strength-Einstellungen
+                löschen. Ein aus Apple Health übernommenes Gewicht ist in Pulse schreibgeschützt und kann dort
+                nicht einzeln gelöscht werden; es wird beim Deinstallieren der App entfernt und bleibt in Apple
+                Health, wo Sie es verwalten.</li>
         </ul>
 
         <h2>5. Supabase Datenspeicher</h2>
@@ -576,6 +641,9 @@
             <li><strong>Recht auf Datenportabilität (Art. 20):</strong> Sie können Ihre Daten exportieren</li>
             <li><strong>Recht auf Berichtigung (Art. 16):</strong> Sie können Ihre Daten bearbeiten</li>
             <li><strong>Recht auf Widerspruch (Art. 21):</strong> Sie können bestimmte Verarbeitungen ablehnen</li>
+            <li><strong>Recht auf Einschränkung der Verarbeitung (Art. 18):</strong> Sie können verlangen, dass die Verarbeitung Ihrer Daten eingeschränkt wird, z.&nbsp;B. solange wir die Richtigkeit prüfen</li>
+            <li><strong>Recht auf Widerruf einer Einwilligung (Art. 7 Abs. 3):</strong> Eine erteilte Einwilligung (z.&nbsp;B. in KI-Coaching oder in die Verarbeitung von Gesundheitsdaten) können Sie jederzeit mit Wirkung für die Zukunft widerrufen; die Rechtmäßigkeit der bis dahin erfolgten Verarbeitung bleibt unberührt</li>
+            <li><strong>Beschwerderecht (Art. 77):</strong> Sie können sich bei einer Aufsichtsbehörde beschweren, siehe Abschnitt 12</li>
         </ul>
         <p>Um diese Rechte auszuüben, kontaktieren Sie: <a class="js-contact-email-link"></a><noscript>robin.juengerich@icloud.com</noscript></p>
 
@@ -624,9 +692,9 @@
         </p>
 
         <hr style="margin: 40px 0;">
-        <p style="text-align: center; color: #999; font-size: 12px;">
-            Letzte Aktualisierung: 13. Oktober 2026<br>
-            Version 1.1
+        <p style="text-align: center; color: #6b6b6b; font-size: 12px;">
+            Letzte Aktualisierung: 16. Oktober 2026<br>
+            Version 1.2
         </p>
     </div>
     <script src="site.js"></script>

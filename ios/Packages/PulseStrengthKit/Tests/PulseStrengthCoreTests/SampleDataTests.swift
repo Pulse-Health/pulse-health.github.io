@@ -55,11 +55,10 @@ final class SampleDataTests: XCTestCase {
         XCTAssertEqual(try template("Upper B · Pull").entries.map { $0.exercise.id }, ["pullup", "brow", "pulldown", "crow", "facepull", "curl"])
     }
 
-    func testEveryTemplateExerciseIsTheLibraryExerciseWithTheDemoPreviousResults() {
+    func testEveryTemplateExerciseIsTheLibraryExercise() {
         for template in SampleData.templates() {
             for entry in template.entries {
-                let library = ExerciseLibrary.exercise(id: entry.exercise.id).map { DemoPreviousResults.applying(to: $0) }
-                XCTAssertEqual(entry.exercise, library, entry.exercise.id)
+                XCTAssertEqual(entry.exercise, ExerciseLibrary.exercise(id: entry.exercise.id), entry.exercise.id)
                 XCTAssertFalse(entry.plannedSets.isEmpty)
                 XCTAssertGreaterThan(entry.restSeconds, 0)
             }
@@ -258,16 +257,16 @@ final class SampleDataTests: XCTestCase {
         XCTAssertEqual(bests["lateral"]?.heaviestKg, 8)
     }
 
-    func testBestsMatchTheDemoValuesOfTheDesignExercises() throws {
+    /// The design's best estimated 1RMs (`DesignBaseline`) were made with the old rule that every set counts. A set of more than
+    /// `Estimated1RM.maximumReliableReps` reps gives no estimate any more, so the demo history reaches 21 (not 22) for the cable
+    /// crossover, 42 (not 43) for the pushdown and none for the lateral raise (8 kg x 14 to 17 reps).
+    func testBestsMatchTheBaselineOfTheDesignExercises() throws {
         let bests = SampleData.personalBests(now: now)
-        for id in ["bench", "incline", "ohp", "pushdown", "crossover"] {
-            let library = try XCTUnwrap(DemoPreviousResults.byExerciseID[id]).bestE1RM
-            XCTAssertGreaterThan(library, 0)
-            XCTAssertEqual(try XCTUnwrap(bests[id]).estimated1RM, library, accuracy: 0.5, id)
+        let capped: [String: Double] = ["crossover": 21, "pushdown": 42, "lateral": 0]
+        for id in ["bench", "incline", "ohp", "lateral", "pushdown", "crossover"] {
+            let expected = try capped[id] ?? XCTUnwrap(DesignBaseline.values[id]).e1RM
+            XCTAssertEqual(try XCTUnwrap(bests[id]).estimated1RM, expected, accuracy: 0.5, id)
         }
-        // Only sets of up to 12 reps are estimates: the lateral raise sets (14 to 17 reps) give none, in the history and in the demo.
-        XCTAssertEqual(try XCTUnwrap(DemoPreviousResults.byExerciseID["lateral"]).bestE1RM, 0)
-        XCTAssertEqual(try XCTUnwrap(bests["lateral"]).estimated1RM, 0)
     }
 
     // MARK: Overlay
@@ -275,10 +274,10 @@ final class SampleDataTests: XCTestCase {
     func testSeededDataReproducesThePreviousSetsOfTheDesign() throws {
         let data = StrengthData.demo(now: now)
         for id in ["bench", "incline", "ohp", "lateral", "pushdown", "crossover"] {
-            let library = try XCTUnwrap(DemoPreviousResults.byExerciseID[id])
-            // The history also remembers the reps in reserve of each set; the demo table does not.
+            let baseline = try XCTUnwrap(DesignBaseline.exercise(id: id))
+            // The history also remembers the reps in reserve of each set; the baseline does not.
             let remembered = try XCTUnwrap(data.exercise(id: id)).previousSets.map { PreviousSet(weightKg: $0.weightKg, reps: $0.reps, type: $0.type) }
-            XCTAssertEqual(remembered, library.sets, id)
+            XCTAssertEqual(remembered, baseline.previousSets, id)
         }
     }
 

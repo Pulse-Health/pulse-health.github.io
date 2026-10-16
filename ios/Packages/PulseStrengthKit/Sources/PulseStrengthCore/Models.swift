@@ -388,12 +388,22 @@ public struct WorkoutExercise: Identifiable, Codable, Hashable, Sendable {
 public struct PlannedSet: Codable, Hashable, Sendable {
     public var type: SetType
     public var weightKg: Double
+    /// The target reps (seconds for duration exercises); the lower end when `repsMax` is set.
     public var reps: Int
+    /// The upper end of a rep range: "8-10" is `reps` 8 and `repsMax` 10. nil (or not above `reps`) means exactly `reps`.
+    public var repsMax: Int?
 
-    public init(type: SetType = .normal, weightKg: Double, reps: Int) {
+    public init(type: SetType = .normal, weightKg: Double, reps: Int, repsMax: Int? = nil) {
         self.type = type
         self.weightKg = weightKg
         self.reps = reps
+        self.repsMax = repsMax
+    }
+
+    /// "8" or, for a range, "8\u{2013}10" (an en dash).
+    public var repsText: String {
+        if let upper = repsMax, upper > reps { return "\(reps)\u{2013}\(upper)" }
+        return String(reps)
     }
 }
 
@@ -403,8 +413,9 @@ public struct TemplateEntry: Identifiable, Codable, Hashable, Sendable {
     public var plannedSets: [PlannedSet]
     public var restSeconds: Int
     public var supersetGroup: String?
-    /// The exercise note a workout started from this template begins with (empty when none).
-    public var note: String
+    /// How to do this exercise in this workout (technique cues, substitutions); copied into the workout's exercise note.
+    /// nil = no note. Optional so that templates saved before notes existed still load.
+    public var note: String?
 
     public init(
         id: UUID = UUID(),
@@ -412,7 +423,7 @@ public struct TemplateEntry: Identifiable, Codable, Hashable, Sendable {
         plannedSets: [PlannedSet],
         restSeconds: Int,
         supersetGroup: String? = nil,
-        note: String = ""
+        note: String? = nil
     ) {
         self.id = id
         self.exercise = exercise
@@ -420,21 +431,6 @@ public struct TemplateEntry: Identifiable, Codable, Hashable, Sendable {
         self.restSeconds = restSeconds
         self.supersetGroup = supersetGroup
         self.note = note
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case id, exercise, plannedSets, restSeconds, supersetGroup, note
-    }
-
-    // `note` came later: a template written before it reads with an empty note.
-    public init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decode(UUID.self, forKey: .id)
-        self.exercise = try container.decode(Exercise.self, forKey: .exercise)
-        self.plannedSets = try container.decode([PlannedSet].self, forKey: .plannedSets)
-        self.restSeconds = try container.decode(Int.self, forKey: .restSeconds)
-        self.supersetGroup = try container.decodeIfPresent(String.self, forKey: .supersetGroup)
-        self.note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
     }
 }
 

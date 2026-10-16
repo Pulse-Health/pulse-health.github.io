@@ -14,6 +14,8 @@ public struct StrengthData: Equatable, Sendable {
     public var customExercises: [Exercise]
     /// Best estimated 1RM per exercise id.
     public var personalBests: [String: PersonalBest]
+    /// Training plans (rotations of templates), in the order they are shown.
+    public var plans: [WorkoutPlan]
     /// The user's body weight over time, newest first (see `BodyWeight.swift`).
     public var bodyWeights: [BodyWeightEntry]
     /// How often the app asks the user to update their weight.
@@ -23,10 +25,6 @@ public struct StrengthData: Equatable, Sendable {
     /// True while `history` is known to lack workouts that could not be read from disk. The personal bests may then be the only
     /// trace of those workouts, so `recomputePersonalBests()` only raises them and never lowers or drops one.
     public var historyIsIncomplete: Bool
-    /// True when the demo data was seeded into this store in this process (previews and UI tests): the built-in exercises then
-    /// carry the invented previous results of `DemoPreviousResults` until the user's own history replaces them. Never stored; a
-    /// real user's store is always false, so the previous column and the record baseline come from real history only.
-    public var usesDemoPreviousResults: Bool
 
     /// Creates the data from its collections.
     public init(
@@ -34,21 +32,21 @@ public struct StrengthData: Equatable, Sendable {
         history: [CompletedWorkout] = [],
         customExercises: [Exercise] = [],
         personalBests: [String: PersonalBest] = [:],
+        plans: [WorkoutPlan] = [],
         bodyWeights: [BodyWeightEntry] = [],
         weighIn: WeighInPreferences = WeighInPreferences(),
         preferences: StrengthPreferences = StrengthPreferences(),
-        historyIsIncomplete: Bool = false,
-        usesDemoPreviousResults: Bool = false
+        historyIsIncomplete: Bool = false
     ) {
         self.templates = templates
         self.history = history
         self.customExercises = customExercises
         self.personalBests = personalBests
+        self.plans = plans
         self.bodyWeights = bodyWeights
         self.weighIn = weighIn
         self.preferences = preferences
         self.historyIsIncomplete = historyIsIncomplete
-        self.usesDemoPreviousResults = usesDemoPreviousResults
     }
 
     /// True when there are neither templates nor finished workouts (the condition for seeding demo data).
@@ -58,6 +56,18 @@ public struct StrengthData: Equatable, Sendable {
     public func template(id: UUID) -> WorkoutTemplate? {
         templates.first { $0.id == id }
     }
+
+    /// The plan the hub follows, if any.
+    public var activePlan: WorkoutPlan? {
+        plans.first { $0.isActive }
+    }
+
+    /// The workout to recommend next: the next one of the active plan, or without an active plan (or when none of its
+    /// templates exists) the one after the most recently performed template.
+    public func nextTemplate() -> WorkoutTemplate? {
+        if let plan = activePlan, let next = plan.nextWorkout(in: templates) { return next }
+        return TemplateRotation.next(in: templates)
+    }
 }
 
 // MARK: - Exercises with remembered results
@@ -65,8 +75,8 @@ public struct StrengthData: Equatable, Sendable {
 public extension StrengthData {
     /// The built-in library plus the custom exercises, each with `previousBestE1RM` and `previousSets` taken from the user's results.
     ///
-    /// An exercise with no personal best or history has none (0 and no sets), except in a demo store (`usesDemoPreviousResults`),
-    /// where it keeps the invented demo values. A custom exercise whose id equals a built-in id is ignored.
+    /// An exercise with no personal best or history keeps the values it already carries (none for the built-in exercises).
+    /// A custom exercise whose id equals a built-in id is ignored.
     func exercises() -> [Exercise] {
         let memory = exerciseMemory()
         return allExercises().map { overlay($0, memory: memory) }
@@ -79,8 +89,8 @@ public extension StrengthData {
         return overlay(base, memory: exerciseMemory(only: id))
     }
 
-    /// `exercise` with the remembered best e1RM and last sets of the same exercise id applied (anything remembered wins). In a demo
-    /// store an exercise with nothing remembered gets the demo numbers of its id; otherwise it keeps what it carries.
+    /// `exercise` with the remembered best e1RM and last sets of the same exercise id applied (anything remembered wins); an exercise
+    /// with nothing remembered keeps what it carries.
     func overlay(_ exercise: Exercise) -> Exercise {
         overlay(exercise, memory: exerciseMemory(only: exercise.id))
     }
@@ -105,7 +115,7 @@ private extension StrengthData {
     }
 
     func overlay(_ exercise: Exercise, memory: [String: ExerciseMemory]) -> Exercise {
-        var result = usesDemoPreviousResults ? DemoPreviousResults.applying(to: exercise) : exercise
+        var result = exercise
         let remembered = memory[exercise.id]
         let stored = personalBests[exercise.id]?.withoutUnreliableEstimate
         let best = max(stored?.estimated1RM ?? 0, remembered?.bestE1RM ?? 0)
@@ -204,6 +214,72 @@ public extension StrengthData {
         }
     }
 
+    /// Adds a plan, or replaces the one with the same id (keeping its position). A plan that is saved active deactivates the others.
+    mutating func savePlan(_ plan: WorkoutPlan) {
+        if let index = plans.firstIndex(where: { $0.id == plan.id }) {
+            plans[index] = plan
+        } else {
+            plans.append(plan)
+        }
+        if plan.isActive { activatePlan(id: plan.id) }
+    }
+
+    /// Makes the plan the only active one. Does nothing for an unknown id.
+    mutating func activatePlan(id: UUID) {
+        guard plans.contains(where: { $0.id == id }) else { return }
+        for index in plans.indices { plans[index].isActive = plans[index].id == id }
+    }
+
+    /// Removes a plan. Its workouts stay saved as templates.
+    mutating func deletePlan(id: UUID) {
+        plans.removeAll { $0.id == id }
+    }
+
+    /// Passes over the next workout of a plan without doing it.
+    mutating func skipNextWorkout(planID: UUID) {
+        guard let index = plans.firstIndex(where: { $0.id == planID }) else { return }
+        plans[index].skip(in: templates)
+    }
+
+    /// Adds the plans, templates and exercises of an import bundle (see `PlanBundle`).
+    ///
+    /// * A template with a known id is replaced by the imported one but keeps its `lastPerformed`; a new one is appended.
+    /// * A plan with a known id is replaced but keeps its place in the rotation and whether it is active; a new plan becomes the
+    ///   active one (the user has just chosen to import it).
+    /// * Exercises: the bundle's custom exercises and the custom exercises the templates use are added (never over a built-in id).
+    @discardableResult
+    mutating func importBundle(_ bundle: PlanBundle) -> PlanImportSummary {
+        let bundle = bundle.sanitized()
+        var customCount = 0
+        var customs = bundle.customExercises
+        for template in bundle.templates {
+            for entry in template.entries where entry.exercise.isCustom && !customs.contains(where: { $0.id == entry.exercise.id }) {
+                customs.append(entry.exercise)
+            }
+        }
+        for exercise in customs {
+            if !customExercises.contains(where: { $0.id == exercise.id }) { customCount += 1 }
+            addCustomExercise(exercise)
+        }
+        for template in bundle.templates {
+            var incoming = template
+            incoming.lastPerformed = self.template(id: template.id)?.lastPerformed
+            saveTemplate(incoming)
+        }
+        for plan in bundle.plans {
+            var incoming = plan
+            if let existing = plans.first(where: { $0.id == plan.id }) {
+                incoming.isActive = existing.isActive
+                incoming.nextIndex = incoming.templateIDs.isEmpty ? 0 : min(existing.nextIndex, incoming.templateIDs.count - 1)
+                savePlan(incoming)
+            } else {
+                incoming.isActive = true
+                savePlan(incoming)
+            }
+        }
+        return PlanImportSummary(plans: bundle.plans.count, templates: bundle.templates.count, customExercises: customCount)
+    }
+
     /// Records a finished workout.
     ///
     /// * History: inserted newest first (a workout with the same id is replaced).
@@ -213,13 +289,15 @@ public extension StrengthData {
     ///   a best the new one does not reach.
     /// * Templates: the workout's template gets `lastPerformed`; `updateTemplate` (when given) replaces the stored template with the same id
     ///   (or is added) and also gets `lastPerformed`.
+    /// * Plans: every plan that contains the workout's template moves on to the workout after it (once per workout: recording the same
+    ///   workout id again does not advance the rotation again).
     mutating func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) {
-        let replaced = history.contains { $0.id == completed.id }
+        let isNewWorkout = !history.contains { $0.id == completed.id }
         history.removeAll { $0.id == completed.id }
         let index = history.firstIndex { $0.finishedAt <= completed.finishedAt } ?? history.endIndex
         history.insert(completed, at: index)
 
-        if replaced {
+        if !isNewWorkout {
             recomputePersonalBests()
         } else {
             for entry in completed.exercises {
@@ -233,6 +311,9 @@ public extension StrengthData {
         if var updated = updateTemplate {
             updated.lastPerformed = Self.later(updated.lastPerformed, completed.finishedAt)
             saveTemplate(updated)
+        }
+        if isNewWorkout, let id = completed.templateID {
+            for index in plans.indices { plans[index].advance(after: id) }
         }
     }
 
@@ -306,8 +387,8 @@ public extension StrengthData {
         bests[entry.exerciseID] = bests[entry.exerciseID]?.raised(by: candidate) ?? candidate
     }
 
-    /// Fills an empty store (no templates, no history) with the demo templates, history and personal bests and switches on the demo
-    /// previous results (`usesDemoPreviousResults`); true when it did. Only previews and UI tests seed.
+    /// Fills an empty store (no templates, no history) with the demo templates, history and personal bests; true when it did. Only
+    /// previews and UI tests seed. The previous results the demo shows come from that history like any other user's.
     @discardableResult
     mutating func seedDemoDataIfEmpty(now: Date) -> Bool {
         guard isEmpty else { return false }
@@ -315,19 +396,16 @@ public extension StrengthData {
         templates = demo.templates
         history = demo.history
         if personalBests.isEmpty { personalBests = demo.personalBests }
-        usesDemoPreviousResults = true
         return true
     }
 
-    /// The demo data for `now` (see `SampleData`): three templates, five finished workouts and the matching personal bests, with
-    /// the demo previous results switched on.
+    /// The demo data for `now` (see `SampleData`): three templates, five finished workouts and the matching personal bests.
     static func demo(now: Date) -> StrengthData {
         StrengthData(
             templates: SampleData.templates(now: now),
             history: SampleData.history(now: now),
             customExercises: [],
-            personalBests: SampleData.personalBests(now: now),
-            usesDemoPreviousResults: true
+            personalBests: SampleData.personalBests(now: now)
         )
     }
 
@@ -673,7 +751,7 @@ private extension StrengthData {
 /// keeps the in-memory change and is reported: through the returned `Result` and through `lastPersistenceError`. A file whose write
 /// failed is written again by the next save of anything. Writing several files is not transactional; the order is chosen so that a
 /// failure in the middle loses nothing: the history first (the only copy of the sets), then the custom exercises, the personal bests
-/// (derived from the history) and the templates.
+/// (derived from the history), the templates and the plans.
 @MainActor
 public final class StrengthDataModel: WorkoutDataProviding {
     /// The current data.
@@ -692,8 +770,8 @@ public final class StrengthDataModel: WorkoutDataProviding {
     /// unit picked from the region at the first launch is kept even if the region changes later. Loading writes nothing.
     private var preferencesStored = false
 
-    /// Loads `persistence` (when given); with `seedDemoData` an empty store is filled with the demo data for `now` and shows the
-    /// demo previous results (`StrengthData.usesDemoPreviousResults`). The app seeds only in previews and UI tests.
+    /// Loads `persistence` (when given); with `seedDemoData` an empty store is filled with the demo data for `now`. The app seeds only
+    /// in previews and UI tests.
     ///
     /// Demo data is only written to a data directory that has no data files at all and no load issues: files that exist but
     /// could not be read are never seeded over.
@@ -740,6 +818,60 @@ public final class StrengthDataModel: WorkoutDataProviding {
         return commit(templates: true)
     }
 
+    /// The workout to recommend next (see `StrengthData.nextTemplate`).
+    public func nextTemplate() -> WorkoutTemplate? { data.nextTemplate() }
+
+    /// Adds or replaces a plan and saves the plans. A plan that is saved active deactivates the others. `.failure` when the file could
+    /// not be written (the plan is saved in memory).
+    @discardableResult
+    public func savePlan(_ plan: WorkoutPlan) -> Result<Void, Error> {
+        data.savePlan(plan)
+        return commit(plans: true)
+    }
+
+    /// Makes a plan the active one and saves the plans (an unknown id changes nothing).
+    @discardableResult
+    public func activatePlan(id: UUID) -> Result<Void, Error> {
+        let before = data.plans
+        data.activatePlan(id: id)
+        guard data.plans != before else { return .success(()) }
+        return commit(plans: true)
+    }
+
+    /// Removes a plan (its templates stay) and saves the plans.
+    @discardableResult
+    public func deletePlan(id: UUID) -> Result<Void, Error> {
+        let before = data.plans
+        data.deletePlan(id: id)
+        guard data.plans != before else { return .success(()) }
+        return commit(plans: true)
+    }
+
+    /// Passes over the next workout of a plan and saves the plans.
+    @discardableResult
+    public func skipNextWorkout(planID: UUID) -> Result<Void, Error> {
+        let before = data.plans
+        data.skipNextWorkout(planID: planID)
+        guard data.plans != before else { return .success(()) }
+        return commit(plans: true)
+    }
+
+    /// Imports a plan file (see `PlanBundle`). Nothing changes when the file cannot be read. A write error of the files it changed is
+    /// reported through `lastPersistenceError` (the import is applied in memory).
+    public func importPlan(from fileData: Data) -> Result<PlanImportSummary, PlanImportError> {
+        let bundle: PlanBundle
+        do {
+            bundle = try PlanBundle.decode(from: fileData)
+        } catch let error as PlanImportError {
+            return .failure(error)
+        } catch {
+            return .failure(.unreadable)
+        }
+        let summary = data.importBundle(bundle)
+        _ = commit(templates: true, customExercises: true, plans: true, exercises: true)
+        return .success(summary)
+    }
+
     /// Records a finished workout (history, personal bests, template) and saves what changed.
     ///
     /// The data changes in memory in every case. The result is `.failure` when the workout could not be written to the history
@@ -750,13 +882,15 @@ public final class StrengthDataModel: WorkoutDataProviding {
     public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error> {
         let templatesBefore = data.templates
         let bestsBefore = data.personalBests
+        let plansBefore = data.plans
         data.record(completed, updateTemplate: updateTemplate)
         cache = nil
         let failures = persist(
             templates: data.templates != templatesBefore,
             history: true,
             customExercises: false,
-            personalBests: data.personalBests != bestsBefore
+            personalBests: data.personalBests != bestsBefore,
+            plans: data.plans != plansBefore
         )
         if let failure = failures.first(where: { $0.target == .history }) { return .failure(failure.error) }
         return .success(())
@@ -845,7 +979,6 @@ public final class StrengthDataModel: WorkoutDataProviding {
         persistence.rescanSchema()
         let bestsFileExisted = persistence.hasPersonalBestsFile
         let historyWasIncomplete = data.historyIsIncomplete
-        let wasDemo = data.usesDemoPreviousResults
         // A file that exists but cannot be read counts as stored: it is left alone until the user saves new preferences (the
         // original is copied first, see `FileStrengthPersistence.write`).
         preferencesStored = persistence.hasPreferencesFile
@@ -855,11 +988,11 @@ public final class StrengthDataModel: WorkoutDataProviding {
             history: persistence.loadHistory(),
             customExercises: persistence.loadCustomExercises(),
             personalBests: persistence.loadPersonalBests(),
+            plans: persistence.loadPlans(),
             bodyWeights: persistence.loadBodyWeights(),
             weighIn: persistence.loadWeighInPreferences(),
             preferences: preferences,
-            historyIsIncomplete: historyWasIncomplete,
-            usesDemoPreviousResults: wasDemo
+            historyIsIncomplete: historyWasIncomplete
         )
         cache = nil
         refreshPersistenceIssues()
@@ -917,6 +1050,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         static let bodyWeights = PersistTargets(rawValue: 16)
         static let weighIn = PersistTargets(rawValue: 32)
         static let preferences = PersistTargets(rawValue: 64)
+        static let plans = PersistTargets(rawValue: 128)
     }
 
     /// A file that `persist` could not write, and why.
@@ -935,6 +1069,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         history: Bool,
         customExercises: Bool,
         personalBests: Bool,
+        plans: Bool = false,
         bodyWeights: Bool = false,
         weighIn: Bool = false,
         preferences: Bool = false
@@ -948,6 +1083,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         if history { pending.insert(.history) }
         if customExercises { pending.insert(.customExercises) }
         if personalBests { pending.insert(.personalBests) }
+        if plans { pending.insert(.plans) }
         if bodyWeights { pending.insert(.bodyWeights) }
         if weighIn { pending.insert(.weighIn) }
         // The first save of anything also writes the preferences that were created at the first launch.
@@ -968,6 +1104,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         attempt(.customExercises) { try persistence.saveCustomExercises(data.customExercises) }
         attempt(.personalBests) { try persistence.savePersonalBests(data.personalBests) }
         attempt(.templates) { try persistence.saveTemplates(data.templates) }
+        attempt(.plans) { try persistence.savePlans(data.plans) }
         attempt(.bodyWeights) { try persistence.saveBodyWeights(data.bodyWeights) }
         attempt(.weighIn) { try persistence.saveWeighInPreferences(data.weighIn) }
         attempt(.preferences) {
@@ -986,6 +1123,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         history: Bool = false,
         customExercises: Bool = false,
         personalBests: Bool = false,
+        plans: Bool = false,
         bodyWeights: Bool = false,
         weighIn: Bool = false,
         preferences: Bool = false,
@@ -997,6 +1135,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         if history { requested.insert(.history) }
         if customExercises { requested.insert(.customExercises) }
         if personalBests { requested.insert(.personalBests) }
+        if plans { requested.insert(.plans) }
         if bodyWeights { requested.insert(.bodyWeights) }
         if weighIn { requested.insert(.weighIn) }
         if preferences { requested.insert(.preferences) }
@@ -1005,6 +1144,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
             history: history,
             customExercises: customExercises,
             personalBests: personalBests,
+            plans: plans,
             bodyWeights: bodyWeights,
             weighIn: weighIn,
             preferences: preferences
@@ -1030,7 +1170,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
             lastPersistenceError = nil
             return .success(())
         } catch {
-            unsavedFiles = [.templates, .history, .customExercises, .personalBests, .bodyWeights, .weighIn, .preferences]
+            unsavedFiles = [.templates, .history, .customExercises, .personalBests, .plans, .bodyWeights, .weighIn, .preferences]
             lastPersistenceError = error
             return .failure(error)
         }

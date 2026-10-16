@@ -792,7 +792,7 @@ final class ExerciseNoteTests: XCTestCase {
     func testNoteDefaultsAndTheEncodedForm() throws {
         let entry = CompletedExercise(exerciseID: "bench", name: "Bench", muscle: .chest, mediaKey: nil, tracking: .weightReps, sets: [], isPersonalRecord: false, bestE1RM: 0)
         XCTAssertEqual(entry.note, "")
-        XCTAssertEqual(TemplateEntry(exercise: ExerciseLibrary.exercise(id: "bench")!, plannedSets: [], restSeconds: 60).note, "")
+        XCTAssertNil(TemplateEntry(exercise: ExerciseLibrary.exercise(id: "bench")!, plannedSets: [], restSeconds: 60).note)
 
         let encoder = StrengthJSON.makeEncoder()
         let decoder = StrengthJSON.makeDecoder()

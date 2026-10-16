@@ -31,7 +31,8 @@ public extension TemplateDiff {
     /// * `setType`: the sets have the same number but a set has another type;
     /// * `weight` / `reps`: a WORKING set (warm-ups are left out) has another weight (compared in kilograms rounded to 0.01) or reps
     ///   (seconds), compared set by set when both have the same number of working sets (a different number is a `setCount` change;
-    ///   the weights count for exercises with an editable weight only);
+    ///   the weights count for exercises with an editable weight only). A planned set with a rep range (`PlannedSet.repsMax`) asks for
+    ///   any number of reps inside the range: a set with such a number is no change, one outside the range is;
     /// * `restSeconds`: the exercise's rest differs.
     ///
     /// Notes and superset groups are not compared.
@@ -81,10 +82,16 @@ private extension TemplateDiff {
             if entry.exercise.hasEditableWeight, pairs.contains(where: { hundredths($0.weightKg) != hundredths($1.weightKg) }) {
                 kinds.insert(.weight)
             }
-            if pairs.contains(where: { $0.reps != $1.reps }) { kinds.insert(.reps) }
+            if pairs.contains(where: { !isWithinPlan($0.reps, $1) }) { kinds.insert(.reps) }
         }
         if max(0, entry.restSeconds) != max(0, planned.restSeconds) { kinds.insert(.restSeconds) }
         return kinds
+    }
+
+    /// True when `reps` is what the planned set asks for: exactly its reps, or any number from its reps up to its `repsMax`.
+    static func isWithinPlan(_ reps: Int, _ planned: PlannedSet) -> Bool {
+        if let upper = planned.repsMax, upper > planned.reps { return reps >= planned.reps && reps <= upper }
+        return reps == planned.reps
     }
 
     /// A weight in kilograms as a whole number of hundredths (a weight that is not finite counts as its own value).
