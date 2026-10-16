@@ -1,0 +1,15 @@
+# Gradle / Android Studio
+.gradle/
+build/
+.idea/
+*.iml
+local.properties
+captures/
+.cxx/
+
+# Signing material must never be committed (see android/README.md, "Release signing")
+keystore.properties
+*.jks
+*.keystore
+*.p12
+play-service-account*.json
