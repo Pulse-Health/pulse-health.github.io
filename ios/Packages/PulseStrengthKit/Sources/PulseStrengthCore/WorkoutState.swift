@@ -82,6 +82,10 @@ public struct WorkoutState: Codable, Hashable, Sendable {
     /// Incremented by the reducer on every change; used to order sync messages.
     public var revision: Int
     public var finishedAt: Date?
+    /// The reported heart-rate samples worth keeping, oldest first: at most one per `WorkoutReducer.heartRateSampleInterval`
+    /// seconds and at most `WorkoutReducer.maximumHeartRateSamples` of them. `SummaryBuilder` hands them to the finished workout.
+    /// Empty for a workout saved before this field existed.
+    public var heartRateSeries: [HeartRateSample]
 
     public init(
         id: UUID = UUID(),
@@ -102,7 +106,8 @@ public struct WorkoutState: Codable, Hashable, Sendable {
         heartRateCount: Int = 0,
         usedWatch: Bool = false,
         revision: Int = 0,
-        finishedAt: Date? = nil
+        finishedAt: Date? = nil,
+        heartRateSeries: [HeartRateSample] = []
     ) {
         self.id = id
         self.name = name
@@ -123,6 +128,38 @@ public struct WorkoutState: Codable, Hashable, Sendable {
         self.usedWatch = usedWatch
         self.revision = revision
         self.finishedAt = finishedAt
+        self.heartRateSeries = heartRateSeries
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, templateID, templateBaseline, exercises, currentIndex, startedAt, pausedAt, pausedTotal, rest, lastLogged
+        case settings, undo, heartRate, heartRateSum, heartRateCount, usedWatch, revision, finishedAt, heartRateSeries
+    }
+
+    /// Reads a state. Every key a build before the heart-rate series wrote is still required as before; a file or an envelope
+    /// without `heartRateSeries` decodes to an empty series.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        templateID = try container.decodeIfPresent(UUID.self, forKey: .templateID)
+        templateBaseline = try container.decode([UUID].self, forKey: .templateBaseline)
+        exercises = try container.decode([WorkoutExercise].self, forKey: .exercises)
+        currentIndex = try container.decode(Int.self, forKey: .currentIndex)
+        startedAt = try container.decode(Date.self, forKey: .startedAt)
+        pausedAt = try container.decodeIfPresent(Date.self, forKey: .pausedAt)
+        pausedTotal = try container.decode(TimeInterval.self, forKey: .pausedTotal)
+        rest = try container.decodeIfPresent(RestState.self, forKey: .rest)
+        lastLogged = try container.decodeIfPresent(SetRef.self, forKey: .lastLogged)
+        settings = try container.decode(WorkoutSettings.self, forKey: .settings)
+        undo = try container.decodeIfPresent(UndoEntry.self, forKey: .undo)
+        heartRate = try container.decodeIfPresent(Int.self, forKey: .heartRate)
+        heartRateSum = try container.decode(Int.self, forKey: .heartRateSum)
+        heartRateCount = try container.decode(Int.self, forKey: .heartRateCount)
+        usedWatch = try container.decode(Bool.self, forKey: .usedWatch)
+        revision = try container.decode(Int.self, forKey: .revision)
+        finishedAt = try container.decodeIfPresent(Date.self, forKey: .finishedAt)
+        heartRateSeries = try container.decodeIfPresent([HeartRateSample].self, forKey: .heartRateSeries) ?? []
     }
 }
 

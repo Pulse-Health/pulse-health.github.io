@@ -25,6 +25,8 @@ public final class StrengthStore: ObservableObject {
     @Published public private(set) var bodyWeights: [BodyWeightEntry] = []
     /// How often the app asks the user to update their weight.
     @Published public private(set) var weighIn = WeighInPreferences()
+    /// Workouts per week the user aims for, 1...7 (see `StrengthSettings`).
+    @Published public private(set) var weeklyGoal = WidgetContext.defaultWeeklyGoal
 
     /// Called after the user's weigh-in was stored (not for weights read from Apple Health). The Health layer saves it to Health.
     public var onBodyWeightSaved: ((BodyWeightEntry) -> Void)?
@@ -150,6 +152,12 @@ public final class StrengthStore: ObservableObject {
         publish()
     }
 
+    /// Sets the weekly workout goal (a number outside 1...7 is brought into it) and saves it.
+    public func setWeeklyGoal(_ goal: Int) {
+        model.setWeeklyGoal(goal)
+        publish()
+    }
+
     /// Re-reads everything from disk.
     public func reload() {
         model.reload()
@@ -166,6 +174,7 @@ public final class StrengthStore: ObservableObject {
         if plans != data.plans { plans = data.plans }
         if bodyWeights != data.bodyWeights { bodyWeights = data.bodyWeights }
         if weighIn != data.weighIn { weighIn = data.weighIn }
+        if weeklyGoal != model.weeklyGoal { weeklyGoal = model.weeklyGoal }
     }
 }
 
