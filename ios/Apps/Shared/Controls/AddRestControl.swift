@@ -18,7 +18,7 @@ struct AddRestControl: ControlWidget {
                 Label("Add 30 seconds of rest", systemImage: "goforward.30")
             }
         }
-        .displayName("Add rest")
+        .displayName("Add 30 s rest")
         .description("Adds 30 seconds to the rest timer of your running workout, or starts a 30-second rest when none is running.")
     }
 }

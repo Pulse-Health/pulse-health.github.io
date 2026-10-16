@@ -44,7 +44,7 @@ struct StartNextIntent: AppIntent {
 }
 
 /// Plate calculator control: opens the running workout on the plate calculator (the hub when none runs).
-struct OpenPlateCalculatorIntent: AppIntent {
+struct OpenPlateCalculatorControlIntent: AppIntent {
     static var title: LocalizedStringResource = "Open plate calculator"
     static var description: IntentDescription? = IntentDescription("Opens the plate calculator of the running workout in Pulse Strength.")
     static var openAppWhenRun: Bool { true }
@@ -60,7 +60,7 @@ struct OpenPlateCalculatorIntent: AppIntent {
 
 /// Finish workout control: opens the running workout, where finishing asks for its confirmation (and for the template update, when the
 /// workout changed the template). Nothing is finished from outside the app.
-struct FinishWorkoutIntent: AppIntent {
+struct FinishWorkoutControlIntent: AppIntent {
     static var title: LocalizedStringResource = "Finish workout"
     static var description: IntentDescription? = IntentDescription("Opens the running workout in Pulse Strength so you can finish it. Finishing always needs your confirmation in the app.")
     static var openAppWhenRun: Bool { true }
@@ -106,7 +106,9 @@ struct SkipRestControlIntent: LiveActivityIntent {
 
 /// Pause control, a toggle: the system sets `value` to the state the person asked for. True pauses the workout (and freezes its rest timer),
 /// false resumes it. Both actions are idempotent, so a repeated or late press cannot toggle the workout the wrong way round.
-struct SetPausedIntent: SetValueIntent, LiveActivityIntent {
+/// `SetValueIntent` is iOS 18 API (it exists for the toggle of a control), the app supports iOS 17.
+@available(iOS 18.0, *)
+struct SetPausedControlIntent: SetValueIntent, LiveActivityIntent {
     static var title: LocalizedStringResource = "Pause workout"
     static var description: IntentDescription? = IntentDescription("Pauses the running strength workout, or resumes it.")
     static var openAppWhenRun: Bool { false }

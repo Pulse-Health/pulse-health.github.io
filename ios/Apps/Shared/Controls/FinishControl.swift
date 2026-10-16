@@ -13,7 +13,7 @@ struct FinishControl: ControlWidget {
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
-            ControlWidgetButton(action: FinishWorkoutIntent()) {
+            ControlWidgetButton(action: FinishWorkoutControlIntent()) {
                 Label("Finish workout", systemImage: "flag.checkered")
             }
         }

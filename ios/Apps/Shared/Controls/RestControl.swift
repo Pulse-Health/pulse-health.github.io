@@ -29,12 +29,11 @@ struct RestControl: ControlWidget {
     }
 }
 
-@available(iOS 18.0, *)
 private extension WorkoutControlState {
     /// "Rest 1:24" (the digits count down by themselves), "Rest paused 1:12", "Rest over", or "Rest timer" when no rest is shown.
     var restLabel: Text {
         switch rest {
-        case .none:
+        case .inactive:
             return Text("Rest timer")
         case .running(let interval):
             return Text("Rest ") + Text(timerInterval: interval, countsDown: true, showsHours: false)

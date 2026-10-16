@@ -12,7 +12,7 @@
 //     `Label` (which VoiceOver reads, and the medium size shows) says in words what a press does.
 //   * Labels come from the WidgetSnapshot through `WorkoutControlProvider`. The app reloads the controls with `ControlCenter.shared.reloadAllControls()`
 //     after it wrote a new snapshot; the system also refreshes a control after one of its own intents ran.
-//   * A block of a WidgetBundle takes only a limited number of widgets, so the eight controls are listed as two groups of four.
+//   * WidgetBundleBuilder offers `buildBlock` overloads of a fixed size, so the eight controls are two blocks of four rather than one block of eight.
 
 #if os(iOS)
 import SwiftUI
@@ -21,31 +21,17 @@ import WidgetKit
 struct ControlsBundle: WidgetBundle {
     var body: some Widget {
         if #available(iOS 18.0, *) {
-            WorkoutFlowControls().body
-            WorkoutToolControls().body
+            StartNextControl()
+            LogSetControl()
+            RestControl()
+            AddRestControl()
         }
-    }
-}
-
-/// CT-01...CT-04: start a workout, log a set, watch the rest and add to it.
-@available(iOS 18.0, *)
-private struct WorkoutFlowControls: WidgetBundle {
-    var body: some Widget {
-        StartNextControl()
-        LogSetControl()
-        RestControl()
-        AddRestControl()
-    }
-}
-
-/// CT-05...CT-08: the plate calculator, pause, finish and the 2x2 Next up.
-@available(iOS 18.0, *)
-private struct WorkoutToolControls: WidgetBundle {
-    var body: some Widget {
-        PlatesControl()
-        PauseControl()
-        FinishControl()
-        NextUpControl()
+        if #available(iOS 18.0, *) {
+            PlatesControl()
+            PauseControl()
+            FinishControl()
+            NextUpControl()
+        }
     }
 }
 #endif

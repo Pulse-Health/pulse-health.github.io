@@ -53,7 +53,7 @@ struct WorkoutControlState: Sendable, Equatable {
     /// How the rest timer is drawn.
     enum Rest: Sendable, Equatable {
         /// There is no rest to show.
-        case none
+        case inactive
         /// The countdown runs; the system draws the ticking digits (`Text(timerInterval:)`), so the label needs no refresh.
         case running(ClosedRange<Date>)
         /// The workout is paused, so the rest stands still at this many seconds.
@@ -83,7 +83,7 @@ extension WorkoutControlState {
         nextSplit: "Push day",
         workoutName: "",
         setLabel: "",
-        rest: .none
+        rest: .inactive
     )
 
     /// The state of `snapshot` at `now`; the empty state (nothing running, no next workout) when there is no snapshot.
@@ -111,11 +111,11 @@ extension WorkoutControlState {
         return "Start " + split
     }
 
-    /// Next up: the workout that comes next, or "Open <name>" for the one that runs.
+    /// Next up: "Next up: Upper A · Push", the kicker and the workout of the board, or "Open <name>" for the workout that runs.
     var nextUpTitle: String {
         guard phase == .idle else { return workoutName.isEmpty ? "Open workout" : "Open " + workoutName }
         guard let name = nextName, !name.isEmpty else { return "Start a workout" }
-        return name
+        return "Next up: " + name
     }
 
     /// Log set: "Log set 4 of 5", "Log warm-up set 1 of 2", "All sets logged" or, with nothing running, "Log set".
@@ -154,10 +154,10 @@ extension WorkoutControlState {
     /// The rest timer of `active` at `now`. The countdown range starts no later than `now` and its end, so it is a valid range whatever dates the
     /// snapshot holds (a `ClosedRange` with its bounds the wrong way round traps).
     private static func rest(of active: WorkoutSnapshot?, phase: WorkoutControlPhase, now: Date) -> Rest {
-        guard let active else { return .none }
+        guard let active else { return .inactive }
         switch phase {
         case .idle, .logging, .complete:
-            return .none
+            return .inactive
         case .restOver:
             return .over
         case .resting:

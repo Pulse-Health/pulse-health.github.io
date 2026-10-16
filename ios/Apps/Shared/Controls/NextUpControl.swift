@@ -1,8 +1,8 @@
 // NextUpControl.swift
 //
-// CT-08 Next up, the large control of the board: where Start workout names the action ("Start Push day"), this one names the workout itself
-// ("Upper A · Push"), which is what the 2x2 size has room for. It starts the same workout through the same intent, and it names the running
-// workout ("Open Upper A · Push") while one runs. Control Center decides the size; the label does not change with it.
+// CT-08 Next up, the large control of the board: where Start workout names the action ("Start Push day"), this one names the workout itself,
+// kicker and template ("Next up: Upper A · Push"), which is what the 2x2 size has room for. It starts the same workout through the same intent,
+// and it names the running workout ("Open Upper A · Push") while one runs. Control Center decides the size; the label does not change with it.
 
 #if os(iOS)
 import SwiftUI

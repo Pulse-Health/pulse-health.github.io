@@ -13,7 +13,7 @@ struct PlatesControl: ControlWidget {
 
     var body: some ControlWidgetConfiguration {
         StaticControlConfiguration(kind: Self.kind) {
-            ControlWidgetButton(action: OpenPlateCalculatorIntent()) {
+            ControlWidgetButton(action: OpenPlateCalculatorControlIntent()) {
                 Label("Open plate calculator", systemImage: "circle.circle")
             }
         }
