@@ -561,7 +561,7 @@ proposal records the decision not to use on-device models.
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
-  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 700 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 716 (the controller and
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 898 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 921 (the controller and
   store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
   phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
   40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice. `SyncHardeningTests.swift` holds one
