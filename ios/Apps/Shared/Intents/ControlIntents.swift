@@ -1,21 +1,21 @@
 // ControlIntents.swift
 //
-// App Intents behind the Controls (Control Center and the Lock Screen's two bottom slots; widgets/SPEC.md CT-01...CT-09), the Action button
-// (CT-10) and the Siri phrases of PulseShortcuts.swift. TARGET MEMBERSHIP: with the other files of Apps/Shared/Intents - the app, which runs
+// App Intents behind the Controls (Control Center and the Lock Screen's two bottom slots; widgets/SPEC.md CT-01...CT-09) and the Siri phrases of
+// PulseShortcuts.swift. TARGET MEMBERSHIP: with the other files of Apps/Shared/Intents - the app, which runs
 // them, and the widget extension, whose controls create them.
 //
-// Where an intent runs decides what it can do, so they come in three kinds:
-//   * Intents that change the workout (log a set, skip the rest, pause) are `LiveActivityIntent`s, like the buttons of the Live Activity: the
-//     system runs those in the app's process and launches the app in the background when needed, so the action reaches the workout while
-//     the app is suspended. A plain `AppIntent` that a control creates may run in the widget extension instead, and an extension can only
-//     leave the action in the App Group inbox, which nobody reads until the app runs again. WidgetIntentDispatch.swift handles both processes.
-//   * Intents that need the app on screen (start the next workout, plate calculator, finish) set `openAppWhenRun`. They only leave a deep
-//     link, which the app handles like an opened URL. A finish always needs the confirmation dialog of the app, so no control finishes a
-//     workout on its own: Finish opens the running workout.
-//   * `PrimaryActionIntent`, the Action button, has three meanings and opens the app in only one of them. `openAppWhenRun` is a static
-//     property, so one intent cannot choose per press, and two separate intents cannot share one button. `PrimaryActionIntent` is therefore a
-//     `ForegroundContinuableIntent`: logging and resting finish in the background, and only the idle case asks the system to continue in the
-//     foreground (the system unlocks the phone and may ask for a confirmation first). The dedicated `StartNextIntent`, which always opens
+// Where an intent runs decides what it can do. Apple's documentation ("Configuring the runtime behavior of your app intents") says the system runs
+// the app intent of a control from the widget extension, in the background, and prefers an extension to the app for a background intent that exists
+// in both. An extension can only leave an action in the App Group inbox, which nobody reads while the app is suspended. A `LiveActivityIntent` is
+// different: the system launches the app's process without opening the app and performs the intent there (the documentation's own example is a
+// control in Control Center). So the intents come in three kinds:
+//   * Intents that change the workout (log a set, skip the rest, pause) are `LiveActivityIntent`s, like the buttons of the Live Activity, and reach
+//     the workout while the app is suspended. WidgetIntentDispatch.swift still copes with an extension process, should the system choose one.
+//   * Intents that need the app on screen (start the next workout, plate calculator, finish) set `openAppWhenRun`, which only the app can satisfy.
+//     They leave a deep link, which the app handles like an opened URL. A finish always needs the confirmation dialog of the app, so no control
+//     finishes a workout on its own: Finish opens the running workout.
+//   * `PrimaryActionIntent`, the Action button, lives in PrimaryActionIntent.swift, which belongs to the app target only: it is a
+//     `ForegroundContinuableIntent`, and that protocol is unavailable in app extensions. The dedicated `StartNextIntent`, which always opens
 //     the app, serves the controls and the "Start my workout" phrase.
 //
 // Every intent that reads the workout state reads the stored snapshot (`WidgetSnapshotStore.load()`), which the app writes with every change.
@@ -123,44 +123,6 @@ struct SetPausedControlIntent: SetValueIntent, LiveActivityIntent {
     func perform() async throws -> some IntentResult {
         await WidgetIntentDispatch.send(value ? .pause : .resume, origin: .system)
         return .result()
-    }
-}
-
-// MARK: - Action button
-
-/// The Action button: one press, three meanings, decided from the stored snapshot at the moment of the press.
-///   * a set is due (logging, or the rest is over)  -> log the next set,
-///   * the rest timer runs                           -> skip the rest,
-///   * no workout runs                               -> start the next workout (the app opens),
-/// and it never finishes a workout. When every set is logged there is nothing to log or skip, so it only says so.
-/// The answer is the short confirmation the system shows after the press.
-struct PrimaryActionIntent: AppIntent, ForegroundContinuableIntent {
-    static var title: LocalizedStringResource = "Primary action"
-    static var description: IntentDescription? = IntentDescription("One button for the whole workout: logs the next set while you lift, skips the rest timer while you rest, and starts your next workout when none is running.")
-    static var openAppWhenRun: Bool { false }
-
-    init() {}
-
-    func perform() async throws -> some IntentResult & ProvidesDialog {
-        let active = WidgetSnapshotStore.load()?.active
-        switch WorkoutControlPhase(active: active) {
-        case .logging, .restOver:
-            await WidgetIntentDispatch.send(.logNextSet, origin: .system)
-            let setText = active?.nextSetText ?? ""
-            if setText.isEmpty {
-                return .result(dialog: "Set logged.")
-            }
-            return .result(dialog: "Logged \(setText).")
-        case .resting:
-            await WidgetIntentDispatch.send(.skipRest, origin: .system)
-            return .result(dialog: "Rest skipped.")
-        case .complete:
-            return .result(dialog: "All sets are logged. Finish the workout in Pulse Strength.")
-        case .idle:
-            try await requestToContinueInForeground()
-            WidgetIntentDispatch.openApp(.startNext, origin: .system)
-            return .result(dialog: "Starting your next workout.")
-        }
     }
 }
 #endif

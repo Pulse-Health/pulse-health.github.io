@@ -23,6 +23,7 @@
 #if os(iOS)
 import SwiftUI
 import XCTest
+import PulseStrengthActivity
 import PulseStrengthCore
 
 @MainActor
@@ -119,12 +120,40 @@ final class LiveActivitySnapshotTests: XCTestCase {
         }
     }
 
+    // MARK: StandBy (bench mode)
+
+    /// SB-02: the full-screen layout of StandBy.dc.html (`isFullscreen`) for the rest, the rest that is over, logging, a record and a
+    /// finished set list. The 620 x 286 pt frame is the one of the mock-up; the real StandBy screen is larger.
+    func testBenchModeStandBy() throws {
+        let scenarios = LiveFixtures.all()
+        let numbers = LiveNumbers(count: scenarios.count)
+        let wanted: [(slug: String, extra: Int)] = [
+            ("resting", LiveExtra.standbyResting),
+            ("rest-over-stale", LiveExtra.standbyRestOver),
+            ("logging-weight", LiveExtra.standbyLogging),
+            ("record-resting", LiveExtra.standbyRecord),
+            ("complete", LiveExtra.standbyComplete),
+        ]
+        for item in wanted {
+            guard let scenario = scenarios.first(where: { $0.slug == item.slug }) else {
+                XCTFail("Missing scenario \(item.slug)")
+                continue
+            }
+            try LiveOutput.save(
+                BenchSnapshot(scenario: scenario),
+                number: numbers.extra(item.extra),
+                name: "standby-" + scenario.slug,
+                test: self
+            )
+        }
+    }
+
     // MARK: Fixtures and the static clock
 
     /// The fixtures really are the states they claim to be (so an image never silently shows the wrong phase).
     func testFixturesMatchIntendedPhases() throws {
         let scenarios = LiveFixtures.all()
-        XCTAssertEqual(scenarios.count, 12)
+        XCTAssertEqual(scenarios.count, 21)
         XCTAssertEqual(Set(scenarios.map { $0.slug }).count, scenarios.count, "slugs must be unique")
 
         for scenario in scenarios {
@@ -198,6 +227,151 @@ final class LiveActivitySnapshotTests: XCTestCase {
 
         let longSession = try fixture("long-session-logging")
         XCTAssertEqual(longSession.now.timeIntervalSince(longSession.snapshot.activeStart), 4325, accuracy: 0.001)
+    }
+
+    /// The live moments: each fixture carries the moment it claims, the Lock Screen card and the compact island follow the priorities
+    /// of widgets/SPEC.md section 1 (record, then rest, then superset, then logging; finish above all on the Lock Screen), and the
+    /// texts the views draw are the ones of LiveActivityNext.dc.html.
+    func testLiveMomentFixturesAndPriorities() throws {
+        let scenarios = LiveFixtures.all()
+        func fixture(_ slug: String) throws -> LiveScenario {
+            try XCTUnwrap(scenarios.first(where: { $0.slug == slug }), "missing scenario \(slug)")
+        }
+        func phase(_ scenario: LiveScenario) -> SnapshotPhase {
+            scenario.snapshot.displayPhase(isStale: scenario.isStale, staticNow: scenario.now)
+        }
+        func layout(_ slug: String) throws -> LockScreenLayout {
+            let scenario = try fixture(slug)
+            return scenario.snapshot.lockLayout(phase: phase(scenario))
+        }
+        func compact(_ slug: String) throws -> IslandCompactMode {
+            let scenario = try fixture(slug)
+            return scenario.snapshot.compactMode(phase: phase(scenario))
+        }
+
+        // LA-01 / LA-07
+        let record = try fixture("record-resting").snapshot
+        let moment = try XCTUnwrap(record.moment)
+        XCTAssertEqual(moment.workText, "85 \u{00D7} 5")
+        XCTAssertEqual(moment.deltaText, "e1RM +4")
+        XCTAssertEqual(record.phase, .resting)
+        XCTAssertEqual(try layout("record-resting"), .moment)
+        XCTAssertEqual(try compact("record-resting"), .record, "a record wins over the rest countdown")
+        XCTAssertEqual(try fixture("record-logging").snapshot.phase, .logging)
+        XCTAssertEqual(try layout("record-logging"), .moment)
+        XCTAssertEqual(try compact("record-logging"), .record)
+
+        // LA-02 / LA-09
+        let superset = try XCTUnwrap(try fixture("superset-logging").snapshot.superset)
+        XCTAssertEqual(superset.chipText, "Superset A \u{00B7} round 2/3")
+        XCTAssertEqual(superset.members.map { $0.tag }, ["A1", "A2"])
+        XCTAssertEqual(superset.members.map { $0.isDone }, [true, false])
+        XCTAssertEqual(superset.members.map { $0.isCurrent }, [false, true])
+        XCTAssertEqual(superset.compactTag, "A2")
+        XCTAssertEqual(superset.compactRound, "2/3")
+        XCTAssertEqual(try fixture("superset-logging").snapshot.logTitle, "Log A2")
+        XCTAssertEqual(try fixture("superset-logging").snapshot.logSpokenTitle, "Log set A2")
+        XCTAssertEqual(try layout("superset-logging"), .superset)
+        XCTAssertEqual(try compact("superset-logging"), .superset)
+        XCTAssertEqual(try fixture("logging-weight").snapshot.logTitle, "Log set")
+        let supersetRest = try fixture("superset-resting").snapshot
+        XCTAssertNotNil(supersetRest.superset)
+        XCTAssertEqual(supersetRest.superset?.round, 3)
+        XCTAssertEqual(supersetRest.superset?.compactTag, "A1")
+        XCTAssertEqual(try compact("superset-resting"), .rest, "the rest countdown wins over the superset")
+        XCTAssertEqual(try layout("superset-resting"), .standard)
+
+        // LA-03
+        let plates = try XCTUnwrap(try fixture("plates-logging").snapshot.plates)
+        XCTAssertEqual(plates.displaySummary, "25 + 5 + 1.25")
+        XCTAssertEqual(plates.caption, "per side")
+        XCTAssertEqual(try layout("plates-logging"), .plates)
+        XCTAssertEqual(try compact("plates-logging"), .logging)
+        XCTAssertEqual(PlateBrief(perSide: [], summary: "").displaySummary, "Bar only")
+
+        // LA-04
+        let tipScenario = try fixture("coach-tip-resting")
+        let tip = try XCTUnwrap(tipScenario.snapshot.coachTip)
+        XCTAssertEqual(tip.bodyText, "Add 2.5 kg for set 4 to stay at 1\u{2013}2 RIR.")
+        XCTAssertEqual(tip.targetSetID, tipScenario.snapshot.targetSetID, "the tip applies to the set the Log button logs")
+        XCTAssertEqual(tip.targetExerciseID, tipScenario.snapshot.targetExerciseID)
+        XCTAssertEqual(try layout("coach-tip-resting"), .coachTip)
+        XCTAssertEqual(CoachTipBrief(text: "Coach: keep going", suggestedWeightText: "82.5 kg", keepWeightText: "Keep 80", targetSetID: UUID(), targetExerciseID: UUID()).bodyText, "keep going")
+
+        // LA-05
+        let finish = try XCTUnwrap(try fixture("finish").snapshot.finish)
+        XCTAssertEqual(finish.title, "Upper A \u{00B7} Push done")
+        XCTAssertEqual(finish.sets, 20)
+        XCTAssertTrue(finish.savedToHealth)
+        XCTAssertGreaterThanOrEqual(finish.personalRecordCount, 1)
+        XCTAssertEqual(try layout("finish"), .finish, "the finish card wins over everything")
+        XCTAssertEqual(try compact("finish"), .complete)
+
+        // LA-08 / LA-10
+        let dots = try XCTUnwrap(try fixture("dots-heart-rate").snapshot.setProgress)
+        XCTAssertEqual(dots.done, 2)
+        XCTAssertEqual(dots.total, 5)
+        XCTAssertEqual(try fixture("dots-heart-rate").snapshot.heartRate, 142)
+        XCTAssertEqual(try compact("dots-heart-rate"), .logging)
+        XCTAssertEqual(ActivitySetDots.metrics(count: 4)?.size, 7)
+        XCTAssertEqual(ActivitySetDots.metrics(count: 5)?.size, 6)
+        XCTAssertEqual(ActivitySetDots.metrics(count: 8)?.size, 4)
+        XCTAssertNil(ActivitySetDots.metrics(count: 9), "nine dots do not fit the compact slot: the text fallback")
+        XCTAssertNil(ActivitySetDots.metrics(count: 0))
+
+        // The phases without a moment keep their cards (a barbell logging state is left out: once the builder fills in the plates it
+        // is the plate card).
+        for slug in ["resting", "rest-over-stale", "complete", "empty-workout", "paused-resting"] {
+            XCTAssertEqual(try layout(slug), .standard, slug)
+        }
+
+        // SB-02: "Next: set 4" over "82.5 kg × 6"
+        let next = try fixture("resting").snapshot.benchNext
+        XCTAssertEqual(next.title, "Next: set 4")
+        XCTAssertEqual(next.detail, "82.5 kg \u{00D7} 6")
+        XCTAssertEqual(try fixture("complete").snapshot.benchNext.title, "All sets logged")
+        XCTAssertNil(try fixture("complete").snapshot.benchNext.detail)
+    }
+
+    /// ActivityKit takes 4 KB for the attributes and the content together: the longest content the app can build still fits after
+    /// `ActivityContentFitting`, and ordinary content is not touched.
+    func testWorstCaseContentFitsActivityKitLimit() throws {
+        let now = LiveFixtures.referenceDate
+        let longName = String(repeating: "\u{1F600}", count: 100)
+        var snapshot = try XCTUnwrap(LiveFixtures.all().first(where: { $0.slug == "logging-weight" })).snapshot
+        snapshot.workoutName = longName
+        snapshot.exerciseName = longName
+        snapshot.nextExerciseName = longName
+        snapshot.moment = PRMoment(
+            exerciseName: longName, weightText: "1000000.55", repsText: "999", estimated1RM: 1_000_000, deltaKg: 100_000,
+            expiresAt: now.addingTimeInterval(4)
+        )
+        snapshot.superset = SupersetBrief(label: "ZZZZZZZZ", round: 12, rounds: 12, members: (0..<10).map { index in
+            SupersetMember(tag: "A\(index + 1)", name: longName, detail: "1000000.55 \u{00D7} 999 \u{00D7} 999 \u{00D7} 999", isDone: index < 2, isCurrent: index == 5)
+        })
+        snapshot.plates = PlateBrief(
+            totalKg: 100_000, barKg: 20, perSide: Array(repeating: 25.0, count: 2000), leftoverKg: 1.25,
+            summary: Array(repeating: "25", count: 2000).joined(separator: " + ")
+        )
+        snapshot.coachTip = CoachTipBrief(
+            title: longName, subtitle: longName, text: longName, suggestedWeightKg: 1_000_000.55, suggestedWeightText: longName,
+            keepWeightText: longName, targetSetID: UUID(), targetExerciseID: UUID()
+        )
+        let fitted = ActivityContentFitting.fitting(snapshot)
+        let attributes = WorkoutActivityAttributes(workoutID: UUID(), workoutName: ActivityContentFitting.clamped(longName))
+        let stateBytes = try JSONEncoder().encode(fitted).count
+        let attributeBytes = try JSONEncoder().encode(attributes).count
+        XCTAssertLessThanOrEqual(stateBytes, ActivityContentFitting.maximumStateBytes)
+        XCTAssertLessThan(stateBytes + attributeBytes, 4096, "attributes and content state together")
+        XCTAssertLessThanOrEqual(fitted.superset?.members.count ?? 0, ActivityContentFitting.maximumSupersetMembers)
+
+        var finish = snapshot
+        finish.finish = FinishBrief(workoutName: longName, durationMinutes: 99_999, sets: 99_999, volumeText: "9,999,999", personalRecordCount: 99, savedToHealth: true)
+        XCTAssertLessThan(try JSONEncoder().encode(ActivityContentFitting.fitting(finish)).count + attributeBytes, 4096)
+
+        for scenario in LiveFixtures.all() {
+            XCTAssertEqual(ActivityContentFitting.fitting(scenario.snapshot), scenario.snapshot, "\(scenario.slug) is ordinary content")
+        }
     }
 
     /// `displayPhase(isStale:staticNow:)` follows the fixed clock and ignores the wall clock.
