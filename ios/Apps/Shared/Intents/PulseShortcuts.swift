@@ -12,6 +12,8 @@
 
 #if os(iOS)
 import AppIntents
+import Foundation
+import PulseStrengthCore
 
 struct PulseShortcuts: AppShortcutsProvider {
     @AppShortcutsBuilder
@@ -40,6 +42,42 @@ struct PulseShortcuts: AppShortcutsProvider {
             shortTitle: "Skip rest",
             systemImageName: "forward.end.fill"
         )
+    }
+}
+
+/// The Action button: one press, three meanings, decided from the stored snapshot at the moment of the press.
+///   * a set is due (logging, or the rest is over)  -> log the next set,
+///   * the rest timer runs                           -> skip the rest,
+///   * no workout runs                               -> start the next workout (the app opens),
+/// and it never finishes a workout. When every set is logged there is nothing to log or skip, so it only says so.
+/// The answer is the short confirmation the system shows after the press; Siri may speak it instead.
+struct PrimaryActionIntent: LiveActivityIntent, ForegroundContinuableIntent {
+    static var title: LocalizedStringResource = "Primary action"
+    static var description: IntentDescription? = IntentDescription("One button for the whole workout: logs the next set while you lift, skips the rest timer while you rest, and starts your next workout when none is running.")
+    static var openAppWhenRun: Bool { false }
+
+    init() {}
+
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let active = WidgetSnapshotStore.load()?.active
+        switch WorkoutControlPhase(active: active) {
+        case .logging, .restOver:
+            await WidgetIntentDispatch.send(.logNextSet, origin: .system)
+            let setText = active?.nextSetText ?? ""
+            if setText.isEmpty {
+                return .result(dialog: "Set logged.")
+            }
+            return .result(dialog: "Logged \(setText).")
+        case .resting:
+            await WidgetIntentDispatch.send(.skipRest, origin: .system)
+            return .result(dialog: "Rest skipped.")
+        case .complete:
+            return .result(dialog: "All sets are logged. Finish the workout in Pulse Strength.")
+        case .idle:
+            try await requestToContinueInForeground()
+            WidgetIntentDispatch.openApp(.startNext, origin: .system)
+            return .result(dialog: "Starting your next workout.")
+        }
     }
 }
 #endif

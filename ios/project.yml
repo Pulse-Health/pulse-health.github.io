@@ -106,7 +106,8 @@ targets:
     platform: iOS
     sources:
       - path: Apps/PulseStrengthWidgets
-      # The App Shortcuts provider belongs to the app target only (the system reads App Shortcuts from the app).
+      # The App Shortcuts provider and the Action button intent belong to the app target only (the system reads App Shortcuts from the app, and
+      # ForegroundContinuableIntent is unavailable in extensions).
       - path: Apps/Shared/Intents
         excludes:
           - PulseShortcuts.swift
