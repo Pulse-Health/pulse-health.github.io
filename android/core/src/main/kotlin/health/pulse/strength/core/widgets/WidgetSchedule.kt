@@ -1,7 +1,6 @@
 package health.pulse.strength.core.widgets
 
 import health.pulse.strength.core.WorkoutTemplate
-import health.pulse.strength.core.addingTimeInterval
 import health.pulse.strength.core.roundedAwayFromZero
 
 /** What to do on a day without training and when tomorrow's session usually starts (widgets/SPEC.md section 2: restDay, tomorrow). */
@@ -57,7 +56,7 @@ internal object WidgetSchedule {
         val latest = history.entries.sortedByDescending { it.workout.finishedAt }.take(startTimeSample)
         val minutes = latest.map { entry ->
             val workout = entry.workout
-            history.calendar.minuteOfDay(workout.finishedAt.addingTimeInterval(-workout.durationSeconds.toDouble()))
+            history.calendar.minuteOfDay(workout.finishedAt.epochSecond - workout.durationSeconds)
         }.sorted()
         if (minutes.isEmpty()) return null
         val middle = minutes.size / 2

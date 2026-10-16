@@ -19,18 +19,21 @@ import kotlin.math.min
 internal class WidgetCalendar(private val zone: ZoneId) {
     /** The day number of the local date of [instant]. An instant too far from the epoch counts as 1970-01-01. */
     fun day(instant: Instant): Long {
-        val local = localSeconds(instant) ?: return 0
+        val local = localSeconds(instant.epochSecond) ?: return 0
         return Math.floorDiv(local, secondsPerDay)
     }
 
     /** The first moment of local day [day] (an hour later than midnight where daylight saving skips midnight). */
     fun startOfDay(day: Long): Instant = LocalDate.ofEpochDay(day).atStartOfDay(zone).toInstant()
 
-    /** Minutes after local midnight of [instant] (0...1439). */
-    fun minuteOfDay(instant: Instant): Int {
-        val local = localSeconds(instant) ?: return 0
+    /** Minutes after local midnight of the moment [epochSecond] seconds after the epoch (0...1439). */
+    fun minuteOfDay(epochSecond: Long): Int {
+        val local = localSeconds(epochSecond) ?: return 0
         return min(1_439L, Math.floorMod(local, secondsPerDay) / 60).toInt()
     }
+
+    /** Minutes after local midnight of [instant] (0...1439). */
+    fun minuteOfDay(instant: Instant): Int = minuteOfDay(instant.epochSecond)
 
     /**
      * The calendar days from [earlier] to [later]: the local midnights crossed (23:50 yesterday is 1 day ago). A [later] that is not
@@ -39,10 +42,10 @@ internal class WidgetCalendar(private val zone: ZoneId) {
     fun daysBetween(earlier: Instant, later: Instant): Int =
         max(0L, day(later) - day(earlier)).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
 
-    /** Seconds since the epoch of the local date and time of [instant]; null for an instant too far from the epoch. */
-    private fun localSeconds(instant: Instant): Long? {
-        if (abs(instant.epochSecond) >= farSeconds) return null
-        return instant.epochSecond + zone.rules.getOffset(instant).totalSeconds
+    /** Seconds since the epoch of the local date and time of the moment [epochSecond]; null for a moment too far from the epoch. */
+    private fun localSeconds(epochSecond: Long): Long? {
+        if (abs(epochSecond) >= farSeconds) return null
+        return epochSecond + zone.rules.getOffset(Instant.ofEpochSecond(epochSecond)).totalSeconds
     }
 
     companion object {

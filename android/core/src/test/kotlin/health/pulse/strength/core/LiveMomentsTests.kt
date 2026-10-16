@@ -645,6 +645,48 @@ class LiveMomentsTests {
 
     // endregion
 
+    // region Size budget
+
+    @Test
+    fun testTheLargestRealisticSnapshotStaysUnderTheSizeBudget() {
+        for ((label, letter) in listOf("one-byte letters" to "N", "two-byte letters" to "ö")) {
+            val name = letter.repeat(60)
+            assertThat(name.codePointCount(0, name.length)).isEqualTo(60)
+            fun named(id: String) = PresFix.lib(id, 90.0).copy(name = name)
+            val entries = listOf(
+                PresFix.entry(1, named("bench"), PresFix.normal(4, 197.5, 8), rest = 90, group = "A"),
+                PresFix.entry(2, named("lateral"), PresFix.normal(4, 20.0, 12), rest = 90, group = "A"),
+                PresFix.entry(3, named("pushdown"), PresFix.normal(4, 40.0, 12), rest = 90, group = "A"),
+                PresFix.entry(4, named("crossover"), PresFix.normal(4, 25.0, 12), rest = 90, group = "A"),
+            )
+            val start = PresFix.workout(entries, name = name)
+            val afterFirst = logging(start, 1)
+            var state = logging(start, 4)
+            state = PresFix.reduced(state, WorkoutAction.ToggleLastSetRIR(3), 20)
+            state = state.copy(heartRate = 187)
+
+            val snap = snapshot(state, 21).copy(
+                moment = SnapshotBuilder.prMoment(start, afterFirst, PresFix.at(21)),
+                finish = SnapshotBuilder.finishBrief(finished(seconds = 5_999, volume = 123_456.0, sets = 99, records = 9, name = name), savedToHealth = true),
+            )
+
+            assertWithMessage(label).that(snap.phase).isEqualTo(SnapshotPhase.RESTING)
+            assertWithMessage(label).that(snap.superset?.members?.size).isEqualTo(4)
+            assertWithMessage(label).that(snap.plates).isNotNull()
+            assertWithMessage(label).that(snap.coachTip).isNotNull()
+            assertWithMessage(label).that(snap.moment).isNotNull()
+            assertWithMessage(label).that(snap.finish).isNotNull()
+            assertWithMessage(label).that(snap.exerciseDoneSets).isNotNull()
+
+            val text = StrengthJson.format.encodeToString(WorkoutSnapshot.serializer(), snap)
+            val bytes = text.toByteArray(Charsets.UTF_8).size
+            assertWithMessage("$label: $bytes bytes").that(bytes).isLessThan(3_500)
+            assertWithMessage(label).that(StrengthJson.format.decodeFromString(WorkoutSnapshot.serializer(), text)).isEqualTo(snap)
+        }
+    }
+
+    // endregion
+
     // region Fuzz
 
     /** The relations between the live context and the state, whatever happened to the workout. */
