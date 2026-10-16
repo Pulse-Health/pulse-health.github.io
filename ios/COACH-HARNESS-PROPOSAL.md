@@ -279,7 +279,7 @@ Counsel should review this section; I am not a lawyer and several points are sec
 *What was built:* `TargetWeight` (the one copy of the arithmetic, public), `HubNoteBuilder` (extracted, checked against a verbatim copy
 of the old code over 4,000 random templates), `ProgressionEngine` with `CoachConfig`, `AudienceProfile` and `Recommendation`,
 `TemplateWriter`, `CoachPlanner`, the hub "Next time" block, the exercise-card suggestion with Apply, the readiness sentence hidden while
-the recovery numbers are demo data (`WorkoutController.isUsingDemoRecovery`), and `ARCHITECTURE.md` section 3.5.
+the recovery numbers are demo data (`WorkoutController.isUsingDemoRecovery`), and `ARCHITECTURE.md` section 3.7.
 
 *What was deliberately not done, and why:*
 * **German / String Catalog.** The whole app is English with locale-free number formatting; localising only the new strings would

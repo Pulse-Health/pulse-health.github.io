@@ -14,18 +14,30 @@ public struct StrengthData: Equatable, Sendable {
     public var customExercises: [Exercise]
     /// Best estimated 1RM per exercise id.
     public var personalBests: [String: PersonalBest]
+    /// Training plans (rotations of templates), in the order they are shown.
+    public var plans: [WorkoutPlan]
+    /// The user's body weight over time, newest first (see `BodyWeight.swift`).
+    public var bodyWeights: [BodyWeightEntry]
+    /// How often the app asks the user to update their weight.
+    public var weighIn: WeighInPreferences
 
-    /// Creates the data from its four collections.
+    /// Creates the data from its collections.
     public init(
         templates: [WorkoutTemplate] = [],
         history: [CompletedWorkout] = [],
         customExercises: [Exercise] = [],
-        personalBests: [String: PersonalBest] = [:]
+        personalBests: [String: PersonalBest] = [:],
+        plans: [WorkoutPlan] = [],
+        bodyWeights: [BodyWeightEntry] = [],
+        weighIn: WeighInPreferences = WeighInPreferences()
     ) {
         self.templates = templates
         self.history = history
         self.customExercises = customExercises
         self.personalBests = personalBests
+        self.plans = plans
+        self.bodyWeights = bodyWeights
+        self.weighIn = weighIn
     }
 
     /// True when there are neither templates nor finished workouts (the condition for seeding demo data).
@@ -34,6 +46,18 @@ public struct StrengthData: Equatable, Sendable {
     /// The template with the given id.
     public func template(id: UUID) -> WorkoutTemplate? {
         templates.first { $0.id == id }
+    }
+
+    /// The plan the hub follows, if any.
+    public var activePlan: WorkoutPlan? {
+        plans.first { $0.isActive }
+    }
+
+    /// The workout to recommend next: the next one of the active plan, or without an active plan (or when none of its
+    /// templates exists) the one after the most recently performed template.
+    public func nextTemplate() -> WorkoutTemplate? {
+        if let plan = activePlan, let next = plan.nextWorkout(in: templates) { return next }
+        return TemplateRotation.next(in: templates)
     }
 }
 
@@ -158,13 +182,82 @@ public extension StrengthData {
         }
     }
 
+    /// Adds a plan, or replaces the one with the same id (keeping its position). A plan that is saved active deactivates the others.
+    mutating func savePlan(_ plan: WorkoutPlan) {
+        if let index = plans.firstIndex(where: { $0.id == plan.id }) {
+            plans[index] = plan
+        } else {
+            plans.append(plan)
+        }
+        if plan.isActive { activatePlan(id: plan.id) }
+    }
+
+    /// Makes the plan the only active one. Does nothing for an unknown id.
+    mutating func activatePlan(id: UUID) {
+        guard plans.contains(where: { $0.id == id }) else { return }
+        for index in plans.indices { plans[index].isActive = plans[index].id == id }
+    }
+
+    /// Removes a plan. Its workouts stay saved as templates.
+    mutating func deletePlan(id: UUID) {
+        plans.removeAll { $0.id == id }
+    }
+
+    /// Passes over the next workout of a plan without doing it.
+    mutating func skipNextWorkout(planID: UUID) {
+        guard let index = plans.firstIndex(where: { $0.id == planID }) else { return }
+        plans[index].skip(in: templates)
+    }
+
+    /// Adds the plans, templates and exercises of an import bundle (see `PlanBundle`).
+    ///
+    /// * A template with a known id is replaced by the imported one but keeps its `lastPerformed`; a new one is appended.
+    /// * A plan with a known id is replaced but keeps its place in the rotation and whether it is active; a new plan becomes the
+    ///   active one (the user has just chosen to import it).
+    /// * Exercises: the bundle's custom exercises and the custom exercises the templates use are added (never over a built-in id).
+    @discardableResult
+    mutating func importBundle(_ bundle: PlanBundle) -> PlanImportSummary {
+        let bundle = bundle.sanitized()
+        var customCount = 0
+        var customs = bundle.customExercises
+        for template in bundle.templates {
+            for entry in template.entries where entry.exercise.isCustom && !customs.contains(where: { $0.id == entry.exercise.id }) {
+                customs.append(entry.exercise)
+            }
+        }
+        for exercise in customs {
+            if !customExercises.contains(where: { $0.id == exercise.id }) { customCount += 1 }
+            addCustomExercise(exercise)
+        }
+        for template in bundle.templates {
+            var incoming = template
+            incoming.lastPerformed = self.template(id: template.id)?.lastPerformed
+            saveTemplate(incoming)
+        }
+        for plan in bundle.plans {
+            var incoming = plan
+            if let existing = plans.first(where: { $0.id == plan.id }) {
+                incoming.isActive = existing.isActive
+                incoming.nextIndex = incoming.templateIDs.isEmpty ? 0 : min(existing.nextIndex, incoming.templateIDs.count - 1)
+                savePlan(incoming)
+            } else {
+                incoming.isActive = true
+                savePlan(incoming)
+            }
+        }
+        return PlanImportSummary(plans: bundle.plans.count, templates: bundle.templates.count, customExercises: customCount)
+    }
+
     /// Records a finished workout.
     ///
     /// * History: inserted newest first (a workout with the same id is replaced).
     /// * Personal bests: raised for every exercise whose best estimated 1RM beats the stored one.
     /// * Templates: the workout's template gets `lastPerformed`; `updateTemplate` (when given) replaces the stored template with the same id
     ///   (or is added) and also gets `lastPerformed`.
+    /// * Plans: every plan that contains the workout's template moves on to the workout after it (once per workout: recording the same
+    ///   workout id again does not advance the rotation again).
     mutating func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) {
+        let isNewWorkout = !history.contains { $0.id == completed.id }
         history.removeAll { $0.id == completed.id }
         let index = history.firstIndex { $0.finishedAt <= completed.finishedAt } ?? history.endIndex
         history.insert(completed, at: index)
@@ -188,6 +281,9 @@ public extension StrengthData {
         if var updated = updateTemplate {
             updated.lastPerformed = Self.later(updated.lastPerformed, completed.finishedAt)
             saveTemplate(updated)
+        }
+        if isNewWorkout, let id = completed.templateID {
+            for index in plans.indices { plans[index].advance(after: id) }
         }
     }
 
@@ -282,6 +378,7 @@ public extension StrengthData {
             volumeLast30Days: volume,
             sessionsLast30Days: recent.count,
             records: records(for: tracking, sessions: sessions, bestE1RM: bestValue, bestDate: bestDate, bestSetText: bestSetText)
+                + bodyWeightRecords(for: exerciseID, tracking: tracking, sessions: sessions, bestE1RM: tracking == .weightReps ? bestValue : 0, bestDate: bestDate)
         )
     }
 }
@@ -395,6 +492,51 @@ private extension StrengthData {
         return rows
     }
 
+    /// The record rows that need the user's body weight (none without a weigh-in):
+    /// * barbell lifts: "Relative strength", the best estimated 1RM as a multiple of the body weight on the day it was set;
+    /// * push-ups, chest dips and pull-ups (`BodyweightLoad`): "Best session load (est.)", the working reps times the share of the
+    ///   body weight one rep moves times the body weight of that session (the session with the most wins; the newest on a tie).
+    func bodyWeightRecords(
+        for exerciseID: String,
+        tracking: TrackingKind,
+        sessions: [SessionItem],
+        bestE1RM: Double,
+        bestDate: Date?
+    ) -> [ExerciseRecordRow] {
+        guard !bodyWeights.isEmpty else { return [] }
+        switch tracking {
+        case .weightReps:
+            let exercise = ExerciseLibrary.exercise(id: exerciseID) ?? customExercises.first { $0.id == exerciseID }
+            guard bestE1RM > 0, exercise?.equipment == .barbell,
+                  let weight = bodyWeightKg(at: bestDate ?? sessions.first?.session.date ?? Date()), weight > 0
+            else { return [] }
+            return [ExerciseRecordRow(
+                id: "relativeStrength",
+                label: "Relative strength",
+                value: BodyWeightRules.multipleText(bestE1RM / weight) + " bodyweight",
+                date: bestDate
+            )]
+        case .repsOnly:
+            guard let factor = BodyweightLoad.factor(exerciseID: exerciseID) else { return [] }
+            var best: (load: Double, date: Date)?
+            for item in sessions {
+                guard let weight = bodyWeightKg(at: item.session.date) else { continue }
+                let reps = item.session.sets.reduce(0) { $0 + ($1.type == .warmup ? 0 : $1.reps) }
+                let load = Double(reps) * factor * weight
+                if load > (best?.load ?? 0) { best = (load, item.session.date) }
+            }
+            guard let best else { return [] }
+            return [ExerciseRecordRow(
+                id: "bodyweightLoad",
+                label: "Best session load (est.)",
+                value: NumberText.thousands(best.load) + " kg",
+                date: best.date
+            )]
+        case .duration:
+            return []
+        }
+    }
+
     /// The working (non-warm-up, weight above zero) weight used in the most sets; the heavier one on a tie.
     func commonWorkingWeight(in sessions: [SessionItem]) -> Double? {
         var counts: [Double: Int] = [:]
@@ -461,6 +603,49 @@ public final class StrengthDataModel: WorkoutDataProviding {
         persist(templates: true, history: false, customExercises: false, personalBests: false)
     }
 
+    /// The workout to recommend next (see `StrengthData.nextTemplate`).
+    public func nextTemplate() -> WorkoutTemplate? { data.nextTemplate() }
+
+    /// Adds or replaces a plan and saves the plans.
+    public func savePlan(_ plan: WorkoutPlan) {
+        data.savePlan(plan)
+        persist(templates: false, history: false, customExercises: false, personalBests: false, plans: true)
+    }
+
+    /// Makes a plan the active one and saves the plans.
+    public func activatePlan(id: UUID) {
+        data.activatePlan(id: id)
+        persist(templates: false, history: false, customExercises: false, personalBests: false, plans: true)
+    }
+
+    /// Removes a plan (its templates stay) and saves the plans.
+    public func deletePlan(id: UUID) {
+        data.deletePlan(id: id)
+        persist(templates: false, history: false, customExercises: false, personalBests: false, plans: true)
+    }
+
+    /// Passes over the next workout of a plan and saves the plans.
+    public func skipNextWorkout(planID: UUID) {
+        data.skipNextWorkout(planID: planID)
+        persist(templates: false, history: false, customExercises: false, personalBests: false, plans: true)
+    }
+
+    /// Imports a plan file (see `PlanBundle`). Nothing changes when the file cannot be read.
+    public func importPlan(from fileData: Data) -> Result<PlanImportSummary, PlanImportError> {
+        let bundle: PlanBundle
+        do {
+            bundle = try PlanBundle.decode(from: fileData)
+        } catch let error as PlanImportError {
+            return .failure(error)
+        } catch {
+            return .failure(.unreadable)
+        }
+        let summary = data.importBundle(bundle)
+        cache = nil
+        persist(templates: true, history: false, customExercises: true, personalBests: false, plans: true)
+        return .success(summary)
+    }
+
     /// Records a finished workout (history, personal bests, template) and saves what changed.
     ///
     /// The data changes in memory in every case. The result is `.failure` when the workout could not be written to the history
@@ -471,7 +656,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
     public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error> {
         data.record(completed, updateTemplate: updateTemplate)
         cache = nil
-        if let historyError = persist(templates: true, history: true, customExercises: false, personalBests: true) {
+        if let historyError = persist(templates: true, history: true, customExercises: false, personalBests: true, plans: true) {
             return .failure(historyError)
         }
         return .success(())
@@ -480,6 +665,41 @@ public final class StrengthDataModel: WorkoutDataProviding {
     /// The history of one exercise as shown on its detail screen.
     public func history(for exerciseID: String, now: Date) -> ExerciseHistory {
         data.history(for: exerciseID, now: now)
+    }
+
+    /// Stores a body weight (kg, rounded to 0.1) and saves the weigh-ins. nil, and nothing saved, when `kg` is not a plausible body weight.
+    @discardableResult
+    public func recordBodyWeight(kg: Double, date: Date) -> BodyWeightEntry? {
+        guard let entry = data.recordBodyWeight(kg: kg, date: date) else { return nil }
+        persist(templates: false, history: false, customExercises: false, personalBests: false, bodyWeights: true)
+        return entry
+    }
+
+    /// Adds the body weights read from Apple Health that are not here yet (see `StrengthData.mergeHealthBodyWeights`) and saves
+    /// them; returns how many were added.
+    @discardableResult
+    public func importHealthBodyWeights(_ samples: [HealthBodyWeightSample]) -> Int {
+        let added = data.mergeHealthBodyWeights(samples)
+        if added > 0 {
+            persist(templates: false, history: false, customExercises: false, personalBests: false, bodyWeights: true)
+        }
+        return added
+    }
+
+    /// Removes a weigh-in that was entered here and saves the weigh-ins; false when there is none with that id
+    /// or when it was read from Apple Health (those cannot be deleted here).
+    @discardableResult
+    public func deleteBodyWeight(id: UUID) -> Bool {
+        guard data.deleteBodyWeight(id: id) else { return false }
+        persist(templates: false, history: false, customExercises: false, personalBests: false, bodyWeights: true)
+        return true
+    }
+
+    /// Replaces the weigh-in reminder preferences and saves them.
+    public func setWeighInPreferences(_ preferences: WeighInPreferences) {
+        guard data.weighIn != preferences else { return }
+        data.weighIn = preferences
+        persist(templates: false, history: false, customExercises: false, personalBests: false, weighIn: true)
     }
 
     /// Re-reads everything from disk (no-op without persistence).
@@ -494,7 +714,10 @@ public final class StrengthDataModel: WorkoutDataProviding {
             templates: persistence.loadTemplates(),
             history: persistence.loadHistory(),
             customExercises: persistence.loadCustomExercises(),
-            personalBests: persistence.loadPersonalBests()
+            personalBests: persistence.loadPersonalBests(),
+            plans: persistence.loadPlans(),
+            bodyWeights: persistence.loadBodyWeights(),
+            weighIn: persistence.loadWeighInPreferences()
         )
         cache = nil
     }
@@ -513,7 +736,15 @@ public final class StrengthDataModel: WorkoutDataProviding {
     /// Sets `lastPersistenceError` to the first error (nil when every requested file was written) and returns the error of the
     /// history file, nil when it was written or not requested.
     @discardableResult
-    private func persist(templates: Bool, history: Bool, customExercises: Bool, personalBests: Bool) -> Error? {
+    private func persist(
+        templates: Bool,
+        history: Bool,
+        customExercises: Bool,
+        personalBests: Bool,
+        plans: Bool = false,
+        bodyWeights: Bool = false,
+        weighIn: Bool = false
+    ) -> Error? {
         guard let persistence else {
             lastPersistenceError = nil
             return nil
@@ -533,6 +764,9 @@ public final class StrengthDataModel: WorkoutDataProviding {
         if history { historyError = attempt { try persistence.saveHistory(data.history) } }
         if customExercises { _ = attempt { try persistence.saveCustomExercises(data.customExercises) } }
         if personalBests { _ = attempt { try persistence.savePersonalBests(data.personalBests) } }
+        if plans { _ = attempt { try persistence.savePlans(data.plans) } }
+        if bodyWeights { _ = attempt { try persistence.saveBodyWeights(data.bodyWeights) } }
+        if weighIn { _ = attempt { try persistence.saveWeighInPreferences(data.weighIn) } }
         lastPersistenceError = firstError
         return historyError
     }
