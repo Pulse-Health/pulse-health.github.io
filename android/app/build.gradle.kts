@@ -134,6 +134,8 @@ dependencies {
     // ==== deps-host:end ====
 
     // ==== deps-glance-home:begin ====
+    // Lets the unit tests walk the Glance node tree of a widget (child limits, texts, click actions) without a device.
+    testImplementation(libs.androidx.glance.appwidget.testing)
     // ==== deps-glance-home:end ====
 
     // ==== deps-glance-extras:begin ====
