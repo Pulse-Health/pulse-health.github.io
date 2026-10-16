@@ -75,7 +75,7 @@ internal data class LiftChartPlan(val chartHeight: Float, val showPrBand: Boolea
 
     companion object {
         const val MIN_CHART_DP = 24f
-        const val BAND_DP = 14f
+        const val BAND_DP = 16f
         private const val CHROME_DP = 20f + 52f + 4f
         private const val COMFORTABLE_DP = 30f
 

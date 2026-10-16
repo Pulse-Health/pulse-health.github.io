@@ -2,6 +2,7 @@ package health.pulse.strength.widgets.home
 
 import android.content.Context
 import android.util.Log
+import androidx.glance.GlanceId
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.updateAll
 import kotlinx.coroutines.CancellationException
@@ -38,13 +39,23 @@ private const val TAG = "HomeWidgets"
  * `Surfaces.refreshAll`) from updating, so a failure is logged and the loop goes on; cancellation still propagates.
  */
 internal suspend fun updateAllSafely(context: Context, widgets: List<GlanceAppWidget>) {
-    widgets.forEach { widget ->
-        try {
-            widget.updateAll(context)
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (failure: Exception) {
-            Log.w(TAG, "Could not update ${widget.javaClass.simpleName}", failure)
-        }
+    widgets.forEach { widget -> logFailure(widget) { widget.updateAll(context) } }
+}
+
+/**
+ * Draws the placed instance [glanceId] of [widget]. A configuration screen calls it right before it closes: a widget that cannot be
+ * drawn at this moment is logged and the system draws it with its next update, but the user is not kept on the screen.
+ */
+internal suspend fun updateSafely(context: Context, widget: GlanceAppWidget, glanceId: GlanceId) {
+    logFailure(widget) { widget.update(context, glanceId) }
+}
+
+private suspend fun logFailure(widget: GlanceAppWidget, update: suspend () -> Unit) {
+    try {
+        update()
+    } catch (cancelled: CancellationException) {
+        throw cancelled
+    } catch (failure: Exception) {
+        Log.w(TAG, "Could not update ${widget.javaClass.simpleName}", failure)
     }
 }

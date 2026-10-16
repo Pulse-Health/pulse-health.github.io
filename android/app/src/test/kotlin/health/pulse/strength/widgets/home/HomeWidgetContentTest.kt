@@ -140,6 +140,9 @@ class HomeWidgetContentTest {
         // Fewer rows on a short widget.
         val short = render("muscle-freshness", 110, 110, preview)
         assertThat(short.texts.count { it == "never" || it.endsWith("d") }).isEqualTo(2)
+        // The heading is shortened rather than cut off in a narrow widget.
+        short.assertShows("READY")
+        short.assertHides("READY TO TRAIN")
     }
 
     @Test

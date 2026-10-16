@@ -42,7 +42,8 @@ class MuscleFreshnessReceiver : GlanceAppWidgetReceiver() {
 
 internal data class FreshnessRow(val muscle: String, val days: String, val status: FreshnessStatus, val description: String)
 
-internal data class FreshnessCard(val header: String, val rows: List<FreshnessRow>, val description: String)
+/** [shortHeader] is the heading of a card too narrow for [header]. */
+internal data class FreshnessCard(val header: String, val shortHeader: String, val rows: List<FreshnessRow>, val description: String)
 
 internal object FreshnessModel {
     private const val ROW_DP = 23f
@@ -71,8 +72,10 @@ internal object FreshnessModel {
                     (if (days == null) "not trained yet" else HomeDates.daysAgoLower(days)),
             )
         }
-        val header = if (stalest.any { it.status == FreshnessStatus.READY }) "Ready to train" else "Recovering"
-        return FreshnessCard(header, rows, if (rows.isEmpty()) "No recovery data yet" else "$header. " + rows.joinToString(". ") { it.description })
+        val ready = stalest.any { it.status == FreshnessStatus.READY }
+        val header = if (ready) "Ready to train" else "Recovering"
+        val description = if (rows.isEmpty()) "No recovery data yet" else "$header. " + rows.joinToString(". ") { it.description }
+        return FreshnessCard(header, if (ready) "Ready" else header, rows, description)
     }
 
     fun statusWord(status: FreshnessStatus): String = when (status) {
@@ -84,10 +87,13 @@ internal object FreshnessModel {
 
 @Composable
 internal fun MuscleFreshnessContent(snapshot: WidgetSnapshot) {
-    val card = FreshnessModel.card(snapshot, FreshnessModel.rowCount(LocalSize.current.height.value))
+    val size = LocalSize.current
+    val card = FreshnessModel.card(snapshot, FreshnessModel.rowCount(size.height.value))
+    // "READY TO TRAIN" needs about 100 dp: a 2x2 widget on a small phone is narrower than that inside its padding.
+    val header = if (size.width < 140.dp) card.shortHeader else card.header
     WidgetCard(padding = 12.dp, horizontalPadding = 14.dp, description = card.description) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
-            Label(HomeText.eyebrow(card.header), 12.sp, GlanceTheme.colors.onSurfaceVariant, FontWeight.Bold)
+            Label(HomeText.eyebrow(header), 12.sp, GlanceTheme.colors.onSurfaceVariant, FontWeight.Bold)
             Spacer(GlanceModifier.height(6.dp))
             if (card.rows.isEmpty()) {
                 Label("Train a muscle group to see how fresh it is.", 13.sp, GlanceTheme.colors.onSurfaceVariant, maxLines = 3)

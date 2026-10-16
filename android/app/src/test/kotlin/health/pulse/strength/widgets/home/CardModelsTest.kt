@@ -64,6 +64,7 @@ class CardModelsTest {
         assertThat(card.rows.map { it.muscle }).containsExactly("Core", "Legs", "Chest", "Shoulders").inOrder()
         assertThat(card.rows.map { it.days }).containsExactly("never", "7d", "5d", "5d").inOrder()
         assertThat(card.header).isEqualTo("Ready to train")
+        assertThat(card.shortHeader).isEqualTo("Ready")
     }
 
     @Test
@@ -77,6 +78,7 @@ class CardModelsTest {
         val tired = MuscleGroup.entries.map { MuscleFreshness(it, daysSince = 1, status = FreshnessStatus.WORKED) }
         val card = FreshnessModel.card(preview.copy(freshness = tired), maxRows = 4)
         assertThat(card.header).isEqualTo("Recovering")
+        assertThat(card.shortHeader).isEqualTo("Recovering")
         assertThat(card.rows.map { it.status }.distinct()).containsExactly(FreshnessStatus.WORKED)
     }
 

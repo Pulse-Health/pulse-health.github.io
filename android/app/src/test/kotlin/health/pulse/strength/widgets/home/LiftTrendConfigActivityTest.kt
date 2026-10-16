@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.glance.appwidget.AppWidgetId
@@ -28,6 +28,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /** The configuration screen of the lift trend widget: it lists the lifts, stores the pick per widget id, and reports back to the launcher. */
@@ -55,6 +56,24 @@ class LiftTrendConfigActivityTest {
         return ActivityScenario.launchActivityForResult(intent)
     }
 
+    /** What a screen that is closing reports to the launcher. */
+    private data class Reported(val resultCode: Int, val widgetId: Int)
+
+    /** Waits until the screen is finishing and returns its result (the test clock does not drive the scenario on to DESTROYED). */
+    private fun ActivityScenario<LiftTrendConfigActivity>.awaitReported(): Reported {
+        var finishing = false
+        compose.waitUntil(timeoutMillis = 5_000) {
+            onActivity { finishing = it.isFinishing }
+            finishing
+        }
+        var reported: Reported? = null
+        onActivity {
+            val shadow = shadowOf(it)
+            reported = Reported(shadow.resultCode, shadow.resultIntent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1))
+        }
+        return checkNotNull(reported)
+    }
+
     private fun storedLift(widgetId: Int): String? = runBlocking {
         getAppWidgetState(context, PreferencesGlanceStateDefinition, AppWidgetId(widgetId))[LiftTrendWidget.LiftKey]
     }
@@ -80,14 +99,13 @@ class LiftTrendConfigActivityTest {
 
     @Test
     fun pickingALiftStoresItForThatWidgetAndReportsOk() {
-        val scenario = launch(widgetId = 42)
-        compose.onNodeWithText("Back Squat").performClick()
-        compose.waitUntil(timeoutMillis = 5_000) { scenario.state == Lifecycle.State.DESTROYED }
-        assertThat(scenario.result.resultCode).isEqualTo(Activity.RESULT_OK)
-        assertThat(scenario.result.resultData.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1)).isEqualTo(42)
-        assertThat(storedLift(42)).isEqualTo("squat")
-        // Another widget keeps its own choice.
-        assertThat(storedLift(43)).isNull()
+        launch(widgetId = 42).use { scenario ->
+            compose.onNodeWithText("Back Squat").performClick()
+            assertThat(scenario.awaitReported()).isEqualTo(Reported(Activity.RESULT_OK, widgetId = 42))
+            assertThat(storedLift(42)).isEqualTo("squat")
+            // Another widget keeps its own choice.
+            assertThat(storedLift(43)).isNull()
+        }
     }
 
     @Test
@@ -102,11 +120,11 @@ class LiftTrendConfigActivityTest {
     @Test
     fun withoutLiftsThePickerExplainsAndStillAddsTheWidget() {
         StrengthRuntime.installForTest(PreviewRuntime(WidgetSnapshot.preview.copy(lifts = emptyList())))
-        val scenario = launch(widgetId = 45)
-        compose.onNodeWithText("No lifts yet", substring = true).assertExists()
-        compose.onNodeWithText("Add widget").performClick()
-        compose.waitUntil(timeoutMillis = 5_000) { scenario.state == Lifecycle.State.DESTROYED }
-        assertThat(scenario.result.resultCode).isEqualTo(Activity.RESULT_OK)
-        assertThat(storedLift(45)).isNull()
+        launch(widgetId = 45).use { scenario ->
+            compose.onNodeWithText("No lifts yet", substring = true).assertExists()
+            compose.onNodeWithText("Add widget").performClick()
+            assertThat(scenario.awaitReported()).isEqualTo(Reported(Activity.RESULT_OK, widgetId = 45))
+            assertThat(storedLift(45)).isNull()
+        }
     }
 }

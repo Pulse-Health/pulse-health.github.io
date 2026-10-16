@@ -81,7 +81,7 @@ class LiftTrendConfigActivity : ComponentActivity() {
             if (exerciseId != null) {
                 updateAppWidgetState(this@LiftTrendConfigActivity, glanceId) { it[LiftTrendWidget.LiftKey] = exerciseId }
             }
-            LiftTrendWidget().update(this@LiftTrendConfigActivity, glanceId)
+            updateSafely(this@LiftTrendConfigActivity, LiftTrendWidget(), glanceId)
             setResult(RESULT_OK, resultIntent())
             finish()
         }

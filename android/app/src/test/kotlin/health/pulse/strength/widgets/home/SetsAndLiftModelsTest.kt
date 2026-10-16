@@ -161,7 +161,7 @@ class SetsAndLiftModelsTest {
         val roomy = LiftChartPlan.forHeight(150f, hasPr = true)
         assertThat(roomy.showAxis).isTrue()
         assertThat(roomy.showPrBand).isTrue()
-        assertThat(roomy.chartHeight).isEqualTo(150f - 76f - 28f)
+        assertThat(roomy.chartHeight).isEqualTo(150f - 76f - 32f)
         val medium = LiftChartPlan.forHeight(130f, hasPr = true)
         assertThat(medium.showAxis).isFalse()
         assertThat(medium.showPrBand).isTrue()

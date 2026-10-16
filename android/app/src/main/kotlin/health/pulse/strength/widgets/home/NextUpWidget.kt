@@ -197,9 +197,12 @@ private fun CompactNextUp(card: NextUpCard, size: DpSize) {
 
 @Composable
 private fun WideNextUp(card: NextUpCard, size: DpSize) {
-    val leftWidth = ((size.width - 24.dp) * 0.38f).coerceIn(104.dp, 160.dp)
-    val shown = NextUpModel.visibleRows(size.height.value - 16f, card.rows.size)
+    val leftWidth = ((size.width - 24.dp) * 0.42f).coerceIn(112.dp, 168.dp)
+    // The card pads 12 dp above and 4 dp below the button, the column of exercises another 8 dp below.
+    val shown = NextUpModel.visibleRows(size.height.value - 24f, card.rows.size)
     val titleLines = if (size.height >= 170.dp) 2 else 1
+    // One line of title is shrunk (not below 14 sp) before it is cut off: the name of the workout is the point of the widget.
+    val titleSize = if (titleLines == 1) HomeLayout.fittedSp(card.title, leftWidth.value, baseSp = 17f, minSp = 14f).sp else 17.sp
     // Title, button and the touch margin of the button take 103 dp: below 124 dp there is no room for the line under the title.
     val roomForSummary = size.height >= 124.dp
     val roomForPlan = size.height >= 140.dp
@@ -208,9 +211,11 @@ private fun WideNextUp(card: NextUpCard, size: DpSize) {
             Column(modifier = GlanceModifier.width(leftWidth).fillMaxHeight()) {
                 Eyebrow(card.eyebrow)
                 Spacer(GlanceModifier.height(2.dp))
-                Label(card.title, 17.sp, GlanceTheme.colors.onSurface, FontWeight.Bold, maxLines = titleLines)
+                Label(card.title, titleSize, GlanceTheme.colors.onSurface, FontWeight.Bold, maxLines = titleLines)
                 if (roomForSummary) card.wideSummary?.let { Label(it, 13.sp, GlanceTheme.colors.onSurfaceVariant) }
-                if (roomForPlan) card.planLine?.let { Label(it, 13.sp, GlanceTheme.colors.onSurfaceVariant) }
+                if (roomForPlan) {
+                    card.planLine?.let { Label(it, 13.sp, GlanceTheme.colors.onSurfaceVariant, maxLines = titleLines) }
+                }
                 Spacer(GlanceModifier.defaultWeight())
                 card.button?.let { StartButton(it) }
             }

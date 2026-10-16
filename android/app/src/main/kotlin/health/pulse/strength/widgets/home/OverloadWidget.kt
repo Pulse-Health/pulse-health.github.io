@@ -80,7 +80,9 @@ internal object OverloadModel {
 internal fun OverloadContent(snapshot: WidgetSnapshot) {
     val card = OverloadModel.card(snapshot)
     val size = LocalSize.current
-    val lastSp = card.last?.let { HomeLayout.fittedSp(it, size.width.value - 32f, baseSp = 22f, minSp = 14f) }
+    // The four lines of the smallest card (age, exercise, last time, target) need a smaller figure to fit 110 dp of height.
+    val figureSp = if (size.height < 125.dp) 20f else 22f
+    val lastSp = card.last?.let { HomeLayout.fittedSp(it, size.width.value - 32f, baseSp = figureSp, minSp = 14f) }
     val showBadge = size.height >= 125.dp
     val showLabel = size.height >= 150.dp
     val colors = HomeColors.DarkCard
