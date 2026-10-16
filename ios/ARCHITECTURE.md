@@ -529,39 +529,62 @@ Phase 0 of `COACH-HARNESS-PROPOSAL.md`. Everything here is pure, Foundation only
 proposal records the decision not to use on-device models.
 
 * **`ProgressionEngine.recommend(for:history:audience:config:now:) -> Recommendation`**: reads only the **performed** sets of
-  `ExerciseHistory.sessions` (the planned target is not stored, and "update template" overwrites it). Working sets are `.normal` and
-  `.failure` (a failure set without a reps-in-reserve value counts as RIR 0); warm-ups, drop sets and values outside 0 < kg <= 2000,
-  0 < reps <= 1000 are ignored. A set whose estimated 1RM is more than `suspectRatio` (1.25) times the median of the lifter's recent
-  per-session bests is dropped as a typo (needs three recent sessions). A session is summarised at its heaviest working weight: mean
-  reps, mean RIR and the share of those sets that have one (`coverage`).
-  Rules, in this order: audience avoids the muscle, or the exercise is not weight x reps, or fewer than two valid sessions →
-  `insufficientData` (nothing is shown); more than `breakDays` since the last session → `hold` (`returningAfterBreak`); `lighterWeekAfterIncreases`
-  consecutive increases → `reduce` (`lighterWeekDue`); reps fell by more than `repsFallTolerance` at the same weight in two consecutive
-  sessions → `reduce` when the last session ended at mean RIR <= `holdMaximumRIR`, else `hold`; coverage below `effortCoverage` →
-  `noEffortData`; mean RIR <= `holdMaximumRIR` → `hold` (`lastSessionNearFailure`); mean RIR below `progressMinimumRIR` → `hold`
-  (`moderateEffort`); otherwise `progress` only when the previous session was at the same weight with effort data, mean RIR >=
-  `progressMinimumRIR` and no rep drop, else `hold` (`awaitingSecondCleanSession`). A `progress` adds `CoachConfig.increment(for:)`;
-  when that step is more than `jumpCap(for:)` of the weight (7.5 %, 5 % for minors and unknown audiences) it becomes `addRep`. A `reduce`
-  takes `reduceFraction` of the weight rounded down to the increment (at least one increment) and becomes a `hold`
-  (`reduceExceedsCap`) when that is more than `maximumReduceFraction` of the weight. The weight is never raised without effort data.
+  `ExerciseHistory.sessions` (the planned target is not stored, and "update template" overwrites it). The history is sorted newest first
+  and de-duplicated by session id inside the engine; a session dated more than a day after `now` (a clock error) or with a date that is
+  not a number is ignored. Working sets are `.normal` and `.failure` (a failure set is always reps in reserve 0, whatever value is
+  stored with it); warm-ups, drop sets and values outside 0.5 <= kg <= 2000, 0 < reps <= 999 are ignored (999 is the most the reducer
+  stores). A session is summarised at its heaviest working weight: mean reps, mean RIR, the share of those sets that have one
+  (`coverage`) and the share with RIR >= `progressMinimumRIR` (`comfortableShare`).
+  *Typo guard.* A set is dropped as a typo when its estimated 1RM is more than `suspectRatio` (1.25) times the median of the last six
+  per-session bests **and** more than that times the best of the next older session, so a lifter who climbs every session is not
+  mistaken for a typo. That needs three recent sessions; with exactly two whose bests are further apart than `suspectRatio` the engine
+  says nothing (`insufficientData`, `suspectSetExcluded`), because it cannot tell which one is right.
+  *Rules, in this order:* an invalid `CoachConfig` (NaN or out-of-range caps), an audience that avoids the muscle, an exercise that is
+  not weight x reps, or fewer than two valid sessions → `insufficientData` (nothing is shown); more than `breakDays` since the last
+  session (or a date that is not a number) → `hold` (`returningAfterBreak`). The rest uses only the **recent run**: the newest sessions
+  with no gap longer than `breakDays` between neighbours. One session in the run (the first one back after a layoff) → `hold`
+  (`awaitingSecondCleanSession`). `lighterWeekAfterIncreases` consecutive increases with effort data below `lighterWeekMaximumRIR`
+  (3.0; a beginner adding weight with reps to spare is not tired) → `reduce` (`lighterWeekDue`); reps fell by more than
+  `repsFallTolerance` at the same weight in two consecutive sessions → `reduce` when the last session ended at mean RIR <=
+  `holdMaximumRIR`, else `hold`; coverage below `effortCoverage` → `noEffortData`; mean RIR <= `holdMaximumRIR` → `hold`
+  (`lastSessionNearFailure`); mean RIR below `progressMinimumRIR`, or fewer than `comfortableSetShare` (2/3) of the sets at
+  RIR >= `progressMinimumRIR` → `hold` (`moderateEffort`); otherwise `progress` only when the previous session was at the same weight
+  with effort data, the same two conditions and no rep drop, else `hold` (`awaitingSecondCleanSession`). A `progress` adds
+  `CoachConfig.increment(for:)`; when that step is more than `jumpCap(for:)` of the weight (7.5 %, 5 % for minors and unknown audiences)
+  it becomes `addRep`, and at `maximumTargetReps` a `hold` (`stepExceedsCap`) that the text explains. A `reduce` takes `reduceFraction`
+  of the weight rounded down to the increment (at least one increment) and becomes a `hold` (`reduceExceedsCap`) when that is more than
+  `maximumReduceFraction` of the weight. The weight is never raised without effort data.
   **The thresholds in `CoachConfig` are starting values that no qualified coach has signed off.**
-* **`TemplateWriter.line(for:) -> CoachLine?`**: fixed English sentences (`headline`, `detail`) derived only from the `Recommendation`;
-  nil for `insufficientData`. A model never writes coach text.
-* **`CoachPlanner.nextTime(...)`**: the hub card's lines, in template order, at most `limit` (3), one per exercise id; a single
-  "Log RIR" hint only when nothing else is available. **`CoachPlanner.suggestion(for:history:audience:config:now:)`**: for one exercise of
-  the running workout, only before its first set is logged and only when applying would change something; `actions` are the existing
-  `.setWeight` / `.setReps` actions for the pending `.normal` sets (warm-ups, drop sets and failure sets are left alone).
-* **`HubNoteBuilder.message(template:exercise:recovery:)`**: the hub card's coach note, moved out of `StrengthHubView` (it had no test). The
-  readiness sentence is built only when `recovery` is non-nil; the hub passes nil while `WorkoutController.isUsingDemoRecovery` (the default
-  `DemoRecovery` numbers). `HubNoteTests` checks it against a verbatim copy of the old code.
+* **`TemplateWriter.line(for:config:) -> CoachLine?`**: fixed English sentences (`headline`, `detail`) derived only from the
+  `Recommendation` and the configured effort threshold; nil for `insufficientData`. A model never writes coach text.
+* **`CoachPlanner.nextTime(...)`**: the hub card's lines, in template order, at most `limit` (3; zero or less returns nothing), one per
+  exercise id, each judged on the sessions of this template's workout name when there are at least two (`ExerciseHistory.scoped`), so a
+  lift trained on a heavy day and a light day is not compared with itself; it stops scanning once `limit` targets are found. A single
+  "Log RIR" hint only when nothing else is available. **`CoachPlanner.suggestion(for:history:workoutName:audience:config:now:)`**: for one
+  exercise of the running workout, only before its first set is logged and only when applying would change something; `actions` are the
+  existing `.setWeight` / `.setReps` actions for the **top group** of the pending `.normal` sets (those at the heaviest pending weight):
+  back-off sets, ramps and pyramids keep their plan, and warm-ups, drop sets and failure sets are never touched. Apply cannot be undone.
+* **`HubNoteBuilder.message(template:exercise:recovery:audience:includeTarget:)`**: the hub card's coach note, moved out of
+  `StrengthHubView` (it had no test). The readiness sentence is built only when `recovery` is non-nil (the hub passes nil while
+  `WorkoutController.isUsingDemoRecovery`) and never names a muscle the person avoids. The "Aim for" sentence is the old record chase: it
+  follows `AudienceProfile.allowsPersonalRecordTip(for:)` like the in-workout tip, is left out (`includeTarget: false`) when the "Next
+  time" lines already name a weight, and is not built from absurd figures. `HubNoteTests` checks it against a verbatim copy of the old code.
 * **`AudienceProfile`** (age group, muscles to avoid) is supplied by the host through `StrengthAppEnvironment.audience`
-  (SwiftUI: `\.coachAudience`); the standalone build uses `.unknown`.
-* iOS surfaces: the "Next time" block of `HubRecommendedCard`, and `CoachSuggestionView` (with an "Apply" button) at the bottom of `ExerciseCardView`.
+  (SwiftUI: `\.coachAudience`); the standalone build uses `.unknown`. `PulseStrengthRootView` injects it; a host that embeds
+  `ActiveWorkoutView` directly must set `\.coachAudience` itself, otherwise the audience is `.unknown`.
+* iOS surfaces: the "Next time" block of `HubRecommendedCard`, and `CoachSuggestionView` (with an "Apply" button) at the bottom of
+  `ExerciseCardView`. The card's suggestion is dated at the workout's start and worked out again when "Apply" is tapped; it drops its reason
+  line while a rest runs, at large text sizes and for exercises with more than four sets, and the record tip is hidden while the coach
+  names a weight.
+* **Known limits that need a qualified coach (not fixed on purpose):** the engine does not use the template's rep ranges (no double
+  progression), progresses a beginner at half the pace of linear progression, forgets the weight before a deload, gives no suggestion
+  to people who log no RIR, adds reps instead of weight on light lifts up to the rep limit, and sets the rep target from the mean of the
+  last session. They are listed with their evidence in `COACH-HARNESS-PROPOSAL.md` section 9.
 
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
-  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 898 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 921 (the controller and
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 924 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 947 (the controller and
   store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
   phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
   40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice. `SyncHardeningTests.swift` holds one

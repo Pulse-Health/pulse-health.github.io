@@ -281,6 +281,29 @@ of the old code over 4,000 random templates), `ProgressionEngine` with `CoachCon
 `TemplateWriter`, `CoachPlanner`, the hub "Next time" block, the exercise-card suggestion with Apply, the readiness sentence hidden while
 the recovery numbers are demo data (`WorkoutController.isUsingDemoRecovery`), and `ARCHITECTURE.md` section 3.7.
 
+*Review of the first implementation.* Four independent reviews (a fuzz run of about 300,000 cases, a strength-coach reading with 62
+scenarios and 11 trajectories, a read against this document, an iOS behaviour review) found about 55 issues. Fixed in the same pull request,
+each with a regression test (`CoachReviewFixTests`): Apply flattened back-off sets and ramps; a lift trained on two different days was judged
+as one series; "two clean sessions" could be months apart; future-dated sessions and non-finite dates defeated the break rule; the progress
+gate used the mean RIR where this document says two thirds of the sets; a re-marked failure set kept a stale RIR; the typo guard dropped a
+real climb and was blind with two sessions; holds at a cap had no explanation; the sentences hard-coded the RIR threshold; a bad
+`CoachConfig` silently removed a cap; the hub "Aim for" sentence ignored the audience and contradicted the "Next time" line; and several iOS
+points (room on a small screen, VoiceOver, contrast, tap target, date pinned to the workout start, Apply recomputed at the tap).
+
+*Found, not fixed, because each is a policy decision for a qualified coach:*
+* **Light lifts only ever gain reps.** With a 7.5 % cap (5 % when the age is unknown) the 2 to 2.5 kg steps are "too big a jump" for
+  barbells under 33 kg (50 kg), dumbbells under 27 kg (40 kg) and most isolation work; the target climbs to 30 reps and then holds, now with
+  an explanation. A coach would move to the next weight at 15 to 20 reps and drop the reps.
+* **No template rep ranges.** The engine works from performed sets only, so it cannot recognise the top of a range (8 to 12) and holds
+  lifters who train close to failure indefinitely. Using `PlannedSet.repsMax` (optional input) is the natural next step.
+* **Beginner pace.** Two sessions per step is about half of linear progression; a one-session lane for sessions at RIR 3 or more is a
+  candidate. **Deloads are forgotten:** after a lighter week the engine climbs back 2.5 kg per two sessions. **No RIR, no suggestion:** a
+  fallback such as "all planned reps in two sessions" needs the planned reps. **Break handling:** a long layoff holds at the old weight; coaches
+  restart at 60 to 90 %. **Targets from the mean:** one bad set lowers the next target by a rep.
+* **Wording.** "RIR" and "clean session" are not explained; a decrease and an increase read alike on the card.
+* **The PR-chase "Aim for" arithmetic** still starts from the all-time best estimated 1RM, so one typo set can inflate it (the engine's typo
+  guard does not apply); it is now hidden whenever the engine names a weight, for minors and for avoided muscles.
+
 *What was deliberately not done, and why:*
 * **German / String Catalog.** The whole app is English with locale-free number formatting; localising only the new strings would
   mix languages. `CoachLine` keeps the words separate from the figures so localisation can be added app-wide later.
