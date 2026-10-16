@@ -141,22 +141,25 @@ no snapshot file (use `preview` as the placeholder / gallery sample, never as li
 Identical rules on Swift and Kotlin; both are tested against `widgets/fixtures/golden-sample.json` (the builder's output for the demo data
 at `now = 2026-10-16T09:41:00Z`, time zone UTC, goal 4, no bodyweight), produced by the Swift tests and compared by the Kotlin tests.
 
-Inputs: `StrengthData` (templates, history newest first, custom exercises, personal bests), `WidgetContext` { `weeklyGoal` (1...7, default 4),
-`bodyweightKg?`, `readiness?`, `partners`, `active: WorkoutSnapshot?`, `timeZone` }, `now`.
+Inputs: `StrengthData` (templates, plans, history newest first, custom exercises, personal bests, body weights), `WidgetContext` { `weeklyGoal` (1...7, default 4),
+`bodyweightKg?` (overrides the stored body weight), `readiness?`, `partners`, `active: WorkoutSnapshot?`, `timeZone` }, `now`.
 
 Calendar: the week is Monday 00:00 to the next Monday 00:00 in `timeZone`. "Calendar days between" A and B is the number of local midnights
 crossed (so 23:50 yesterday is 1 day ago); a date in the future counts as 0. A workout belongs to the day of its `finishedAt`.
 
+* **goal**: the active plan's `daysPerWeek` when it has one, else `context.weeklyGoal` (the user's setting, default 4), clamped to 1...7.
 * **week**: `completed` = workouts that day-bucket into this week; `days[i]` has `sessions`, `label` = initials of the earliest workout of the day,
   `isToday`, `isFuture`; `lastWorkoutAt` = latest `finishedAt`; `daysSinceLastWorkout` = calendar days since it (nil without history);
   `streakWeeks`: count the weeks that met the goal going backwards from the current week; the current week counts when it already met the goal and
   is skipped (not a break) when it has not; stop at the first earlier week below the goal; cap 520.
 * **initials(name)**: split on whitespace, drop tokens without a letter or digit (like "·"), two or more tokens -> first character of the first two,
   one token -> its first two characters, none -> "WO"; upper case. "Upper A · Push" -> "UA".
-* **nextUp**: no templates -> nil. Otherwise the template after the most recently performed one (greatest `lastPerformed`, lowest index on a tie) in store
-  order, wrapping; nothing performed -> the first. `splitLabel`: text after the last "·" trimmed plus " day" ("Push day"), else the name.
-  Exercise `summary`: weight-tracking -> `<working sets> × <heaviest working weight>` ("3 × 85", working = not warm-up, all sets when there is none),
-  reps-only -> `<n> × <max reps>`, duration -> `<n> × <max seconds> s`.
+* **nextUp**: the template the app itself recommends, `StrengthData.nextTemplate()`: the next workout of the active training plan
+  (`WorkoutPlan.nextWorkout`), and without a plan the template after the most recently performed one in store order, wrapping, the first
+  when nothing was performed (`TemplateRotation.next`, lowest index on a tie). No templates -> nil. With an active plan that contains the
+  template: `planName`, `planPosition` (1-based position in the plan's rotation) and `planCount`. `splitLabel`: text after the last "·"
+  trimmed plus " day" ("Push day"), else the name. Exercise `summary`: weight-tracking -> `<working sets> × <heaviest working weight>` ("3 × 85",
+  working = not warm-up, all sets when there is none), reps-only -> `<n> × <max reps>`, duration -> `<n> × <max seconds> s`.
 * **templates**: store order; `isSuggested` for the nextUp template.
 * **lastSession**: the workout with the greatest `finishedAt`. `durationMinutes` = round half up of seconds / 60. `peakHeartRate` and `heartRateBars` come
   from `CompletedWorkout.heartRateSeries`: with at least 4 samples, `min(16, count)` contiguous buckets of near-equal size (earlier buckets take the
@@ -195,8 +198,8 @@ crossed (so 23:50 yesterday is 1 day ago); a date in the future counts as 0. A w
 * **formCue**: the first nextUp entry whose exercise has cues; `index` = `(dayOfYear - 1) mod count`, 1-based in the output.
 * **loadedBar**: the nextUp entry with the heaviest working set among exercises with `supportsPlates` (first on a tie); `PlateCalculator.plan(total, bar)`;
   `summary` joins the plates with " + " using `NumberText.kg`.
-* **strengthRatio**: the first of `lifts` whose id is `bench`, `squat`, `deadlift` or `ohp`; `estimated1RM` = its `bestE1RM`; `ratio` = e1RM / bodyweight rounded
-  to 0.01 (nil without bodyweight); `goalRatio` 1.5 / 2.0 / 2.5 / 1.0.
+* **strengthRatio**: the first of `lifts` whose id is `bench`, `squat`, `deadlift` or `ohp`; `estimated1RM` = its `bestE1RM`; `bodyweightKg` = `context.bodyweightKg`, else the latest `StrengthData.bodyWeights` entry (the app's own record,
+  synced from Health), else nil; `ratio` = e1RM / bodyweight rounded to 0.01 (nil without bodyweight); `goalRatio` 1.5 / 2.0 / 2.5 / 1.0.
 * **restDay**: no workout today and (a workout yesterday or the goal is met) -> one of four routines by weekday (Mon = 0): "10-min mobility / Hips and
   T-spine / 10", "8-min shoulder reset / Shoulders and upper back / 8", "12-min hips and hamstrings / Hips and hamstrings / 12", "6-min wrist and ankle prep /
   Wrists and ankles / 6"; reason "Rest day". Otherwise nil.

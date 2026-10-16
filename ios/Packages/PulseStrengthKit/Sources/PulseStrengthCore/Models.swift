@@ -270,12 +270,22 @@ public struct WorkoutExercise: Identifiable, Codable, Hashable, Sendable {
 public struct PlannedSet: Codable, Hashable, Sendable {
     public var type: SetType
     public var weightKg: Double
+    /// The target reps (seconds for duration exercises); the lower end when `repsMax` is set.
     public var reps: Int
+    /// The upper end of a rep range: "8-10" is `reps` 8 and `repsMax` 10. nil (or not above `reps`) means exactly `reps`.
+    public var repsMax: Int?
 
-    public init(type: SetType = .normal, weightKg: Double, reps: Int) {
+    public init(type: SetType = .normal, weightKg: Double, reps: Int, repsMax: Int? = nil) {
         self.type = type
         self.weightKg = weightKg
         self.reps = reps
+        self.repsMax = repsMax
+    }
+
+    /// "8" or, for a range, "8\u{2013}10" (an en dash).
+    public var repsText: String {
+        if let upper = repsMax, upper > reps { return "\(reps)\u{2013}\(upper)" }
+        return String(reps)
     }
 }
 
@@ -285,19 +295,24 @@ public struct TemplateEntry: Identifiable, Codable, Hashable, Sendable {
     public var plannedSets: [PlannedSet]
     public var restSeconds: Int
     public var supersetGroup: String?
+    /// How to do this exercise in this workout (technique cues, substitutions); copied into the workout's exercise note.
+    /// nil = no note. Optional so that templates saved before notes existed still load.
+    public var note: String?
 
     public init(
         id: UUID = UUID(),
         exercise: Exercise,
         plannedSets: [PlannedSet],
         restSeconds: Int,
-        supersetGroup: String? = nil
+        supersetGroup: String? = nil,
+        note: String? = nil
     ) {
         self.id = id
         self.exercise = exercise
         self.plannedSets = plannedSets
         self.restSeconds = restSeconds
         self.supersetGroup = supersetGroup
+        self.note = note
     }
 }
 

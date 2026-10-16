@@ -71,6 +71,9 @@ dependencies {
     implementation(libs.androidx.wear.ongoing)
     implementation(libs.google.play.services.wearable)
 
+    // ==== deps-wear:begin ====
+    // ==== deps-wear:end ====
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.test.junit)

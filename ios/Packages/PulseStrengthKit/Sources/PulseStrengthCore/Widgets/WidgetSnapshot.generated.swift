@@ -139,6 +139,12 @@ public struct NextUpSummary: Codable, Hashable, Sendable {
     public var estimatedMinutes: Int
     public var lastPerformedAt: Date?
     public var daysSince: Int?
+    /// Name of the active training plan when the template is its next workout.
+    public var planName: String?
+    /// 1-based position of the template in the active plan's rotation.
+    public var planPosition: Int?
+    /// Number of workouts in the active plan's rotation.
+    public var planCount: Int?
     /// Every template entry in order.
     public var exercises: [PlannedExerciseBrief]
 
@@ -151,6 +157,9 @@ public struct NextUpSummary: Codable, Hashable, Sendable {
         estimatedMinutes: Int = 0,
         lastPerformedAt: Date? = nil,
         daysSince: Int? = nil,
+        planName: String? = nil,
+        planPosition: Int? = nil,
+        planCount: Int? = nil,
         exercises: [PlannedExerciseBrief] = []
     ) {
         self.templateID = templateID
@@ -161,6 +170,9 @@ public struct NextUpSummary: Codable, Hashable, Sendable {
         self.estimatedMinutes = estimatedMinutes
         self.lastPerformedAt = lastPerformedAt
         self.daysSince = daysSince
+        self.planName = planName
+        self.planPosition = planPosition
+        self.planCount = planCount
         self.exercises = exercises
     }
 }

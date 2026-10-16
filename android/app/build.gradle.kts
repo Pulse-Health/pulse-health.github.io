@@ -71,6 +71,24 @@ dependencies {
     implementation(libs.google.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)
 
+    // ==== deps-core:begin ====
+    // ==== deps-core:end ====
+
+    // ==== deps-host:begin ====
+    // ==== deps-host:end ====
+
+    // ==== deps-glance-home:begin ====
+    // ==== deps-glance-home:end ====
+
+    // ==== deps-glance-extras:begin ====
+    // ==== deps-glance-extras:end ====
+
+    // ==== deps-system:begin ====
+    // ==== deps-system:end ====
+
+    // ==== deps-wear:begin ====
+    // ==== deps-wear:end ====
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.kotlin.test.junit)

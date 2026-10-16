@@ -23,7 +23,9 @@
 #
 # Signing: DEVELOPMENT_TEAM and PULSE_APP_BUNDLE_ID live in Config/Signing.xcconfig (optionally overridden by the git-ignored
 # Config/Signing.local.xcconfig); every target inherits them. Placeholders to replace when this moves into the Pulse app (see README.md):
-# those two values. The app uses no App Group: its data lives in Application Support.
+# those two values. The app, the widget extensions and the Watch app share the App Group group.$(PULSE_APP_BUNDLE_ID) (entitlements files
+# under Apps/<target>/, Info.plist key PulseAppGroupID): the strength data and the widget snapshot live in its container. It needs a paid
+# team on a device; simulator builds without signing fall back to Application Support and the widgets show their sample content.
 
 name: PulseStrength
 
@@ -116,6 +118,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).widgets
         INFOPLIST_FILE: Apps/PulseStrengthWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Apps/PulseStrengthWidgets/PulseStrengthWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: "YES"
 
