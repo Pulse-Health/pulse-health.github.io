@@ -30,34 +30,48 @@ struct WeeklyGoalWidget: Widget {
     }
 }
 
+/// The widget as the system hosts it: reads the surface from the environment, adds the card and the tap target around `WeeklyGoalLayout`.
 struct WeeklyGoalView: View {
     let entry: SnapshotEntry
     @Environment(\.showsWidgetContainerBackground) private var showsBackground
     @Environment(\.widgetRenderingMode) private var renderingMode
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
 
-    private var week: WeekSummary { entry.snapshot.week }
-    private var progress: Double { week.goal > 0 ? Double(week.completed) / Double(week.goal) : 0 }
-    /// The system's tinted mode (HS-06): one accent colour for the ring and the figures, no coloured fills.
-    private var isTinted: Bool { renderingMode != .fullColor }
+    private var surface: HomeSurface {
+        HomeSurface(showsContainerBackground: showsBackground, isLuminanceReduced: isLuminanceReduced, renderingMode: renderingMode)
+    }
 
     var body: some View {
-        content
+        WeeklyGoalLayout(entry: entry, surface: surface)
             .containerBackground(for: .widget) {
-                if isLuminanceReduced {
+                if surface.isNight {
                     Color.black
                 } else {
                     WidgetTheme.card
                 }
             }
             .widgetURL(StrengthDeepLink.hub.url)
+    }
+}
+
+/// What the widget draws on one surface: the ring with the week's dots, the same ring large (StandBy), in red (StandBy at night) or as a glyph
+/// in the tinted mode. Everything comes from the snapshot and the surface, so a test can render any of them.
+struct WeeklyGoalLayout: View {
+    let entry: SnapshotEntry
+    let surface: HomeSurface
+
+    private var week: WeekSummary { entry.snapshot.week }
+    private var progress: Double { week.goal > 0 ? Double(week.completed) / Double(week.goal) : 0 }
+
+    var body: some View {
+        content
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(week.completed) of \(week.goal) workouts this week")
     }
 
     @ViewBuilder
     private var content: some View {
-        if isLuminanceReduced {
+        if surface.isNight {
             WeeklyGoalRing(
                 week: week,
                 progress: progress,
@@ -70,9 +84,9 @@ struct WeeklyGoalView: View {
                 secondary: Color.red.opacity(0.75)
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if isTinted {
+        } else if surface.isTinted {
             tintedContent
-        } else if !showsBackground {
+        } else if surface.isStandBy {
             WeeklyGoalRing(week: week, progress: progress, lineWidth: 14, numeralSize: 36, captionSize: 13)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .homeDarkAppearance()
