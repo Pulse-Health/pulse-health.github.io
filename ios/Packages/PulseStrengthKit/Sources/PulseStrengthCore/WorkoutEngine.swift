@@ -433,6 +433,7 @@ public final class WorkoutEngine {
         shown.heartRate = current.heartRate
         shown.heartRateSum = current.heartRateSum
         shown.heartRateCount = current.heartRateCount
+        shown.heartRateSeries = current.heartRateSeries
         if shown != current {
             state = shown
             onUpdate?()

@@ -20,7 +20,7 @@ public enum SummaryBuilder {
             var isRecord = false
 
             for (index, set) in entry.sets.enumerated() where set.isDone {
-                sets.append(CompletedSet(type: set.type, weightKg: set.weightKg, reps: set.reps, rir: set.rir))
+                sets.append(CompletedSet(type: set.type, weightKg: set.weightKg, reps: set.reps, rir: set.rir, loggedAt: set.doneAt))
                 loggedSets += 1
                 if let rir = set.rir {
                     rirSum += rir
@@ -92,7 +92,8 @@ public enum SummaryBuilder {
             averageRIR: rirCount > 0 ? Double(rirSum) / Double(rirCount) : nil,
             exercises: exercises,
             personalRecords: records,
-            muscleSets: muscleSets
+            muscleSets: muscleSets,
+            heartRateSeries: state.heartRateSeries.isEmpty ? nil : state.heartRateSeries
         )
     }
 
