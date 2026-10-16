@@ -143,6 +143,23 @@ class ServicesTest {
     }
 
     @Test
+    fun aRestartedProcessRestoresTheWorkoutAndPostsItsNotificationAgain() {
+        startBenchWorkout()
+        manager.cancelAll()
+        assertThat(shadowOf(manager).getNotification(WorkoutNotifications.ONGOING_ID)).isNull()
+
+        // What Application.onCreate does in a new process (the system killed the old one): a fresh environment on the same files, then
+        // the restore. The services are registered before the restore, so they see the workout that comes back.
+        val restarted = StrengthAppEnvironment.live(app)
+        assertThat(restarted.controller.state.value).isNull()
+        restarted.controller.restoreFromDisk()
+
+        assertThat(restarted.controller.state.value?.name).isEqualTo("Push day")
+        assertThat(restarted.controller.state.value?.exercises?.single()?.exercise?.id).isEqualTo("bench")
+        assertThat(title(ongoing())).isEqualTo("Barbell bench press")
+    }
+
+    @Test
     fun finishingOrDiscardingRemovesTheNotifications() {
         startBenchWorkout()
         assertThat(shadowOf(manager).getNotification(WorkoutNotifications.ONGOING_ID)).isNotNull()

@@ -171,6 +171,9 @@ real-device screenshots if you prefer; the Console accepts either.
 - **History size.** Finishing a workout and starting the app rewrite the whole history file on the main thread. Measured on a desktop
   JVM: 0.2-0.4 s per Finish at 500-1000 workouts, 3-8 times that on a slow phone; it is jank, not an ANR (roughly 3000 workouts would
   be needed for that). Writing off the main thread is the next step if it matters.
+- **Open-source notices.** Settings > About says the app is built with open-source software under the Apache License 2.0 but the app
+  ships no licenses screen; Apache 2.0 asks for its text to accompany the binary. Decide before a wide release (a static notices asset
+  or a licenses plugin). The 50 form photos come from the Free Exercise DB (Unlicense); the attribution is shown in the app.
 - **Parity with iOS.** Android v1 ports the iOS strength core as it was when the Android work started; later iOS features (body
   weight and weigh-in reminders, training plans and rotations, rep ranges, template notes, the YouTube import tool) are not ported
   (see `README.md`).
