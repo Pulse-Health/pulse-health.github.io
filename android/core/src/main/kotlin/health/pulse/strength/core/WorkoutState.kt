@@ -42,6 +42,10 @@ sealed interface UndoPayload {
     data class DeletedSet(val exerciseID: UUID, val index: Int, val set: LoggedSet) : UndoPayload
 }
 
+/** One kept heart-rate reading: [bpm] at the moment [at] the reducer received it. */
+@Serializable
+data class HeartRateSample(val bpm: Int, val at: Instant)
+
 /** The last destructive edit (removed exercise / deleted set), restorable until [expiresAt]. */
 @Serializable
 data class UndoEntry(
@@ -80,6 +84,12 @@ data class WorkoutState(
     /** Incremented by the reducer on every change. */
     val revision: Int = 0,
     val finishedAt: Instant? = null,
+    /**
+     * The reported heart-rate samples worth keeping, oldest first: at most one per `WorkoutReducer.heartRateSampleInterval` seconds
+     * and at most `WorkoutReducer.maximumHeartRateSamples` of them. `SummaryBuilder` hands them to the finished workout.
+     * Empty for a workout saved before this field existed.
+     */
+    val heartRateSeries: List<HeartRateSample> = emptyList(),
 ) {
     val isPaused: Boolean get() = pausedAt != null
 

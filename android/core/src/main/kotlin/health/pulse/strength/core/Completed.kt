@@ -15,6 +15,8 @@ data class CompletedSet(
     val weightKg: Double,
     val reps: Int,
     val rir: Int? = null,
+    /** When the set was logged (`LoggedSet.doneAt`); null for history saved before the time was recorded. */
+    val loggedAt: Instant? = null,
 )
 
 @Serializable
@@ -71,6 +73,11 @@ data class CompletedWorkout(
     val exercises: List<CompletedExercise>,
     val personalRecords: List<PersonalRecord>,
     val muscleSets: List<MuscleSets>,
+    /**
+     * The heart-rate samples recorded during the workout, oldest first (`WorkoutState.heartRateSeries`); null without any, and for
+     * history saved before they were kept.
+     */
+    val heartRateSeries: List<HeartRateSample>? = null,
 )
 
 // endregion

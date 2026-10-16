@@ -18,6 +18,18 @@ object WorkoutReducer {
     /** Longest rest an exercise can be given (one hour). Larger values are clamped to it; the rest presets stop at 5:00. */
     const val maximumRestSeconds: Int = 3_600
 
+    /**
+     * Shortest time between two samples of `WorkoutState.heartRateSeries` (30 seconds). Samples that arrive sooner still update the
+     * current heart rate and the average, but are not kept in the series.
+     */
+    const val heartRateSampleInterval: Double = 30.0
+
+    /**
+     * Most samples `WorkoutState.heartRateSeries` keeps (360, three hours at one per 30 seconds). Once it is full, later samples are
+     * not added: the series keeps the start of the workout, and the average still counts every sample.
+     */
+    const val maximumHeartRateSamples: Int = 360
+
     /** Applies [action] to [state]; `revision` grows by one when the state changed (never for heart-rate samples). */
     fun reduce(state: WorkoutState, action: WorkoutAction, now: Instant): WorkoutState {
         var next = apply(action, state, now)
@@ -34,7 +46,7 @@ object WorkoutReducer {
         is WorkoutAction.ToggleSet -> {
             val (k, i) = locate(s, action.exerciseID, action.setID) ?: return s
             if (s.exercises[k].sets[i].isDone) {
-                s.updateSet(k, i) { it.copy(isDone = false) }
+                s.updateSet(k, i) { it.copy(isDone = false, doneAt = null) }
             } else {
                 markDone(s, k, i, now)
             }
@@ -103,7 +115,11 @@ object WorkoutReducer {
         is WorkoutAction.UpdateHeartRate -> {
             val bpm = action.bpm
             if (bpm != null && bpm in 30..240) {
-                s.copy(heartRate = bpm, heartRateSum = s.heartRateSum + bpm, heartRateCount = s.heartRateCount + 1)
+                keepHeartRateSample(
+                    s.copy(heartRate = bpm, heartRateSum = s.heartRateSum + bpm, heartRateCount = s.heartRateCount + 1),
+                    bpm,
+                    now,
+                )
             } else {
                 s.copy(heartRate = bpm)
             }
@@ -192,7 +208,7 @@ object WorkoutReducer {
         var s = state
         val entry = s.exercises[k]
         val set = entry.sets[i]
-        s = s.updateSet(k, i) { it.copy(isDone = true) }.copy(lastLogged = SetRef(exerciseID = entry.id, setID = set.id))
+        s = s.updateSet(k, i) { it.copy(isDone = true, doneAt = now) }.copy(lastLogged = SetRef(exerciseID = entry.id, setID = set.id))
         var seconds = restSeconds(entry, set)
         val group = entry.supersetGroup
         if (group != null) {
@@ -242,6 +258,21 @@ object WorkoutReducer {
         val (k, i) = locate(s, ref.exerciseID, ref.setID) ?: return s
         val clamped = clampRIR(value)
         return s.updateSet(k, i) { it.copy(rir = if (it.rir == clamped) null else clamped) }
+    }
+
+    // endregion
+
+    // region Heart rate series
+
+    /**
+     * [s] with the sample at [now] added to the series when at least [heartRateSampleInterval] seconds passed since the last kept one
+     * and the series is not full. A clock that moved back keeps nothing until it passes the last sample again.
+     */
+    private fun keepHeartRateSample(s: WorkoutState, bpm: Int, now: Instant): WorkoutState {
+        if (s.heartRateSeries.size >= maximumHeartRateSamples) return s
+        val last = s.heartRateSeries.lastOrNull()
+        if (last != null && now.timeIntervalSince(last.at) < heartRateSampleInterval) return s
+        return s.copy(heartRateSeries = s.heartRateSeries + HeartRateSample(bpm = bpm, at = now))
     }
 
     // endregion

@@ -101,7 +101,9 @@ class PublicInitializerTests {
             restEndsAt = snapshot.restEndsAt, restTotalSeconds = snapshot.restTotalSeconds,
             restFrozenRemaining = snapshot.restFrozenRemaining, heartRate = snapshot.heartRate, volumeText = snapshot.volumeText,
             loggedSets = snapshot.loggedSets, totalSets = snapshot.totalSets, nextSetText = snapshot.nextSetText,
-            nextExerciseName = snapshot.nextExerciseName,
+            nextExerciseName = snapshot.nextExerciseName, exerciseDoneSets = snapshot.exerciseDoneSets,
+            exerciseSetCount = snapshot.exerciseSetCount, moment = snapshot.moment, superset = snapshot.superset, plates = snapshot.plates,
+            coachTip = snapshot.coachTip, finish = snapshot.finish,
         )
 
     private fun rebuilt(history: ExerciseHistory): ExerciseHistory =

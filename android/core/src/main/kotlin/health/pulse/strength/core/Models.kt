@@ -177,6 +177,11 @@ data class LoggedSet(
     val isDone: Boolean = false,
     /** Reps in reserve, 0...4 (4 means "4+"). null = not recorded. */
     val rir: Int? = null,
+    /**
+     * When the set was logged: the reducer's `now` at the moment it became done, cleared when it becomes pending again.
+     * null for a pending set and for a set saved before this field existed. It feeds the session timeline of the widgets.
+     */
+    val doneAt: Instant? = null,
 )
 
 @Serializable
