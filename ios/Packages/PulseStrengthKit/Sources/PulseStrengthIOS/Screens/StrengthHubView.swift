@@ -1,5 +1,6 @@
 #if os(iOS)
 import SwiftUI
+import UniformTypeIdentifiers
 import PulseStrengthCore
 
 // MARK: - Navigation targets
@@ -8,6 +9,7 @@ private enum HubRoute: Hashable {
     case library
     case templates
     case template(UUID)
+    case plans
     case history
     case workout(UUID)
     case recovery
@@ -32,11 +34,12 @@ private enum HubEditorTarget: Identifiable {
 
 /// The Strength hub (design: Main.dc.html, and TrainLive.dc.html while a workout runs): today's recommended
 /// template with readiness, muscle chips, coach note and the Start / Resume button, "Start Empty Workout",
-/// templates, muscle recovery, recent workouts, this week and the exercise library.
+/// templates, muscle recovery, recent workouts, this week and the exercise library. With an active plan (imported from a
+/// plan file) a "Plan" section lists the plan's workouts in rotation order and the card recommends the plan's next workout.
 ///
 /// It lives inside the navigation stack of `PulseStrengthRootView`. Starting a workout is delegated to
-/// `onStart` (nil = empty workout). The recommended template is the next one in the rotation of the templates
-/// (the one after the most recently performed). While a workout runs, the card and the template screen of THAT
+/// `onStart` (nil = empty workout). The recommended template is the next workout of the active plan, or without a plan the
+/// next one in the rotation of the templates (the one after the most recently performed). While a workout runs, the card and the template screen of THAT
 /// workout's template read "Resume Workout" and call `onResume`; starting any other workout is refused with an
 /// alert (the running one would be lost) that offers to resume.
 @MainActor
@@ -50,6 +53,9 @@ public struct StrengthHubView: View {
     @State private var route: HubRoute?
     @State private var editor: HubEditorTarget?
     @State private var showsBusyAlert = false
+    @State private var showsImporter = false
+    @State private var showsImportResult = false
+    @State private var importMessage = ""
     @State private var showsWeightEntry = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -75,6 +81,7 @@ public struct StrengthHubView: View {
                 weighInCard(now: now)
                 recommendedCard(now: now)
                 startEmptyRow
+                planSection
                 templatesSection
                 recoverySection
                 recentSection
@@ -84,6 +91,14 @@ public struct StrengthHubView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 14)
             .padding(.bottom, 24)
+            .fileImporter(isPresented: $showsImporter, allowedContentTypes: [.json]) { (result: Result<URL, Error>) in
+                importPlan(from: result)
+            }
+            .alert("Import Plan", isPresented: $showsImportResult) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(importMessage)
+            }
         }
         .background(PulseTheme.ground.ignoresSafeArea())
         .navigationTitle("Strength")
@@ -127,6 +142,18 @@ public struct StrengthHubView: View {
                 Label("New Template", systemImage: "plus")
             }
             Button {
+                showsImporter = true
+            } label: {
+                Label("Import Plan\u{2026}", systemImage: "square.and.arrow.down")
+            }
+            if !store.plans.isEmpty {
+                Button {
+                    route = .plans
+                } label: {
+                    Label("Plans", systemImage: "list.bullet.rectangle")
+                }
+            }
+            Button {
                 route = .library
             } label: {
                 Label("Exercise Library", systemImage: "magnifyingglass")
@@ -146,10 +173,11 @@ public struct StrengthHubView: View {
 
     // MARK: Recommended card
 
-    /// The template of today's card and of the "next up" tag: the one after the most recently performed template
-    /// in the list (a rotation), the first one while none has been performed yet.
+    /// The template of today's card and of the "next up" tag: the next workout of the active plan or, without a plan,
+    /// the one after the most recently performed template in the list (a rotation), the first one while none has been
+    /// performed yet.
     private var recommendedTemplate: WorkoutTemplate? {
-        HubRotation.next(in: store.templates)
+        store.nextTemplate
     }
 
     /// True while the running workout was started from `template` (an empty workout or another template: false).
@@ -275,6 +303,91 @@ public struct StrengthHubView: View {
         .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
         .hubRowBackground()
         .contentShape(Rectangle())
+    }
+
+    // MARK: Plan
+
+    /// The active plan: its workouts in rotation order (the next one is tagged "next up"), how many were done in the last
+    /// seven days and a button that passes over the next workout. Not tied to weekdays: the rotation just moves on.
+    @ViewBuilder
+    private var planSection: some View {
+        if let plan = store.activePlan {
+            let workouts = plan.workouts(in: store.templates)
+            if !workouts.isEmpty {
+                VStack(spacing: 12) {
+                    HubSectionHeader(title: plan.name, actionTitle: "All Plans") {
+                        route = .plans
+                    }
+                    Text(planProgressText(plan))
+                        .pulseFont(12, relativeTo: .footnote)
+                        .foregroundStyle(PulseTheme.inkSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(spacing: 8) {
+                        ForEach(workouts) { template in
+                            templateButton(template)
+                        }
+                        Button {
+                            store.skipNextWorkout(planID: plan.id)
+                        } label: {
+                            HubPlanActionRow(title: skipTitle, systemImage: "forward.end")
+                        }
+                        .buttonStyle(PulsePlainButtonStyle())
+                        .accessibilityIdentifier("hub-plan-skip")
+                    }
+                }
+            }
+        }
+    }
+
+    /// "Next: workout 2 of 5 \u{00B7} 2 of 4 in the last 7 days" (no target: "2 done in the last 7 days").
+    private func planProgressText(_ plan: WorkoutPlan) -> String {
+        var parts: [String] = []
+        if let position = plan.nextPosition(in: store.templates) {
+            parts.append("Next: workout \(position) of \(plan.templateIDs.count)")
+        }
+        let done = plan.completedCount(in: store.history, now: Date())
+        if let target = plan.daysPerWeek {
+            parts.append("\(done) of \(target) in the last 7 days")
+        } else {
+            parts.append("\(done) done in the last 7 days")
+        }
+        return parts.joined(separator: " \u{00B7} ")
+    }
+
+    private var skipTitle: String {
+        if let name = recommendedTemplate?.name {
+            return "Skip " + name
+        }
+        return "Skip next workout"
+    }
+
+    // MARK: Plan import
+
+    /// Reads the chosen plan file and tells the user what was imported (or why not). Cancelling the picker says nothing.
+    private func importPlan(from result: Result<URL, Error>) {
+        switch result {
+        case .failure(let error):
+            if (error as? CocoaError)?.code == .userCancelled { return }
+            importMessage = "The file could not be opened."
+        case .success(let url):
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer {
+                if scoped {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+            if let data = try? Data(contentsOf: url) {
+                switch store.importPlan(from: data) {
+                case .success(let summary):
+                    importMessage = summary.message
+                case .failure(let error):
+                    importMessage = error.message
+                }
+            } else {
+                importMessage = "The file could not be read."
+            }
+        }
+        showsImportResult = true
     }
 
     // MARK: Templates
@@ -444,6 +557,8 @@ public struct StrengthHubView: View {
                 },
                 onResume: onResume
             )
+        case .plans:
+            HubPlanListView(store: store)
         case .history:
             HubHistoryListView(store: store)
         case .workout(let workoutID):
@@ -736,6 +851,31 @@ private struct HubNewTemplateRow: View {
             Text("New Template")
                 .pulseFont(15, .semibold, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.greenText)
+            Spacer(minLength: 8)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .hubRowBackground()
+        .contentShape(Rectangle())
+    }
+}
+
+/// A row like "New Template" with its own title and symbol (the plan's "Skip" button).
+private struct HubPlanActionRow: View {
+    let title: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            HubIconBox(fill: PulseTheme.greenTint) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(PulseTheme.green)
+            }
+            Text(title)
+                .pulseFont(15, .semibold, relativeTo: .subheadline)
+                .foregroundStyle(PulseTheme.greenText)
+                .hubLineLimit(1, whenLarger: nil)
             Spacer(minLength: 8)
         }
         .padding(12)
@@ -1229,11 +1369,11 @@ private enum HubFormat {
         if let planned = working {
             switch entry.exercise.tracking {
             case .weightReps:
-                parts.append(NumberText.kg(planned.weightKg) + " kg × " + String(planned.reps))
+                parts.append(NumberText.kg(planned.weightKg) + " kg × " + planned.repsText)
             case .repsOnly:
-                parts.append(String(planned.reps) + " reps")
+                parts.append(planned.repsText + " reps")
             case .duration:
-                parts.append(String(planned.reps) + " s")
+                parts.append(planned.repsText + " s")
             }
         }
         if entry.restSeconds > 0 {
@@ -1264,27 +1404,6 @@ private enum HubFormat {
 
     private static func twoDigits(_ value: Int) -> String {
         value < 10 ? "0\(value)" : "\(value)"
-    }
-}
-
-// MARK: - Recommendation
-
-private enum HubRotation {
-    /// The template to do next: the one after the most recently performed template in the list, wrapping around
-    /// (Upper A, Lower A, Upper B, then Upper A again). Without a performed template it is the first one; a single
-    /// template recommends itself.
-    static func next(in templates: [WorkoutTemplate]) -> WorkoutTemplate? {
-        guard !templates.isEmpty else { return nil }
-        var latestIndex: Int?
-        var latestDate = Date.distantPast
-        for (index, template) in templates.enumerated() {
-            if let date = template.lastPerformed, date > latestDate {
-                latestDate = date
-                latestIndex = index
-            }
-        }
-        guard let last = latestIndex else { return templates[0] }
-        return templates[(last + 1) % templates.count]
     }
 }
 
@@ -1663,7 +1782,7 @@ private struct HubTemplateListView: View {
 
     var body: some View {
         let now = Date()
-        let nextID = HubRotation.next(in: store.templates)?.id
+        let nextID = store.nextTemplate?.id
         return ScrollView {
             VStack(spacing: 8) {
                 ForEach(store.templates) { template in
@@ -1840,6 +1959,12 @@ private struct HubTemplateDetailView: View {
                     .pulseFont(12, relativeTo: .footnote)
                     .foregroundStyle(PulseTheme.inkSecondary)
                     .hubLineLimit(1, whenLarger: nil)
+                if let note = entry.note, !note.isEmpty {
+                    Text(note)
+                        .pulseFont(12, relativeTo: .footnote)
+                        .foregroundStyle(PulseTheme.inkSecondary)
+                        .hubLineLimit(2, whenLarger: nil)
+                }
             }
             Spacer(minLength: 8)
             HubChevron()
@@ -1869,6 +1994,94 @@ private struct HubTemplateDetailView: View {
         .padding(.horizontal, PulseTheme.screenInset)
         .padding(.vertical, 8)
         .background(PulseTheme.ground)
+    }
+}
+
+// MARK: - Plans
+
+/// One plan of the plan list: its name, how many workouts it has and a check mark while it is the plan being followed.
+private struct HubPlanListRow: View {
+    let plan: WorkoutPlan
+    let workoutCount: Int
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(plan.name)
+                    .pulseFont(15, .semibold, relativeTo: .subheadline)
+                    .foregroundStyle(PulseTheme.ink)
+                    .hubLineLimit(1, whenLarger: nil)
+                Text(subtitle)
+                    .pulseFont(12, relativeTo: .footnote)
+                    .foregroundStyle(PulseTheme.inkSecondary)
+                    .hubLineLimit(1, whenLarger: nil)
+            }
+            Spacer(minLength: 8)
+            if plan.isActive {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(PulseTheme.green)
+                    .accessibilityLabel("Active plan")
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .hubRowBackground()
+        .contentShape(Rectangle())
+    }
+
+    private var subtitle: String {
+        var text = workoutCount == 1 ? "1 workout" : "\(workoutCount) workouts"
+        if let days = plan.daysPerWeek {
+            text += " \u{00B7} \(days) a week"
+        }
+        return text
+    }
+}
+
+/// The saved plans. Tapping a plan makes it the one the hub follows; touch and hold deletes it (its workouts stay in Templates).
+@MainActor
+private struct HubPlanListView: View {
+    @ObservedObject var store: StrengthStore
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 8) {
+                if store.plans.isEmpty {
+                    Text("No plans yet. Choose Import Plan in the menu to add one.")
+                        .pulseFont(15, relativeTo: .subheadline)
+                        .foregroundStyle(PulseTheme.inkSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    ForEach(store.plans) { plan in
+                        Button {
+                            store.activatePlan(id: plan.id)
+                        } label: {
+                            HubPlanListRow(plan: plan, workoutCount: plan.workouts(in: store.templates).count)
+                        }
+                        .buttonStyle(PulsePlainButtonStyle())
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                store.deletePlan(id: plan.id)
+                            } label: {
+                                Label("Delete Plan", systemImage: "trash")
+                            }
+                        }
+                    }
+                    Text("Tap a plan to follow it. Touch and hold to delete it; its workouts stay in Templates.")
+                        .pulseFont(12, relativeTo: .footnote)
+                        .foregroundStyle(PulseTheme.inkSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 4)
+                }
+            }
+            .padding(.horizontal, PulseTheme.screenInset)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
+        }
+        .background(PulseTheme.ground.ignoresSafeArea())
+        .navigationTitle("Plans")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
