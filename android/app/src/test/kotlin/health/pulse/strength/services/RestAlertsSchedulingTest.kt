@@ -11,6 +11,7 @@ import health.pulse.strength.core.FileStrengthPersistence
 import health.pulse.strength.core.StrengthStore
 import health.pulse.strength.core.WorkoutAction
 import health.pulse.strength.core.WorkoutController
+import health.pulse.strength.surfaces.DayChange
 import java.time.Instant
 import org.junit.Before
 import org.junit.Test
@@ -61,7 +62,15 @@ class RestAlertsSchedulingTest {
         alerts.sync(controller.state.value)
     }
 
-    private val scheduled get() = shadowOf(alarmManager).scheduledAlarms
+    /**
+     * The alarms of the rest; the midnight alarm that `PulseStrengthApplication` arms for the widgets is not one of them. (A listener
+     * alarm has no pending intent.)
+     */
+    @Suppress("DEPRECATION") // Robolectric offers no other accessor than the field it deprecated
+    private val scheduled
+        get() = shadowOf(alarmManager).scheduledAlarms.filterNot {
+            it.operation != null && shadowOf(it.operation).savedIntent.action == DayChange.ACTION_MIDNIGHT
+        }
 
     private fun advance(seconds: Double) {
         wall = wall.plusMillis((seconds * 1000).toLong())

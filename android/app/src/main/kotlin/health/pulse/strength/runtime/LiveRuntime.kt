@@ -104,7 +104,13 @@ class LiveRuntime(
             addAction(Intent.ACTION_TIME_CHANGED)
             addAction(Intent.ACTION_TIMEZONE_CHANGED)
         }
-        ContextCompat.registerReceiver(appContext, clockReceiver, clockChanges, ContextCompat.RECEIVER_NOT_EXPORTED)
+        // Starting the application must not fail because the platform refuses the registration. Without it the manifest receiver of
+        // `DayChange` still reports a change of the clock or the zone, and its midnight alarm covers the date.
+        try {
+            ContextCompat.registerReceiver(appContext, clockReceiver, clockChanges, ContextCompat.RECEIVER_NOT_EXPORTED)
+        } catch (error: RuntimeException) {
+            Log.w(TAG, "The changes of the clock cannot be followed inside this process", error)
+        }
         val atStart = published.value
         scope.launch { changes().conflate().collect { rebuildNow(force = false) } }
         scope.launch { clockTicks.receiveAsFlow().collect { rebuildNow(force = true) } }
