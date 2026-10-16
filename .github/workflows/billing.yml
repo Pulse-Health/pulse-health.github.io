@@ -178,7 +178,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests and debug build
-        run: ./gradlew --no-daemon --stacktrace :billing-core:test :billing-android:testDebugUnitTest :billing-android:assembleDebug
+        run: ./gradlew --no-daemon --continue --stacktrace :billing-core:test :billing-android:testDebugUnitTest :billing-android:assembleDebug
 
       - name: Upload test reports
         if: failure()

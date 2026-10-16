@@ -23,16 +23,16 @@ class StripePaymentSheetPresenterTest {
     private val googlePay = GooglePayConfig(production = false, countryCode = "DE", currencyCode = "EUR")
 
     private class RecordingLauncher(val onLaunch: () -> Unit = {}) : SheetLauncher {
-        val launched = mutableListOf<Triple<PaymentSession, GooglePayConfig?, String?>>()
+        val launched = mutableListOf<Pair<PaymentSession, GooglePayConfig?>>()
 
-        override fun launch(session: PaymentSession, googlePay: GooglePayConfig?, returnUrl: String?) {
-            launched += Triple(session, googlePay, returnUrl)
+        override fun launch(session: PaymentSession, googlePay: GooglePayConfig?) {
+            launched += session to googlePay
             onLaunch()
         }
     }
 
-    private fun presenter(googlePay: GooglePayConfig? = null, returnUrl: String? = "pulse://billing/return") =
-        StripePaymentSheetPresenter(googlePay, returnUrl, Dispatchers.Unconfined)
+    private fun presenter(googlePay: GooglePayConfig? = null) =
+        StripePaymentSheetPresenter(googlePay, Dispatchers.Unconfined)
 
     @Test
     fun presentLaunchesTheSheetAndResumesWithTheOutcome() = runTest {
@@ -42,7 +42,7 @@ class StripePaymentSheetPresenterTest {
 
         val outcome = CompletableDeferred<PaymentSheetOutcome>()
         launch(UnconfinedTestDispatcher(testScheduler)) { outcome.complete(presenter.present(session)) }
-        assertEquals(listOf(Triple(session, googlePay, "pulse://billing/return")), launcher.launched)
+        assertEquals(listOf(session to googlePay), launcher.launched)
         assertTrue(!outcome.isCompleted)
 
         presenter.onOutcome(PaymentSheetOutcome.Completed)
@@ -166,23 +166,21 @@ class StripePaymentSheetPresenterTest {
 
     @Test
     fun theSheetConfigurationCarriesTheSessionAndAllowsDelayedPaymentMethods() {
-        val configuration = paymentSheetConfiguration(session, googlePay = null, returnUrl = "pulse://billing/return")
+        val configuration = paymentSheetConfiguration(session, googlePay = null)
 
         assertEquals("Pulse", configuration.merchantDisplayName)
         assertEquals("cus_1", configuration.customer?.id)
         assertEquals("ek_1", configuration.customer?.ephemeralKeySecret)
         assertTrue(configuration.allowsDelayedPaymentMethods)
         assertNull(configuration.googlePay)
-        assertEquals("pulse://billing/return", configuration.returnUrl)
     }
 
     @Test
     fun googlePayIsConfiguredOnlyWhenTheHostAsks() {
-        val configuration = paymentSheetConfiguration(session, googlePay, returnUrl = null)
+        val configuration = paymentSheetConfiguration(session, googlePay)
 
         assertEquals("DE", configuration.googlePay?.countryCode)
         assertEquals("EUR", configuration.googlePay?.currencyCode)
         assertEquals(com.stripe.android.paymentsheet.PaymentSheet.GooglePayConfiguration.Environment.Test, configuration.googlePay?.environment)
-        assertNull(configuration.returnUrl)
     }
 }

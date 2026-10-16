@@ -32,7 +32,5 @@ class BillingConfig(
     val strings: BillingStrings = BillingStrings.forLocale(Locale.getDefault()),
     /** Google Pay in the payment sheet is off unless the host passes this. */
     val googlePay: GooglePayConfig? = null,
-    /** Where the Stripe SDK returns to after a payment method that redirects (3-D Secure, bank apps), if the host has such a link. */
-    val stripeReturnUrl: String? = null,
     val client: OkHttpClient = OkHttpClient(),
 )

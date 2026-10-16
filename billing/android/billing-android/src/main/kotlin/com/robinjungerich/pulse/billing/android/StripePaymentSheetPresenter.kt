@@ -37,17 +37,16 @@ data class GooglePayConfig(
 
 /** Shows the sheet for a session. The only part of the presenter that touches the Stripe SDK. */
 internal fun interface SheetLauncher {
-    fun launch(session: PaymentSession, googlePay: GooglePayConfig?, returnUrl: String?)
+    fun launch(session: PaymentSession, googlePay: GooglePayConfig?)
 }
 
 class StripePaymentSheetPresenter internal constructor(
     private val googlePay: GooglePayConfig?,
-    private val returnUrl: String?,
     private val mainDispatcher: CoroutineDispatcher,
 ) : PaymentSheetPresenting {
 
-    constructor(googlePay: GooglePayConfig? = null, returnUrl: String? = null) :
-        this(googlePay, returnUrl, Dispatchers.Main.immediate)
+    constructor(googlePay: GooglePayConfig? = null) :
+        this(googlePay, Dispatchers.Main.immediate)
 
     private var launcher: SheetLauncher? = null
     private var pending: CompletableDeferred<PaymentSheetOutcome>? = null
@@ -59,7 +58,7 @@ class StripePaymentSheetPresenter internal constructor(
         val result = CompletableDeferred<PaymentSheetOutcome>()
         pending = result
         try {
-            withContext(mainDispatcher) { launcher.launch(session, googlePay, returnUrl) }
+            withContext(mainDispatcher) { launcher.launch(session, googlePay) }
             return result.await()
         } catch (e: CancellationException) {
             throw e
@@ -104,8 +103,7 @@ fun rememberStripePaymentSheetPresenter(presenter: StripePaymentSheetPresenter):
 @Composable
 fun rememberStripePaymentSheetPresenter(
     googlePay: GooglePayConfig? = null,
-    returnUrl: String? = null,
-): StripePaymentSheetPresenter = rememberStripePaymentSheetPresenter(remember(googlePay, returnUrl) { StripePaymentSheetPresenter(googlePay, returnUrl) })
+): StripePaymentSheetPresenter = rememberStripePaymentSheetPresenter(remember(googlePay) { StripePaymentSheetPresenter(googlePay) })
 
 internal fun PaymentSheetResult.toOutcome(): PaymentSheetOutcome = when (this) {
     is PaymentSheetResult.Completed -> PaymentSheetOutcome.Completed
@@ -118,9 +116,9 @@ private class StripeSheetLauncher(
     private val sheet: PaymentSheet,
 ) : SheetLauncher {
 
-    override fun launch(session: PaymentSession, googlePay: GooglePayConfig?, returnUrl: String?) {
+    override fun launch(session: PaymentSession, googlePay: GooglePayConfig?) {
         PaymentConfiguration.init(context, session.publishableKey)
-        val configuration = paymentSheetConfiguration(session, googlePay, returnUrl)
+        val configuration = paymentSheetConfiguration(session, googlePay)
         when (session.intentKind) {
             IntentKind.PAYMENT -> sheet.presentWithPaymentIntent(session.intentClientSecret, configuration)
             IntentKind.SETUP -> sheet.presentWithSetupIntent(session.intentClientSecret, configuration)
@@ -132,7 +130,6 @@ private class StripeSheetLauncher(
 internal fun paymentSheetConfiguration(
     session: PaymentSession,
     googlePay: GooglePayConfig?,
-    returnUrl: String?,
 ): PaymentSheet.Configuration {
     val builder = PaymentSheet.Configuration.Builder(merchantDisplayName = session.merchantDisplayName)
         .customer(PaymentSheet.CustomerConfiguration(id = session.customerId, ephemeralKeySecret = session.customerEphemeralKeySecret))
@@ -151,6 +148,5 @@ internal fun paymentSheetConfiguration(
             ),
         )
     }
-    if (returnUrl != null) builder.returnUrl(returnUrl)
     return builder.build()
 }

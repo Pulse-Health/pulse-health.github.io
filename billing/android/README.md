@@ -19,9 +19,12 @@ PaymentSheet, on Kotlin + Jetpack Compose. It implements `billing/docs/client-de
    it must be in the server's `BILLING_PORTAL_RETURN_URLS`).
 
 Also needed: the Clerk **user id** (the offline cache is kept per user). Optional: the country (`BillingConfig.country`, default
-the device region; use the Play country if you know it), `googlePay` (off unless passed), `stripeReturnUrl`, a different
+the device region; use the Play country if you know it), `googlePay` (off unless passed), a different
 `BillingStrings`, your own `OkHttpClient` (do not add a logging interceptor that prints headers or bodies: bearer tokens,
 client secrets and ephemeral keys pass through it).
+
+There is no Stripe return URL to configure on Android (unlike iOS): the PaymentSheet handles redirect-based authentication (3-D Secure,
+bank apps) with the return handling that ships inside the Stripe SDK. Only the *portal* return URL above is yours.
 
 ## Integrating into the Pulse app
 

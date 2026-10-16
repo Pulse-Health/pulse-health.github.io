@@ -172,7 +172,7 @@ class BillingViewModelFactory(
             cache = cache,
             userId = config.userId,
         )
-        val presenter = StripePaymentSheetPresenter(config.googlePay, config.stripeReturnUrl)
+        val presenter = StripePaymentSheetPresenter(config.googlePay)
         val coordinator = PurchaseCoordinator(
             api = api,
             presenter = presenter,
