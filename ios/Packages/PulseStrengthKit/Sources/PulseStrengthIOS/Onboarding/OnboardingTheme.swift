@@ -361,6 +361,8 @@ struct OnboardingRow<Icon: View>: View {
     var tagIsWrite = false
     private let icon: Icon
 
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
     init(tint: Color, title: String, subtitle: String, tag: String? = nil, tagIsWrite: Bool = false, @ViewBuilder icon: () -> Icon) {
         self.tint = tint
         self.title = title
@@ -368,6 +370,11 @@ struct OnboardingRow<Icon: View>: View {
         self.tag = tag
         self.tagIsWrite = tagIsWrite
         self.icon = icon()
+    }
+
+    /// At accessibility text sizes the tag goes under the text instead of beside it, which would leave the text a narrow column.
+    private var tagIsBelow: Bool {
+        dynamicTypeSize.isAccessibilitySize
     }
 
     var body: some View {
@@ -382,20 +389,28 @@ struct OnboardingRow<Icon: View>: View {
                     .pulseFont(13, .regular, relativeTo: .footnote)
                     .foregroundStyle(OnboardingTheme.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                if tagIsBelow, let tag = tag {
+                    tagView(tag)
+                        .padding(.top, 6)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            if let tag = tag {
-                Text(tag)
-                    .pulseFont(12, .semibold, relativeTo: .caption)
-                    .foregroundStyle(tagIsWrite ? OnboardingTheme.green : OnboardingTheme.inkSecondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(tagIsWrite ? OnboardingTheme.greenTint : OnboardingTheme.chipFill, in: Capsule())
+            if !tagIsBelow, let tag = tag {
+                tagView(tag)
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
         .accessibilityElement(children: .combine)
+    }
+
+    private func tagView(_ tag: String) -> some View {
+        Text(tag)
+            .pulseFont(12, .semibold, relativeTo: .caption)
+            .foregroundStyle(tagIsWrite ? OnboardingTheme.green : OnboardingTheme.inkSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(tagIsWrite ? OnboardingTheme.greenTint : OnboardingTheme.chipFill, in: Capsule())
     }
 }
 

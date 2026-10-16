@@ -23,6 +23,7 @@ struct OnboardingDoneScreen: View {
                         finishButton
                     }
                     .padding(.horizontal, OnboardingTheme.heroInset)
+                    .padding(.top, 44)
                     .padding(.bottom, 20)
                 }
             } else {

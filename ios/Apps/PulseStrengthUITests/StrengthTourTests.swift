@@ -860,7 +860,24 @@ final class OnboardingTour: UIDriver {
                     fail("Missing on the welcome screen: the button '" + identifier + "'")
                 }
             }
+            checkPreviewCards()
             shot("welcome", settle: 2.5)
+        }
+    }
+
+    /// Phones shorter than 760 pt (the iPhone SE) drop the preview cards of the welcome screen and the subtitles of the goals, and so does
+    /// a screen with accessibility text sizes (the cards). The cards are left out of the view tree then, so they are not found.
+    private var expectsCompactLayout: Bool {
+        app.frame.height < 760
+    }
+
+    private func checkPreviewCards() {
+        let hasCards = exists(.text("Today · Recommended"))
+        if (expectsCompactLayout || isLargeText) && hasCards {
+            fail("The welcome screen shows its preview cards although the screen is short or the text is large (" + String(Int(app.frame.height)) + " pt tall)")
+        }
+        if !expectsCompactLayout && !isLargeText && !hasCards {
+            fail("The welcome screen has no preview cards on a tall screen")
         }
     }
 
@@ -939,8 +956,38 @@ final class OnboardingTour: UIDriver {
         let frame = submit.frame
         let screenHeight = app.frame.height
         note("sheet: the send button is at y " + String(Int(frame.minY)) + " to " + String(Int(frame.maxY)) + " of " + String(Int(screenHeight)))
+        // The sheet follows the measured height of its form. A sheet that never got it is as tall as its minimum, which is enough at the
+        // default text size, so the position of the button cannot tell: the probe (an invisible element in a UI-test launch) can.
+        if let probe = find(.element("onboarding.sheet.measured")) {
+            note("sheet: the measured height of the form is " + probe.label + " pt")
+            if (Int(probe.label) ?? 0) <= 0 {
+                fail("The account sheet never received the measured height of its form (the probe reads '" + probe.label + "')")
+            }
+        } else {
+            note("sheet: no measurement probe in the tree")
+        }
         if !isLargeText && frame.maxY > screenHeight - 4 {
             fail("The account sheet opens too short: its send button ends at y " + String(Int(frame.maxY)) + " of " + String(Int(screenHeight)) + ", below the visible part")
+        }
+    }
+
+    private func checkKeyboardDoesNotHideTheEmailField() {
+        let keyboard = app.keyboards.firstMatch
+        guard keyboard.waitForExistence(timeout: 5) else {
+            note("no software keyboard appeared (a hardware keyboard is connected?): the check of the field is skipped")
+            return
+        }
+        pause(0.8)
+        shot("signup-keyboard", settle: 0.3)
+        guard let email = find(.field("onboarding.email")) else {
+            fail("The email field is not in the tree while the keyboard is up")
+            return
+        }
+        let fieldBottom = email.frame.maxY
+        let keyboardTop = keyboard.frame.minY
+        note("keyboard: the email field ends at y " + String(Int(fieldBottom)) + ", the keyboard starts at y " + String(Int(keyboardTop)))
+        if fieldBottom > keyboardTop {
+            fail("The keyboard hides the email field (the field ends at y " + String(Int(fieldBottom)) + ", the keyboard starts at y " + String(Int(keyboardTop)) + ")")
         }
     }
 
@@ -955,8 +1002,9 @@ final class OnboardingTour: UIDriver {
             if !exists(.text("Use at least 8 characters.")) {
                 fail("The password rule is not shown")
             }
-            // The error moved the focus to the email field: close the keyboard (its Done button), so that it does not cover
-            // what the next steps tap.
+            // The error moved the focus to the email field, which opens the keyboard: the field must stay above it.
+            checkKeyboardDoesNotHideTheEmailField()
+            // Then close the keyboard (its Done button), so that it does not cover what the next steps tap.
             // On iOS 18 XCTest finds no point to tap on this toolbar button (its text is a child with the same frame).
             tap(.button("onboarding.keyboardDone"), timeout: 3, required: false, coordinateFallback: true)
             pause(0.6)
@@ -1007,6 +1055,13 @@ final class OnboardingTour: UIDriver {
 
     private func profileStep() {
         step("Profile: main goal and experience") {
+            let hasSubtitles = exists(.text("Plan, log and progress your lifts"))
+            if expectsCompactLayout && hasSubtitles {
+                fail("The goals show their subtitles on a short screen (" + String(Int(app.frame.height)) + " pt tall): the compact layout is not on")
+            }
+            if !expectsCompactLayout && !hasSubtitles {
+                fail("The goals have no subtitles on a tall screen")
+            }
             tap(.button("onboarding.goal.strength"))
             tap(.button("onboarding.level.intermediate"))
             pause(0.5)
@@ -1089,7 +1144,7 @@ final class OnboardingTour: UIDriver {
                 return
             }
             shot("notify", settle: 1.6)
-            tap(.button("onboarding.notify.later"), coordinateFallback: true)
+            tap(.button("onboarding.notify.later"))
         }
     }
 
@@ -1100,7 +1155,9 @@ final class OnboardingTour: UIDriver {
                 shot("done-missing")
                 return
             }
-            for chip in ["Build strength", "Intermediate", "AI Coaching off"] {
+            // The answers of this walk. (The goal and the level are left out: the hidden profile screen has buttons with the same
+            // labels, so they would be found whatever the last screen shows.)
+            for chip in ["Apple Health connected", "AI Coaching off", "Notifications: later"] {
                 if !exists(.element(chip)) {
                     fail("The summary has no '" + chip + "' chip")
                 }

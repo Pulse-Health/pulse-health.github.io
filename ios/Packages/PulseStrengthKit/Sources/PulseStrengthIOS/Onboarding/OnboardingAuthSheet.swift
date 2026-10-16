@@ -10,6 +10,7 @@ struct OnboardingAuthSheet: View {
     @ObservedObject var model: OnboardingModel
 
     @FocusState private var focus: AuthField?
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     /// The tallest the form has been while the sheet is open. The sheet's first detent is this tall (it hugs its form and can be
     /// pulled up), and it does not shrink again when an error line goes or the other tab is shorter, so it never jumps.
     @State private var tallestContent: CGFloat = 0
@@ -21,9 +22,13 @@ struct OnboardingAuthSheet: View {
     /// whose measurement came out too small, must still show the whole form and its button, so it is never shorter than this.
     private static let minimumSheetHeight: CGFloat = 540
 
-    /// A `.height` detent is the height of the content area; the system adds the bottom safe area to it.
+    /// A `.height` detent is the height of the content area; the system adds the bottom safe area to it. At accessibility text sizes
+    /// the form is taller than any sheet, so it opens at full height and scrolls.
     private var detents: Set<PresentationDetent> {
-        [.height(max(tallestContent.rounded(.up), OnboardingAuthSheet.minimumSheetHeight)), .large]
+        if dynamicTypeSize.isAccessibilitySize {
+            return [.large]
+        }
+        return [.height(max(tallestContent.rounded(.up), OnboardingAuthSheet.minimumSheetHeight)), .large]
     }
 
     var body: some View {
@@ -56,6 +61,9 @@ struct OnboardingAuthSheet: View {
         .overlay(alignment: .topTrailing) {
             closeButton
         }
+        .overlay(alignment: .bottomLeading) {
+            measurementProbe
+        }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -76,6 +84,19 @@ struct OnboardingAuthSheet: View {
             }
         }
         .environment(\.colorScheme, .dark)
+    }
+
+    /// Only in a UI-test launch: an invisible element whose label is the measured height of the form, so that the test can see whether
+    /// the measurement reached the sheet (the sheet's height itself cannot tell it from the minimum).
+    @ViewBuilder
+    private var measurementProbe: some View {
+        if ProcessInfo.processInfo.arguments.contains(OnboardingLaunchMode.uiTestArgument) {
+            Color.clear
+                .frame(width: 1, height: 1)
+                .accessibilityElement()
+                .accessibilityLabel(String(Int(tallestContent)))
+                .accessibilityIdentifier("onboarding.sheet.measured")
+        }
     }
 
     // MARK: Header
@@ -143,6 +164,8 @@ struct OnboardingAuthSheet: View {
                         .font(.system(size: 18, weight: .semibold))
                 }
                 Text(copy.text(.authApple))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
         }
         .buttonStyle(OnboardingAppleButtonStyle())
@@ -353,7 +376,7 @@ struct OnboardingSheetHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+        value = max(value, nextValue())
     }
 }
 
@@ -418,7 +441,7 @@ private struct OnboardingModePicker: View {
             segment(logInTitle, mode: .logIn, identifier: "onboarding.tab.login")
         }
         .padding(2)
-        .frame(height: 36)
+        .pulseScaledFrame(minHeight: 36, relativeTo: PulseDynamicType.controlHeightStyle)
         .background(OnboardingTheme.chipFill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .animation(reduceMotion ? nil : Animation.spring(response: 0.35, dampingFraction: 0.85), value: selection)
         .accessibilityElement(children: .contain)

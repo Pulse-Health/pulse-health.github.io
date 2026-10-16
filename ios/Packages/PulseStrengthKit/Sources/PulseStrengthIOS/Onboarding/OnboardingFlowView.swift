@@ -135,11 +135,16 @@ public struct OnboardingFlowView: View {
 }
 
 /// The height of the screen, reported from behind the content (which respects the safe areas).
+///
+/// Every measurement of the onboarding (this one, the three of the scroll view with a fade, the height of the account sheet) takes
+/// the largest value in `reduce`, like the sheet measurements of the other screens do. Written as "the last value wins" they did
+/// not work on a device (first CI run: no compact layout on the iPhone SE, no fade on the scroll views, an account sheet that did
+/// not follow its form), as if their readers only ever saw the default 0.
 private struct OnboardingScreenHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+        value = max(value, nextValue())
     }
 }
 
