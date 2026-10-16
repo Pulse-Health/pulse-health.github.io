@@ -58,7 +58,7 @@ struct NextUpView: View {
                 NextUpSmallContent(nextUp: nextUp, isStandBy: !showsBackground)
             }
         } else {
-            NextUpEmptyContent(isMedium: isMedium)
+            NextUpEmptyContent(isMedium: isMedium, isStandBy: !showsBackground)
         }
     }
 
@@ -275,18 +275,20 @@ private struct NextUpNightContent: View {
 /// No templates yet: say what to do; the whole widget opens the Strength hub.
 private struct NextUpEmptyContent: View {
     let isMedium: Bool
+    /// True when the system draws the widget without its card (StandBy): the dark appearance and larger type.
+    let isStandBy: Bool
 
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                HomeEyebrow(title: "Next up")
+                HomeEyebrow(title: "Next up", size: isStandBy ? 13 : 11)
                 Text("Create a workout in Pulse Strength")
-                    .font(WidgetTheme.text(isMedium ? 18 : 15, .bold))
+                    .font(WidgetTheme.text(isMedium ? 18 : (isStandBy ? 17 : 15), .bold))
                     .foregroundStyle(WidgetTheme.ink)
                     .lineLimit(4)
                     .minimumScaleFactor(0.8)
                 Spacer(minLength: 4)
-                PillLabel(title: "Open", systemImage: nil, height: 34)
+                PillLabel(title: "Open", systemImage: nil, height: isStandBy ? 38 : 34)
                     .frame(maxWidth: isMedium ? 140 : CGFloat.infinity)
             }
             if isMedium {
@@ -298,6 +300,7 @@ private struct NextUpEmptyContent: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .homeDarkAppearance(isStandBy)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Next up: no workouts yet. Create a workout in Pulse Strength.")
         .accessibilityHint("Opens Pulse Strength")

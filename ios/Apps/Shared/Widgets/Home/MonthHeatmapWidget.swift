@@ -79,7 +79,7 @@ struct MonthHeatmapView: View {
                 .lineLimit(1)
             Spacer(minLength: 8)
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("\(month.sessionCount)")
+                Text(verbatim: "\(month.sessionCount)")
                     .font(WidgetTheme.number(13))
                     .foregroundStyle(WidgetTheme.ink)
                 Text(month.sessionCount == 1 ? "session" : "sessions")
@@ -150,7 +150,7 @@ private struct MonthHeatmapCell: View {
 
     private func cell(_ day: MonthDay) -> some View {
         let level = min(max(day.level, 0), 3)
-        return Text("\(day.day)")
+        return Text(verbatim: "\(day.day)")
             .font(WidgetTheme.number(10, .regular))
             .foregroundStyle(numberColor(day, level: level))
             .padding(.top, 3)

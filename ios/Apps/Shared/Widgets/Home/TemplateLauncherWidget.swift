@@ -66,7 +66,7 @@ struct TemplateLauncherView: View {
                 .foregroundStyle(WidgetTheme.ink)
             Spacer(minLength: 8)
             if hiddenCount > 0 {
-                Text("+ \(hiddenCount) more")
+                Text(verbatim: "+ \(hiddenCount) more")
                     .font(WidgetTheme.text(12))
                     .foregroundStyle(WidgetTheme.inkSecondary)
             }

@@ -48,7 +48,7 @@ struct MuscleFreshnessView: View {
             let when = row.daysSince.map { "last trained " + WidgetText.daysAgo($0).lowercased() } ?? "never trained"
             return row.muscle.title + ": " + HomeText.spoken(row.status) + ", " + when + "."
         }
-        return title + ". " + sentences.joined(separator: " ")
+        return "Muscle freshness. " + sentences.joined(separator: " ")
     }
 
     var body: some View {

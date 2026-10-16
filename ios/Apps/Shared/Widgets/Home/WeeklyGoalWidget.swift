@@ -96,7 +96,7 @@ struct WeeklyGoalView: View {
             }
             .widgetAccentable()
             .frame(maxHeight: .infinity)
-            Text("\(week.completed) of \(week.goal)")
+            Text(verbatim: "\(week.completed) of \(week.goal)")
                 .font(WidgetTheme.number(15))
                 .foregroundStyle(WidgetTheme.ink)
                 .lineLimit(1)
@@ -121,7 +121,7 @@ private struct GoalRing: View {
     var body: some View {
         RingGauge(progress: progress, lineWidth: lineWidth, color: fill, track: track) {
             VStack(spacing: 0) {
-                Text("\(week.completed)/\(week.goal)")
+                Text(verbatim: "\(week.completed)/\(week.goal)")
                     .font(WidgetTheme.number(numeralSize))
                     .foregroundStyle(text)
                     .lineLimit(1)

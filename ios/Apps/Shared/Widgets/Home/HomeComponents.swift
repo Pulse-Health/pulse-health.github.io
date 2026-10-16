@@ -170,7 +170,7 @@ struct HomeWeekStrip: View {
             if day.isToday { return name + ": today, no workout yet" }
             return name + (day.isFuture ? ": upcoming" : ": no workout")
         }
-        return parts.joined(separator: ". ")
+        return parts.joined(separator: ". ") + "."
     }
 
     var body: some View {

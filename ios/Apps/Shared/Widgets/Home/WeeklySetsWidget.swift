@@ -143,7 +143,7 @@ private struct WeeklySetsRow: View {
                 track: WidgetTheme.track,
                 height: 9
             )
-            Text("\(item.sets)")
+            Text(verbatim: "\(item.sets)")
                 .font(WidgetTheme.number(13))
                 .foregroundStyle(WidgetTheme.ink)
                 .lineLimit(1)

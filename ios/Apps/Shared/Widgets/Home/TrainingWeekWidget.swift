@@ -53,7 +53,7 @@ struct TrainingWeekView: View {
                 .font(WidgetTheme.text(17, .bold))
                 .foregroundStyle(WidgetTheme.ink)
             Spacer(minLength: 8)
-            Text("\(week.completed) of \(week.goal)")
+            Text(verbatim: "\(week.completed) of \(week.goal)")
                 .font(WidgetTheme.number(15, .semibold))
                 .foregroundStyle(WidgetTheme.greenText)
                 .widgetAccentable()

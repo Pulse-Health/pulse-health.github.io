@@ -212,10 +212,11 @@ private struct LiftTrendChart: View {
         return days == 0 ? "today" : "\(days)d"
     }
 
-    /// The x position of a point, the same as the sparkline draws it, kept inside the widget so the label is not cut off.
+    /// The x position of a point, the same as the sparkline draws it, kept inside the widget so the label is not cut off. The rectangle is
+    /// tall enough for the shape's inset (`insetBy` gives the null rectangle when the inset exceeds the size); only its width matters.
     private func labelX(_ index: Int, width: CGFloat) -> CGFloat {
         let shape = SparklineShape(values: values, inset: dotSize)
-        let x = shape.point(at: index, in: CGRect(x: 0, y: 0, width: width, height: 1)).x
+        let x = shape.point(at: index, in: CGRect(x: 0, y: 0, width: width, height: dotSize * 4)).x
         let half = labelWidth / 2
         return min(max(x, half), max(half, width - half))
     }

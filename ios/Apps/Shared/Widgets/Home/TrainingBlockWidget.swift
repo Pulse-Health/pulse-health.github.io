@@ -55,7 +55,7 @@ private struct TrainingBlockContent: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("\(block.name) · Week \(block.weekIndex) of \(block.weekCount)")
+            Text(verbatim: "\(block.name) · Week \(block.weekIndex) of \(block.weekCount)")
                 .font(WidgetTheme.text(17, .bold))
                 .foregroundStyle(WidgetTheme.ink)
                 .lineLimit(1)
@@ -123,7 +123,7 @@ private struct TrainingBlockGrid: View {
                 Color.clear
                     .frame(width: labelWidth, height: 1)
                 ForEach(weeks, id: \.self) { week in
-                    Text("Wk \(week)")
+                    Text(verbatim: "Wk \(week)")
                         .font(WidgetTheme.text(12, week == block.weekIndex ? .bold : .regular))
                         .foregroundStyle(week == block.weekIndex ? WidgetTheme.ink : WidgetTheme.inkSecondary)
                         .frame(maxWidth: .infinity)

@@ -72,24 +72,28 @@ private struct OverloadContent: View {
         return sentence
     }
 
+    /// "Last time · 5d ago", or just "Last time" when the date is unknown.
+    private var lastTimeLine: String {
+        guard let ago = HomeText.sinceShort(daysSince: target.lastDaysAgo) else { return "Last time" }
+        return "Last time · " + ago
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top) {
                 OverloadBadge()
                 Spacer(minLength: 4)
-                if let ago = HomeText.sinceShort(daysSince: target.lastDaysAgo) {
-                    Text(ago)
-                        .font(WidgetTheme.number(13, .regular))
-                        .foregroundStyle(WidgetTheme.inkSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
+                Text(lastTimeLine)
+                    .font(WidgetTheme.text(12))
+                    .foregroundStyle(WidgetTheme.inkSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
             Spacer(minLength: 6)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Last time · " + target.exerciseName)
-                    .font(WidgetTheme.text(12))
-                    .foregroundStyle(WidgetTheme.inkSecondary)
+                Text(target.exerciseName)
+                    .font(WidgetTheme.text(13, .semibold))
+                    .foregroundStyle(WidgetTheme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
                 Text(WidgetText.weightReps(target.lastWeightKg, target.lastReps))
