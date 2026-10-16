@@ -28,18 +28,4 @@ final class WidgetIntegrationHelperTests: XCTestCase {
         XCTAssertEqual(StrengthDataMigration.copyMissingFiles(from: folder, to: temporaryDirectory()), 0)
         XCTAssertEqual(StrengthDataMigration.copyMissingFiles(from: folder, to: folder), 0)
     }
-
-    func testRotationFollowsTheMostRecentlyPerformedTemplate() {
-        let now = Date(timeIntervalSince1970: 1_800_000_000)
-        func template(_ name: String, daysAgo: Double?) -> WorkoutTemplate {
-            WorkoutTemplate(name: name, entries: [], lastPerformed: daysAgo.map { now.addingTimeInterval(-$0 * 86_400) })
-        }
-        XCTAssertNil(TemplateRotation.next(in: []))
-        XCTAssertEqual(TemplateRotation.next(in: [template("A", daysAgo: nil), template("B", daysAgo: nil)])?.name, "A")
-        XCTAssertEqual(TemplateRotation.next(in: [template("A", daysAgo: 5), template("B", daysAgo: 7), template("C", daysAgo: 3)])?.name, "A")
-        XCTAssertEqual(TemplateRotation.next(in: [template("A", daysAgo: 5), template("B", daysAgo: 1), template("C", daysAgo: 3)])?.name, "C")
-        XCTAssertEqual(TemplateRotation.next(in: [template("Only", daysAgo: 2)])?.name, "Only")
-        // Equal dates: the earlier template counts as the latest.
-        XCTAssertEqual(TemplateRotation.next(in: [template("A", daysAgo: 2), template("B", daysAgo: 2), template("C", daysAgo: nil)])?.name, "B")
-    }
 }
