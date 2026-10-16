@@ -143,12 +143,14 @@ maps every area to its files on both platforms.
   spoken descriptions, text fitted by measurement, an empty state for every one.
 * **Live surfaces (`live/`, `controls/`).** The ongoing workout notification of `services/` is decorated (record flash, superset round with
   "Log A2", plate math, coach tip answers, the finish summary, status-bar chip text, segmented progress on Android 16); a planned session counts
-  down 30 minutes before its start and says "Time to train" (`PlannedSessions`, alarms re-armed after a restart); bench mode is a full-screen
+  down 30 minutes before its start and says "Time to train" (`PlannedSessions`, alarms re-armed after a restart; exact on Android 11 and older and where the
+  user allows "Alarms & reminders" for the app, inexact otherwise: the app declares no exact-alarm permission); bench mode is a full-screen
   rest timer (`BenchModeActivity`, red night theme); eight Quick Settings tiles, the "Primary action" activity and the static shortcuts
   (`res/xml/shortcuts.xml`) are the controls and the Action button.
 * **Wear OS (`wear/`, `app/.../wear/`).** The watch app (Compose), five tiles, seven complications and an Ongoing Activity chip read the snapshot
   the phone writes into the Data Layer (`PhoneWearSync`); Log set, rest and start commands travel back (`PhoneWearListenerService`). Phone and
-  watch must share the application id and the signing key.
+  watch must share the application id and the signing key. Each tile has a preview image for the watch's tile gallery
+  (`wear/src/main/res/drawable-nodpi/tile_preview_*.png`, drawn by `wear/tools/tile-previews/render.mjs`). The privacy pages describe the watch app (section 5a).
 * **In the app.** The hub shows a weekly-goal stepper under "This Week" (`PulseSettings.weeklyGoal`, 1 to 7), a template's calendar button opens
   "Plan a session", and `pulse-strength://` links reach `MainActivity` (cold start included).
 * **Offline by design.** The merged manifests of the phone and the watch app contain neither `INTERNET` nor `ACCESS_NETWORK_STATE` (the one that

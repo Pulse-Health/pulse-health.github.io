@@ -72,11 +72,13 @@ states because the standalone build has no partners or readiness.
 
 **Android, live surfaces.** LA-01 ... LA-10 decorate the one ongoing notification (promoted notifications allow no custom views): colour is never the only carrier, the
 "current member" of a superset is written "(now)", the status-bar chip carries one text (heart rate wins over the set dots while logging). The coach tip has a third
-button, Skip. The planned-session alarms are inexact (no `SCHEDULE_EXACT_ALARM`), so "Time to train" can come minutes late in Doze. The Finish tile opens the running workout
+button, Skip. The planned-session alarms are exact on Android 11 and older and wherever the user allows "Alarms & reminders" for the app (the app itself asks for no permission);
+otherwise they are inexact (`setAndAllowWhileIdle`), and then "Time to train" can come minutes late in Doze. The Finish tile opens the running workout
 (the app asks for the confirmation) and the Rest tile opens bench mode. SB-04 (night mode) is the red palette of bench mode.
 
 **Android, Wear OS.** WA-03 is an ordinary tile (there are no relevance entries on Wear). The rest tile puts Skip before +15 s so the double-tap target is Skip. Tiles cannot
-hide, so the record tile says "Latest record" after 24 hours. The lift-trend sparkline is an inline image. From Wear OS 4 the rest gauge is live; on Wear OS 3 it shows the
+hide, so the record tile says "Latest record" after 24 hours. The lift-trend sparkline is an inline image. Each tile has a preview image for the watch's tile gallery (`wear/src/main/res/drawable-nodpi/tile_preview_*.png`, drawn by
+`wear/tools/tile-previews/render.mjs` from the same words, colours and icons). From Wear OS 4 the rest gauge is live; on Wear OS 3 it shows the
 value of the last update and the countdown digits still tick. The Start complication opens the watch app, which asks the phone.
 
 **iOS.** The Watch widgets' "Start" opens the Watch app: a start request from the Watch to the phone does not exist yet. SB-03 needs iPad support in the host app. The widget
