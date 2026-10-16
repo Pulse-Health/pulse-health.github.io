@@ -101,14 +101,17 @@ targets:
     platform: iOS
     sources:
       - path: Apps/PulseStrengthWidgets
+      # The App Shortcuts provider belongs to the app target only (the system reads App Shortcuts from the app).
       - path: Apps/Shared/Intents
+        excludes:
+          - PulseShortcuts.swift
       - path: Apps/Shared/LiveActivity
-      # Home Screen, Lock Screen, StandBy and extra widgets (widgets/SPEC.md) and their shared helpers.
+      # Home Screen, Lock Screen, StandBy and extra widgets (widgets/SPEC.md) and their shared helpers. The Watch widgets have their own extension.
       - path: Apps/Shared/Widgets
         excludes:
           - Watch/**
+      # Controls (Control Center, Lock Screen slots, Action button; iOS 18 API behind #available).
       - path: Apps/Shared/Controls
-        optional: true
     dependencies:
       - package: PulseStrengthKit
         product: PulseStrengthCore
@@ -180,6 +183,8 @@ targets:
       - path: Apps/PulseStrengthLiveSnapshotTests
       - path: Apps/Shared/LiveActivity
       - path: Apps/Shared/Intents
+        excludes:
+          - PulseShortcuts.swift
     dependencies:
       - package: PulseStrengthKit
         product: PulseStrengthCore
