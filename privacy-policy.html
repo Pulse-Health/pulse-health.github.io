@@ -151,6 +151,12 @@
                 <td>Explicit consent (Art. 9(2)(a) GDPR); EU-internal pipeline, no third-country transfer</td>
             </tr>
             <tr>
+                <td>AI Estimates from Food Photos (Premium)</td>
+                <td>Photos you take or choose for an estimate, and your description of the food, if any</td>
+                <td>Request: EU-hosted AI models (Mistral AI 🇫🇷 FR) via Eden AI (🇫🇷 FR) — EU-internal. Pulse does not store the photo</td>
+                <td>Consent to AI Coaching (Art. 6(1)(a) and Art. 9(2)(a) GDPR); EU-internal pipeline, no third-country transfer &mdash; see Section 7a</td>
+            </tr>
+            <tr>
                 <td>AI Usage &amp; Error Logs</td>
                 <td>Created automatically (model, token counts, error type &mdash; never your messages)</td>
                 <td>Supabase (🇪🇺 EU)</td>
@@ -476,8 +482,66 @@
         <p>
             <strong>Opt-out:</strong> You can disable AI Coaching in the app settings at any time.
             Tracking of fitness, nutrition and sleep keeps working without AI Coaching; the coaching
-            chat and AI-generated plans are then unavailable.
+            chat, AI-generated plans and AI estimates from food photos (Section 7a) are then unavailable.
         </p>
+
+        <h2>7a. AI Estimates from Food Photos (Premium, optional)</h2>
+        <p>
+            As a Premium feature, Pulse can estimate the nutrition of a meal from a photo &mdash; in the food
+            editor or in the coach chat, with a photo you take there or one from your library. An AI model
+            recognises the foods on the photo and estimates portions and nutrients; you review and correct
+            the suggestions before you log them.
+        </p>
+        <ul>
+            <li><strong>Opt-in:</strong> a photo is only sent when you start an estimate yourself, and only
+                while AI Coaching is enabled &mdash; the same consent and the same on/off switch apply as for
+                the AI coach (Section 7). Without that consent, no photo leaves your device.</li>
+            <li><strong>What is sent to the AI provider:</strong> the photo, which your device first downscales
+                to at most 1,024 pixels on its longer side and re-encodes as a JPEG (the location and other
+                capture details of the original, its EXIF data, are not carried over); in the food editor, also
+                the description you typed there, if any (up to 500 characters; your name in it is replaced with
+                the <code>%name%</code> placeholder, as in coaching); and the app's language. The model also
+                receives fixed instructions to look only at the food and not to describe people, faces,
+                backgrounds or places.</li>
+            <li><strong>What is not sent:</strong> your name, email address, account or user ID, Apple Health
+                values, your profile data (age range, sex, height, weight), memory snippets or chat history.
+                Because you are signed in, our backend knows which account a request comes from (for the
+                Premium check, usage limits and the AI usage log, Section 5a); it does not pass this on to the
+                AI provider.</li>
+            <li><strong>Please note:</strong> the model is instructed to look only at the food, but anything
+                else in the photo (for example people or your surroundings) is still sent with it &mdash; so,
+                where you can, photograph just the plate.</li>
+            <li><strong>Result:</strong> the AI provider returns a list of the foods it recognised, with
+                estimated portions and nutrients. The app may then look these foods up in the food databases
+                like a search term (Section 8) to improve the values. Whatever you accept is saved in your
+                nutrition log on your device. If you start the estimate in the coach chat, the chat keeps a
+                note that a photo was analysed and the list of recognised foods; both are stored like your
+                other chat messages (Section 5) &mdash; the photo itself is not.</li>
+            <li><strong>Where it is processed:</strong> in the same EU-internal pipeline as AI Coaching
+                (Section 7): through the Supabase Edge Function (EU, Frankfurt) and the EU endpoint of Eden AI
+                (France) to a vision-capable model of Mistral AI (France). Only models on our list of EU-hosted
+                models are used for photos as well.</li>
+            <li><strong>Location:</strong> 🇪🇺 European Union (Eden AI and Mistral AI in France)</li>
+            <li><strong>Retention:</strong> Pulse does not store the photo &mdash; not in the app (photos taken
+                with the camera in Pulse are not saved to your library either) and not on our servers, neither
+                in the database nor in logs; if a request fails, only the photo's size and format are logged.
+                As for every AI feature, the AI usage log holds only technical details such as the time,
+                feature, model and token counts, never the photo (Section 5a). Retention at the AI providers is
+                governed by the Eden AI and Mistral AI data-processing terms, as for coaching (Section 7).</li>
+            <li><strong>Legal basis:</strong> your consent to AI Coaching (Art. 6(1)(a) GDPR and, because in a
+                health app a food photo or your description can reveal something about your health,
+                Art. 9(2)(a) GDPR). You can withdraw it at any time (Section 7).</li>
+            <li><strong>Protection &amp; Transfer Mechanism:</strong> EU-internal, as for coaching: Eden AI and
+                Mistral AI are based in France, so no third-country transfer arises
+                (<strong>Eden AI DPA + Mistral AI due-diligence pending</strong>, see Section 9).</li>
+            <li><strong>&ldquo;More accurate photo recognition (Google)&rdquo; switch:</strong> under Profile
+                &rarr; Privacy &amp; Consent the app also shows this switch (off by default). It currently has no
+                effect: even if you turn it on, Mistral AI recognises your photos and nothing is sent to Google.
+                Before that changes, we will update this Privacy Policy.</li>
+            <li><strong>Opt-out:</strong> if you do not want to send photos, do not use the photo estimate
+                &mdash; barcode scanning, food search and manual entry work without one. While AI Coaching is
+                disabled, the photo estimate is not available.</li>
+        </ul>
 
         <h2>8. Food Database Lookups (Nutrition Feature)</h2>
         <p>
@@ -517,7 +581,8 @@
         <p>
             Results are cached locally on your device; search terms are never stored on Pulse's
             servers. Photos taken during barcode scanning are processed entirely on-device and
-            are never transmitted anywhere.
+            are never transmitted anywhere. Photos you have the AI estimate a meal from are different:
+            they are sent to the AI provider (Section 7a).
         </p>
 
         <h2>9. Sub-Processors & Recipients</h2>
@@ -561,7 +626,7 @@
                 <td><strong>Eden AI</strong></td>
                 <td>Data Processor (AI aggregator)</td>
                 <td>🇫🇷 France (EU)</td>
-                <td>Routes AI-coaching and plan-generation requests to EU-hosted models via its EU endpoint</td>
+                <td>Routes AI-coaching, plan-generation and food-photo requests to EU-hosted models via its EU endpoint</td>
                 <td>⏳ Eden AI DPA pending</td>
                 <td>EU-internal</td>
             </tr>
@@ -569,7 +634,7 @@
                 <td><strong>Mistral AI</strong></td>
                 <td>Data Processor (language models)</td>
                 <td>🇫🇷 France (EU)</td>
-                <td>Language models for AI coaching and plan generation (currently reached via Eden AI; a direct connection to Mistral AI's EU interface may be used in future)</td>
+                <td>Language models for AI coaching and plan generation, and a vision-capable model for food-photo estimates (currently reached via Eden AI; a direct connection to Mistral AI's EU interface may be used in future)</td>
                 <td>⏳ DPA / due-diligence pending</td>
                 <td>EU-internal</td>
             </tr>
@@ -669,7 +734,7 @@
         <hr style="margin: 40px 0;">
         <p style="text-align: center; color: #6b6b6b; font-size: 12px;">
             Last Updated: October 16, 2026<br>
-            Version 1.2
+            Version 1.3
         </p>
     </div>
     <script src="site.js"></script>

@@ -158,6 +158,12 @@
                 <td>Ausdrückliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO); EU-interne Pipeline, keine Drittlandübermittlung</td>
             </tr>
             <tr>
+                <td>KI-Schätzung aus Essensfotos (Premium)</td>
+                <td>Fotos, die Sie für die Schätzung aufnehmen oder auswählen, und ggf. Ihre Beschreibung dazu</td>
+                <td>Anfrage: EU-gehostete KI-Modelle (Mistral AI 🇫🇷 FR) über Eden AI (🇫🇷 FR) — EU-intern. Pulse speichert das Foto nicht</td>
+                <td>Einwilligung in das KI-Coaching (Art. 6 Abs. 1 lit. a und Art. 9 Abs. 2 lit. a DSGVO); EU-interne Pipeline, keine Drittlandübermittlung &mdash; siehe Abschnitt 7a</td>
+            </tr>
+            <tr>
                 <td>KI-Nutzungs- &amp; Fehlerprotokolle</td>
                 <td>Automatisch erzeugt (Modell, Token-Zahlen, Fehlerart &mdash; nie Ihre Nachrichten)</td>
                 <td>Supabase (🇪🇺 EU)</td>
@@ -501,9 +507,73 @@
         </p>
         <p>
             <strong>Opt-out:</strong> Sie können KI Coaching in den App-Einstellungen jederzeit deaktivieren.
-            Das Tracking von Fitness, Ernährung und Schlaf funktioniert dann weiterhin; der Coaching-Chat
-            und KI-erstellte Pläne stehen dann nicht zur Verfügung.
+            Das Tracking von Fitness, Ernährung und Schlaf funktioniert dann weiterhin; der Coaching-Chat,
+            KI-erstellte Pläne und die KI-Schätzung aus Essensfotos (Abschnitt 7a) stehen dann nicht zur
+            Verfügung.
         </p>
+
+        <h2>7a. KI-Schätzung aus Essensfotos (Premium, optional)</h2>
+        <p>
+            Als Premium-Funktion kann Pulse die Nährwerte einer Mahlzeit aus einem Foto schätzen &mdash; im
+            Lebensmittel-Editor oder im Coach-Chat, mit einem neu aufgenommenen Foto oder einem aus Ihrer
+            Mediathek. Ein KI-Modell erkennt die Lebensmittel auf dem Foto und schätzt Portionen und
+            Nährwerte; Sie prüfen und korrigieren die Vorschläge, bevor Sie sie eintragen.
+        </p>
+        <ul>
+            <li><strong>Opt-in:</strong> Ein Foto wird nur gesendet, wenn Sie die Schätzung selbst auslösen, und
+                nur, solange KI-Coaching aktiviert ist &mdash; es gelten dieselbe Einwilligung und derselbe
+                Schalter wie für den KI-Coach (Abschnitt 7). Ohne diese Einwilligung verlässt kein Foto Ihr
+                Gerät.</li>
+            <li><strong>Was an den KI-Anbieter gesendet wird:</strong> das Foto, das Ihr Gerät vorher auf
+                höchstens 1.024 Pixel an der längeren Seite verkleinert und neu als JPEG kodiert
+                (Standortangaben und andere Aufnahmedaten des Originalfotos, sog. EXIF-Daten, werden dabei nicht
+                übernommen); im Lebensmittel-Editor zusätzlich die Beschreibung, die Sie dort eingegeben haben,
+                falls vorhanden (bis zu 500 Zeichen; Ihr Name wird darin wie beim Coaching durch den Platzhalter
+                <code>%name%</code> ersetzt); und die Sprache der App. Das Modell erhält dazu feste Anweisungen,
+                nur das Essen zu betrachten und keine Personen, Gesichter, Hintergründe oder Orte zu
+                beschreiben.</li>
+            <li><strong>Was nicht gesendet wird:</strong> Ihr Name, Ihre E-Mail-Adresse, Ihre Konto- oder
+                Nutzer-ID, Werte aus Apple Health, Ihre Profilangaben (Altersbereich, Geschlecht, Größe,
+                Gewicht), Erinnerungsauszüge und Ihr Chat-Verlauf. Durch Ihre Anmeldung weiß unser Backend, von
+                welchem Konto die Anfrage kommt (für die Premium-Prüfung, die Nutzungsgrenzen und das
+                KI-Nutzungsprotokoll, Abschnitt 5a); an den KI-Anbieter gibt es diese Angabe nicht weiter.</li>
+            <li><strong>Bitte beachten:</strong> Das Modell ist angewiesen, nur das Essen zu betrachten. Alles
+                andere, was auf dem Foto zu sehen ist (z.&nbsp;B. Personen oder Ihre Umgebung), wird aber mit
+                übermittelt &mdash; fotografieren Sie deshalb möglichst nur den Teller.</li>
+            <li><strong>Ergebnis:</strong> Der KI-Anbieter liefert eine Liste der erkannten Lebensmittel mit
+                geschätzter Portion und Nährwerten zurück. Die App kann diese Lebensmittel anschließend wie
+                einen Suchbegriff in den Lebensmitteldatenbanken nachschlagen (Abschnitt 8), um die Werte zu
+                verbessern. Was Sie übernehmen, landet in Ihrem Ernährungslog auf Ihrem Gerät. Lösen Sie die
+                Schätzung im Coach-Chat aus, enthält der Chat einen Hinweis, dass ein Foto analysiert wurde, und
+                die Liste der erkannten Lebensmittel; beides wird wie Ihre übrigen Chat-Nachrichten gespeichert
+                (Abschnitt 5) &mdash; das Foto selbst nicht.</li>
+            <li><strong>Verarbeitung:</strong> in derselben EU-internen Pipeline wie das KI-Coaching
+                (Abschnitt 7): über die Supabase Edge Function (EU, Frankfurt) und den EU-Endpunkt von Eden AI
+                (Frankreich) an ein bildfähiges Modell von Mistral AI (Frankreich). Auch für Fotos werden nur
+                Modelle aus unserer Liste EU-gehosteter Modelle verwendet.</li>
+            <li><strong>Speicherort:</strong> 🇪🇺 Europäische Union (Eden AI und Mistral AI Frankreich)</li>
+            <li><strong>Aufbewahrung:</strong> Pulse speichert das Foto nicht &mdash; weder in der App (mit der
+                Kamera in Pulse aufgenommene Fotos landen auch nicht in Ihrer Mediathek) noch auf unseren
+                Servern, dort weder in der Datenbank noch in Protokollen; schlägt eine Anfrage fehl, werden nur
+                Größe und Format des Fotos protokolliert. Das KI-Nutzungsprotokoll enthält wie bei jeder
+                KI-Funktion nur technische Angaben wie Zeitpunkt, Funktion, Modell und Token-Zahlen, nie das Foto
+                (Abschnitt 5a). Die Aufbewahrung beim KI-Anbieter richtet sich wie beim Coaching nach den
+                Datenverarbeitungsbedingungen von Eden AI bzw. Mistral AI (Abschnitt 7).</li>
+            <li><strong>Rechtsgrundlage:</strong> Ihre Einwilligung in das KI-Coaching (Art. 6 Abs. 1 lit. a
+                DSGVO und, da ein Essensfoto oder Ihre Beschreibung im Zusammenhang mit einer Gesundheits-App
+                Rückschlüsse auf Ihre Gesundheit zulassen kann, Art. 9 Abs. 2 lit. a DSGVO). Sie können sie
+                jederzeit widerrufen (Abschnitt 7).</li>
+            <li><strong>Datenschutz &amp; Transfer-Mechanismus:</strong> EU-intern wie beim Coaching: Eden AI und
+                Mistral AI sitzen in Frankreich, eine Drittlandübermittlung findet nicht statt
+                (<strong>Eden AI AVV + Prüfung von Mistral AI ausstehend</strong>, siehe Abschnitt 9).</li>
+            <li><strong>Schalter &bdquo;Genauere Fotoerkennung (Google)&ldquo;:</strong> Unter Profil &rarr;
+                Datenschutz &amp; Einwilligung zeigt die App zusätzlich diesen Schalter (standardmäßig aus). Er
+                ist derzeit ohne Wirkung: Auch wenn Sie ihn einschalten, erkennt Mistral AI Ihre Fotos, und an
+                Google wird nichts gesendet. Bevor sich das ändert, ergänzen wir diese Datenschutzerklärung.</li>
+            <li><strong>Opt-out:</strong> Wenn Sie keine Fotos senden möchten, nutzen Sie die Fotoschätzung
+                nicht &mdash; Barcode-Scan, Lebensmittelsuche und manuelle Eingabe funktionieren ohne Foto. Ist
+                KI-Coaching deaktiviert, steht die Fotoschätzung nicht zur Verfügung.</li>
+        </ul>
 
         <h2>8. Lebensmitteldatenbanken (Ernährungsfunktion)</h2>
         <p>
@@ -545,7 +615,8 @@
         <p>
             Suchergebnisse werden lokal auf Ihrem Gerät zwischengespeichert; Suchbegriffe werden
             nicht auf Pulse-Servern gespeichert. Beim Barcode-Scan aufgenommene Fotos werden
-            ausschließlich auf dem Gerät verarbeitet und niemals übertragen.
+            ausschließlich auf dem Gerät verarbeitet und niemals übertragen. Anders bei Fotos, aus denen
+            die KI Nährwerte schätzen soll: Sie werden an den KI-Anbieter übermittelt (Abschnitt 7a).
         </p>
 
         <h2>9. Sub-Prozessoren & Empfänger</h2>
@@ -597,7 +668,7 @@
                 <td><strong>Eden AI</strong></td>
                 <td>Auftragsverarbeiter (KI-Aggregator)</td>
                 <td>🇫🇷 Frankreich (EU)</td>
-                <td>Leitet KI-Coaching- und Planerstellungs-Anfragen über seinen EU-Endpunkt an EU-gehostete Modelle weiter</td>
+                <td>Leitet KI-Coaching-, Planerstellungs- und Fotoschätzungs-Anfragen über seinen EU-Endpunkt an EU-gehostete Modelle weiter</td>
                 <td>⏳ Eden AI AVV ausstehend</td>
                 <td>EU-intern</td>
             </tr>
@@ -605,7 +676,7 @@
                 <td><strong>Mistral AI</strong></td>
                 <td>Auftragsverarbeiter (Sprachmodelle)</td>
                 <td>🇫🇷 Frankreich (EU)</td>
-                <td>Sprachmodelle für KI-Coaching und Planerstellung (derzeit über Eden AI erreicht; künftig kann auch eine direkte Verbindung zur EU-Schnittstelle von Mistral AI genutzt werden)</td>
+                <td>Sprachmodelle für KI-Coaching und Planerstellung sowie ein bildfähiges Modell für die Fotoschätzung (derzeit über Eden AI erreicht; künftig kann auch eine direkte Verbindung zur EU-Schnittstelle von Mistral AI genutzt werden)</td>
                 <td>⏳ AVV / Prüfung ausstehend</td>
                 <td>EU-intern</td>
             </tr>
@@ -694,7 +765,7 @@
         <hr style="margin: 40px 0;">
         <p style="text-align: center; color: #6b6b6b; font-size: 12px;">
             Letzte Aktualisierung: 16. Oktober 2026<br>
-            Version 1.2
+            Version 1.3
         </p>
     </div>
     <script src="site.js"></script>
