@@ -2,6 +2,8 @@ package health.pulse.strength.widgets.home
 
 import android.app.Activity
 import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProviderInfo
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import androidx.compose.ui.test.hasContentDescription
@@ -9,7 +11,8 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.glance.appwidget.AppWidgetId
+import androidx.glance.GlanceId
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
@@ -50,6 +53,13 @@ class LiftTrendConfigActivityTest {
         StrengthRuntime.installForTest(PreviewRuntime())
     }
 
+    /** A lift trend widget that the system knows, as the launcher has bound it before it opens the configuration screen. */
+    private fun boundWidget(widgetId: Int): GlanceId {
+        val info = AppWidgetProviderInfo().apply { provider = ComponentName(context, LiftTrendReceiver::class.java) }
+        shadowOf(AppWidgetManager.getInstance(context)).addBoundWidget(widgetId, info)
+        return GlanceAppWidgetManager(context).getGlanceIdBy(widgetId)
+    }
+
     private fun launch(widgetId: Int?): ActivityScenario<LiftTrendConfigActivity> {
         val intent = Intent(context, LiftTrendConfigActivity::class.java)
         if (widgetId != null) intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId)
@@ -75,7 +85,7 @@ class LiftTrendConfigActivityTest {
     }
 
     private fun storedLift(widgetId: Int): String? = runBlocking {
-        getAppWidgetState(context, PreferencesGlanceStateDefinition, AppWidgetId(widgetId))[LiftTrendWidget.LiftKey]
+        getAppWidgetState(context, PreferencesGlanceStateDefinition, boundWidget(widgetId))[LiftTrendWidget.LiftKey]
     }
 
     @Test
@@ -86,7 +96,16 @@ class LiftTrendConfigActivityTest {
     }
 
     @Test
+    fun anIdThatIsNoWidgetOfTheAppClosesAndCancelsToo() {
+        // The screen is exported: whatever id another app sends, nothing is stored and nothing is shown.
+        val scenario = launch(widgetId = 77)
+        assertThat(scenario.state).isEqualTo(Lifecycle.State.DESTROYED)
+        assertThat(scenario.result.resultCode).isEqualTo(Activity.RESULT_CANCELED)
+    }
+
+    @Test
     fun thePickerListsEveryLiftWithItsValueAndMarksTheFirstOneForANewWidget() {
+        boundWidget(41)
         launch(widgetId = 41).use {
             compose.onNodeWithText("Choose a lift").assertExists()
             compose.onNodeWithText("Bench Press").assertExists()
@@ -99,6 +118,7 @@ class LiftTrendConfigActivityTest {
 
     @Test
     fun pickingALiftStoresItForThatWidgetAndReportsOk() {
+        boundWidget(42)
         launch(widgetId = 42).use { scenario ->
             compose.onNodeWithText("Back Squat").performClick()
             assertThat(scenario.awaitReported()).isEqualTo(Reported(Activity.RESULT_OK, widgetId = 42))
@@ -110,7 +130,8 @@ class LiftTrendConfigActivityTest {
 
     @Test
     fun reconfiguringMarksTheLiftThatIsShownNow() {
-        runBlocking { updateAppWidgetState(context, AppWidgetId(44)) { it[LiftTrendWidget.LiftKey] = "squat" } }
+        val glanceId = boundWidget(44)
+        runBlocking { updateAppWidgetState(context, glanceId) { it[LiftTrendWidget.LiftKey] = "squat" } }
         launch(widgetId = 44).use {
             compose.onNode(hasText("Back Squat") and hasContentDescription("Selected")).assertExists()
             compose.onNode(hasText("Bench Press") and hasContentDescription("Selected")).assertDoesNotExist()
@@ -120,6 +141,7 @@ class LiftTrendConfigActivityTest {
     @Test
     fun withoutLiftsThePickerExplainsAndStillAddsTheWidget() {
         StrengthRuntime.installForTest(PreviewRuntime(WidgetSnapshot.preview.copy(lifts = emptyList())))
+        boundWidget(45)
         launch(widgetId = 45).use { scenario ->
             compose.onNodeWithText("No lifts yet", substring = true).assertExists()
             compose.onNodeWithText("Add widget").performClick()

@@ -30,7 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.glance.appwidget.AppWidgetId
+import androidx.glance.GlanceId
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
@@ -55,29 +56,42 @@ class LiftTrendConfigActivity : ComponentActivity() {
         appWidgetId = intent?.extras?.getInt(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
             ?: AppWidgetManager.INVALID_APPWIDGET_ID
         setResult(RESULT_CANCELED, resultIntent())
-        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+        val glanceId = glanceIdOfThisWidget()
+        if (glanceId == null) {
             finish()
             return
         }
         val lifts = StrengthRuntime.snapshots.current().lifts
         setContent {
             var selectedId by remember { mutableStateOf<String?>(null) }
-            LaunchedEffect(Unit) { selectedId = storedChoice() }
+            LaunchedEffect(Unit) { selectedId = storedChoice(glanceId) }
             PulseTheme {
-                LiftPicker(lifts = lifts, selectedId = selectedId, onPick = ::finishWith)
+                LiftPicker(lifts = lifts, selectedId = selectedId, onPick = { finishWith(glanceId, it) })
             }
         }
     }
 
     private fun resultIntent() = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
 
-    private suspend fun storedChoice(): String? =
-        getAppWidgetState(this, PreferencesGlanceStateDefinition, AppWidgetId(appWidgetId))[LiftTrendWidget.LiftKey]
+    /**
+     * The Glance id of the widget that is being configured. The launcher starts this screen, but it is exported, so the id in the intent
+     * can be any number: one that is not a widget of this app has no Glance id and the screen closes as cancelled.
+     */
+    private fun glanceIdOfThisWidget(): GlanceId? {
+        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return null
+        return try {
+            GlanceAppWidgetManager(this).getGlanceIdBy(appWidgetId)
+        } catch (unknown: IllegalArgumentException) {
+            null
+        }
+    }
 
-    /** Stores [exerciseId] for this widget (nothing when there are no lifts yet), draws the widget once, and reports success to the launcher. */
-    private fun finishWith(exerciseId: String?) {
+    private suspend fun storedChoice(glanceId: GlanceId): String? =
+        getAppWidgetState(this, PreferencesGlanceStateDefinition, glanceId)[LiftTrendWidget.LiftKey]
+
+    /** Stores [exerciseId] for the widget (nothing when there are no lifts yet), draws it once, and reports success to the launcher. */
+    private fun finishWith(glanceId: GlanceId, exerciseId: String?) {
         lifecycleScope.launch {
-            val glanceId = AppWidgetId(appWidgetId)
             if (exerciseId != null) {
                 updateAppWidgetState(this@LiftTrendConfigActivity, glanceId) { it[LiftTrendWidget.LiftKey] = exerciseId }
             }

@@ -9,6 +9,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.graphics.createBitmap
 import androidx.glance.ColorFilter
 import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
@@ -256,7 +257,7 @@ internal fun Meter(width: Dp, height: Dp, fraction: Float, fill: ColorProvider, 
 /** Draws [parts] one over the other into a new mask, so a chart that needs one tint costs one bitmap in the widget. */
 internal fun mergeMasks(vararg parts: Bitmap): Bitmap {
     val first = parts.first()
-    val merged = Bitmap.createBitmap(first.width, first.height, Bitmap.Config.ARGB_8888)
+    val merged = createBitmap(first.width, first.height)
     val canvas = Canvas(merged)
     parts.forEach { canvas.drawBitmap(it, 0f, 0f, null) }
     return merged

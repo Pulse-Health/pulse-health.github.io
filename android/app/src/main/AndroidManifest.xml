@@ -64,7 +64,7 @@
         </activity>
 
         <!-- ==== glance-home:begin ==== -->
-        <!-- App widget providers must be exported so the launcher can send APPWIDGET_UPDATE (a broadcast only the system can send). -->
+        <!-- App widget providers are exported so that the system and the launcher can deliver the widget broadcasts (update, resize, deleted) to them. -->
         <receiver
             android:name=".widgets.home.NextUpReceiver"
             android:exported="true"
