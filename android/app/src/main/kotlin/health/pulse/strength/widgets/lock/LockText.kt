@@ -43,8 +43,15 @@ internal data class MeterCard(
     val description: String,
 )
 
+/** A line of text in two parts: the [lead] may be shortened with an ellipsis to make room, the [trail] never is. */
+internal data class TextLine(val lead: String, val trail: String = "") {
+    val text: String get() = lead + trail
+}
+
 /** The single line of a 4x1 widget. */
-internal data class InlineModel(val text: String, val link: String, val showsIcon: Boolean)
+internal data class InlineModel(val line: TextLine, val link: String, val showsIcon: Boolean) {
+    val text: String get() = line.text
+}
 
 /** Which text each lock / glanceable-hub widget shows for a snapshot (LS-01 ... LS-11). Pure, so the rules are unit-tested. */
 internal object LockText {
@@ -220,9 +227,9 @@ internal object LockText {
         }
     }
 
-    /** "Push day · last 5 days ago": the next split and how long ago it was trained. */
-    fun splitText(snapshot: WidgetSnapshot): String {
-        val next = snapshot.nextUp ?: return "No workout planned"
+    /** "Push day" and " · last 5 days ago": the next split and how long ago it was trained. */
+    fun splitLine(snapshot: WidgetSnapshot): TextLine {
+        val next = snapshot.nextUp ?: return TextLine("No workout planned")
         val days = next.daysSince
         val last = when {
             days == null -> "not done yet"
@@ -230,26 +237,30 @@ internal object LockText {
             days == 1 -> "last yesterday"
             else -> "last $days days ago"
         }
-        return "${next.splitLabel} · $last"
+        return TextLine(next.splitLabel, " · $last")
     }
 
-    /** "Rest day · back on Sun", or null when today is not a rest day. */
-    fun restText(snapshot: WidgetSnapshot): String? {
+    fun splitText(snapshot: WidgetSnapshot): String = splitLine(snapshot).text
+
+    /** "Rest day" and " · back on Sun", or null when today is not a rest day. */
+    fun restLine(snapshot: WidgetSnapshot): TextLine? {
         val rest = snapshot.restDay ?: return null
         val reason = rest.reason.ifBlank { "Rest day" }
         val back = snapshot.tomorrow?.weekday?.trim()?.take(3)?.takeIf { it.isNotEmpty() }
-        return if (back == null) reason else "$reason · back on $back"
+        return TextLine(reason, if (back == null) "" else " · back on $back")
     }
 
-    /** LS-09 / LS-10 / LS-11: the line of the inline widget of [mode]; the rest mode falls back to the split text on a training day. */
+    fun restText(snapshot: WidgetSnapshot): String? = restLine(snapshot)?.text
+
+    /** LS-09 / LS-10 / LS-11: the line of the inline widget of [mode]; the rest mode falls back to the split line on a training day. */
     fun inlineStatus(mode: InlineStatusWidget.Mode, snapshot: WidgetSnapshot): InlineModel = when (mode) {
         InlineStatusWidget.Mode.WEEK -> {
             val week = snapshot.week
-            InlineModel("${week.completed} of ${week.goal} ${workouts(week.goal)} this week", DeepLinks.hub, showsIcon = true)
+            InlineModel(TextLine("${week.completed} of ${week.goal} ${workouts(week.goal)} this week"), DeepLinks.hub, showsIcon = true)
         }
-        InlineStatusWidget.Mode.SPLIT -> InlineModel(splitText(snapshot), startLink(snapshot), showsIcon = false)
+        InlineStatusWidget.Mode.SPLIT -> InlineModel(splitLine(snapshot), startLink(snapshot), showsIcon = false)
         InlineStatusWidget.Mode.REST -> {
-            val rest = restText(snapshot)
+            val rest = restLine(snapshot)
             if (rest != null) InlineModel(rest, DeepLinks.hub, showsIcon = false) else inlineStatus(InlineStatusWidget.Mode.SPLIT, snapshot)
         }
     }

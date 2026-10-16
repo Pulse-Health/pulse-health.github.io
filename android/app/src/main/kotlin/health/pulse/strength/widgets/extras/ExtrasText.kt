@@ -18,6 +18,7 @@ import health.pulse.strength.core.widgets.WidgetSnapshot
 import health.pulse.strength.core.widgets.YearSummary
 import health.pulse.strength.widgets.lock.LockText
 import health.pulse.strength.widgets.lock.PulseFormat
+import health.pulse.strength.widgets.lock.TextFit
 import java.time.DateTimeException
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -30,8 +31,9 @@ internal enum class ReadinessTier { GOOD, FAIR, LOW }
  */
 internal object ExtrasText {
     private const val MIN_BAR = 0.12f
-    private const val PARTNER_ROW_DP = 34f
-    private const val PARTNER_CHROME_DP = 62f
+
+    /** Below this height (dp) the widgets that have a compact layout use it. */
+    const val COMPACT_BELOW_DP = 130f
 
     // WI-01 body map
 
@@ -74,8 +76,26 @@ internal object ExtrasText {
         return listOf(you) + others
     }
 
-    /** How many lines (yours included) fit in a widget [heightDp] tall: at least two, at most four. */
-    fun partnerRowCapacity(heightDp: Float): Int = ((heightDp - PARTNER_CHROME_DP) / PARTNER_ROW_DP).toInt().coerceIn(2, 4)
+    /**
+     * How the partner widget is laid out in [heightDp]: below 130 dp it uses smaller avatars and drops the sentence under the bars, so
+     * that you and one partner always fit; above, it fits as many lines (yours included) as the height allows, at most four.
+     */
+    data class PartnerLayout(
+        val padding: Float,
+        val avatar: Float,
+        val rowSlot: Float,
+        val rows: Int,
+        val showsFooter: Boolean,
+    )
+
+    fun partnerLayout(heightDp: Float): PartnerLayout {
+        if (heightDp < COMPACT_BELOW_DP) {
+            val rows = ((heightDp - 20f - TextFit.height(14f) - 4f) / 32f).toInt().coerceIn(2, 4)
+            return PartnerLayout(padding = 10f, avatar = 28f, rowSlot = 32f, rows = rows, showsFooter = false)
+        }
+        val chrome = 28f + TextFit.height(15f) + 8f + TextFit.height(13f) + 4f
+        return PartnerLayout(padding = 14f, avatar = 30f, rowSlot = 34f, rows = ((heightDp - chrome) / 34f).toInt().coerceIn(2, 4), showsFooter = true)
+    }
 
     /** The sentence under the bars: who closed their week, or where the leading partner stands. It never ranks anyone. */
     fun partnerFooter(week: WeekSummary, partners: List<PartnerWeek>): String {
@@ -97,6 +117,13 @@ internal object ExtrasText {
     // WI-04 form cue
 
     data class CueText(val eyebrow: String, val cue: String, val footer: String, val link: String)
+
+    /** The type size of the cue: the short cues of the canvas are big, a long one is set smaller so more of it shows. */
+    fun cueTextSize(length: Int, roomy: Boolean): Float = when {
+        length <= 40 -> if (roomy) 17f else 15f
+        length <= 80 -> if (roomy) 14f else 13f
+        else -> 12f
+    }
 
     fun formCue(cue: FormCue?): CueText = if (cue == null) {
         CueText("Form cue", "Cues for your next workout show up here.", "", DeepLinks.hub)
@@ -166,9 +193,13 @@ internal object ExtrasText {
 
     // WI-07 strength ratio
 
-    /** [fraction] is the progress toward the goal ratio, or null when there is no ratio to draw a bar for. */
+    /**
+     * [fraction] is the progress toward the goal ratio, or null when there is no ratio to draw a bar for. [shortEyebrow] is the lift
+     * alone, for a widget too small for "Bench Press / bodyweight" on two lines.
+     */
     data class RatioModel(
         val eyebrow: String,
+        val shortEyebrow: String,
         val figure: String,
         val fraction: Float?,
         val footer: String,
@@ -180,6 +211,7 @@ internal object ExtrasText {
         if (ratio == null) {
             return RatioModel(
                 eyebrow = "Strength ratio",
+                shortEyebrow = "Strength ratio",
                 figure = "–",
                 fraction = null,
                 footer = "Log bench, squat, deadlift or press to see your ratio.",
@@ -193,6 +225,7 @@ internal object ExtrasText {
             val estimate = "${PulseFormat.kg(ratio.estimated1RM)} kg"
             return RatioModel(
                 eyebrow = eyebrow,
+                shortEyebrow = ratio.exerciseName,
                 figure = estimate,
                 fraction = null,
                 footer = "Add your bodyweight in Health Connect",
@@ -203,6 +236,7 @@ internal object ExtrasText {
         val figure = PulseFormat.fixed(value, 2)
         return RatioModel(
             eyebrow = eyebrow,
+            shortEyebrow = ratio.exerciseName,
             figure = "$figure×",
             fraction = if (ratio.goalRatio > 0) (value / ratio.goalRatio).toFloat().coerceIn(0f, 1f) else 0f,
             footer = "Goal $goal× · ${PulseFormat.kg(bodyweight)} kg",
@@ -214,13 +248,16 @@ internal object ExtrasText {
 
     data class YearBar(val fraction: Float, val isCurrent: Boolean)
 
+    /** [captions] are the sentence under the figure from the longest to the shortest wording; the widget shows the first that fits. */
     data class YearModel(
         val eyebrow: String,
         val tonnes: String,
-        val caption: String,
+        val captions: List<String>,
         val bars: List<YearBar>,
         val description: String,
-    )
+    ) {
+        val caption: String get() = captions.first()
+    }
 
     /** The 0-based month of the snapshot in its own time zone, or -1 when the snapshot is from another calendar year than the totals. */
     fun currentMonthIndex(snapshot: WidgetSnapshot): Int {
@@ -243,13 +280,13 @@ internal object ExtrasText {
         }
         val total = PulseFormat.number(year.tonnes, 1)
         val sessions = if (year.sessionCount == 1) "1 session" else "${year.sessionCount} sessions"
-        val caption = if (year.sessionCount > 0) "across $sessions" else "no sessions yet"
+        val captions = if (year.sessionCount > 0) listOf("across $sessions", sessions) else listOf("no sessions yet")
         return YearModel(
             eyebrow = "Lifted in ${year.year}",
             tonnes = total,
-            caption = caption,
+            captions = captions,
             bars = bars,
-            description = "Lifted $total tonnes in ${year.year}, $caption",
+            description = "Lifted $total tonnes in ${year.year}, ${captions.first()}",
         )
     }
 
@@ -355,16 +392,21 @@ internal object ExtrasText {
         TimelineKind.LONG_REST -> "Long rest"
     }
 
-    /** [kinds] are the kinds present, in legend order; [message] replaces the bar when there is none to draw. */
+    /**
+     * [kinds] are the kinds present, in legend order; [message] replaces the bar when there is none to draw. [tails] are the details after
+     * the headline from the most to the least ("· 38% under tension · 1 long break" ... ""), for the widget to pick the longest that fits.
+     */
     data class TimelineModel(
         val name: String?,
         val hasBar: Boolean,
         val kinds: List<TimelineKind>,
         val headline: String,
-        val tail: String,
+        val tails: List<String>,
         val message: String?,
         val description: String,
-    )
+    ) {
+        val tail: String get() = tails.first()
+    }
 
     /** "51 min" in bold, then " · 38% under tension · 1 long break"; or why there is no bar to draw. */
     fun sessionTimeline(session: SessionSummary?): TimelineModel {
@@ -374,7 +416,7 @@ internal object ExtrasText {
                 hasBar = false,
                 kinds = emptyList(),
                 headline = "",
-                tail = "",
+                tails = listOf(""),
                 message = "Finish a workout to see how its time was spent.",
                 description = "Session timeline: no workout finished yet",
             )
@@ -390,15 +432,16 @@ internal object ExtrasText {
         } else {
             listOf(if (session.loggedSets == 1) "1 set" else "${session.loggedSets} sets")
         }
-        val tail = details.joinToString("") { " · $it" }
+        // Every prefix of the details, longest first: dropping the last detail first keeps the more important ones.
+        val tails = (details.size downTo 0).map { count -> details.take(count).joinToString("") { " · $it" } }
         return TimelineModel(
             name = session.name,
             hasBar = hasBar,
             kinds = kinds,
             headline = headline,
-            tail = tail,
+            tails = tails,
             message = if (hasBar) null else "No set times were recorded for this workout.",
-            description = "Session timeline for ${session.name}: $headline$tail",
+            description = "Session timeline for ${session.name}: $headline${tails.first()}",
         )
     }
 }

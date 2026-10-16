@@ -1,6 +1,9 @@
 package health.pulse.strength.widgets.lock
 
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.util.Log
+import android.util.TypedValue
 import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.Dp
@@ -12,6 +15,7 @@ import androidx.glance.GlanceModifier
 import androidx.glance.GlanceTheme
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.appwidget.appWidgetBackground
 import androidx.glance.appwidget.cornerRadius
@@ -165,20 +169,53 @@ internal fun MeterBar(
     }
 }
 
-/** Padding and type sizes of the 3x1 widgets; launchers whose single row is shorter than [TIGHT_BELOW] get the tighter set. */
-internal data class CompactMetrics(val padding: Dp, val eyebrow: TextUnit, val title: TextUnit, val detail: TextUnit) {
-    companion object {
-        private val TIGHT_BELOW = 72.dp
-        private val Regular = CompactMetrics(padding = 10.dp, eyebrow = 12.sp, title = 16.sp, detail = 13.sp)
-        private val Tight = CompactMetrics(padding = 7.dp, eyebrow = 11.sp, title = 14.sp, detail = 11.sp)
+/**
+ * Padding and type sizes of the 3x1 widgets. A launcher decides how high a row is, so [forHeight] picks the largest set whose three lines
+ * (the eyebrow, the headline, the detail) still fit; the last set drops the eyebrow, which the headline can do without.
+ */
+internal class CompactMetrics private constructor(
+    val padding: Dp,
+    val eyebrow: TextUnit,
+    val title: TextUnit,
+    val detail: TextUnit,
+    val showsEyebrow: Boolean = true,
+) {
+    /** The height the lines of this set need, with a little air. */
+    private val neededHeight: Dp =
+        padding * 2 + TextFit.height((if (showsEyebrow) eyebrow.value else 0f) + title.value + detail.value).dp + 2.dp
 
-        fun forHeight(height: Dp): CompactMetrics = if (height < TIGHT_BELOW) Tight else Regular
+    companion object {
+        private val Tiers = listOf(
+            CompactMetrics(padding = 10.dp, eyebrow = 12.sp, title = 16.sp, detail = 13.sp),
+            CompactMetrics(padding = 8.dp, eyebrow = 11.sp, title = 15.sp, detail = 12.sp),
+            CompactMetrics(padding = 7.dp, eyebrow = 11.sp, title = 14.sp, detail = 11.sp),
+            CompactMetrics(padding = 6.dp, eyebrow = 11.sp, title = 14.sp, detail = 11.sp, showsEyebrow = false),
+        )
+
+        fun forHeight(height: Dp): CompactMetrics = Tiers.firstOrNull { height >= it.neededHeight } ?: Tiers.last()
     }
 }
 
 /**
- * The eyebrow / headline / detail stack of a 3x1 widget, with an optional glyph on the left. The headline gives way to the card's
- * [CompactCard.titleSuffix]: a long exercise name is shortened, the figures after it are not.
+ * A [TextMeter] for the system font at [size] ([bold] for the bold style): the widths the launcher's `TextView` will lay the text out in.
+ * The widget is composed on the device that shows it, so the same font and display scale apply.
+ */
+@Composable
+internal fun rememberTextMeter(size: TextUnit, bold: Boolean): TextMeter {
+    val metrics = LocalContext.current.resources.displayMetrics
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
+        textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, size.value, metrics)
+    }
+    return TextMeter { text -> paint.measureText(text) / metrics.density }
+}
+
+/** Width kept free when text is fitted, so a measurement that is a hair too small does not push the last character out. */
+internal val FitSafety: Dp = 4.dp
+
+/**
+ * The eyebrow / headline / detail stack of a 3x1 widget, with an optional glyph on the left. A headline that is too long is shortened
+ * with an ellipsis, but the card's [CompactCard.titleSuffix] after it ("85 × 5") always stays whole.
  */
 @Composable
 internal fun ThreeLineCard(
@@ -187,23 +224,30 @@ internal fun ThreeLineCard(
     @DrawableRes icon: Int? = null,
     iconTint: ColorProvider = GlanceTheme.colors.primary,
 ) {
+    val textWidth = LocalSize.current.width - metrics.padding * 2 - (if (icon != null) ICON_SLOT else 0.dp) - FitSafety
+    val title = TextFit.fitLead(
+        lead = card.title,
+        trail = if (card.titleSuffix.isEmpty()) "" else " ${card.titleSuffix}",
+        maxWidth = textWidth.value,
+        meter = rememberTextMeter(metrics.title, bold = true),
+    )
     Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         if (icon != null) {
             Glyph(icon, 26.dp, iconTint)
             Spacer(GlanceModifier.width(10.dp))
         }
         Column(modifier = GlanceModifier.defaultWeight()) {
-            Eyebrow(card.eyebrow, metrics.eyebrow)
-            Row(modifier = GlanceModifier.fillMaxWidth()) {
-                PulseText(card.title, metrics.title, GlanceModifier.defaultWeight(), FontWeight.Bold)
-                if (card.titleSuffix.isNotEmpty()) PulseText(" ${card.titleSuffix}", metrics.title, weight = FontWeight.Bold)
-            }
+            if (metrics.showsEyebrow) Eyebrow(card.eyebrow, metrics.eyebrow)
+            PulseText(title, metrics.title, weight = FontWeight.Bold)
             if (card.detail.isNotEmpty()) {
                 PulseText(card.detail, metrics.detail, color = GlanceTheme.colors.onSurfaceVariant)
             }
         }
     }
 }
+
+/** The glyph of a [ThreeLineCard] and the gap after it. */
+private val ICON_SLOT = 36.dp
 
 /**
  * Runs one widget's refresh and logs a failure instead of throwing, so a widget that cannot be drawn (for example when its bitmaps exceed

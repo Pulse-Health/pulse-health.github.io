@@ -22,6 +22,7 @@ import androidx.glance.layout.Box
 import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.height
+import androidx.glance.layout.padding
 import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.semantics.contentDescription
@@ -34,8 +35,11 @@ import health.pulse.strength.core.widgets.TimelineKind
 import health.pulse.strength.core.widgets.TrendStatus
 import health.pulse.strength.widgets.common.PulseColors
 import health.pulse.strength.widgets.common.dayNight
+import health.pulse.strength.widgets.lock.FitSafety
 import health.pulse.strength.widgets.lock.Glyph
 import health.pulse.strength.widgets.lock.PulseText
+import health.pulse.strength.widgets.lock.TextFit
+import health.pulse.strength.widgets.lock.rememberTextMeter
 
 /** Colours the theme does not carry: heat levels, plates, timeline stretches, status. Each is a light/dark pair the launcher resolves live. */
 internal object ExtrasPalette {
@@ -107,6 +111,12 @@ internal object IronCard {
     val text: ColorProvider = ColorProvider(Color.White)
     val secondary: ColorProvider = ColorProvider(Color(0xFF98989D))
     val accent: ColorProvider = ColorProvider(Color(0xFF30D158))
+
+    /**
+     * The accent at half strength on the card, worked out as an opaque colour: a mask is tinted by blending the tint over it, so a
+     * translucent tint would come out lighter than the accent instead of dimmer.
+     */
+    val dimAccent: ColorProvider = ColorProvider(Color(0xFF266E3B))
 }
 
 /**
@@ -139,25 +149,33 @@ internal fun PillButton(
     }
 }
 
-/** "− 82.5 kg +": a value between two round buttons, each a full 48 dp tap target. */
+/**
+ * "− 82.5 kg +": a value between two round buttons, each a full 48 dp tap target, in a pill of [width]. When the unit does not fit
+ * between the buttons the bare number is shown.
+ */
 @Composable
-internal fun StepperPill(view: StepperView, less: Action, more: Action, modifier: GlanceModifier = GlanceModifier) {
+internal fun StepperPill(view: StepperView, less: Action, more: Action, width: Dp, modifier: GlanceModifier = GlanceModifier) {
+    val valueWidth = width - STEP_BUTTON * 2 - FitSafety
+    val label = TextFit.firstFitting(listOf(view.label, view.shortLabel), valueWidth.value, rememberTextMeter(16.sp, bold = true))
     Row(
-        modifier = modifier.height(48.dp).cornerRadius(24.dp).background(GlanceTheme.colors.surfaceVariant),
+        modifier = modifier.width(width).height(48.dp).cornerRadius(24.dp).background(GlanceTheme.colors.surfaceVariant),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         StepButton("−", view.lessDescription, less)
         Box(modifier = GlanceModifier.defaultWeight(), contentAlignment = Alignment.Center) {
-            PulseText(view.label, 16.sp, weight = FontWeight.Bold, align = TextAlign.Center)
+            PulseText(label, 16.sp, weight = FontWeight.Bold, align = TextAlign.Center)
         }
         StepButton("+", view.moreDescription, more)
     }
 }
 
+/** The width of one of a stepper's buttons: the minimum tap target. */
+internal val STEP_BUTTON = 48.dp
+
 @Composable
 private fun StepButton(glyph: String, description: String, action: Action) {
     Box(
-        modifier = GlanceModifier.size(48.dp).semantics { contentDescription = description }.clickable(action),
+        modifier = GlanceModifier.size(STEP_BUTTON).semantics { contentDescription = description }.clickable(action),
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -183,16 +201,23 @@ internal fun StatusDot(color: ColorProvider, size: Dp = 10.dp) {
     Box(modifier = GlanceModifier.size(size).cornerRadius(size / 2).background(color)) {}
 }
 
-/** One short bar per set of the exercise: logged, the one to log now, still to come. */
+/**
+ * One short bar of [dotWidth] per set of the exercise: logged, the one to log now, still to come. The gap is padding around each bar, not
+ * a spacer between them: Glance draws at most ten children per row, and ten bars with their gaps would be nineteen.
+ */
 @Composable
-internal fun SetDots(dots: List<DotState>) {
+internal fun SetDots(dots: List<DotState>, dotWidth: Dp) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        dots.forEachIndexed { index, state ->
-            if (index > 0) Spacer(GlanceModifier.width(4.dp))
-            Box(modifier = GlanceModifier.size(22.dp, 6.dp).cornerRadius(3.dp).background(ExtrasPalette.dot(state))) {}
+        for (state in dots) {
+            Box(modifier = GlanceModifier.padding(end = DOT_GAP)) {
+                Box(modifier = GlanceModifier.size(dotWidth, 6.dp).cornerRadius(3.dp).background(ExtrasPalette.dot(state))) {}
+            }
         }
     }
 }
+
+/** The gap after each set dot. */
+internal val DOT_GAP = 4.dp
 
 /**
  * The rest countdown as a system `Chronometer`: the launcher redraws it every second without the app running, so the widget needs no

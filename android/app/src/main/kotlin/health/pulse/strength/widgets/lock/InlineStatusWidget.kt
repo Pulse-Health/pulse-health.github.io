@@ -38,25 +38,37 @@ class InlineStatusWidget(private val mode: Mode) : PulseWidget() {
     @Composable
     override fun Content(snapshot: WidgetSnapshot) {
         val status = LockText.inlineStatus(mode, snapshot)
-        val height = LocalSize.current.height
-        val tight = height < 48.dp
+        val size = LocalSize.current
+        val tight = size.height < 48.dp
+        val padding = if (tight) 6.dp else 10.dp
+        val textSize = if (tight) 13.sp else 15.sp
+        // The pill's round ends take some of the width; a long split name is shortened, the days after it are kept.
+        val iconSlot = if (status.showsIcon) ICON_SLOT else 0.dp
+        val textWidth = size.width - padding * 2 - ROUND_ENDS - iconSlot - FitSafety
+        val text = TextFit.fitLead(status.line.lead, status.line.trail, textWidth.value, rememberTextMeter(textSize, bold = true))
         WidgetCard(
             description = status.text,
             link = status.link,
-            cornerRadius = height / 2,
-            padding = if (tight) 6.dp else 10.dp,
+            cornerRadius = size.height / 2,
+            padding = padding,
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (status.showsIcon) {
                     Glyph(R.drawable.ic_lock_dumbbell, 14.dp, GlanceTheme.colors.onSurface)
                     Spacer(GlanceModifier.width(6.dp))
                 }
-                PulseText(status.text, if (tight) 13.sp else 15.sp, weight = FontWeight.Medium)
+                PulseText(text, textSize, weight = FontWeight.Medium)
             }
         }
     }
 
     companion object {
+        /** The dumbbell and the gap after it. */
+        private val ICON_SLOT = 20.dp
+
+        /** Width the pill's rounded ends take from the text. */
+        private val ROUND_ENDS = 12.dp
+
         /**
          * Redraws every placed instance of the three modes. The modes share this class, and Glance finds widgets by class, so the
          * instances are looked up by the receiver they were placed from instead, and each is drawn with the mode of its own receiver.

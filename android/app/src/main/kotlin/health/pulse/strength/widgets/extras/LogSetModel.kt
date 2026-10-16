@@ -9,8 +9,16 @@ import health.pulse.strength.widgets.lock.PulseFormat
 /** One dot per set of the shown exercise. */
 internal enum class DotState { DONE, CURRENT, PENDING }
 
-/** The label between a stepper's two buttons, and what a screen reader says for each button. */
-internal data class StepperView(val label: String, val lessDescription: String, val moreDescription: String)
+/**
+ * The label between a stepper's two buttons ("82.5 kg"; [shortLabel] is the bare "82.5" for a stepper too narrow for the unit), and what
+ * a screen reader says for each button.
+ */
+internal data class StepperView(
+    val label: String,
+    val shortLabel: String,
+    val lessDescription: String,
+    val moreDescription: String,
+)
 
 /** What the log-a-set widget (WI-02) shows: one state per situation of the running workout, so the layout only draws what makes sense. */
 internal sealed interface LogSetView {
@@ -71,11 +79,15 @@ internal object LogSetModel {
             SnapshotPhase.LOGGING -> LogSetView.Logging(
                 exercise = active.exerciseName,
                 setLabel = active.setLabel,
-                weight = if (active.showsWeight) StepperView("${active.weightText} kg", "Decrease weight", "Increase weight") else null,
-                reps = if (active.tracking == TrackingKind.DURATION) {
-                    StepperView("${active.repsText} ${active.repsUnit}", "Less time", "More time")
+                weight = if (active.showsWeight) {
+                    StepperView("${active.weightText} kg", active.weightText, "Decrease weight", "Increase weight")
                 } else {
-                    StepperView("${active.repsText} ${active.repsUnit}", "Fewer reps", "More reps")
+                    null
+                },
+                reps = if (active.tracking == TrackingKind.DURATION) {
+                    StepperView("${active.repsText} ${active.repsUnit}", active.repsText, "Less time", "More time")
+                } else {
+                    StepperView("${active.repsText} ${active.repsUnit}", active.repsText, "Fewer reps", "More reps")
                 },
                 dots = dots(active.exerciseDoneSets, active.exerciseSetCount),
                 footer = progress,
