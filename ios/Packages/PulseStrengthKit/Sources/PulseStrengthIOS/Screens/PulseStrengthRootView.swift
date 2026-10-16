@@ -55,6 +55,9 @@ public struct PulseStrengthRootView: View {
         .fullScreenCover(item: $summary) { (workout: CompletedWorkout) in
             summaryCover(workout)
         }
+        .sheet(isPresented: $environment.showsWeightEntry) {
+            BodyWeightEntrySheet(store: environment.store)
+        }
         .environment(\.watchStatus, environment.watchStatus)
         .tint(PulseTheme.green)
         // The whole app follows the user's text size up to accessibility3 (its screens scroll); the dense screens
@@ -65,6 +68,16 @@ public struct PulseStrengthRootView: View {
         }
         .task {
             await requestPermissions()
+        }
+        .task {
+            // The launch itself: `onChange` below only sees the changes after it.
+            environment.refreshOnActive()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // A delivered reminder leaves the list of future ones, the clock or time zone may have changed, and Health may have new weights.
+            if phase == .active {
+                environment.refreshOnActive()
+            }
         }
     }
 
@@ -189,8 +202,12 @@ public struct PulseStrengthRootView: View {
 
     private func handleURL(_ url: URL) {
         guard url.scheme?.lowercased() == StrengthConfig.urlScheme.lowercased() else { return }
-        guard url.host?.lowercased() == StrengthConfig.workoutURL.host?.lowercased() else { return }
-        presentActiveWorkout()
+        let host = url.host?.lowercased()
+        if host == StrengthConfig.workoutURL.host?.lowercased() {
+            presentActiveWorkout()
+        } else if host == StrengthConfig.weightURL.host?.lowercased() {
+            environment.requestWeightEntry()
+        }
     }
 
     private func requestPermissions() async {
