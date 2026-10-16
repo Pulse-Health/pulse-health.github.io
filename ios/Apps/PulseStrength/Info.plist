@@ -37,6 +37,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>PulseAppGroupID</key>
+	<string>group.$(PULSE_APP_BUNDLE_ID)</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>Pulse Strength reads your heart rate and active energy during a strength workout and shows them on your iPhone, Apple Watch and Lock Screen.</string>
 	<key>NSHealthUpdateUsageDescription</key>

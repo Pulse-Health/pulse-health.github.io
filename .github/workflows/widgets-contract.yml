@@ -1,0 +1,25 @@
+# The widget data contract (widgets/tools/schema.py) is the single source of the WidgetSnapshot types of both platforms. This check fails when
+# the generated Swift or Kotlin files, or the preview fixture they embed, are out of date: run `python3 widgets/tools/generate.py` and commit.
+
+name: widgets-contract
+
+on:
+  pull_request:
+    paths:
+      - 'widgets/**'
+      - 'ios/Packages/PulseStrengthKit/Sources/PulseStrengthCore/Widgets/**'
+      - 'android/core/src/main/kotlin/health/pulse/strength/core/widgets/**'
+      - '.github/workflows/widgets-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generated-files-are-current:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate and compare
+        run: python3 widgets/tools/generate.py --check
