@@ -114,6 +114,7 @@ object WorkoutNotifications {
             // Android 16 "Live Updates": ask for the status-bar chip. The system decides (user setting, criteria); ignored otherwise.
             builder.addExtras(Bundle().apply { putBoolean(Notification.EXTRA_REQUEST_PROMOTED_ONGOING, true) })
         }
+        health.pulse.strength.live.LiveUpdates.decorate(context, builder, snapshot, now)
         return builder.build()
     }
 
