@@ -1,9 +1,17 @@
 # Proposal: a harness for the Pulse Strength coach (v2)
 
-Status: **proposal for discussion; nothing here is implemented.** v1 was written on 2026-10-16. v2 is the same day, revised after
+Status: **Phase 0 is implemented in the same pull request as this document; no model layer exists.** v1 was written on 2026-10-16. v2 is the same day, revised after
 an independent review: 12 verifier agents re-checked the code references and the sourced claims in clusters (each doubtful claim got a
 second, independent opinion), three reviewers attacked the design (safety/legal, evaluation, product/engineering), and a critic
 looked for gaps. What changed is listed in section 14.
+
+> **Decision (2026-10-16, product owner): no on-device ("edge") models.** This supersedes section 6.3 (the on-device model layer, the
+> Apple adapter, the prompt spec and the availability matrix), the on-device parts of section 7 (suite S2, Apple's Evaluations
+> framework), Phase 0.5 and Phase 1 in section 9 as originally written, and section 11 (kept as background only). Still valid: the
+> engine and its rules (6.1), the guards that do not depend on where a model runs (G0, G1, G2, and G3, G4, G5, G7, G8 if model text
+> is ever shown), the evaluation approach, and sections 8 and 10. The privacy argument "on-device, nothing leaves the phone" is gone,
+> so any future model is a **cloud model** that reuses the existing consented EU pipeline (section 8, "Phase 2 default"), and starts
+> with measurement, not an adapter.
 
 Confidence markers: *unmarked* = I read it in the repo or a primary source. **†** = established by a review agent reading the
 source; re-check before relying on it. **‡** = secondary source, press, or recalled from memory; needs counsel or a primary source.
@@ -14,13 +22,15 @@ source; re-check before relying on it. **‡** = secondary source, press, or rec
 > template fallback. Build the evaluated deterministic core first. Make the model layer conditional on a named user problem
 > and a two-day spike.**
 
-* **Phase 0 (ships to every device, no model):** a `ProgressionEngine` over performed sets, a "Next time" card with an
-  "Apply" button, the duplicated target maths removed, and an evaluation suite that gates every PR on Linux.
-* **Phase 0.5 (about two days):** run the real on-device model on 30 briefs, compare with a good template writer, and read the
-  missing Apple material. Decide whether Phase 1 exists.
-* **Phase 1 and 2 are conditional** and described so the decision is cheap to make, not so it is already made.
+* **Phase 0 (ships to every device, no model) is implemented:** a `ProgressionEngine` over performed sets, a "Next time" card with
+  an "Apply" button, the duplicated target maths removed, and tests that gate every PR on Linux. See section 9 for what was built and
+  what was not.
+* **Phase 0.5 (measurement, about two days):** log-RIR coverage on real exports, how often the current tip is acted on, a coach
+  review of the thresholds, a competitor teardown. This is what decides whether any model is wanted at all.
+* **A model, if ever, is a cloud model** (section 9, Phase 1), conditional on a named user problem.
 
-Phase 0 needs only decisions 1 to 4 in section 9. The model questions block only Phase 1.
+The thresholds in `CoachConfig` are **starting values that no qualified coach has signed off**; that sign-off is the gate before
+this ships to users.
 
 ## 2. Which "workout AI"? (decision 1)
 
@@ -165,7 +175,10 @@ Each is code with a test, a reason, and a retire condition.
 | **G7** | Fallback | `CoachComposer` never throws. Covers errors, guardrail violations, unavailability, timeouts and guard failures. **String-mode refusals are returned as ordinary text, not thrown**, so use a structured output type or an explicit refusal check. A result that arrives after the timeout is discarded and not logged as shown. |
 | **G8** | Grounding | Output may mention only categories and verdict phrases from the brief. Relative-time words ("since yesterday") are banned or rendered by code. Press reports of a shipped LLM coach describe invented workouts and stale remembered context, not wrong digits**‡**, so digit guards alone are not enough. The decision log is never read into prompts. |
 
-### 6.3 Model layer (conditional)
+### 6.3 Model layer (superseded: no on-device models)
+
+> Kept for the record. The decision at the top rules out the on-device layer below. The parts that are not specific to Apple's on-device
+> model (typed brief with no free text, fixed fallback, availability and consent gating, UX requirements) carry over to a cloud model.
 
 * **Seam.** v1 sketched a custom `CoachModel` protocol. Apple's framework now has a `LanguageModel` protocol that
   `SystemLanguageModel` and `PrivateCloudComputeLanguageModel` conform to**†**, and says it is being open-sourced**†** (WWDC26
@@ -201,6 +214,10 @@ account deletion, included in data export. Never uploaded, never sent to crash o
 v1 planned it for Phase 0 with no consumer; it moved.
 
 ## 7. Evaluation plan
+
+> S0 and S1 are as described and S0 exists in this PR (`CoachEngineTests`, `CoachPropertyTests`, `CoachPlannerTests`, `HubNoteTests`). S2 and the
+> Apple Evaluations framework assumed an on-device model and are superseded; a cloud model would be evaluated with the same
+> structure (escaped violations 0, rejection and fallback rates with confidence bounds, blind preference over `TemplateWriter`).
 
 | Suite | What it tests | Runs on | Gate |
 |---|---|---|---|
@@ -253,17 +270,31 @@ Counsel should review this section; I am not a lawyer and several points are sec
 
 ## 9. Phased plan and decisions
 
-**Phase 0: evaluated deterministic core.** No model; gate: policy-owner sign-off.
+**Phase 0: evaluated deterministic core. Implemented.** No model; gate before release: policy-owner sign-off.
 * 0a. Make the Core target-weight function public, extract the hub note builder into Core, write tests that **pin today's hub output and list the two divergences**, then remove the duplicate. (The existing `coachTip` tests are the seeds for S0.)
 * 0b. `ProgressionEngine`, `Recommendation`, G0, `AudienceProfile`, S0. Measure RIR coverage on `SampleData` and a few real exports first, because most sets may have no RIR.
 * 0c. "Next time" card with Apply, readiness hidden without a real provider, text through a String Catalog with German as an acceptance item (the code is English-only and `NumberText` is locale-free).
 * 0d. `TemplateWriter v2`. Update `ARCHITECTURE.md` (it specifies the exact `coachTip` rule and text, and the test count).
 
-**Phase 0.5: spike (about two days).** Real on-device model in Xcode's playground or the `fm` command-line tool**†**: 30 briefs, recording latency, digit leakage, German quality and refusal text. Pull any available usage data for the current tip. One evening of competitor teardown (Strong, Hevy, Fitbod, Alpha Progression). Coach and accessibility review. Output: a named user problem, or no Phase 1.
+*What was built:* `TargetWeight` (the one copy of the arithmetic, public), `HubNoteBuilder` (extracted, checked against a verbatim copy
+of the old code over 4,000 random templates), `ProgressionEngine` with `CoachConfig`, `AudienceProfile` and `Recommendation`,
+`TemplateWriter`, `CoachPlanner`, the hub "Next time" block, the exercise-card suggestion with Apply, the readiness sentence hidden while
+the recovery numbers are demo data (`WorkoutController.isUsingDemoRecovery`), and `ARCHITECTURE.md` section 3.5.
 
-**Phase 1 (conditional): model as writer.** 1a: Core seam, composer, G1 to G8, `ScriptedCoachModel`, S1, decision log. 1b: Apple adapter, prompt files, S2, dismiss and feedback UI, label. **Exit:** section 7's three numbers (escaped violations 0, fallback rate under its ceiling, blind preference over `TemplateWriter v2`), p95 latency measured cold and after a 45-minute workout on the oldest Apple Intelligence device (at least 200 samples), a "report this note" control with a named review owner, and the legal check in section 8. Otherwise stop and keep templates.
+*What was deliberately not done, and why:*
+* **German / String Catalog.** The whole app is English with locale-free number formatting; localising only the new strings would
+  mix languages. `CoachLine` keeps the words separate from the figures so localisation can be added app-wide later.
+* **The cap on the in-workout PR-chase tip.** The existing tests pin that tip as independent of the set's current weight, so the
+  tip is unchanged. Only people known to be minors lose it; `.unknown` keeps it. (The engine's caps apply to the new "Next time".)
+* **`TemplateWriter v2` (compositional) and the decision log.** Both only matter once a model writes text.
+* **Per-exercise increment table from a coach.** `CoachConfig.incrementsKg` is by equipment and equals the keypad steps.
+* **RIR coverage measurement on real data.** In the demo data only bench has RIR, so five of the six upper-body lifts show the
+  "Log RIR" hint. Real coverage is unknown.
+**Phase 0.5: measurement (about two days).** *The on-device model spike is dropped.* Instead: RIR coverage on a few real exports, any available usage data for the current tip and the new "Next time" lines, a coach review of the thresholds (the sign-off), an accessibility pass (VoiceOver and Dynamic Type for the new views), and one evening of competitor teardown (Strong, Hevy, Fitbod, Alpha Progression). Output: a named user problem, or no model.
 
-**Phase 2 (conditional): larger models and Q&A.** Read-only tools (`exercise_status`, `session_plan`, `readiness` returning `unavailable`, never demo numbers). Required tool calling and dynamic profiles are **iOS 27 only**. Every larger-model path (Private Cloud Compute, Anthropic's package) is iOS 27 and Xcode 27 only. Anthropic's Swift package has three auth modes**†**: App Attest (recommended; no key in the app and no backend), a proxy you run, and a bundled key (extractable; never ship it). Requests go straight from the app to Anthropic, so workout data would leave the EU pipeline: see section 8. Replace "skip the model on flagged input" with a fixed safe-messaging reply.
+**Phase 1 (conditional, cloud only): a model as writer.** *The on-device version is ruled out.* If Phase 0.5 names a user problem templates cannot solve: a seam and composer in Core, G1 to G8, a scripted model for S1, the decision log, and a cloud model reached through the existing EU pipeline only while the existing AI-coaching consent is on (section 8). **Exit:** escaped violations 0, a fallback rate under its ceiling, blind preference over `TemplateWriter v2`, a "report this note" control with a named review owner, and the legal check in section 8. Otherwise stop and keep templates.
+
+**Phase 2 (conditional): free-form Q&A.** Read-only tools (`exercise_status`, `session_plan`, `readiness` returning `unavailable`, never demo numbers). Required tool calling and dynamic profiles are **iOS 27 only**. Every larger-model path (Private Cloud Compute, Anthropic's package) is iOS 27 and Xcode 27 only. Anthropic's Swift package has three auth modes**†**: App Attest (recommended; no key in the app and no backend), a proxy you run, and a bundled key (extractable; never ship it). Requests go straight from the app to Anthropic, so workout data would leave the EU pipeline: see section 8. Replace "skip the model on flagged input" with a fixed safe-messaging reply.
 
 **Decisions.** *Blocking Phase 0:*
 1. Which workout AI (section 2)? Default: A, and look at B separately.
@@ -272,7 +303,7 @@ Counsel should review this section; I am not a lawyer and several points are sec
 4. Will the Pulse app supply `AudienceProfile` and a real or "unknown" recovery value? Default: yes.
 
 *Blocking only Phase 1 and later:*
-5. Minimum OS, Apple Intelligence audience, Xcode 27 for evaluation, and how many prompt variants (26.0 to 26.3, 26.4 and later, 27)**†**.
+5. ~~Minimum OS, Apple Intelligence audience, Xcode 27 for evaluation, prompt variants~~ Not applicable after the no-on-device decision.
 6. Judge model, human calibrators, spike length and who calls it dead.
 7. Silent or visible fallback on user-initiated surfaces; dismiss and feedback UX.
 8. Appetite for cloud models (Phase 2) and the legal work in section 8.
@@ -287,7 +318,9 @@ I have not seen its code. What carries over, and what I would need:
 * **Consent and EU-only handling** are already designed in; any harness change must keep them.
 * **To go further I would need:** read access to the Pulse app repository and the prompt and edge-function code, the eval data policy (synthetic only), and your answer to decision 1. I have not opened any repository other than this one.
 
-## 11. API availability (from Apple's DocC metadata**†**; re-check in Xcode)
+## 11. API availability (background only: no on-device model will be used)
+
+From Apple's DocC metadata**†**. Relevant again only if a cloud model is reached through Apple's Foundation Models API (Private Cloud Compute or a provider package), which is iOS 27 only.
 
 | OS | What exists |
 |---|---|

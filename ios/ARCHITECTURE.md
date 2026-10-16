@@ -22,7 +22,7 @@ ios/
   Packages/PulseStrengthKit/
     Package.swift
     Sources/
-      PulseStrengthCore/     platform neutral (Foundation only): models, reducer, presenter, stores, sync
+      PulseStrengthCore/     platform neutral (Foundation only): models, reducer, presenter, stores, sync, coach (Coach/)
       PulseStrengthActivity/ iOS: ActivityAttributes + command bus (shared by app and widget)
       PulseStrengthIOS/      iOS: SwiftUI screens, services (Live Activity manager, notifications, HealthKit, Watch bridge)
         Resources/ExerciseMedia/*.jpg   form demo frames "<mediaKey>-a.jpg" / "-b.jpg" (public domain)
@@ -205,6 +205,8 @@ Presenter rules (port of `renderVals` in `Active.dc.html`):
   normal set (else the last pending non-warm-up set), find the lowest weight (a multiple of `weightStepKg`, rounded up) whose Epley e1RM with
   that set's reps exceeds the baseline by more than 0.05. The set's current weight is irrelevant (it may already equal the target).
   Text: "85 kg × 6 on your last set would beat your best estimated 1RM of 99 kg." (bench: pending 85 × 6 with previous best 99 gives exactly this).
+  The arithmetic is `TargetWeight.lowestBeating(baseline:reps:step:)` (`Coach/TargetWeight.swift`, public); the presenter and the hub note both call it.
+  The tip is deliberately independent of the set's current weight, and `AudienceProfile.showsPersonalRecordTips` hides it for people known to be minors (view layer).
 * `undoText` = undo title while `now <= expiresAt`, else nil. `finishCheck`: `loggedSets`, `unloggedSets`, `canFinish = logged > 0`,
   title "Nothing logged yet" / "Finish workout?", message ("Log at least one set to save this workout." /
   "<n> set(s) is/are not logged yet and will be left out." / "All sets are logged. Nice work."), `templateDiff`, `diffMessage`
@@ -425,6 +427,41 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
 `seedDemoData` also seeds templates and history only when the store is empty. The "Upper A · Push" template is the design's workout: bench
 (warm-up 50×8, warm-up 70×5, 82.5×6, 82.5×6, 85×6, rest 150), incline 3×28×10 (rest 90), ohp 3×45×8 (rest 120), lateral 3×8×15 and pushdown
 3×30×12 (both rest 60, superset A), crossover 3×15×12 (rest 60).
+
+### 3.5 `Coach/` (area: progression coach, no model)
+
+Phase 0 of `COACH-HARNESS-PROPOSAL.md`. Everything here is pure, Foundation only, and tested on Linux. No language model is used; the
+proposal records the decision not to use on-device models.
+
+* **`ProgressionEngine.recommend(for:history:audience:config:now:) -> Recommendation`**: reads only the **performed** sets of
+  `ExerciseHistory.sessions` (the planned target is not stored, and "update template" overwrites it). Working sets are `.normal` and
+  `.failure` (a failure set without a reps-in-reserve value counts as RIR 0); warm-ups, drop sets and values outside 0 < kg <= 2000,
+  0 < reps <= 1000 are ignored. A set whose estimated 1RM is more than `suspectRatio` (1.25) times the median of the lifter's recent
+  per-session bests is dropped as a typo (needs three recent sessions). A session is summarised at its heaviest working weight: mean
+  reps, mean RIR and the share of those sets that have one (`coverage`).
+  Rules, in this order: audience avoids the muscle, or the exercise is not weight x reps, or fewer than two valid sessions →
+  `insufficientData` (nothing is shown); more than `breakDays` since the last session → `hold` (`returningAfterBreak`); `lighterWeekAfterIncreases`
+  consecutive increases → `reduce` (`lighterWeekDue`); reps fell by more than `repsFallTolerance` at the same weight in two consecutive
+  sessions → `reduce` when the last session ended at mean RIR <= `holdMaximumRIR`, else `hold`; coverage below `effortCoverage` →
+  `noEffortData`; mean RIR <= `holdMaximumRIR` → `hold` (`lastSessionNearFailure`); mean RIR below `progressMinimumRIR` → `hold`
+  (`moderateEffort`); otherwise `progress` only when the previous session was at the same weight with effort data, mean RIR >=
+  `progressMinimumRIR` and no rep drop, else `hold` (`awaitingSecondCleanSession`). A `progress` adds `CoachConfig.increment(for:)`;
+  when that step is more than `jumpCap(for:)` of the weight (7.5 %, 5 % for minors and unknown audiences) it becomes `addRep`. A `reduce`
+  takes `reduceFraction` of the weight rounded down to the increment (at least one increment) and becomes a `hold`
+  (`reduceExceedsCap`) when that is more than `maximumReduceFraction` of the weight. The weight is never raised without effort data.
+  **The thresholds in `CoachConfig` are starting values that no qualified coach has signed off.**
+* **`TemplateWriter.line(for:) -> CoachLine?`**: fixed English sentences (`headline`, `detail`) derived only from the `Recommendation`;
+  nil for `insufficientData`. A model never writes coach text.
+* **`CoachPlanner.nextTime(...)`**: the hub card's lines, in template order, at most `limit` (3), one per exercise id; a single
+  "Log RIR" hint only when nothing else is available. **`CoachPlanner.suggestion(for:history:audience:config:now:)`**: for one exercise of
+  the running workout, only before its first set is logged and only when applying would change something; `actions` are the existing
+  `.setWeight` / `.setReps` actions for the pending `.normal` sets (warm-ups, drop sets and failure sets are left alone).
+* **`HubNoteBuilder.message(template:exercise:recovery:)`**: the hub card's coach note, moved out of `StrengthHubView` (it had no test). The
+  readiness sentence is built only when `recovery` is non-nil; the hub passes nil while `WorkoutController.isUsingDemoRecovery` (the default
+  `DemoRecovery` numbers). `HubNoteTests` checks it against a verbatim copy of the old code.
+* **`AudienceProfile`** (age group, muscles to avoid) is supplied by the host through `StrengthAppEnvironment.audience`
+  (SwiftUI: `\.coachAudience`); the standalone build uses `.unknown`.
+* iOS surfaces: the "Next time" block of `HubRecommendedCard`, and `CoachSuggestionView` (with an "Apply" button) at the bottom of `ExerciseCardView`.
 
 ## 4. Verification policy
 
