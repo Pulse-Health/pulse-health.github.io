@@ -10,8 +10,8 @@ import kotlinx.coroutines.withContext
 /**
  * CT-10 Action button analogue. A transparent activity without a window that runs the primary action (log set while logging, skip
  * rest while resting, start the next workout with none running) and finishes. Hardware buttons start it: Pixel Quick Tap and the
- * Samsung side key through the launcher shortcut "Primary action" (res/xml/shortcuts.xml), routines through the component. It is
- * exported for exactly that reason; the action is harmless to run by anyone (it never finishes a workout).
+ * Samsung side key through the launcher shortcut "Primary action" (res/xml/shortcuts.xml). It is not exported: the system starts the
+ * activity of a shortcut as the app itself, and no other app has a reason to log a set.
  */
 class PrimaryActionActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
