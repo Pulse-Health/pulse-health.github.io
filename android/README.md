@@ -19,7 +19,7 @@ accounts, keys and decisions (application id, upload key, Play Console, privacy 
 android/
   README.md  RELEASING.md       this file; the release guide
   settings.gradle.kts, build.gradle.kts, gradle/libs.versions.toml, gradlew   Gradle 9.8 / AGP 9.4 / Kotlin 2.4 (version catalog)
-  core/                         pure Kotlin (JVM) port of PulseStrengthCore: no Android dependency, 700+ unit tests
+  core/                         pure Kotlin (JVM) port of PulseStrengthCore: no Android dependency, about 570 unit tests
     src/main/kotlin/health/pulse/strength/core/
       Models, WorkoutState, WorkoutAction, Presentation, Snapshot, Completed   the value types (kotlinx.serialization)
       WorkoutReducer, WorkoutFactory, WorkoutTargets                           every change to a workout (pure function)
@@ -36,7 +36,7 @@ android/
       services/                                                                 ongoing notification, notification buttons, rest alerts, settings
       health/                                                                   opt-in Health Connect writer and its rationale screen
     src/main/assets/ExerciseMedia/                                              50 form-demo frames (public domain, see below)
-    src/test/                                                                   Robolectric tests: screens render and behave; screenshots go to app/build/screens
+    src/test/                                                                   about 630 Robolectric tests: screens render and behave; screenshots go to app/build/screens
   store/                        Google Play listing text (en-US, de-DE), graphics, release notes
 ../.github/workflows/strength-android.yml                                       CI: tests, lint, release bundle, optional Play upload
 ../strength-privacy.html, ../strength-datenschutz.html                          the app's privacy policy (served by the website)
@@ -54,6 +54,21 @@ cd android
 ./gradlew :app:assembleDebug                 # debug APK (installs next to a Play build: its id ends in .debug)
 ./gradlew :app:bundleRelease                 # release bundle with R8; unsigned without a keystore (see RELEASING.md)
 ```
+
+## Verification status
+
+What was run (in a Linux sandbox, no emulator, no device):
+
+| Check | Result |
+| --- | --- |
+| `:core:test` | 566 tests, all pass (the Swift suite was ported; it found two real divergences from the Swift rules, both fixed) |
+| `:app:testDebugUnitTest` | 631 tests, all pass: every screen and sheet, the notification and rest-alert services, and `FirstRunFlowTest` (an empty install through the real picker, a logged set, finish, summary and hub) |
+| `:app:lintDebug`, `:app:lintRelease` | no issues (lint errors fail the build) |
+| `:app:bundleRelease` + `:app:assembleRelease` | R8 + resource shrinking; a signed 3.2 MB APK and 6.3 MB bundle; `apksigner` and `jarsigner` verify the signature; the merged manifest asks for `POST_NOTIFICATIONS`, `POST_PROMOTED_NOTIFICATIONS` and Health Connect `WRITE_EXERCISE` only (no `INTERNET`) |
+| CI (`strength-android`, `verify` job) | green on the pull request |
+
+**Not verified:** anything that needs a real device: the notification buttons on the lock screen, rest alerts with the screen off,
+Health Connect, backup and restore, the Play upload. The checklist for those is `RELEASING.md`, section 5.
 
 The UI tests render the real Compose screens on the JVM with Robolectric's native graphics and write PNGs to
 `app/build/screens/` (CI uploads them as the `android-screens` artifact), so a screen can be looked at without an emulator.
