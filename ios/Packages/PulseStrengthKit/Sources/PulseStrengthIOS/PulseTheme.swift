@@ -44,8 +44,9 @@ public enum PulseTheme {
     // Text
     public static let ink = Color(light: 0x000000, dark: 0xFFFFFF)
     public static let inkSecondary = Color(light: 0x6B6B70, dark: 0x98989D)
-    /// Quiet text and glyphs. Kept at 4.5:1 or better on every surface it sits on (card, row, cell; light and dark), so it is
-    /// close to `inkSecondary`; the earlier values (3.3:1 light, 2.8:1 dark on a card) failed WCAG AA for the small text that uses it.
+    /// Quiet text and glyphs. 4.5:1 or better on the card, row and grouped background in light mode and on the card and cell in dark
+    /// mode (4.4:1 on the light chip fill, 3.95:1 on the dark `cellOnTint`), so it is now close to `inkSecondary`; the earlier values
+    /// (3.3:1 light, 2.8:1 dark on a card) failed WCAG AA for the small text that uses it.
     public static let inkTertiary = Color(light: 0x6E6E73, dark: 0x98989D)
 
     // Accents

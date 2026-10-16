@@ -5,7 +5,8 @@ public enum ExerciseLibrary {
     /// The 36 built-in exercises, in design order (ids, names, cues and defaults exactly as in the design).
     ///
     /// The entries carry no previous results (`previousSets` empty, `previousBestE1RM` 0): those come from the user's own
-    /// history through `StrengthData.overlay`, so a new user starts without a PREVIOUS column and without a record to beat.
+    /// history through `StrengthData.overlay`, so a new user starts with nothing to compare against (the PREVIOUS column shows a dash)
+    /// and without a record to beat.
     public static let builtIn: [Exercise] = [
         row("bench", "Barbell bench press", .chest, "Shoulders · Triceps", .barbell, .weightReps,
             media: "bench", sets: 3, kg: 60, reps: 8, rest: 150,

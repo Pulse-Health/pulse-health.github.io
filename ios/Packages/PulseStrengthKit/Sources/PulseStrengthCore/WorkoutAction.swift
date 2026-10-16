@@ -49,7 +49,7 @@ public enum WorkoutAction: Codable, Hashable, Sendable {
     // MARK: Lifecycle
     case pause
     case resume
-    /// Restores the last removed exercise / deleted set if its undo window is still open.
+    /// Restores the last removed or replaced exercise / deleted set if its undo window is still open.
     case undo
     case updateHeartRate(Int?)
     case setUsedWatch(Bool)

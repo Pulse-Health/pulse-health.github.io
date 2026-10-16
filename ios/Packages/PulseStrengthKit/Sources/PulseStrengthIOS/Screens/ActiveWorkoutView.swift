@@ -187,6 +187,12 @@ public struct ActiveWorkoutView: View {
         .onChange(of: presentation.dock?.phase) { oldPhase, newPhase in
             restPhaseChanged(from: oldPhase, to: newPhase)
         }
+        // A dismissed banner stays dismissed only for as long as the problem lasts: once the Watch is connected again the next
+        // disconnect shows it again. (Observed here, on a view that is always part of the screen, not on the banner, which is
+        // absent exactly while the status is connected or dismissed.)
+        .onChange(of: watchStatus) { _, status in
+            if status == .connected { dismissedWatchStatus = nil }
+        }
         .animation(layoutAnimation, value: presentation.dock != nil)
     }
 
@@ -205,21 +211,14 @@ public struct ActiveWorkoutView: View {
 
     @ViewBuilder
     private var watchBanner: some View {
-        Group {
-            if watchStatus != .connected && dismissedWatchStatus != watchStatus {
-                WatchBannerView(
-                    status: watchStatus,
-                    onAction: { openWatchBannerTarget() },
-                    onDismiss: { dismissedWatchStatus = watchStatus }
-                )
-                .padding(.horizontal, PulseTheme.screenInset)
-                .padding(.top, 8)
-            }
-        }
-        // A dismissed banner stays dismissed only for as long as the problem lasts: once the Watch is connected again the next
-        // disconnect shows it again.
-        .onChange(of: watchStatus) { _, status in
-            if status == .connected { dismissedWatchStatus = nil }
+        if watchStatus != .connected && dismissedWatchStatus != watchStatus {
+            WatchBannerView(
+                status: watchStatus,
+                onAction: { openWatchBannerTarget() },
+                onDismiss: { dismissedWatchStatus = watchStatus }
+            )
+            .padding(.horizontal, PulseTheme.screenInset)
+            .padding(.top, 8)
         }
     }
 

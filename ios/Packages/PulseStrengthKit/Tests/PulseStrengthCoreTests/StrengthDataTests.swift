@@ -86,8 +86,14 @@ final class StrengthDataTests: XCTestCase {
         XCTAssertEqual(data.exercise(id: "bench")?.previousSets, [PreviousSet(weightKg: 75, reps: 6)])
         data.history = [newer, older]
         XCTAssertEqual(data.exercise(id: "bench")?.previousSets, [PreviousSet(weightKg: 75, reps: 6)])
-        // The best comes from every session: 75 x 6 = 90 beats 70 x 8 = 88.67, and replaces the library's 99.
+        // The best comes from every session: 75 x 6 = 90 beats 70 x 8 = 88.67.
         XCTAssertEqual(try XCTUnwrap(data.exercise(id: "bench")).previousBestE1RM, 90, accuracy: 1e-9)
+        // What the user did replaces whatever the exercise carried, even a higher value (here the design's baseline of 99).
+        let carried = try XCTUnwrap(DesignBaseline.exercise(id: "bench"))
+        XCTAssertEqual(carried.previousBestE1RM, 99)
+        let overlaid = data.overlay(carried)
+        XCTAssertEqual(overlaid.previousBestE1RM, 90, accuracy: 1e-9)
+        XCTAssertEqual(overlaid.previousSets, [PreviousSet(weightKg: 75, reps: 6)])
     }
 
     func testTheHistoryBestWinsOverALowerPersonalBestAndViceVersa() throws {
@@ -102,7 +108,11 @@ final class StrengthDataTests: XCTestCase {
     func testEntriesWithoutSetsDoNotReplaceThePreviousSets() throws {
         var data = StrengthData()
         data.history = [F.workout(1, finishedAt: F.daysAgo(1), [F.entry("bench", [], n: 1)])]
-        XCTAssertEqual(data.exercise(id: "bench")?.previousSets, ExerciseLibrary.exercise(id: "bench")?.previousSets)
+        // An exercise that carries previous sets (the design's baseline here) keeps them when the only session has no sets.
+        let carried = try XCTUnwrap(DesignBaseline.exercise(id: "bench"))
+        XCTAssertFalse(carried.previousSets.isEmpty)
+        XCTAssertEqual(data.overlay(carried).previousSets, carried.previousSets)
+        XCTAssertEqual(data.exercise(id: "bench")?.previousSets, [], "the library itself carries none")
     }
 
     func testTheSameExerciseTwiceInOneWorkoutIsMerged() throws {

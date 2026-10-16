@@ -1101,6 +1101,33 @@ final class WorkoutReducerListEditTests: XCTestCase {
         XCTAssertNil(s.undo)
     }
 
+    func testTheReplaceUndoFollowsTheCurrentSupersetGroup() {
+        var s = RFix.designState()
+        s = RFix.reduced(s, RFix.toggle(s, 3, 0), at: 1)
+        XCTAssertEqual(s.exercises[3].supersetGroup, "A")
+        XCTAssertEqual(s.exercises[4].supersetGroup, "A")
+        s = RFix.reduced(s, .replaceExercise(exerciseID: RFix.ex(s, 3), with: RFix.pushup), at: 2)
+        // the partner leaves the group, so the replacement is released from it as well
+        s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, 4)), at: 3)
+        XCTAssertNil(s.exercises[3].supersetGroup)
+        s = RFix.reduced(s, .undo, at: 4)
+        XCTAssertEqual(s.exercises[3].exercise.id, "lateral", "the original is back")
+        XCTAssertNil(s.exercises[3].supersetGroup, "it does not rejoin a group its partner left")
+        let groups = Dictionary(grouping: s.exercises.compactMap { $0.supersetGroup }, by: { $0 })
+        XCTAssertTrue(groups.values.allSatisfy { $0.count > 1 }, "a group never has a single member")
+    }
+
+    func testTheReplaceUndoDoesNotThrowAwayWorkDoneOnTheReplacement() {
+        var s = RFix.designState()
+        s = RFix.reduced(s, RFix.toggle(s, 3, 0), at: 1)
+        s = RFix.reduced(s, .replaceExercise(exerciseID: RFix.ex(s, 3), with: RFix.pushup), at: 2)
+        s = RFix.reduced(s, RFix.toggle(s, 3, 0), at: 3)             // a set of the replacement is logged
+        let before = s.exercises
+        s = RFix.reduced(s, .undo, at: 4)
+        XCTAssertEqual(s.exercises, before, "the logged set of the replacement is kept")
+        XCTAssertNil(s.undo, "the undo is spent")
+    }
+
     func testTheReplaceUndoExpires() {
         var s = RFix.designState()
         s = RFix.reduced(s, RFix.toggle(s, 3, 0), at: 1)

@@ -2,7 +2,7 @@ import Foundation
 
 /// The only code that applies a `WorkoutAction` to a `WorkoutState` (port of the design's Active.dc.html logic).
 public enum WorkoutReducer {
-    /// How long a removed exercise or deleted set can be restored with `.undo` (6 seconds).
+    /// How long a removed or replaced exercise or a deleted set can be restored with `.undo` (6 seconds).
     public static var undoWindow: TimeInterval { 6 }
 
     /// Heaviest weight a set can hold (1,000,000 kg). Larger values are clamped to it; the keypad's six characters stay below it.
@@ -329,7 +329,8 @@ private extension WorkoutReducer {
             s.undo = nil
         }
         // Replacing throws away what was logged on the old exercise (and its note): keep it restorable for a few seconds. An exercise
-        // with nothing logged and no note loses nothing, so it leaves a pending undo of something else alone.
+        // with no logged set and no note has only planned values to lose, which are cheap to enter again, so it leaves a pending undo
+        // of something else alone.
         if old.sets.contains(where: { $0.isDone }) || !old.note.isEmpty {
             s.undo = UndoEntry(
                 payload: .replaced(exercise: old),
@@ -432,7 +433,14 @@ private extension WorkoutReducer {
         case let .replaced(original):
             // The replacement carries the entry id of the original; if that entry is gone the undo has nothing to swap back.
             guard let k = s.exerciseIndex(id: original.id) else { return }
-            s.exercises[k] = original
+            let current = s.exercises[k]
+            // Swapping back would throw away what was logged on the replacement in the meantime: then the undo is simply spent.
+            guard !current.sets.contains(where: { $0.isDone }), current.note.isEmpty else { return }
+            var restored = original
+            // The superset group is whatever the entry belongs to now (its partner may have been toggled since); a group never has
+            // a single member.
+            restored.supersetGroup = current.supersetGroup
+            s.exercises[k] = restored
             s.currentIndex = k
         }
     }

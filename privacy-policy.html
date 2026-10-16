@@ -46,10 +46,10 @@
         }
         th { background: #f5f5f5; }
 
-        /* Small screens: a wide table scrolls sideways inside the page (words stay whole) instead of stretching the page. */
+        /* A table wider than its box scrolls sideways inside the page (words stay whole) instead of sticking out of it or stretching the page. */
+        table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
         h1, h2, h3 { overflow-wrap: anywhere; }
         @media (max-width: 1100px) {
-            table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
             th, td { padding: 8px; }
         }
         @media (max-width: 720px) {
@@ -667,7 +667,7 @@
         </p>
 
         <hr style="margin: 40px 0;">
-        <p style="text-align: center; color: #999; font-size: 12px;">
+        <p style="text-align: center; color: #6b6b6b; font-size: 12px;">
             Last Updated: October 16, 2026<br>
             Version 1.2
         </p>

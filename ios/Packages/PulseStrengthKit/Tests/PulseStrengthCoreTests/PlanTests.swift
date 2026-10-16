@@ -320,16 +320,7 @@ final class PlanTests: XCTestCase {
 
         let model = StrengthDataModel(persistence: nil)
         XCTAssertEqual(try model.importPlan(from: fileData).get(), PlanImportSummary(plans: 1, templates: 5, customExercises: 18))
-        // The tool still writes the library's old design history into the built-in exercises; the importer replaces every built-in
-        // exercise by the library's own entry, which carries no history. Nothing else may change.
-        var written = bundle.templates
-        for t in written.indices {
-            for e in written[t].entries.indices where ExerciseLibrary.exercise(id: written[t].entries[e].exercise.id) != nil {
-                written[t].entries[e].exercise.previousBestE1RM = 0
-                written[t].entries[e].exercise.previousSets = []
-            }
-        }
-        XCTAssertEqual(model.data.templates, written, "sanitising changed nothing the tool wrote")
+        XCTAssertEqual(model.data.templates, bundle.templates, "sanitising changed nothing the tool wrote")
         XCTAssertEqual(model.data.plans.map { $0.templateIDs }, bundle.plans.map { $0.templateIDs })
 
         let plan = try XCTUnwrap(model.data.activePlan)

@@ -235,7 +235,7 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | Names, version | "Pulse Strength", 1.0.0 (1) | `CFBundleDisplayName` in the three `Info.plist` files, `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `project.yml` |
 | Permission texts | Health usage descriptions | `NSHealthShareUsageDescription` / `NSHealthUpdateUsageDescription` in the iOS and Watch `Info.plist` files |
 | App icon | generated green dumbbell | `Apps/PulseStrength/Assets.xcassets/AppIcon.appiconset/AppIcon.png` and the same in `Apps/PulseStrengthWatch` (1024 x 1024, opaque) |
-| Accent colour | green `#1B8448` | `AccentColor.colorset` in both asset catalogs |
+| Accent colour | green: `PulseTheme.green` (`#187A42` light, `#30D158` dark) tints the app's own controls; the system fallback tint `#1B8448` is `AccentColor.colorset` in both asset catalogs | `PulseTheme.swift`, `AccentColor.colorset` |
 | Demo data | demo templates, five invented workouts and personal bests, used by previews and the UI tests only | `StrengthAppEnvironment.preview(withActiveWorkout:)` seeds it; `StrengthAppEnvironment.live(seedDemoData:)` defaults to `false`, so the running app starts empty |
 | Muscle recovery | fixed demo percentages | `DemoRecovery.provider`, see below |
 
