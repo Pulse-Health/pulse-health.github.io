@@ -1,9 +1,14 @@
 // LiveSnapshotFixtures.swift
 //
-// Test data for the Live Activity snapshot tests (LiveActivitySnapshotTests.swift): twelve scenarios, each a real
+// Test data for the Live Activity snapshot tests (LiveActivitySnapshotTests.swift): twenty-one scenarios, each a real
 // `WorkoutSnapshot` produced by the app's own code path (WorkoutFactory -> WorkoutReducer -> SnapshotBuilder) from the
 // demo template "Upper A · Push" / "Upper B · Pull" (and an empty workout), at a FIXED reference date, so the images
 // are reproducible.
+//
+// The first twelve are the phases of the original Live Activity. The other nine are the live moments of widgets/SPEC.md
+// (LA-01...LA-05, LA-08, LA-10): the state is real, and the moment (record, superset brief, plates, coach tip, finish brief,
+// set progress) is laid over the builder's snapshot by the fixture, with the values of LiveActivityNext.dc.html, so the images
+// do not depend on how far `SnapshotBuilder` has come.
 //
 // Timeline convention: `reference` is "now" (the instant the views are drawn at); every action is applied N seconds
 // before it. The workout start is `reference - elapsed`.
@@ -72,6 +77,15 @@ enum LiveFixtures {
             longNamesLogging(reference),
             longNamesResting(reference),
             longSessionLogging(reference),
+            recordResting(reference),
+            recordLogging(reference),
+            supersetLogging(reference),
+            supersetResting(reference),
+            platesLogging(reference),
+            coachTipResting(reference),
+            finishCard(reference),
+            dotsHeartRate(reference),
+            dotsManySets(reference),
         ]
     }
 
@@ -235,6 +249,215 @@ enum LiveFixtures {
         )
     }
 
+    // MARK: - Live moments
+
+    /// LA-01: a record was logged two seconds ago; the gold banner is up and the 2:30 rest has just started. Compact priority: the
+    /// record wins over the rest countdown.
+    private static func recordResting(_ reference: Date) -> LiveScenario {
+        let state = benchResting(reference: reference, secondsSinceLastLog: 2, heartRate: 134)
+        return scenario(
+            slug: "record-resting",
+            title: "Record \u{00B7} banner over the rest (2:28 left) \u{00B7} 134 bpm",
+            state: state, reference: reference, expected: .resting
+        ) { snapshot in
+            snapshot.moment = record(for: snapshot, reference: reference)
+        }
+    }
+
+    /// LA-01 with the rest timer off for the lift: the banner over the next set.
+    private static func recordLogging(_ reference: Date) -> LiveScenario {
+        var state = benchLogging(reference: reference, elapsed: 2280, heartRate: 134)
+        if let exerciseID = state.exercises.first?.id {
+            apply(.setRest(exerciseID: exerciseID, seconds: 0), to: &state, secondsAgo: 5, reference: reference)
+        }
+        apply(.logNextSet, to: &state, secondsAgo: 2, reference: reference)
+        return scenario(
+            slug: "record-logging",
+            title: "Record \u{00B7} banner over the next set (no rest timer)",
+            state: state, reference: reference, expected: .logging
+        ) { snapshot in
+            snapshot.moment = record(for: snapshot, reference: reference)
+        }
+    }
+
+    /// LA-02: round 2 of 3 of the lateral raise (A1, logged) and triceps pushdown (A2, next) superset.
+    private static func supersetLogging(_ reference: Date) -> LiveScenario {
+        let state = supersetState(reference: reference, lastStep: 14, secondsSinceLastLog: 40)
+        return scenario(
+            slug: "superset-logging",
+            title: "Superset A \u{00B7} round 2/3 \u{00B7} A1 done, A2 next \u{00B7} Log A2",
+            state: state, reference: reference, expected: .logging
+        ) { snapshot in
+            snapshot.superset = supersetBrief(of: state)
+        }
+    }
+
+    /// The last member of round 2 is logged: the 60 s rest runs and the next target is A1 of round 3. Compact priority: the rest
+    /// countdown wins over the superset.
+    private static func supersetResting(_ reference: Date) -> LiveScenario {
+        let state = supersetState(reference: reference, lastStep: 15, secondsSinceLastLog: 20)
+        return scenario(
+            slug: "superset-resting",
+            title: "Superset A \u{00B7} resting between round 2 and 3 (0:40 left)",
+            state: state, reference: reference, expected: .resting
+        ) { snapshot in
+            snapshot.superset = supersetBrief(of: state)
+        }
+    }
+
+    /// LA-03: set 3 of the bench press, 82.5 kg on a 20 kg bar: 25 + 5 + 1.25 per side.
+    private static func platesLogging(_ reference: Date) -> LiveScenario {
+        let state = benchLogging(reference: reference, elapsed: 1458, heartRate: 128)
+        return scenario(
+            slug: "plates-logging",
+            title: "Plates \u{00B7} 82.5 kg on a 20 kg bar \u{00B7} 25 + 5 + 1.25 per side",
+            state: state, reference: reference, expected: .logging
+        ) { snapshot in
+            snapshot.plates = plateBrief(totalKg: 82.5, barKg: 20)
+        }
+    }
+
+    /// LA-04: set 3 felt easy (3 reps in reserve); the tip suggests 85 kg for set 4.
+    private static func coachTipResting(_ reference: Date) -> LiveScenario {
+        let state = benchResting(reference: reference, secondsSinceLastLog: 50, heartRate: 119)
+        return scenario(
+            slug: "coach-tip-resting",
+            title: "Coach tip \u{00B7} 85 kg or keep 82.5 \u{00B7} resting (1:40 left)",
+            state: state, reference: reference, expected: .resting
+        ) { snapshot in
+            guard let exerciseID = snapshot.targetExerciseID, let setID = snapshot.targetSetID else { return }
+            snapshot.coachTip = CoachTipBrief(
+                title: "Felt easy?",
+                subtitle: "3 reps in reserve on set 3",
+                text: "Add 2.5 kg for set 4 to stay at 1\u{2013}2 RIR.",
+                suggestedWeightKg: 85,
+                suggestedWeightText: "85 kg",
+                keepWeightText: "Keep 82.5",
+                targetSetID: setID,
+                targetExerciseID: exerciseID
+            )
+        }
+    }
+
+    /// LA-05: all 20 sets of "Upper A · Push" logged and the workout finished; the Watch recorded it, one record.
+    private static func finishCard(_ reference: Date) -> LiveScenario {
+        let elapsed: TimeInterval = 3120
+        var state = WorkoutFactory.makeWorkout(
+            from: SampleData.templates()[0], now: reference.addingTimeInterval(-elapsed), id: id(1)
+        )
+        var step = 0
+        while WorkoutTargets.nextPending(in: state) != nil && step < 100 {
+            step += 1
+            apply(.logNextSet, to: &state, secondsAgo: elapsed - Double(step) * 150, reference: reference)
+        }
+        let completed = SummaryBuilder.build(from: state, finishedAt: reference)
+        return scenario(
+            slug: "finish",
+            title: "Finish card \u{00B7} four tiles \u{00B7} saved to Health \u{00B7} one record",
+            state: state, reference: reference, expected: .complete
+        ) { snapshot in
+            var brief = SnapshotBuilder.finishBrief(from: completed, savedToHealth: true)
+            brief.personalRecordCount = max(brief.personalRecordCount, 1)
+            snapshot.finish = brief
+        }
+    }
+
+    /// LA-08 and LA-10: set 3 of 5 with two sets done, and the Watch reports 142 bpm (compact trailing shows the heart rate).
+    private static func dotsHeartRate(_ reference: Date) -> LiveScenario {
+        let state = benchLogging(reference: reference, elapsed: 1458, heartRate: 142)
+        return scenario(
+            slug: "dots-heart-rate",
+            title: "Set dots 2 of 5 done \u{00B7} 142 bpm in the compact island",
+            state: state, reference: reference, expected: .logging
+        ) { snapshot in
+            snapshot.exerciseDoneSets = 2
+            snapshot.exerciseSetCount = 5
+        }
+    }
+
+    /// LA-08 with more sets than the compact slot has room for dots, and no heart rate (compact trailing shows the elapsed clock).
+    private static func dotsManySets(_ reference: Date) -> LiveScenario {
+        let state = benchLogging(reference: reference, elapsed: 1458, heartRate: nil)
+        return scenario(
+            slug: "dots-many-sets",
+            title: "Set dots 4 of 10 done (text fallback) \u{00B7} no heart rate",
+            state: state, reference: reference, expected: .logging
+        ) { snapshot in
+            snapshot.exerciseDoneSets = 4
+            snapshot.exerciseSetCount = 10
+        }
+    }
+
+    // MARK: - Moment builders
+
+    /// The record of LiveActivityNext.dc.html (85 x 5, estimated 1RM 99, up 4) for the exercise the snapshot shows, banner up for 4 s.
+    private static func record(for snapshot: WorkoutSnapshot, reference: Date) -> PRMoment {
+        PRMoment(
+            exerciseName: snapshot.exerciseName,
+            weightText: "85",
+            repsText: "5",
+            estimated1RM: 99,
+            deltaKg: 4,
+            expiresAt: reference.addingTimeInterval(2)
+        )
+    }
+
+    /// The plates for `totalKg` as `SnapshotBuilder` is meant to describe them (widgets/SPEC.md section 2, "Live moments").
+    private static func plateBrief(totalKg: Double, barKg: Double) -> PlateBrief? {
+        guard let plan = PlateCalculator.plan(totalKg: totalKg, barKg: barKg) else { return nil }
+        return PlateBrief(
+            totalKg: totalKg,
+            barKg: barKg,
+            perSide: plan.perSide,
+            leftoverKg: plan.leftoverKg,
+            summary: plan.perSide.map { NumberText.kg($0) }.joined(separator: " + ")
+        )
+    }
+
+    /// "Upper A · Push" up to the superset, one set per minute, the last one `secondsSinceLastLog` seconds before `reference`.
+    /// Sets 1...11 are the bench press, incline press and overhead press; 12, 14 are the lateral raise (A1), 13, 15 the triceps
+    /// pushdown (A2). Logging A1 starts no rest and moves on to A2; logging A2 starts the 60 s rest and returns to A1.
+    /// `lastStep` 14 ends with A2 of round 2 next (logging), 15 with A1 of round 3 next (resting).
+    private static func supersetState(reference: Date, lastStep: Int, secondsSinceLastLog: TimeInterval) -> WorkoutState {
+        let elapsed: TimeInterval = 1500
+        var state = WorkoutFactory.makeWorkout(
+            from: SampleData.templates()[0], now: reference.addingTimeInterval(-elapsed), id: id(1)
+        )
+        for step in 1...lastStep {
+            let secondsAgo = secondsSinceLastLog + Double(lastStep - step) * 60
+            apply(.logNextSet, to: &state, secondsAgo: secondsAgo, reference: reference)
+            if step == 13 {
+                apply(.skipRest, to: &state, secondsAgo: secondsAgo - 5, reference: reference)
+            }
+        }
+        return state
+    }
+
+    /// The `SupersetBrief` for the exercise `state` shows next, as LiveActivityNext.dc.html draws it: the round is the number of
+    /// sets the shown member has done plus one ("round 2/3" while A2 is next after A1 of round 2), and a member is done when its set
+    /// of that round is logged.
+    private static func supersetBrief(of state: WorkoutState) -> SupersetBrief? {
+        let shown = WorkoutTargets.nextPending(in: state)?.exerciseIndex ?? state.clampedIndex
+        guard state.exercises.indices.contains(shown), let group = state.exercises[shown].supersetGroup else { return nil }
+        let members = state.exercises.enumerated().filter { $0.element.supersetGroup == group }
+        let rounds = state.exercises[shown].sets.count
+        let round = min(state.exercises[shown].doneCount + 1, max(rounds, 1))
+        var briefs: [SupersetMember] = []
+        for (position, member) in members.enumerated() {
+            let sets = member.element.sets
+            let pending = sets.first(where: { !$0.isDone }) ?? sets.last
+            let detail = pending.map { NumberText.kg($0.weightKg) + " \u{00D7} " + String($0.reps) } ?? ""
+            briefs.append(SupersetMember(
+                tag: group + String(position + 1),
+                name: member.element.exercise.name,
+                detail: detail,
+                isDone: member.element.doneCount >= round,
+                isCurrent: member.offset == shown
+            ))
+        }
+        return SupersetBrief(label: group, round: round, rounds: rounds, members: briefs)
+    }
+
     // MARK: - State builders
 
     /// "Upper A · Push" with both warm-ups of the bench press logged and the rest skipped: set 3 of 5 is next.
@@ -277,6 +500,7 @@ enum LiveFixtures {
     }
 
     /// Builds the scenario: the snapshot is made at `snapshotAt` (default `reference`), drawn at `drawnAt` (default `reference`).
+    /// `decorate` lays a live moment (record, superset, plates, coach tip, finish, set progress) over the builder's snapshot.
     private static func scenario(
         slug: String,
         title: String,
@@ -285,9 +509,11 @@ enum LiveFixtures {
         snapshotAt: Date? = nil,
         drawnAt: Date? = nil,
         isStale: Bool = false,
-        expected: SnapshotPhase
+        expected: SnapshotPhase,
+        decorate: (inout WorkoutSnapshot) -> Void = { _ in }
     ) -> LiveScenario {
-        let snapshot = SnapshotBuilder.make(from: state, now: snapshotAt ?? reference)
+        var snapshot = SnapshotBuilder.make(from: state, now: snapshotAt ?? reference)
+        decorate(&snapshot)
         // Exactly what the widget does: the live name from the snapshot, falling back to the name the activity started with.
         let attributes = WorkoutActivityAttributes(workoutID: snapshot.workoutID, workoutName: state.name)
         return LiveScenario(
