@@ -274,7 +274,11 @@ private fun SeeAllButton(showsAll: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
             .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-            .clickable(role = Role.Button, onClick = onClick),
+            .clickable(
+                onClickLabel = if (showsAll) "Show fewer sessions" else "Show all sessions",
+                role = Role.Button,
+                onClick = onClick,
+            ),
         contentAlignment = Alignment.CenterEnd,
     ) {
         Text(
@@ -316,7 +320,7 @@ internal fun ExerciseDetailSessionRow(
             Modifier
                 .fillMaxWidth()
                 .pulseClickable(
-                    onClickLabel = if (isExpanded) "Hides the sets of this session" else "Shows every set of this session",
+                    onClickLabel = if (isExpanded) "Hide the sets of this session" else "Show every set of this session",
                     role = Role.Button,
                     onClick = onToggle,
                 )
