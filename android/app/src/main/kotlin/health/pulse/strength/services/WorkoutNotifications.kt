@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.core.app.NotificationCompat
@@ -96,9 +97,7 @@ object WorkoutNotifications {
             }
             phase == SnapshotPhase.COMPLETE -> {
                 builder.setContentTitle(context.getString(R.string.notification_complete_title))
-                    .setContentText(
-                        context.resources.getQuantityString(R.plurals.notification_complete_text, snapshot.loggedSets, snapshot.loggedSets, snapshot.volumeText),
-                    )
+                    .setContentText(context.getString(R.string.notification_complete_text, setCountText(snapshot.loggedSets), snapshot.volumeText))
                     .setWhen(snapshot.activeStart.toEpochMilli()).setShowWhen(true).setUsesChronometer(true)
             }
             else -> {
@@ -171,7 +170,10 @@ object WorkoutNotifications {
     private fun logSetAction(context: Context, snapshot: WorkoutSnapshot): NotificationCompat.Action? {
         val exerciseID = snapshot.targetExerciseID ?: return null
         val setID = snapshot.targetSetID ?: return null
+        // The set is part of the intent's identity (its data): FLAG_UPDATE_CURRENT would otherwise rewrite the one shared PendingIntent
+        // to the next set on every refresh, and a stale tap on the old button would log the next set as well.
         val pending = receiverIntent(context, ACTION_LOG_SET, 1) {
+            data = Uri.parse("pulse-strength://log/$setID")
             putExtra(EXTRA_EXERCISE_ID, exerciseID.toString())
             putExtra(EXTRA_SET_ID, setID.toString())
         }

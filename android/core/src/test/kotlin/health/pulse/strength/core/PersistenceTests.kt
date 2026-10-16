@@ -39,7 +39,12 @@ class PersistenceTests {
     /** A fresh persistence in a temporary directory that is removed when the test ends. */
     private fun makePersistence(): FileStrengthPersistence = FileStrengthPersistence(folder.newFolder())
 
-    private fun fileNames(persistence: FileStrengthPersistence): List<String> = (persistence.directory.list() ?: emptyArray()).sorted()
+    /** The data files of the directory (the staging folder, which is empty after every write, is checked on its own). */
+    private fun fileNames(persistence: FileStrengthPersistence): List<String> =
+        (persistence.directory.list() ?: emptyArray()).filter { it != FileStrengthPersistence.STAGING_DIRECTORY }.sorted()
+
+    private fun stagedFiles(persistence: FileStrengthPersistence): List<String> =
+        (File(persistence.directory, FileStrengthPersistence.STAGING_DIRECTORY).list() ?: emptyArray()).sorted()
 
     private fun text(persistence: FileStrengthPersistence, name: String): String =
         runCatching { File(persistence.directory, name).readText(Charsets.UTF_8) }.getOrDefault("")
@@ -337,6 +342,44 @@ class PersistenceTests {
         val loaded = persistence.loadHistory()
         assertWithMessage("loaded ${loaded.size} workouts").that(histories.contains(loaded)).isTrue()
         assertThat(fileNames(persistence)).isEqualTo(listOf("history.json"))
+    }
+
+    // endregion
+
+    // region Staging folder (writes are staged outside the files that the Android backup copies)
+
+    @Test
+    fun testWritesAreStagedInASubfolderThatIsEmptyAfterwards() {
+        val persistence = makePersistence()
+        persistence.saveHistory(SampleData.history(now))
+        persistence.saveTemplates(SampleData.templates())
+        persistence.saveActiveWorkout(null)
+        assertThat(stagedFiles(persistence)).isEmpty()
+        assertWithMessage("no temporary file next to the data").that(persistence.directory.list()!!.filter { it.endsWith(".tmp") }).isEmpty()
+        assertThat(persistence.loadHistory()).isEqualTo(SampleData.history(now))
+    }
+
+    @Test
+    fun testALeftoverFromAKilledWriteIsSweptButAFreshOneIsNot() {
+        val directory = folder.newFolder()
+        val staging = File(directory, FileStrengthPersistence.STAGING_DIRECTORY).apply { mkdirs() }
+        val stale = File(staging, "history.json.dead.tmp").apply { writeText("[]") }
+        val fresh = File(staging, "history.json.alive.tmp").apply { writeText("[]") }
+        assertThat(stale.setLastModified(System.currentTimeMillis() - 10 * 60_000L)).isTrue()
+
+        FileStrengthPersistence(directory)
+
+        assertWithMessage("a write that never finished is removed").that(stale.exists()).isFalse()
+        assertWithMessage("a write that may be running right now is left alone").that(fresh.exists()).isTrue()
+    }
+
+    @Test
+    fun testTheStagingFolderNeverCountsAsData() {
+        val persistence = makePersistence()
+        persistence.saveHistory(SampleData.history(now))
+        File(File(persistence.directory, FileStrengthPersistence.STAGING_DIRECTORY), "junk.tmp").writeText("not json")
+        assertThat(persistence.loadHistory()).isEqualTo(SampleData.history(now))
+        assertThat(persistence.loadTemplates()).isEmpty()
     }
 
     // endregion

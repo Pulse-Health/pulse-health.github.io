@@ -8,9 +8,9 @@ import health.pulse.strength.core.StrengthStore
 import health.pulse.strength.core.WorkoutController
 import health.pulse.strength.services.PulseServices
 import java.io.File
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Everything the strength feature needs at runtime, created once and shared by the screens and the services: persistence
@@ -29,14 +29,23 @@ class StrengthAppEnvironment private constructor(
     /** False for [preview]: the platform services are inert and must not ask for permissions. */
     val hasSystemServices: Boolean get() = services != null
 
-    private val mutableOpenWorkoutRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val mutableOpenWorkoutRequested = MutableStateFlow(false)
 
-    /** Emits when something outside the UI (the deep link, a notification tap) asks to show the running workout. */
-    val openWorkoutRequests: SharedFlow<Unit> = mutableOpenWorkoutRequests.asSharedFlow()
+    /**
+     * True from the moment something outside the UI (the deep link, a tap on the ongoing notification) asks to show the running
+     * workout until the UI has done so ([consumeOpenWorkoutRequest]). It is state, not an event, because the request is made while
+     * the activity is still being created, before anything collects it.
+     */
+    val openWorkoutRequested: StateFlow<Boolean> = mutableOpenWorkoutRequested.asStateFlow()
 
-    /** Asks the UI to show the active workout (no effect without a workout in progress). */
+    /** Asks the UI to show the active workout (it does nothing without a workout in progress). */
     fun requestOpenWorkout() {
-        mutableOpenWorkoutRequests.tryEmit(Unit)
+        mutableOpenWorkoutRequested.value = true
+    }
+
+    /** The UI handled (or dropped) the request. */
+    fun consumeOpenWorkoutRequest() {
+        mutableOpenWorkoutRequested.value = false
     }
 
     companion object {

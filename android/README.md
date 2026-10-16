@@ -6,7 +6,7 @@ exercise library with form photos and per-exercise history, and an ongoing **wor
 Live Activity) with buttons that log a set and control the rest timer from the lock screen.
 
 It is a native Kotlin / Jetpack Compose app that follows the iOS app in [`../ios/`](../ios/README.md) screen by screen (same design,
-same copy, same workout rules) and is **ready to ship to Google Play**: see [`RELEASING.md`](RELEASING.md) for the steps that need your
+same copy, same workout rules, as the iOS app was when the Android work started; see "Parity with iOS" below) and is **ready to ship to Google Play**: see [`RELEASING.md`](RELEASING.md) for the steps that need your
 accounts, keys and decisions (application id, upload key, Play Console, privacy policy review).
 
 > **Repository note.** This directory lives in the `pulse-health.github.io` website repository. The root `_config.yml` excludes
@@ -99,6 +99,18 @@ The UI tests render the real Compose screens on the JVM with Robolectric's nativ
 * **No heart rate.** There is no Wear OS companion yet, so the heart-rate stat is hidden; the core keeps the heart-rate fields.
 * **No network permission, no foreground service, no exact-alarm permission** (see `RELEASING.md`, "Known limitations").
 * The app is English-only and kilograms-only, as the iOS app is.
+
+### Parity with iOS
+
+The Kotlin core is a port of the iOS strength core **as it was when the Android work started** (`main` at `b6c14ac`; the ported Swift test
+suite is the proof). `ios/` has moved on since, and none of these later iOS features exist on Android yet:
+
+* body weight with weigh-in reminders and the Apple Health sync, and the body-weight based records (iOS PR #7);
+* training plans with a flexible rotation, rep ranges (`repsMax`), template notes and plan import;
+* the YouTube workout import tool (`ios/tools/youtube-workouts`).
+
+Nothing detects drift between the two cores automatically; when one of these is ported, port its Swift tests with it and update this
+list. The Android app is complete and shippable without them (v1 of the iOS app did not have them either).
 
 ## Placeholders to replace
 

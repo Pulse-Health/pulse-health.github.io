@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.util.Log
 import androidx.core.app.NotificationManagerCompat
 import health.pulse.strength.PulseStrengthApplication
 import health.pulse.strength.core.SnapshotBuilder
@@ -21,19 +22,34 @@ import java.time.Instant
  * Makes sure something happens when a rest timer reaches zero while the app is not on screen: the ongoing notification flips to
  * "Go" and, when the workout's "alert when rest ends" setting is on, a "rest over" notification sounds.
  *
- * Reliability without special permissions or a foreground service:
- * 1. An exact alarm whose callback runs in the app process (`AlarmManager.OnAlarmListener`; this variant needs no exact-alarm
- *    permission). It fires on time while the process lives, which it normally does during a workout. (Before Android 17 it is not
- *    delivered in Doze; the backup covers that.)
- * 2. A backup `PendingIntent` alarm (`setAndAllowWhileIdle`, inexact) that wakes the app even when the system ended the process; it
- *    may be late but it never needs a permission.
- * Both lead to [onRestEnded]; the end time of the last alerted rest is remembered, so the alert never happens twice.
+ * The app declares no exact-alarm permission (no `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM`: Google Play restricts them to alarm,
+ * timer and calendar apps) and runs no foreground service, so what is possible depends on the Android version:
+ *
+ * | Android | Alarm used | Timing |
+ * | --- | --- | --- |
+ * | 8-11 (API 26-30) | exact `PendingIntent` alarm (no permission needed before API 31) | on time, also in Doze |
+ * | 12-13 (API 31-33) | the approaching alarm below | on time or a few seconds late |
+ * | 14+ (API 34+) | exact in-process listener alarm, plus the approaching alarm | on time while the app is not "cached" |
+ *
+ * The in-process listener alarm (`setExact(..., OnAlarmListener, Handler)`) needs no permission from Android 14 on, but the system
+ * deletes it about ten seconds after the app becomes cached (the user went to other apps). On Android 12-13 it throws a
+ * `SecurityException`, so it is not used there.
+ *
+ * **The approaching alarm** is an inexact `setAndAllowWhileIdle` alarm. The system may deliver an inexact alarm up to 0.75 times
+ * its distance (futurity) late, and on a sleeping phone it delivers it at the end of that window, which would make a 90 s rest
+ * about a minute late. So the alarm is not set for the end of the rest but for the moment from which the window ends exactly at
+ * the end of the rest (`now + rest / 1.75`). When it fires early (the phone was awake anyway), it is set again for what is left,
+ * and alarms closer than ten seconds are not fuzzed at all. This relies on that platform behaviour; on a device that behaves
+ * differently the alert is late, never missing. It also works after the system ended the process.
+ *
+ * Every path leads to [onRestEnded]; the end time of the last alerted rest is remembered, so the alert never happens twice.
  */
 class RestAlerts(
     private val context: Context,
     private val controller: WorkoutController,
     private val tracker: AppForegroundTracker,
     private val settings: PulseSettings,
+    private val elapsedRealtime: () -> Long = { SystemClock.elapsedRealtime() },
     private val clock: () -> Instant = { Instant.now() },
 ) {
     private val alarmManager: AlarmManager? = context.getSystemService(AlarmManager::class.java)
@@ -43,7 +59,7 @@ class RestAlerts(
     @Volatile
     private var scheduledEndsAt: Long = 0L
 
-    /** Schedules (or cancels) the alarms to match [state]: a running, unpaused rest gets one; everything else none. */
+    /** Schedules (or cancels) the alarms to match [state]: a running, unpaused rest gets them; everything else none. */
     fun sync(state: WorkoutState?) {
         val rest = state?.rest
         if (rest == null || state.isPaused || rest.frozenRemaining != null) {
@@ -57,33 +73,88 @@ class RestAlerts(
         scheduledEndsAt = 0L
         val manager = alarmManager ?: return
         manager.cancel(listener)
-        manager.cancel(backupIntent(0L))
+        manager.cancel(alarmIntent(0L))
     }
 
     private fun schedule(endsAtMillis: Long) {
         val manager = alarmManager ?: return
         cancel()
         scheduledEndsAt = endsAtMillis
-        val delay = maxOf(0L, endsAtMillis - clock().toEpochMilli())
-        val elapsedTrigger = SystemClock.elapsedRealtime() + delay
-        runCatching {
-            if (Build.VERSION.SDK_INT >= 37) {
-                // The listener variant that also fires in Doze (API 37).
-                manager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTrigger, TAG, { it.run() }, listener)
-            } else {
-                // Exact without the exact-alarm permission because the callback runs in this process (API 24). It is not delivered
-                // while the device is in Doze; the inexact allow-while-idle alarm below covers that case.
-                manager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, elapsedTrigger, TAG, listener, handler)
+        val remaining = maxOf(0L, endsAtMillis - clock().toEpochMilli())
+
+        if (Build.VERSION.SDK_INT >= 34) scheduleListener(manager, remaining)
+        if (canScheduleExactPendingIntent(manager)) {
+            val trigger = elapsedRealtime() + remaining
+            attempt("exact alarm") {
+                manager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, alarmIntent(endsAtMillis))
             }
+        } else {
+            scheduleApproaching(manager, endsAtMillis, remaining)
         }
-        // Backup that also works after the process was ended: inexact, a second after the end so the exact one wins normally.
-        runCatching { manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, endsAtMillis + 1_000L, backupIntent(endsAtMillis)) }
     }
 
-    private fun backupIntent(endsAtMillis: Long): PendingIntent {
+    /** The exact in-process listener alarm (Android 14+; no permission). */
+    private fun scheduleListener(manager: AlarmManager, remaining: Long) {
+        val trigger = elapsedRealtime() + remaining
+        attempt("listener alarm") {
+            if (Build.VERSION.SDK_INT >= 37) {
+                // The listener variant that also fires in Doze (API 37).
+                manager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, TAG, { it.run() }, listener)
+            } else {
+                manager.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, TAG, listener, handler)
+            }
+        }
+    }
+
+    /**
+     * True when a `PendingIntent` alarm can be exact: before Android 12 always, afterwards only when the app holds an exact-alarm
+     * permission (it does not unless the manifest declares one; see RELEASING.md).
+     */
+    private fun canScheduleExactPendingIntent(manager: AlarmManager): Boolean =
+        Build.VERSION.SDK_INT < 31 || runCatching { manager.canScheduleExactAlarms() }.getOrDefault(false)
+
+    /** The inexact alarm timed so that the system's delay window ends at the end of the rest (see the class comment). */
+    private fun scheduleApproaching(manager: AlarmManager, endsAtMillis: Long, remaining: Long) {
+        val lead = if (remaining < FUZZ_FREE_MILLIS) remaining else (remaining / WINDOW_FACTOR).toLong()
+        val trigger = elapsedRealtime() + lead
+        attempt("approaching alarm") {
+            manager.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, alarmIntent(endsAtMillis))
+        }
+    }
+
+    private inline fun attempt(what: String, block: () -> Unit) {
+        try {
+            block()
+        } catch (e: SecurityException) {
+            Log.w(TAG, "The $what was refused by the system: ${e.message}")
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "The $what could not be set: ${e.message}")
+        }
+    }
+
+    private fun alarmIntent(endsAtMillis: Long): PendingIntent {
         val intent = Intent(context, RestAlarmReceiver::class.java).setAction(RestAlarmReceiver.ACTION_REST_END)
             .putExtra(RestAlarmReceiver.EXTRA_ENDS_AT, endsAtMillis)
-        return PendingIntent.getBroadcast(context, 77, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        return PendingIntent.getBroadcast(context, REQUEST_CODE, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+    }
+
+    /**
+     * The `PendingIntent` alarm fired. When it is early (an inexact alarm may fire as soon as its trigger time), it is set again for
+     * what is left of the same rest; otherwise the rest is over.
+     */
+    fun onAlarm(endsAtMillis: Long) {
+        val state = controller.state.value ?: return
+        val rest = state.rest ?: return
+        if (state.isPaused || rest.frozenRemaining != null) return
+        val endsAt = rest.endsAt.toEpochMilli()
+        if (endsAtMillis != 0L && kotlin.math.abs(endsAt - endsAtMillis) > STALE_TOLERANCE_MILLIS) return
+        val remaining = endsAt - clock().toEpochMilli()
+        if (remaining > STALE_TOLERANCE_MILLIS) {
+            val manager = alarmManager ?: return
+            if (!canScheduleExactPendingIntent(manager)) scheduleApproaching(manager, endsAt, remaining)
+            return
+        }
+        onRestEnded(endsAtMillis)
     }
 
     /**
@@ -114,16 +185,23 @@ class RestAlerts(
 
     companion object {
         private const val TAG = "pulse-rest"
+        private const val REQUEST_CODE = 77
         private const val STALE_TOLERANCE_MILLIS = 2_000L
+
+        /** Android does not fuzz an inexact alarm that is less than ten seconds away. */
+        internal const val FUZZ_FREE_MILLIS = 10_000L
+
+        /** An inexact alarm may be delivered up to 0.75 times its distance late: it ends at `distance * 1.75`. */
+        internal const val WINDOW_FACTOR = 1.75
     }
 }
 
-/** Receives the backup rest alarm, possibly in a process that was started just for it. */
+/** Receives the `PendingIntent` rest alarm, possibly in a process that was started just for it. */
 class RestAlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != ACTION_REST_END) return
         val environment = (context.applicationContext as PulseStrengthApplication).environment
-        environment.services?.restAlerts?.onRestEnded(intent.getLongExtra(EXTRA_ENDS_AT, 0L))
+        environment.services?.restAlerts?.onAlarm(intent.getLongExtra(EXTRA_ENDS_AT, 0L))
     }
 
     companion object {

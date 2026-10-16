@@ -4,4 +4,5 @@
 <full-backup-content>
     <include domain="file" path="PulseStrength" />
     <exclude domain="file" path="PulseStrength/active-workout.json" />
+    <exclude domain="file" path="PulseStrength/tmp" />
 </full-backup-content>

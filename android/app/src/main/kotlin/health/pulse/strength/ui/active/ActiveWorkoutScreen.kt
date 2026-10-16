@@ -245,6 +245,7 @@ internal fun ActiveWorkoutHost(
 
     val colors = PulseTheme.colors
     val workoutState by controller.state.collectAsState()
+    val saveFailure by controller.persistenceError.collectAsState()
     val nowState = rememberNow()
     val now = nowState.value
     val presentation = remember(workoutState, now) { controller.presentation(now) }
@@ -296,6 +297,7 @@ internal fun ActiveWorkoutHost(
                 presentation = presentation,
                 workoutState = workoutState,
                 uiState = uiState,
+                saveFailed = saveFailure != null,
                 onAction = onAction,
                 onMinimise = onMinimise,
             )
@@ -377,6 +379,7 @@ private fun ActiveContent(
     presentation: ActiveWorkoutPresentation,
     workoutState: health.pulse.strength.core.WorkoutState?,
     uiState: ActiveWorkoutUiState,
+    saveFailed: Boolean,
     onAction: (WorkoutAction) -> Unit,
     onMinimise: () -> Unit,
 ) {
@@ -501,6 +504,7 @@ private fun ActiveContent(
 
         Column(Modifier.fillMaxSize()) {
             if (pinHeader) header()
+            if (saveFailed) SaveWarning(Modifier.align(Alignment.CenterHorizontally))
             if (sideDock) {
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                     main(Modifier.weight(1f).fillMaxHeight())
@@ -718,11 +722,11 @@ private fun ColumnScope.MoreMenuItems(
 // region Finish and discard dialogs
 
 /** One button of a dialog; [destructive] ones are red. */
-private class DialogAction(val label: String, val tag: String, val destructive: Boolean = false, val onClick: () -> Unit)
+internal class DialogAction(val label: String, val tag: String, val destructive: Boolean = false, val onClick: () -> Unit)
 
 /** An AlertDialog whose buttons are stacked, so three choices with long names fit on any window. */
 @Composable
-private fun StackedAlertDialog(title: String, message: String, actions: List<DialogAction>, onDismiss: () -> Unit) {
+internal fun StackedAlertDialog(title: String, message: String, actions: List<DialogAction>, onDismiss: () -> Unit) {
     val colors = PulseTheme.colors
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -800,6 +804,24 @@ private fun DiscardDialog(loggedSets: Int, onDiscard: () -> Unit, onCancel: () -
             DialogAction("Cancel", "discard-cancel", onClick = onCancel),
         ),
         onDismiss = onCancel,
+    )
+}
+
+/**
+ * Shown after Finish when the workout could not be written to the history (a full phone). The sets are still in the active-workout
+ * file, so "Try again" loads the workout back to finish it once there is room.
+ */
+@Composable
+internal fun UnsavedWorkoutDialog(onTryAgain: () -> Unit, onDismiss: () -> Unit) {
+    StackedAlertDialog(
+        title = "Workout not saved",
+        message = "This workout could not be saved to your history, probably because the phone is out of storage. " +
+            "Your sets are kept. Free up some space, then tap Try again.",
+        actions = listOf(
+            DialogAction("Try again", "unsaved-retry", onClick = onTryAgain),
+            DialogAction("Not now", "unsaved-dismiss", onClick = onDismiss),
+        ),
+        onDismiss = onDismiss,
     )
 }
 

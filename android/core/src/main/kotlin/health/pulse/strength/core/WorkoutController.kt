@@ -21,6 +21,7 @@ class WorkoutController(
     private val engine = WorkoutEngine(persistence, StoreDataAdapter(store), recovery, clock)
     private val mutableState = MutableStateFlow(engine.state)
     private val mutableLastCompleted = MutableStateFlow(engine.lastCompleted)
+    private val mutablePersistenceError = MutableStateFlow(engine.lastPersistenceError)
 
     /** The workout in progress; null when there is none. */
     val state: StateFlow<WorkoutState?> = mutableState.asStateFlow()
@@ -37,6 +38,12 @@ class WorkoutController(
 
     /** True when the last attempt to save the workout in progress (or a finished workout) failed. */
     val lastPersistenceError: Throwable? get() = engine.lastPersistenceError
+
+    /**
+     * The error of the last failed attempt to save the workout in progress (or a finished one); null again after a save worked.
+     * The screens use it to tell the user that the workout is not safe on disk (a full phone).
+     */
+    val persistenceError: StateFlow<Throwable?> = mutablePersistenceError.asStateFlow()
 
     /** How the workout that ended most recently ended (true = thrown away). Read it from `WorkoutSideEffect.workoutEnded`. */
     val lastEndDiscarded: Boolean get() = engine.lastEndDiscarded
@@ -76,6 +83,7 @@ class WorkoutController(
     private fun republish() {
         mutableState.value = engine.state
         mutableLastCompleted.value = engine.lastCompleted
+        mutablePersistenceError.value = engine.lastPersistenceError
     }
 
     /** Lets the engine use the store's public API, so every recorded workout also refreshes the store's flows. */

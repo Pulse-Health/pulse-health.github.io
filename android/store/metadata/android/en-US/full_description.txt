@@ -18,8 +18,8 @@ BEAT YOUR BESTS
 • A summary after every workout: volume, sets per muscle group and new PRs
 
 BUILT-IN EXERCISE LIBRARY
-• 36 exercises with how-to cues and form photos, plus your own custom exercises
-• Muscle recovery shows which muscle groups are ready, based on your own training
+• 36 exercises with how-to cues (25 of them with form photos), plus your own custom exercises
+• Muscle recovery estimates which muscle groups are ready from the sets you log (a rule of thumb, not medical advice)
 
 PRIVATE BY DESIGN
 • Works fully offline: no account, no ads, no tracking and no internet permission

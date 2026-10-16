@@ -38,6 +38,7 @@ import health.pulse.strength.core.CompletedWorkout
 import health.pulse.strength.core.WorkoutTemplate
 import health.pulse.strength.ui.active.ActiveWorkoutScreen
 import health.pulse.strength.ui.active.LocalRestAlertsEnabled
+import health.pulse.strength.ui.active.UnsavedWorkoutDialog
 import health.pulse.strength.ui.active.WorkoutInProgressBar
 import health.pulse.strength.ui.components.rememberNow
 import health.pulse.strength.ui.hub.StrengthHubScreen
@@ -62,14 +63,19 @@ fun PulseStrengthRoot(environment: StrengthAppEnvironment) {
     val data by environment.store.data.collectAsState()
     var showsActiveWorkout by rememberSaveable { mutableStateOf(false) }
     var summaryWorkoutID by rememberSaveable { mutableStateOf<String?>(null) }
+    var showsUnsavedDialog by rememberSaveable { mutableStateOf(false) }
 
     val hasWorkout = workoutState != null
     val summary: CompletedWorkout? = summaryWorkoutID?.let { id -> data.history.firstOrNull { it.id.toString() == id } }
 
     AskForNotificationsWhenAWorkoutStarts(environment, hasWorkout)
 
-    LaunchedEffect(environment) {
-        environment.openWorkoutRequests.collect { if (controller.state.value != null) showsActiveWorkout = true }
+    // A request made while the activity was being created (cold start from the notification or the deep link) is waiting here.
+    val openRequested by environment.openWorkoutRequested.collectAsState()
+    LaunchedEffect(openRequested) {
+        if (!openRequested) return@LaunchedEffect
+        if (controller.state.value != null) showsActiveWorkout = true
+        environment.consumeOpenWorkoutRequest()
     }
     // A workout that ends elsewhere (a notification action, another surface) closes its screen.
     LaunchedEffect(hasWorkout) { if (!hasWorkout) showsActiveWorkout = false }
@@ -119,7 +125,11 @@ fun PulseStrengthRoot(environment: StrengthAppEnvironment) {
                 onMinimise = { showsActiveWorkout = false },
                 onFinished = { completed: CompletedWorkout? ->
                     showsActiveWorkout = false
-                    if (completed != null) summaryWorkoutID = completed.id.toString()
+                    if (completed != null) {
+                        summaryWorkoutID = completed.id.toString()
+                        // The finished workout could not be written (a full phone): say so now, the summary alone looks like success.
+                        if (controller.lastPersistenceError != null) showsUnsavedDialog = true
+                    }
                 },
             )
         }
@@ -134,6 +144,21 @@ fun PulseStrengthRoot(environment: StrengthAppEnvironment) {
                 BackHandler { summaryWorkoutID = null }
                 WorkoutSummaryScreen(workout = shown, onDone = { summaryWorkoutID = null })
             }
+        }
+
+        if (showsUnsavedDialog) {
+            UnsavedWorkoutDialog(
+                onTryAgain = {
+                    showsUnsavedDialog = false
+                    // The sets are still in the active-workout file: load the workout back so that Finish can save it again.
+                    controller.restoreFromDisk()
+                    if (controller.state.value != null) {
+                        summaryWorkoutID = null
+                        showsActiveWorkout = true
+                    }
+                },
+                onDismiss = { showsUnsavedDialog = false },
+            )
         }
     }
 }

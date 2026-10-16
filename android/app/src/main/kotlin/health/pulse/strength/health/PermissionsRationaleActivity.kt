@@ -1,5 +1,6 @@
 package health.pulse.strength.health
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import androidx.core.net.toUri
 import android.os.Bundle
@@ -42,7 +43,13 @@ class PermissionsRationaleActivity : ComponentActivity() {
                     Text(getString(R.string.hc_rationale_offline), style = PulseFont.subhead, color = colors.inkSecondary)
                     PulsePrimaryButton(
                         text = getString(R.string.privacy_policy),
-                        onClick = { startActivity(Intent(Intent.ACTION_VIEW, PrivacyLinks.policyUrl.toUri())) },
+                        onClick = {
+                            try {
+                                startActivity(Intent(Intent.ACTION_VIEW, PrivacyLinks.policyUrl.toUri()))
+                            } catch (_: ActivityNotFoundException) {
+                                // No browser on this device (a restricted or work profile): the button does nothing.
+                            }
+                        },
                     )
                     PulsePrimaryButton(text = getString(R.string.close), onClick = { finish() })
                 }

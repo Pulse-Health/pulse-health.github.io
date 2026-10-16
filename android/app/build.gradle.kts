@@ -41,8 +41,9 @@ android {
         minSdk = 26
         targetSdk = 36
         // CI passes the run number as PULSE_VERSION_CODE; Google Play needs a strictly increasing integer for every upload.
-        versionCode = (providers.gradleProperty("pulse.versionCode").orNull ?: System.getenv("PULSE_VERSION_CODE"))?.toIntOrNull() ?: 1
-        versionName = providers.gradleProperty("pulse.versionName").orNull ?: "1.0.0"
+        versionCode = (providers.gradleProperty("pulse.versionCode").orNull ?: System.getenv("PULSE_VERSION_CODE"))?.trim()?.toIntOrNull() ?: 1
+        // A blank value (an empty -Ppulse.versionName=) counts as not set: AGP would otherwise leave the versionName out altogether.
+        versionName = providers.gradleProperty("pulse.versionName").orNull?.takeIf { it.isNotBlank() } ?: "1.0.0"
     }
 
     signingConfigs {

@@ -503,6 +503,31 @@ class WorkoutControllerTests {
     }
 
     @Test
+    fun testThePersistenceErrorIsObservableAndClearsWithTheNextSuccessfulSave() {
+        val persistence = makePersistence()
+        val store = makeStore(persistence)
+        val controller = WorkoutController(store, persistence)
+        val seen = mutableListOf<Boolean>()
+        assertThat(controller.persistenceError.value).isNull()
+
+        val blocker = breakHistoryFile(persistence)
+        controller.startWorkout(store.templates[0])
+        controller.send(WorkoutAction.LogNextSet)
+        assertWithMessage("saving the running workout works, so nothing is reported").that(controller.persistenceError.value).isNull()
+
+        assertThat(controller.finish(false)).isNotNull()
+        seen.add(controller.persistenceError.value != null)
+        assertWithMessage("the finished workout could not be written").that(controller.persistenceError.value).isNotNull()
+        assertThat(controller.persistenceError.value).isSameInstanceAs(controller.lastPersistenceError)
+
+        assertThat(blocker.deleteRecursively()).isTrue()
+        controller.startWorkout(null, "Next")
+        seen.add(controller.persistenceError.value != null)
+        assertThat(controller.persistenceError.value).isNull()
+        assertThat(seen).containsExactly(true, false).inOrder()
+    }
+
+    @Test
     fun testALaterSuccessfulSaveClearsTheError() {
         val persistence = makePersistence()
         val store = makeStore(persistence)
