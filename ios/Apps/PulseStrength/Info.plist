@@ -37,6 +37,8 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>PulseAppGroupID</key>
+	<string>group.$(PULSE_APP_BUNDLE_ID)</string>
 	<key>NSHealthShareUsageDescription</key>
 	<string>If you turn on Sync with Apple Health in Settings, Pulse Strength reads your body weight from the Health app to keep your weigh-ins up to date.</string>
 	<key>NSHealthUpdateUsageDescription</key>

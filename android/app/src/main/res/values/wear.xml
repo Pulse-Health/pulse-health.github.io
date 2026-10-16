@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Wearable Data Layer finds the phone by this capability: the value of WearProtocol.PHONE_CAPABILITY. -->
+    <string-array name="android_wear_capabilities" translatable="false">
+        <item>pulse_strength_phone</item>
+    </string-array>
+</resources>

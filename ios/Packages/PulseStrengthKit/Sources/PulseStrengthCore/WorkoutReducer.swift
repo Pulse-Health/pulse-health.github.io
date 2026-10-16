@@ -11,6 +11,14 @@ public enum WorkoutReducer {
     /// Longest rest an exercise can be given (one hour). Larger values are clamped to it; the rest presets stop at 5:00.
     public static let maximumRestSeconds: Int = 3_600
 
+    /// Shortest time between two samples of `WorkoutState.heartRateSeries` (30 seconds). Samples that arrive sooner still update the
+    /// current heart rate and the average, but are not kept in the series.
+    public static let heartRateSampleInterval: TimeInterval = 30
+
+    /// Most samples `WorkoutState.heartRateSeries` keeps (360, three hours at one per 30 seconds). Once it is full, later samples are
+    /// not added: the series keeps the start of the workout, and the average still counts every sample.
+    public static let maximumHeartRateSamples: Int = 360
+
     /// Applies `action` to `state`; `revision` grows by one when the state changed (never for heart-rate samples).
     public static func reduce(_ state: inout WorkoutState, _ action: WorkoutAction, now: Date) {
         let before = state
@@ -38,6 +46,7 @@ private extension WorkoutReducer {
             guard let (k, i) = locate(s, exerciseID, setID) else { return }
             if s.exercises[k].sets[i].isDone {
                 s.exercises[k].sets[i].isDone = false
+                s.exercises[k].sets[i].doneAt = nil
             } else {
                 markDone(&s, exerciseIndex: k, setIndex: i, now: now)
             }
@@ -118,6 +127,7 @@ private extension WorkoutReducer {
             if let bpm, (30...240).contains(bpm) {
                 s.heartRateSum += bpm
                 s.heartRateCount += 1
+                keepHeartRateSample(&s, bpm: bpm, now: now)
             }
         case let .setUsedWatch(isOn):
             s.usedWatch = isOn
@@ -202,6 +212,7 @@ private extension WorkoutReducer {
         let entry = s.exercises[k]
         let set = entry.sets[i]
         s.exercises[k].sets[i].isDone = true
+        s.exercises[k].sets[i].doneAt = now
         s.lastLogged = SetRef(exerciseID: entry.id, setID: set.id)
         var seconds = restSeconds(for: entry, set: set)
         if let group = entry.supersetGroup {
@@ -245,6 +256,18 @@ private extension WorkoutReducer {
         guard let ref = s.lastLogged, let (k, i) = locate(s, ref.exerciseID, ref.setID) else { return }
         let clamped = clampRIR(value)
         s.exercises[k].sets[i].rir = s.exercises[k].sets[i].rir == clamped ? nil : clamped
+    }
+}
+
+// MARK: - Heart rate series
+
+private extension WorkoutReducer {
+    /// Adds the sample at `now` to the series when at least `heartRateSampleInterval` seconds passed since the last kept one and the
+    /// series is not full. A clock that moved back keeps nothing until it passes the last sample again.
+    static func keepHeartRateSample(_ s: inout WorkoutState, bpm: Int, now: Date) {
+        guard s.heartRateSeries.count < maximumHeartRateSamples else { return }
+        if let last = s.heartRateSeries.last, now.timeIntervalSince(last.at) < heartRateSampleInterval { return }
+        s.heartRateSeries.append(HeartRateSample(bpm: bpm, at: now))
     }
 }
 

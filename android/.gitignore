@@ -14,3 +14,6 @@ keystore.properties
 *.keystore
 *.p12
 play-service-account*.json
+
+# Kotlin compiler session files
+.kotlin/

@@ -9,6 +9,7 @@
 #   PulseStrength          iOS app (embeds the widget extension and the Watch app)
 #   PulseStrengthWidgets   widget extension that hosts the Live Activity (Lock Screen + Dynamic Island)
 #   PulseStrengthWatch     watchOS 10 single-target app (embedded in the iOS app through "Embed Watch Content")
+#   PulseStrengthWatchWidgets   watchOS widget extension: the Apple Watch complications and Smart Stack cards (embedded in the Watch app)
 #
 # Visual test targets (the `visual` job of .github/workflows/strength-ios.yml; they write screenshots, see README.md,
 # "Screenshots in CI"). They are in their own schemes only, so the app, widget and Watch schemes above never build them:
@@ -16,6 +17,10 @@
 #   PulseStrengthLiveSnapshotTests    iOS logic test without a host app: draws the Lock Screen / Dynamic Island views
 #                                     (scheme PulseStrengthLiveSnapshots)
 #   PulseStrengthWatchSnapshotTests   watchOS logic test without a host app: draws the Watch pages (scheme PulseStrengthWatchSnapshots)
+#   PulseStrengthWidgetSnapshotTests  iOS logic test without a host app: draws the Home Screen, StandBy, Lock Screen and extra widgets
+#                                     (scheme PulseStrengthWidgetSnapshots)
+#   PulseStrengthWatchWidgetSnapshotTests   watchOS logic test without a host app: draws the Apple Watch widgets
+#                                     (scheme PulseStrengthWatchWidgetSnapshots)
 #
 # Info.plist files and entitlements are the committed files under Apps/<target>/ (INFOPLIST_FILE and
 # CODE_SIGN_ENTITLEMENTS below); this spec does not use XcodeGen's `info:` / `entitlements:` generators, so there is
@@ -23,7 +28,9 @@
 #
 # Signing: DEVELOPMENT_TEAM and PULSE_APP_BUNDLE_ID live in Config/Signing.xcconfig (optionally overridden by the git-ignored
 # Config/Signing.local.xcconfig); every target inherits them. Placeholders to replace when this moves into the Pulse app (see README.md):
-# those two values. The app uses no App Group: its data lives in Application Support.
+# those two values. The app, the widget extensions and the Watch app share the App Group group.$(PULSE_APP_BUNDLE_ID) (entitlements files
+# under Apps/<target>/, Info.plist key PulseAppGroupID): the strength data and the widget snapshot live in its container. It needs a paid
+# team on a device; simulator builds without signing fall back to Application Support and the widgets show their sample content.
 
 name: PulseStrength
 
@@ -99,8 +106,18 @@ targets:
     platform: iOS
     sources:
       - path: Apps/PulseStrengthWidgets
+      # The App Shortcuts provider and the Action button intent belong to the app target only (the system reads App Shortcuts from the app, and
+      # ForegroundContinuableIntent is unavailable in extensions).
       - path: Apps/Shared/Intents
+        excludes:
+          - PulseShortcuts.swift
       - path: Apps/Shared/LiveActivity
+      # Home Screen, Lock Screen, StandBy and extra widgets (widgets/SPEC.md) and their shared helpers. The Watch widgets have their own extension.
+      - path: Apps/Shared/Widgets
+        excludes:
+          - Watch/**
+      # Controls (Control Center, Lock Screen slots, Action button; iOS 18 API behind #available).
+      - path: Apps/Shared/Controls
     dependencies:
       - package: PulseStrengthKit
         product: PulseStrengthCore
@@ -110,6 +127,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).widgets
         INFOPLIST_FILE: Apps/PulseStrengthWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Apps/PulseStrengthWidgets/PulseStrengthWidgets.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: "YES"
 
@@ -119,11 +137,15 @@ targets:
     platform: watchOS
     sources:
       - path: Apps/PulseStrengthWatch
+      # The Watch widgets' buttons are App Intents that must also exist in the Watch app (the extension leaves the request in the inbox).
+      - path: Apps/Shared/Widgets/Watch/WatchIntents.swift
     dependencies:
       - package: PulseStrengthKit
         product: PulseStrengthCore
       - package: PulseStrengthKit
         product: PulseStrengthWatchUI
+      # Embedded automatically ("Embed Foundation Extensions").
+      - target: PulseStrengthWatchWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).watchkitapp
@@ -133,6 +155,26 @@ targets:
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "4"
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks"
+        SKIP_INSTALL: "YES"
+
+  # ---------------------------------------------------------------------------------------------------------------
+  PulseStrengthWatchWidgets:
+    type: app-extension
+    platform: watchOS
+    sources:
+      - path: Apps/PulseStrengthWatchWidgets
+      # The shared widget helpers (theme, shapes, text) and the Watch widgets of widgets/SPEC.md.
+      - path: Apps/Shared/Widgets/Common
+      - path: Apps/Shared/Widgets/Watch
+    dependencies:
+      - package: PulseStrengthKit
+        product: PulseStrengthCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).watchkitapp.widgets
+        INFOPLIST_FILE: Apps/PulseStrengthWatchWidgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Apps/PulseStrengthWatchWidgets/PulseStrengthWatchWidgets.entitlements
+        TARGETED_DEVICE_FAMILY: "4"
         SKIP_INSTALL: "YES"
 
   # ---------------------------------------------------------------------------------------------------------------
@@ -171,6 +213,8 @@ targets:
       - path: Apps/PulseStrengthLiveSnapshotTests
       - path: Apps/Shared/LiveActivity
       - path: Apps/Shared/Intents
+        excludes:
+          - PulseShortcuts.swift
     dependencies:
       - package: PulseStrengthKit
         product: PulseStrengthCore
@@ -203,6 +247,52 @@ targets:
         GENERATE_INFOPLIST_FILE: "YES"
         TARGETED_DEVICE_FAMILY: "4"
         ENABLE_TESTABILITY: "YES"
+        SKIP_INSTALL: "YES"
+
+  # Snapshot test of the Home Screen, StandBy, Lock Screen and extra widgets (Apps/PulseStrengthWidgetSnapshotTests): a logic-test bundle
+  # WITHOUT a host app that compiles the widget views as its own sources, exactly like the widget extension does, and renders them with
+  # ImageRenderer into PNG files. The Live Activity fixtures give the running-workout states of the log-set widget.
+  PulseStrengthWidgetSnapshotTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Apps/PulseStrengthWidgetSnapshotTests
+      - path: Apps/PulseStrengthLiveSnapshotTests/LiveSnapshotFixtures.swift
+      - path: Apps/Shared/LiveActivity
+      - path: Apps/Shared/Intents
+        excludes:
+          - PulseShortcuts.swift
+      - path: Apps/Shared/Widgets
+        excludes:
+          - Watch/**
+    dependencies:
+      - package: PulseStrengthKit
+        product: PulseStrengthCore
+      - package: PulseStrengthKit
+        product: PulseStrengthActivity
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).widgetsnapshottests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: "YES"
+
+  # Snapshot test of the Apple Watch widgets (Apps/PulseStrengthWatchWidgetSnapshotTests): a watchOS logic-test bundle without a host app.
+  PulseStrengthWatchWidgetSnapshotTests:
+    type: bundle.unit-test
+    platform: watchOS
+    sources:
+      - path: Apps/PulseStrengthWatchWidgetSnapshotTests
+      - path: Apps/Shared/Widgets/Common
+      - path: Apps/Shared/Widgets/Watch
+    dependencies:
+      - package: PulseStrengthKit
+        product: PulseStrengthCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).watchwidgetsnapshottests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TARGETED_DEVICE_FAMILY: "4"
         SKIP_INSTALL: "YES"
 
 schemes:
@@ -285,5 +375,31 @@ schemes:
       gatherCoverageData: false
       targets:
         - name: PulseStrengthWatchSnapshotTests
+          parallelizable: false
+          randomExecutionOrder: false
+
+  # Home Screen, StandBy, Lock Screen and extra widget snapshots; needs an iOS Simulator destination.
+  PulseStrengthWidgetSnapshots:
+    build:
+      targets:
+        PulseStrengthWidgetSnapshotTests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - name: PulseStrengthWidgetSnapshotTests
+          parallelizable: false
+          randomExecutionOrder: false
+
+  # Apple Watch widget snapshots; needs a watchOS Simulator destination.
+  PulseStrengthWatchWidgetSnapshots:
+    build:
+      targets:
+        PulseStrengthWatchWidgetSnapshotTests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - name: PulseStrengthWatchWidgetSnapshotTests
           parallelizable: false
           randomExecutionOrder: false

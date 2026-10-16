@@ -14,6 +14,7 @@ private enum HubRoute: Hashable {
     case workout(UUID)
     case recovery
     case settings
+    case exercise(String)
 }
 
 private enum HubEditorTarget: Identifiable {
@@ -46,7 +47,7 @@ private enum HubEditorTarget: Identifiable {
 public struct StrengthHubView: View {
     @ObservedObject private var store: StrengthStore
     @ObservedObject private var controller: WorkoutController
-    private let environment: StrengthAppEnvironment
+    @ObservedObject private var environment: StrengthAppEnvironment
     private let onStart: (WorkoutTemplate?) -> Void
     private let onResume: () -> Void
 
@@ -67,7 +68,7 @@ public struct StrengthHubView: View {
     ) {
         self._store = ObservedObject(wrappedValue: environment.store)
         self._controller = ObservedObject(wrappedValue: environment.controller)
-        self.environment = environment
+        self._environment = ObservedObject(wrappedValue: environment)
         self.onStart = onStart
         self.onResume = onResume
     }
@@ -110,6 +111,14 @@ public struct StrengthHubView: View {
         }
         .navigationDestination(item: $route) { (target: HubRoute) in
             destination(for: target)
+        }
+        // A widget or control asked for one exercise (`pulse-strength://exercise/<id>`); an id the store does not know shows the hub.
+        .onChange(of: environment.pendingExerciseID, initial: true) { _, exerciseID in
+            guard let exerciseID else { return }
+            environment.pendingExerciseID = nil
+            if store.exercise(id: exerciseID) != nil {
+                route = .exercise(exerciseID)
+            }
         }
         .sheet(item: $editor) { (target: HubEditorTarget) in
             HubTemplateEditorSheet(store: store, template: template(for: target))
@@ -491,7 +500,10 @@ public struct StrengthHubView: View {
         let week = HubFormat.weekStats(history: store.history, now: now)
         return VStack(spacing: 12) {
             HubSectionHeader(title: "This Week")
-            HubWeekCard(sessions: week.sessions, sets: week.sets, volumeKg: week.volume)
+            HubWeekCard(sessions: week.sessions, sets: week.sets, volumeKg: week.volume, goal: store.weeklyGoal)
+            HubWeeklyGoalRow(goal: store.weeklyGoal) { (goal: Int) in
+                store.setWeeklyGoal(goal)
+            }
         }
     }
 
@@ -573,6 +585,10 @@ public struct StrengthHubView: View {
             HubRecoveryView(recovery: controller.recovery)
         case .settings:
             StrengthSettingsView(environment: environment)
+        case .exercise(let exerciseID):
+            if let exercise = store.exercise(id: exerciseID) {
+                ExerciseDetailView(exercise: exercise, store: store)
+            }
         }
     }
 
@@ -1036,19 +1052,44 @@ private struct HubWeekCard: View {
     let sessions: Int
     let sets: Int
     let volumeKg: Double
-
-    /// The design's weekly target ("2 of 4").
-    static let sessionGoal = 4
+    /// Workouts per week the user aims for (the design's default is 4: "2 of 4"); the widgets show the same goal.
+    let goal: Int
 
     var body: some View {
         HubStatRow(stats: [
-            HubStat(title: "Sessions", value: "\(sessions) of \(max(HubWeekCard.sessionGoal, sessions))"),
+            HubStat(title: "Sessions", value: "\(sessions) of \(max(goal, sessions))"),
             HubStat(title: "Sets", value: "\(sets)"),
             HubStat(title: "Volume", value: HubFormat.volume(volumeKg))
         ])
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .hubRowBackground()
+    }
+}
+
+/// The weekly workout goal (1 to 7) with a stepper. It is the goal of the "Sessions" figure above and of the weekly-goal widgets.
+private struct HubWeeklyGoalRow: View {
+    let goal: Int
+    let onChange: (Int) -> Void
+
+    var body: some View {
+        Stepper(
+            value: Binding(get: { goal }, set: { onChange($0) }),
+            in: 1...7
+        ) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Weekly goal")
+                    .pulseFont(15, .medium, relativeTo: .subheadline)
+                    .foregroundStyle(PulseTheme.ink)
+                Text(goal == 1 ? "1 workout a week" : "\(goal) workouts a week")
+                    .pulseFont(12, relativeTo: .footnote)
+                    .foregroundStyle(PulseTheme.inkSecondary)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .hubRowBackground()
+        .accessibilityIdentifier("hub-weekly-goal")
     }
 }
 
@@ -1836,6 +1877,7 @@ private struct HubTemplateDetailView: View {
     let onStart: (WorkoutTemplate) -> Void
     let onResume: () -> Void
     @State var showsEditor = false
+    @State var showsPlanner = false
     @State var showsBusyAlert = false
 
     init(
@@ -1862,7 +1904,13 @@ private struct HubTemplateDetailView: View {
             .navigationTitle(template?.name ?? "Template")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button {
+                        showsPlanner = true
+                    } label: {
+                        Label("Plan a session", systemImage: "calendar.badge.clock")
+                    }
+                    .disabled(template == nil)
                     Button("Edit") {
                         showsEditor = true
                     }
@@ -1871,6 +1919,11 @@ private struct HubTemplateDetailView: View {
             }
             .sheet(isPresented: $showsEditor) {
                 HubTemplateEditorSheet(store: store, template: template)
+            }
+            .sheet(isPresented: $showsPlanner) {
+                if let template = template {
+                    PlanSessionSheet(template: template)
+                }
             }
             .alert("Workout in progress", isPresented: $showsBusyAlert) {
                 Button("Resume") {

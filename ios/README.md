@@ -10,13 +10,14 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (793 tests, 812 with the Combine
-> stand-in). The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow
-> `strength-ios` has compiled it with Xcode 16 for the iOS and watchOS simulators, run a 30-step UI flow through the real
-> iPhone app, rendered the Lock Screen, Dynamic Island and Watch screens, and re-run the app in dark mode, at large text
-> sizes and on an iPhone SE. Several rounds of adversarial review fixed what they found. What has **not** been tried is
-> anything that needs real hardware (Live Activity buttons, Watch heart rate and WatchConnectivity, notifications):
-> see [Verification status](#verification-status).
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (1172 tests on Linux, 1174 on macOS).
+> The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow `strength-ios`
+> has compiled it with Xcode 16 and Xcode 26 (the iPhone app with its widget extension, the Watch app with its widget
+> extension), run a 30-step UI flow and the onboarding tour through the real iPhone app, rendered the Lock Screen, Dynamic Island, Watch screens and
+> every widget (about 360 images), and re-run the app in dark mode, at large text sizes and on an iPhone SE. Several rounds of
+> adversarial review fixed what they found. What has **not** been tried is anything that needs real hardware or the system's
+> own widget surfaces (Live Activity buttons, widget gallery and configuration, Control Center, StandBy, Watch heart rate and
+> WatchConnectivity, notifications): see [Verification status](#verification-status).
 
 > **Repository note.** This directory lives in the `pulse-health.github.io` website repository, which GitHub Pages publishes from
 > the repository root. The root `_config.yml` excludes `ios/` from that build, so these files are not served on the website.
@@ -34,20 +35,28 @@ ios/
   Packages/PulseStrengthKit/ Swift package (swift-tools-version 5.9, iOS 17 / watchOS 10 / macOS 14)
     Sources/
       PulseStrengthCore/       Foundation only: models, reducer, presenter, controller, store, sync, exercise library
+        Widgets/               the widget data contract (WidgetSnapshot, generated), its builder, the App Group snapshot store and command inbox, deep links
       PulseStrengthActivity/   iOS: ActivityAttributes + WorkoutCommandBus (linked by the app AND the widget extension)
       PulseStrengthIOS/        iOS: SwiftUI screens and sheets, Live Activity manager, notifications, HealthKit, Watch bridge
+        Onboarding/               the first-run flow: welcome, account sheet, setup steps, gate (see "Onboarding (first run)")
         Resources/ExerciseMedia/  25 exercises x 2 form-demo frames (JPEG)
+        Resources/Onboarding/     the hero clip (H.264, 1.4 MB, no audio) and its poster
       PulseStrengthWatchUI/    watchOS: SwiftUI screens, workout session, WatchConnectivity client
     Tests/PulseStrengthCoreTests/
   Apps/
     PulseStrength/           iOS host app: @main entry point, Info.plist, entitlements, assets
-    PulseStrengthWidgets/    widget extension: @main WidgetBundle, Info.plist
+    PulseStrengthWidgets/    widget extension: @main WidgetBundle (Live Activity, Home Screen / StandBy, Lock Screen, extras, controls), Info.plist
+    PulseStrengthWatchWidgets/  watchOS widget extension: @main WidgetBundle of the Apple Watch complications and Smart Stack cards
     PulseStrengthWatch/      watchOS app: @main entry point, Info.plist, entitlements, assets
     Shared/Intents/          App Intents behind the Live Activity buttons (compiled into the app AND the extension)
-    Shared/LiveActivity/     Lock Screen and Dynamic Island views (compiled into the extension)
-    PulseStrengthUITests/              UI test: walks the iPhone app in the simulator, one screenshot per step
+    Shared/LiveActivity/     Lock Screen and Dynamic Island views, the extra Live Activity states, planned-session countdown, bench mode (compiled into the extension)
+    Shared/Widgets/          Common (theme, text rules), Home (Home Screen, StandBy, iPad), Lock (Lock Screen accessories), Extras, Watch (compiled into the extensions)
+    Shared/Controls/         Control Center and Lock Screen controls (compiled into the widget extension)
+    PulseStrengthUITests/              UI tests: walk the iPhone app in the simulator, one screenshot per step (the long flow, the short tour, the onboarding tour)
     PulseStrengthLiveSnapshotTests/    test that draws the Lock Screen and Dynamic Island views into PNG files
     PulseStrengthWatchSnapshotTests/   test that draws the Watch pages into PNG files
+    PulseStrengthWidgetSnapshotTests/  test that draws the Home Screen, StandBy, Lock Screen and extra widgets into PNG files
+    PulseStrengthWatchWidgetSnapshotTests/  test that draws the Apple Watch widgets into PNG files
 .github/workflows/strength-ios.yml   (at the repository root) CI: Linux core tests + macOS Xcode builds + screenshots
 ```
 
@@ -220,6 +229,82 @@ after the first run.
 9. Clock-driven UI uses `TimelineView`; the Live Activity uses `Text(timerInterval:)` and a stale date, because a widget cannot tick.
 10. Contracts, file by file: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
+## Onboarding (first run)
+
+A new install starts with the **Rebase** onboarding instead of the hub. It is the SwiftUI port of the clickable prototype in
+[`design/`](../design/README.md) (open that first to see what it should look like):
+
+**welcome** (three story-style highlights over the looping hero clip) -> **account sheet** (Sign up / Log in, Continue with Apple,
+email and password) -> **profile** (main goal, experience) -> **Apple Health** -> **AI Coaching** (explicit consent, off by default)
+-> **notifications** -> **done**. Someone who logs in to an existing account skips the setup steps.
+
+| Layer | Where | What |
+| --- | --- | --- |
+| Core (Linux-tested) | `OnboardingFlow.swift` | `OnboardingState` + `OnboardingAction` -> `OnboardingReducer.reduce`: the pure state machine |
+| | `OnboardingModel.swift` | `OnboardingModel`: the observable wrapper (form text, error flags, what the flow is waiting for, toast) and the calls to the services |
+| | `OnboardingServices.swift` | the `OnboardingServices` protocol (account calls, the two permission prompts) and `SimulatedOnboardingServices` |
+| | `OnboardingCopy*.swift`, `OnboardingSummary.swift` | every word in English and German (the plain strings are generated from `design/app.js`), the sentences with links, the summary chips |
+| | `OnboardingValidation.swift`, `HighlightPlayback.swift`, `OnboardingRecord.swift`, `OnboardingLaunchMode.swift` | form checks, the clock of the highlight bars, what is remembered afterwards, the launch arguments |
+| iOS | `Sources/PulseStrengthIOS/Onboarding/` | `OnboardingFlowView` (the whole flow), `OnboardingGate` (flow first, then the app), `PulseOnboardingServices`, and the screens |
+| App | `Apps/PulseStrength/PulseStrengthApp.swift` | wraps `PulseStrengthRootView` in the gate |
+
+* **Dark only, video-led.** The hero clip plays behind the welcome screen and the account sheet; behind the setup steps it is darkened and
+  rests. Reduce Motion, Low Power Mode, the pause button (top right) and a backgrounded app all stop it and show the poster.
+* **Permissions at their own step.** The Health sheet and the notification prompt appear when the user taps "Connect Apple Health" and
+  "Turn on notifications", not at launch. `PulseStrengthRootView(requestsPermissionsAtLaunch:)` is `false` for someone who went through the
+  setup steps; a user who only logged in is asked at launch as before.
+* **Consent.** AI Coaching is off unless the user taps "Turn on AI Coaching" (equal in size to "No thanks"). The answer, with the date, is
+  saved in `OnboardingRecord` (UserDefaults key `health.pulse.strength.onboardingRecord`) as the record of the consent; nothing else reads it yet.
+* **The account service is a stand-in.** `PulseOnboardingServices` accepts every email and password after a short pause. To connect an
+  identity provider (the privacy policy names Clerk), implement `OnboardingServices` for `authenticate`, `authenticateWithApple` and
+  `sendPasswordReset` (throw `OnboardingAuthError`), keep the two permission calls from `PulseOnboardingServices`, and hand it to
+  `OnboardingGate`. Sign in with Apple needs its capability on the app id and the provider enabled; the privacy policy (section 6)
+  lists email sign-in only, so update it or remove the button.
+
+| Launch argument | Effect |
+| --- | --- |
+| *(none)* | the flow runs until it has been completed once |
+| `-PulseSkipOnboarding` | never show it (an Xcode scheme argument for development) |
+| `-PulseShowOnboarding` | show it at every launch (the record of a completed onboarding is not read) |
+| `-PulseUITest` | the other UI tests: skips it, as above, unless `-PulseShowOnboarding` is also given; then nothing is asked of the system and the record is a throwaway |
+
+Tests: the reducer, the model (with scripted services), the form checks, the copy, the highlight clock, the record and the launch mode are in
+`Tests/PulseStrengthCoreTests/Onboarding*Tests.swift` and `HighlightPlaybackTests.swift`. `OnboardingTourTests` (in `StrengthTourTests.swift`) walks the screens in the
+simulator and writes `onboarding-<config>-NN-<name>.png`; the `visual` job runs it with the other UI tests and the `matrix` job runs it
+in dark mode, at large text, on an iPhone SE and on the oldest iOS 17 runtime.
+
+## Widgets, controls and live surfaces
+
+Besides the Live Activity, the package feeds the rest of the glanceable surfaces of the design "Pulse Strength Widget Ideas": Home Screen,
+StandBy and iPad widgets, Lock Screen accessories, extra "wilder idea" widgets, Control Center and Lock Screen controls, the Action button, the
+further Live Activity states (record flash, superset round, plate math, coach tip, finish card, planned-session countdown, bench mode) and the
+Apple Watch complications and Smart Stack cards. Every design has a stable catalogue id (`HS-01` ... `WI-11`). The catalogue, the exact rule behind
+every number and the platform mapping are in [`../widgets/SPEC.md`](../widgets/SPEC.md); [`../widgets/README.md`](../widgets/README.md) is the map
+of where each one lives on iOS and Android, and [`ARCHITECTURE.md` 5.7](ARCHITECTURE.md) has the contracts.
+
+* **One data contract.** `PulseStrengthCore/Widgets/WidgetSnapshot.generated.swift` (generated from `../widgets/tools/schema.py`, which also writes the Kotlin
+  twin for Android) is the only thing a surface reads. `WidgetSnapshotBuilder` turns the strength data into it; `WidgetPublisher` (iOS app) rebuilds it after
+  every change, writes it into the App Group (`WidgetSnapshotStore`), reloads every widget timeline and control, and `WatchWidgetSnapshotSender` hands the Watch
+  variant to the Watch over WatchConnectivity.
+* **Commands go the other way.** Buttons in widgets, controls and Live Activities are App Intents. The ones that change the workout (log set, skip rest, pause,
+  nudge, finish a rest, apply the coach tip) are `LiveActivityIntent`s: the system runs them in the app's process, which applies them through
+  `WidgetIntentDispatch` and `WorkoutCommandBus`. Should the system run one inside the extension, the command waits in the App Group inbox
+  (`WidgetCommandInbox`) and a Darwin notification wakes the app (`WidgetCommandDrain`). The ones that need the app on screen set `openAppWhenRun` and
+  leave a `pulse-strength://` link, which `PulseStrengthRootView` handles through `StrengthDeepLink` (`workout`, `start-next`, `start?template=`,
+  `start-empty?name=`, `exercise/<id>`, `hub`, `plates`, `weight`).
+* **Targets.** `PulseStrengthWidgets` composes `LiveActivityBundle`, `HomeWidgetBundle`, `LockWidgetBundle`, `ExtrasWidgetBundle` and `ControlsBundle`;
+  `PulseStrengthWatchWidgets`, embedded in the Watch app, composes the Watch bundles. The Action-button intent and the App Shortcuts are in the app target only
+  (`ForegroundContinuableIntent` does not exist in app extensions).
+* **App Group.** `group.<PULSE_APP_BUNDLE_ID>` is now declared by all four targets (app, widget extension, Watch app, Watch widget extension) and carries the
+  snapshot, the command inbox and the shared data. Enable the App Groups capability for that id in your developer account before running on a device; the CI
+  builds do not sign and need nothing. Without the container the app falls back to its own folder, and the widgets, which cannot read it, show their empty states.
+* **In the app.** The hub shows a weekly-goal stepper (1 to 7: the goal of the goal widgets and of the "Sessions" figure), a template's toolbar has
+  "Plan a session" (a countdown on the Lock Screen and in the Dynamic Island before the start, a notification at the start); `LiveActivityManager` flashes a
+  new record on the Live Activity for four seconds and turns the finished workout into the finish card.
+
+What the widgets assume: weights are in kilograms (the unit setting of the Pulse app is not handled), and the Watch widgets' "Start" opens the Watch app
+(a start request from the Watch to the phone does not exist yet). The training-block widget for iPad (`SB-03`) is only offered once the app supports iPad.
+
 ## Placeholders to replace
 
 Everything below is a stand-in until the feature lives inside the Pulse app.
@@ -228,7 +313,7 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | --- | --- | --- |
 | Bundle ids | `health.pulse.strength`, `.widgets`, `.watchkitapp` | `PULSE_APP_BUNDLE_ID` in `Config/Signing.xcconfig` (the Watch `Info.plist` reads it for `WKCompanionAppBundleIdentifier`) |
 | Notification id | `health.pulse.strength.rest` | `StrengthConfig.restNotificationID` (Core); only a label, it does not have to match the bundle id |
-| App Group | `group.health.pulse.strength` (not used by this standalone build: no entitlement) | `StrengthConfig.appGroupID` (Core); when sharing data with the Pulse app add the App Groups capability to the app (and the widget) and use the same id |
+| App Group | `group.health.pulse.strength` (`group.$(PULSE_APP_BUNDLE_ID)` in the four entitlements files) | `StrengthConfig.appGroupID` (Core) and the `*.entitlements` of the app, the widget extension, the Watch app and the Watch widget extension; enable the App Groups capability for it in your developer account |
 | Weigh-in notification ids | `health.pulse.strength.weight.0` ... `.2` (category `health.pulse.strength.weight.category`) | `StrengthConfig.weightReminderIDPrefix` / `weightReminderCategoryID` (Core); only labels |
 | URL scheme | `pulse-strength://workout`, `pulse-strength://weight` | `StrengthConfig.urlScheme` / `workoutURL` / `weightURL` and `CFBundleURLTypes` in `Apps/PulseStrength/Info.plist` |
 | Team | empty | `DEVELOPMENT_TEAM` in `Config/Signing.xcconfig` (or `Config/Signing.local.xcconfig`) |
@@ -238,6 +323,10 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | Accent colour | green: `PulseTheme.green` (`#187A42` light, `#30D158` dark) tints the app's own controls; the system fallback tint `#1B8448` is `AccentColor.colorset` in both asset catalogs | `PulseTheme.swift`, `AccentColor.colorset` |
 | Demo data | demo templates, five invented workouts and personal bests, used by previews and the UI tests only | `StrengthAppEnvironment.preview(withActiveWorkout:)` seeds it; `StrengthAppEnvironment.live(seedDemoData:)` defaults to `false`, so the running app starts empty |
 | Muscle recovery | fixed demo percentages | `DemoRecovery.provider`, see below |
+| Product name in the onboarding | "Rebase" | `OnboardingBrand.name` (Core); the German and English texts, the legal sentences and the top bar all use it |
+| Legal pages | `https://pulse-health.github.io/` + `terms.html`, `privacy-policy.html`, `agb.html`, `datenschutz.html` | `OnboardingLegal` in `OnboardingCopy.swift`; the pages themselves still say "Pulse" |
+| Account service | accepts everything | `PulseOnboardingServices`, see "Onboarding (first run)" |
+| Hero clip | the runner loop | `Resources/Onboarding/onboarding-hero.mp4` and `-poster.jpg` (made by `design/tools/encode-hero.sh`) |
 
 ## Integrating with the Pulse app
 
@@ -279,9 +368,10 @@ own repository before using it for a product (then delete the `exclude` entry).
 
 | Target | Capability / setting |
 | --- | --- |
-| iOS app | HealthKit (writes workouts and reads nothing during a workout: the heart rate arrives from the Watch over WatchConnectivity; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
-| Widget extension | No capability; `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
-| Watch app | HealthKit; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). |
+| iOS app | HealthKit (writes workouts and reads nothing during a workout: the heart rate arrives from the Watch over WatchConnectivity; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); App Groups (`group.<bundle id>`: the widget snapshot and command inbox); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
+| Widget extension | App Groups (the same id as the app: it reads the snapshot and leaves commands); `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
+| Watch widget extension | App Groups (the same id); `NSExtension` point `com.apple.widgetkit-extension` (watchOS). It reads the snapshot the Watch app stores from the phone. |
+| Watch app | HealthKit; App Groups; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). |
 
 ### Privacy manifests
 
@@ -344,16 +434,24 @@ State at the last commit of this branch; the numbers come from the `strength-ios
 
 **Verified**
 
-* **Core (`PulseStrengthCore`)**: 793 unit tests (812 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
+* **Core (`PulseStrengthCore`)**: 1172 unit tests on Linux (job `core-linux`, also with the Combine stand-in) and 1174 on macOS (jobs `apple` and `xcode26`) pass:
   reducer, presenter, snapshot and summary builders, persistence, the phone <-> Watch sync protocol (acknowledgements, optimistic
   replay, delivery fuzzing with dropped, duplicated and reordered messages), exercise library and sample data.
 * **Compiles**: `xcodegen generate`, then `xcodebuild` of the iOS app (with the widget extension and the embedded Watch app) and of the
   Watch scheme for the simulators, without code signing (job `apple`). Xcode 16, deployment targets iOS 17.0 / watchOS 10.0, Swift 5 mode.
+  Jobs `apple` and `xcode26` (Xcode 26) both build the app with its widget extension (Live Activity, Home Screen, StandBy, iPad, Lock Screen,
+  extras, controls) and the Watch app with its widget extension; the device-SDK build embeds both extensions.
 * **Runs in a simulator** (job `visual`, artifact `strength-screens`): a 30-step XCUITest flow through the real app (start a workout, log
   sets, keypad, set detail, rest settings, options, form info, exercise list, picker with search and multi-select, create exercise,
   navigator, superset, undo, rest dock, pause/resume, finish, update-template alert, summary, history, exercise library and detail, empty
   workout, discard) with 55 screenshots; snapshot tests that render the Lock Screen and Dynamic Island (compact, minimal, expanded) for
   every phase and the Watch screens on five case sizes. The screenshots were compared with the design boards.
+* **Widgets render** (job `visual`, the same artifact): `PulseStrengthWidgetSnapshots`, `PulseStrengthWatchWidgetSnapshots` and
+  `PulseStrengthLiveSnapshots` draw the widget, complication and Live Activity views of the catalogue (`../widgets/SPEC.md`), light and dark, with the idealised
+  preview data and with the empty state, and the live states of a running workout (the controls, which the system draws itself, and the variants that
+  share a view with another id, such as the inline rest day LS-11, are not drawn separately): 128 iPhone widget images (`widget-*`), 15 Apple Watch widget
+  images (`watchwidget-*`) and 107 Live Activity images (`live-*`). They were looked at against the design canvas. They are drawings of the
+  views by `ImageRenderer`, not screenshots of the system's widgets (see below).
 * **Dark mode, large text, small phone** (job `matrix`): the same tour on an iPhone 16 Pro in dark mode, at accessibility-extra-large text,
   and on an iPhone SE (3rd generation, 375 x 667 pt). On the SE the workout screen fits without page scrolling (only the set list scrolls
   inside the card) and nothing leaves the screen. Text follows Dynamic Type on every screen; the dense workout screen and the keypad are
@@ -365,6 +463,10 @@ State at the last commit of this branch; the numbers come from the `strength-ios
 
 **Not verified** (be careful before shipping)
 
+* Everything the system does around a widget: the widget gallery and configuration, the container background (and its removal in StandBy, the
+  tinted and the clear Home Screen modes), the Smart Stack and the Lock Screen layout, widget reloads and the reload budget, App Intents
+  that run in an extension process, controls in Control Center and the Action button, a Live Activity's promotion, the Watch complications
+  on a real watch face. The renders have no container background, no timers and no accented rendering.
 * Anything on real hardware, see below. The simulator cannot show Live Activity buttons, Dynamic Island on a device, WatchConnectivity,
   Watch heart rate, HealthKit writes, or the rest notification. The Lock Screen and Dynamic Island screens are the SwiftUI views rendered
   directly (the same code the widget uses), not the system's presentation.
@@ -394,6 +496,11 @@ CI and the simulators cannot show any of these, and none of them has been tried:
   (Browse > Body Measurements > Weight) and disappears there when it is deleted in the app; a weight added in the Health app (or by a smart scale) appears under Settings > History as
   "Apple Health" after the app is opened again, cannot be swiped away, and counts as a weigh-in for the reminder; refusing "Weight" sharing shows the footer hint. Then open the detail
   of a barbell lift ("Relative strength") and of Push-up / Chest dip / Pull-up ("Best session load (est.)") with a weigh-in on record.
+* **Widgets, controls and live surfaces**: add every family on a device (Home Screen small / medium / large / extra large, Lock Screen circular /
+  rectangular / inline, StandBy) and check that a tap opens the right place; that the buttons (start, log set, nudge) work while the app is
+  suspended; the tinted and clear Home Screen modes; the controls in Control Center and on the Lock Screen; the Action button (log set, skip
+  rest, start next); a planned session (countdown on the Lock Screen and in the Dynamic Island, the notification at the start); the record flash
+  and the finish card of the Live Activity; the weekly goal after a change in the hub; and the Watch complications and Smart Stack cards.
 * Also worth a pass on a device: WatchConnectivity reachability and the "Watch not connected" / "Health access denied" banners,
   a workout written to Health by the phone when no Watch is used, Dynamic Island layouts on a 14 Pro or newer,
   VoiceOver in the active-workout screen, and Reduce Motion (form demos, heart beat).

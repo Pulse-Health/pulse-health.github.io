@@ -132,9 +132,39 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.health.connect.client)
 
+    // Widgets, Quick Settings tiles, the Wear OS link (widgets/SPEC.md).
+    implementation(libs.androidx.glance.appwidget)
+    implementation(libs.androidx.glance.material3)
+    implementation(libs.androidx.work.runtime.ktx)
+    implementation(libs.androidx.lifecycle.service)
+    implementation(libs.google.play.services.wearable)
+    implementation(libs.kotlinx.coroutines.play.services)
+
+    // ==== deps-core:begin ====
+    // ==== deps-core:end ====
+
+    // ==== deps-host:begin ====
+    // ==== deps-host:end ====
+
+    // ==== deps-glance-home:begin ====
+    // Lets the unit tests walk the Glance node tree of a widget (child limits, texts, click actions) without a device.
+    testImplementation(libs.androidx.glance.appwidget.testing)
+    // ==== deps-glance-home:end ====
+
+    // ==== deps-glance-extras:begin ====
+    // ==== deps-glance-extras:end ====
+
+    // ==== deps-system:begin ====
+    // ==== deps-system:end ====
+
+    // ==== deps-wear:begin ====
+    // ==== deps-wear:end ====
+
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.junit)
     testImplementation(libs.truth)
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.core)

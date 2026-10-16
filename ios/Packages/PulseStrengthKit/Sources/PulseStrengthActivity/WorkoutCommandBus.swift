@@ -26,6 +26,9 @@ public final class WorkoutCommandBus: @unchecked Sendable {
 
     public init() {}
 
+    /// True once the app has installed its handler, i.e. when this process owns the workout. A widget extension never has one.
+    public var hasHandler: Bool { currentHandler() != nil }
+
     /// Installs the handler that executes commands. A later call replaces the earlier handler.
     public func install(_ handler: @escaping @Sendable (WorkoutAction, ActionOrigin) async -> Void) {
         lock.lock()

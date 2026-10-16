@@ -7,49 +7,228 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01503A46BD13012FEE285738 /* HomeFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9555FC557E144B12E3A6F8AE /* HomeFormatting.swift */; };
+		01E14EE1C645765B72046039 /* FormCueWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D814908F39790B12EB1B1BD /* FormCueWidget.swift */; };
+		02AEF2988DD6F529F17FFFD1 /* PlannedSessionActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D97BB5FF2DA1738C02EB8C6 /* PlannedSessionActivity.swift */; };
+		04545A93FB237A2EFD229EB2 /* PlatesControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52285455D83BF225D3FE9915 /* PlatesControl.swift */; };
+		06184B973CE4DEB3652CA740 /* WatchWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DDE200CACB8064F1E08905A /* WatchWidgetBundle.swift */; };
+		0890B5F862E46732A9C79225 /* BenchModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1AE9166FE3C91FEF33A2003 /* BenchModeView.swift */; };
+		08DD6A3C1829833932739840 /* WatchWidgetTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0E27FD13A96EAADD85FBE2 /* WatchWidgetTimeline.swift */; };
+		08F14E335181E009AE676E6D /* LiveMomentIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251D09C26F7550BF044C6B32 /* LiveMomentIntents.swift */; };
+		09A66F32637905690CD1B954 /* PRAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 841472771A908DFC08938295 /* PRAccessoryWidget.swift */; };
+		09C678C46327659653F28E4D /* RestWatchWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 992A53259EC6144B7DD57EB1 /* RestWatchWidgets.swift */; };
+		0AD7BFB880321FBDD658734C /* PulseShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = FED7D3743154AF56E6275A5A /* PulseShortcuts.swift */; };
+		0D288EB868250399AB3B60E7 /* LiftTrendWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C97E3944D072800FA7C7F6F /* LiftTrendWidget.swift */; };
 		0FF258B677FA07DDB5D42CDD /* WorkoutLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17D63AC10BE63F68AF8BD10 /* WorkoutLiveActivity.swift */; };
 		104827646833497AB86B55B8 /* StrengthTourTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1C3D8A49A2F28A65D6AAFF9 /* StrengthTourTests.swift */; };
+		10BAB8511177671A56B288EB /* BodyMapWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7B20E9F578CCD2C22103F5 /* BodyMapWidget.swift */; };
+		11417E0CECECFDD26DF83A5B /* WatchWidgetStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01637A8BCC806CC38F30F0B0 /* WatchWidgetStyle.swift */; };
+		123201A005F87F19AB93D5E7 /* TrainingBlockWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C18E84FD5EB6D2268FFB21 /* TrainingBlockWidget.swift */; };
+		1288D0CBCD75E766D88CC026 /* RestDayWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02741A4488BB3504569FEF05 /* RestDayWidget.swift */; };
+		12EB608713886056F8F89AA1 /* LoadedBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBE19E94264B555E388F2D29 /* LoadedBarWidget.swift */; };
+		149C70DF6184EE75DB3AD117 /* LiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B069BB17DCF7E1C911269D /* LiveActivityBundle.swift */; };
+		14A5BB2993FC13BD55C9C028 /* PlannedSessionSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60761F1F2FF3D5B11299330D /* PlannedSessionSnapshots.swift */; };
+		14C935A526E4B3AEEA9AB918 /* ExtrasComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645F19C54853A74EAE8D0348 /* ExtrasComponents.swift */; };
 		156B306ACAD5B7C07020094F /* PulseStrengthWatchUI in Frameworks */ = {isa = PBXBuildFile; productRef = 7A7A0911DB83BE15D04513E5 /* PulseStrengthWatchUI */; };
+		176BD5661CD13E6896B97383 /* WidgetShapes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0236A53582CC0410804A0D26 /* WidgetShapes.swift */; };
+		17E9F594A0E305C597E11171 /* PlannedSessionActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D97BB5FF2DA1738C02EB8C6 /* PlannedSessionActivity.swift */; };
+		19050EFF1E3E0EF448B78820 /* WidgetText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB707453EEED273557AFBDA /* WidgetText.swift */; };
+		19FCC18924A592480C6B7836 /* MonthHeatmapWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B965633640AD348550E0F4CB /* MonthHeatmapWidget.swift */; };
+		1B7DA4B6B065E1034F03F02C /* WidgetTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA899D7CDBBAAE9B30EA610 /* WidgetTheme.swift */; };
+		1CB89F0B889DB47F83FA0E46 /* WatchWidgetStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01637A8BCC806CC38F30F0B0 /* WatchWidgetStyle.swift */; };
+		1DBCEE5656C4B4817DD53533 /* NextUpControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47CC2FDC78406D2B2C9D898D /* NextUpControl.swift */; };
+		1F1D68BF615ECB25FACB3FCB /* LoadedBarWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBE19E94264B555E388F2D29 /* LoadedBarWidget.swift */; };
 		1F8F68787C6BD392C1E2DA19 /* StrengthIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 413CBF309A2C9E950724691D /* StrengthIntents.swift */; };
+		1FA3756096C7AED8495207AD /* RestDayWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02741A4488BB3504569FEF05 /* RestDayWidget.swift */; };
+		1FC3DF95F63A26C732C578B3 /* LiveMomentIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251D09C26F7550BF044C6B32 /* LiveMomentIntents.swift */; };
+		20F5713695E3B32CD2356D45 /* WidgetIntentDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681CD308D10E9AA6594A27ED /* WidgetIntentDispatch.swift */; };
+		218EBB6552486218299CD7A6 /* HomeWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD353C5614F32E6F0865949 /* HomeWidgetBundle.swift */; };
+		22679B284EC59DCBF241158E /* PulseStrengthWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A7DCE7A96ECE5B562133832E /* PulseStrengthWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		24039F7C0E2A2511B7BE40A6 /* RestControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FFD15C6B50B64A3800EBD2B /* RestControl.swift */; };
+		247FD477620209DC7D45738A /* WidgetTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA899D7CDBBAAE9B30EA610 /* WidgetTheme.swift */; };
+		29762B6130771223370E0B57 /* LockAccessoryText.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC9CBCC09EA5DAEF95AC800A /* LockAccessoryText.swift */; };
+		29F2D81DA3859A29210D8808 /* WorkoutControlState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF8874912F5512E8139A2B5 /* WorkoutControlState.swift */; };
 		2A9F6583B7B1D85DC70B470D /* PulseStrengthActivity in Frameworks */ = {isa = PBXBuildFile; productRef = 36A1865A0C8ED17CB970804C /* PulseStrengthActivity */; };
 		2C54924B997FB80FFAD92D4F /* StrengthFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D891BC5BB7F981889378D22 /* StrengthFlowTests.swift */; };
+		2C7FCB9849EDEA1344FBFF0F /* WorkoutLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17D63AC10BE63F68AF8BD10 /* WorkoutLiveActivity.swift */; };
+		2EB8B7439609828A699BCCC7 /* PRSpotlightWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B9CFC1BE8EB1606A77B38F /* PRSpotlightWidget.swift */; };
+		3010DD1C2A0A656DA13BB5F6 /* WidgetSnapshotHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16FE31237B4BE92225166F35 /* WidgetSnapshotHarness.swift */; };
 		31004F3E423DE6E6E5F84852 /* WatchSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0216BA0140A8ACC842F6D19 /* WatchSnapshotTests.swift */; };
+		31D9531CF7F7F9CCD061C168 /* LiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B069BB17DCF7E1C911269D /* LiveActivityBundle.swift */; };
+		32756537464152B81406130E /* NextUpWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB73DEAC3ED42E6864FC0DAC /* NextUpWidget.swift */; };
+		32A02B73CA202ABD52E211E6 /* LockScreenActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 160871DFCA72A3A0674CC9B7 /* LockScreenActivityView.swift */; };
+		346AFEB619052B2451269D62 /* PulseStrengthCore in Frameworks */ = {isa = PBXBuildFile; productRef = F71C1DB0038FBD217EC840DB /* PulseStrengthCore */; };
 		36277A5312598DC6E455D529 /* PulseStrengthCore in Frameworks */ = {isa = PBXBuildFile; productRef = 4F7EADDC245679B06AA382D1 /* PulseStrengthCore */; };
+		3834292528CC342DCB94FAA5 /* WorkoutControlState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF8874912F5512E8139A2B5 /* WorkoutControlState.swift */; };
+		3AC309115390252C1335FD80 /* WatchWidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDE10996FAD4FE3F87A91D20 /* WatchWidgetSnapshotTests.swift */; };
+		3B0BC817B054211F4B0BFE50 /* WidgetText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB707453EEED273557AFBDA /* WidgetText.swift */; };
 		3F0394B0A699FB356F18A33A /* DynamicIslandViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C6DCA1E1F00BD900FA2FA19 /* DynamicIslandViews.swift */; };
+		3FC9D5FA7741423D4ED8DBD3 /* LiveMomentIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251D09C26F7550BF044C6B32 /* LiveMomentIntents.swift */; };
+		42A4806C39E1A81D70861A65 /* PulseStrengthWatchWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1FEB5ADDE52C589D2D8C3E9 /* PulseStrengthWatchWidgetsBundle.swift */; };
 		45BBB90268466655DAC74D81 /* ActivityComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E604A55A06793D4699A2D342 /* ActivityComponents.swift */; };
+		4649BC64DF07D9EBBF2469DA /* PauseControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FC8C4139D5E7F5FACA4A0B3 /* PauseControl.swift */; };
+		4B4B299A740C900F43B3B248 /* SessionTimelineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46085AFFF331B1E7C0B68462 /* SessionTimelineWidget.swift */; };
+		4B54B69F46B82F17BD1C66FD /* WeeklySetsAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B9D953B9A05ACC0B1B53B0 /* WeeklySetsAccessoryWidget.swift */; };
+		4BD49B8B980C4C8936CBAF0F /* ActivityState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC8C3B75696CEAC24FAD3EA /* ActivityState.swift */; };
+		4DAE556505F3D86098A612DB /* LockAccessoryComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF366102FA597A7604553C6 /* LockAccessoryComponents.swift */; };
 		4DE63DD901ED3A0F3F12613D /* PulseStrengthCore in Frameworks */ = {isa = PBXBuildFile; productRef = BEA448E7EDB76809C0CE6EC2 /* PulseStrengthCore */; };
+		4EB77B98C59E2B078EF828DE /* WeeklyGoalWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB21F89D771D4BC004F0D1F4 /* WeeklyGoalWidget.swift */; };
+		4F0A125F8EE0F3D756B742CA /* LockScreenStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25EDA54FFC1EEF5562149335 /* LockScreenStates.swift */; };
+		503C15FB0BE3B84EA21D035E /* YearInIronWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE6428CEAE24FCBB3089D66 /* YearInIronWidget.swift */; };
+		50580CC75C35ED2D3E15A2F8 /* TrainingWeekWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F92B79B0781FF70D65CABD /* TrainingWeekWidget.swift */; };
+		50EF2690DF19A16A1E6EBF47 /* LiveSnapshotFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F45B60FC72FBE53481E5120B /* LiveSnapshotFixtures.swift */; };
+		519715CF538D8FD1F05B9B6C /* LogSetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A84110D8F261331CF48760D /* LogSetWidget.swift */; };
 		51E7FBB5954B280D26FF66BF /* ActivityComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E604A55A06793D4699A2D342 /* ActivityComponents.swift */; };
+		545C7C34C35BB89208CC2955 /* StartNextControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CAADC545F1C46D3664BB5A9 /* StartNextControl.swift */; };
+		54EDB181DB2C6DF3FE3C9E28 /* WidgetIntentDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681CD308D10E9AA6594A27ED /* WidgetIntentDispatch.swift */; };
+		556E0244CC7BCA24028A9458 /* ReadinessWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6544C412E07E925BAA1EFFC7 /* ReadinessWidget.swift */; };
+		558B76456FB3B1C2EAA386F4 /* MuscleFreshnessWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044F114102698145DC6C56A3 /* MuscleFreshnessWidget.swift */; };
+		55A7F0A74109699403BCBCA2 /* ControlIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC6106BD64A5B41B72B70C8 /* ControlIntents.swift */; };
 		56A4233AC4BE29A5AD635D6D /* DynamicIslandViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C6DCA1E1F00BD900FA2FA19 /* DynamicIslandViews.swift */; };
+		56AA46D251B4BD01E89E1D92 /* PRAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 841472771A908DFC08938295 /* PRAccessoryWidget.swift */; };
 		56AD65F9585B10EAD7690C9C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 370C601D67262C6BBB07C3A6 /* Assets.xcassets */; };
+		57265A72651FDB83D2C32C3E /* WatchWidgetTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0E27FD13A96EAADD85FBE2 /* WatchWidgetTimeline.swift */; };
+		593104C891FD8DACB303402F /* HomeWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCD353C5614F32E6F0865949 /* HomeWidgetBundle.swift */; };
+		5A9B336974C1E8635761227C /* LiftTrendWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23CF1F97E972DF6D84D753B9 /* LiftTrendWatchWidget.swift */; };
 		5B3F42029C65D494B0620734 /* ActivityTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D058C53D774333F0BE5D96 /* ActivityTheme.swift */; };
+		5BE22FBE3E9E5774082539A2 /* ExtrasWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F485C356AB8EF4597AFF7D /* ExtrasWidgetBundle.swift */; };
 		5C0C8F1801F2DCB9A8CC1B6A /* PulseStrengthIOS in Frameworks */ = {isa = PBXBuildFile; productRef = D0EE92A7C7E8FB74155E12F9 /* PulseStrengthIOS */; };
+		5C1D741ABD840A6A317E6829 /* LockAccessoryComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF366102FA597A7604553C6 /* LockAccessoryComponents.swift */; };
+		5C8095EE49BCFA33ED08EB30 /* WatchCountersWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBD6F2B16BB49DCD4924AACD /* WatchCountersWidgets.swift */; };
+		5D0D8DD09CCCDFCA91A6A967 /* ActivityState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC8C3B75696CEAC24FAD3EA /* ActivityState.swift */; };
 		5DFCDB9F2B24344FC640AE1A /* FlowSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = A940FAA749C252858BEF3559 /* FlowSupport.swift */; };
 		5E3E4B981CDD5193AC7C52A1 /* PulseStrengthActivity in Frameworks */ = {isa = PBXBuildFile; productRef = B3AFA3E20E9AAD3875070551 /* PulseStrengthActivity */; };
+		5F16D6083D23D48944D00E69 /* LiftTrendWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23CF1F97E972DF6D84D753B9 /* LiftTrendWatchWidget.swift */; };
+		5F5CD1121130422DEA3681B8 /* OverloadWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 271D58E983EFAA95627E2F70 /* OverloadWidget.swift */; };
 		5F8DE099E2A33CC0C309E217 /* PulseStrengthCore in Frameworks */ = {isa = PBXBuildFile; productRef = CB3CC08B97A278A85FEE15AB /* PulseStrengthCore */; };
+		5FBF3448093A1EC7E41FB89C /* ControlIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC6106BD64A5B41B72B70C8 /* ControlIntents.swift */; };
 		603B46A22BAC305A405C5C03 /* ActivityTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D058C53D774333F0BE5D96 /* ActivityTheme.swift */; };
+		608A61B5B274E8362EF42BC2 /* PRSpotlightWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63B9CFC1BE8EB1606A77B38F /* PRSpotlightWidget.swift */; };
+		63888CA3C9C5ADE47E243084 /* WeeklySetsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF105FBD097BA095408E9A7B /* WeeklySetsWidget.swift */; };
 		65890B14CCDB288FC32DA69A /* PulseStrengthApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 273BBEA41C09838A23FEC3B9 /* PulseStrengthApp.swift */; };
 		662F7C6F96173CBB76514770 /* StrengthIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 413CBF309A2C9E950724691D /* StrengthIntents.swift */; };
+		690D35C9B2D3208888888F75 /* StreakAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AD4325EF0895FAE783E8EE /* StreakAccessoryWidget.swift */; };
 		690EBC88CDF88794BDCDA280 /* LockScreenActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 160871DFCA72A3A0674CC9B7 /* LockScreenActivityView.swift */; };
+		69B1A40861BF7B96B259D5DE /* LogSetWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD6CFA1C490E37AE0E2A5FB /* LogSetWatchWidget.swift */; };
+		6A0268C55FBA57A6328B4C72 /* RestWatchWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 992A53259EC6144B7DD57EB1 /* RestWatchWidgets.swift */; };
+		6AF04F3A19E52C867C59E8CB /* WidgetShapes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0236A53582CC0410804A0D26 /* WidgetShapes.swift */; };
+		6B19A267268B5D3A0F856434 /* HeartRateWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D3E7C96A9432C148B8E2429 /* HeartRateWatchWidget.swift */; };
+		6B58B1BA252B31DEB5DEEBDF /* LockWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D967B8FCFD4A55AB610303D /* LockWidgetBundle.swift */; };
+		6BB7C6DBB60D091EF7BADCC3 /* WatchWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DDE200CACB8064F1E08905A /* WatchWidgetBundle.swift */; };
+		6C01318EFA494B22CE48BC33 /* WorkoutControlProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13D20294A73708048494EBE9 /* WorkoutControlProvider.swift */; };
+		6C523470ECBF1A0DD508BBE0 /* RecordWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443B0FCA615B5A2E9F883786 /* RecordWatchWidget.swift */; };
+		6C61AA3A9EFB0832F455205F /* DaysSinceAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1185D0A5EAFEA4321FF80C1F /* DaysSinceAccessoryWidget.swift */; };
 		6EF529D29D11B3EAEF37F778 /* WatchSnapshotSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 482E94B127422551748E3B90 /* WatchSnapshotSupport.swift */; };
+		7152F7ECC61E5CD7C0F75B61 /* WidgetIntentDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681CD308D10E9AA6594A27ED /* WidgetIntentDispatch.swift */; };
+		72847D0E5EA16F4A1A2852ED /* TrainingBlockWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C18E84FD5EB6D2268FFB21 /* TrainingBlockWidget.swift */; };
 		77435FE6DDD47136A8F542AF /* WorkoutLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = D17D63AC10BE63F68AF8BD10 /* WorkoutLiveActivity.swift */; };
+		778D17179054F13AE9C7E686 /* PulseStrengthCore in Frameworks */ = {isa = PBXBuildFile; productRef = 929FC8A6333FDD4BD7D2BF04 /* PulseStrengthCore */; };
+		789F51706AC7753565B3891F /* HomeComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F88E164A73944A3962C24275 /* HomeComponents.swift */; };
+		7996204062348EEAF45092F5 /* WidgetTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA899D7CDBBAAE9B30EA610 /* WidgetTheme.swift */; };
+		7AD8D00B71480F2BABE6FB9E /* ControlsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 303E3FFED993E4CA4AABAA9C /* ControlsBundle.swift */; };
+		7AFDC8E94736F549B21C2C01 /* HeartRateWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D3E7C96A9432C148B8E2429 /* HeartRateWatchWidget.swift */; };
+		7BE97A9F8ACBB31BA58CEEA4 /* ExtrasWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F485C356AB8EF4597AFF7D /* ExtrasWidgetBundle.swift */; };
+		7C4011824F37BA247B8AB052 /* BenchModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1AE9166FE3C91FEF33A2003 /* BenchModeView.swift */; };
+		7C9A8A0621B279E4BDF8A382 /* WatchCountersWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBD6F2B16BB49DCD4924AACD /* WatchCountersWidgets.swift */; };
+		7CF075EEBE4F38197094B9E1 /* WatchIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3995A3D0E95F401E60C04876 /* WatchIntents.swift */; };
+		811E8B38D770984A182EE764 /* WatchGoalWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 440DFEA1691623A78AD1C3E7 /* WatchGoalWidgets.swift */; };
+		836B03FE99F0C98B2F3FCFC0 /* HomeComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F88E164A73944A3962C24275 /* HomeComponents.swift */; };
+		83E3978CAC28D09D5F7552F6 /* HomeFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9555FC557E144B12E3A6F8AE /* HomeFormatting.swift */; };
+		843C10B98F8184C7FD71C65B /* RecordWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 443B0FCA615B5A2E9F883786 /* RecordWatchWidget.swift */; };
 		845E0866820AD085A7CAF04C /* PulseStrengthWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6E13FC599BDEE16AB16EAB0 /* PulseStrengthWatchApp.swift */; };
+		85BF0246CE9273788C3601DF /* LockScreenStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25EDA54FFC1EEF5562149335 /* LockScreenStates.swift */; };
+		868F0E70B6551DBB700BAE56 /* LogSetWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A84110D8F261331CF48760D /* LogSetWidget.swift */; };
+		87C5C1E1E05DEB72A9F116E8 /* NextUpWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB73DEAC3ED42E6864FC0DAC /* NextUpWidget.swift */; };
+		88619FB6441F627B1BBE4734 /* WatchIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3995A3D0E95F401E60C04876 /* WatchIntents.swift */; };
+		886E154CEED799E9CD062581 /* PlateauWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF48361A7AA17328E5AF8C2 /* PlateauWidget.swift */; };
+		8A96E3B26C7334B248A514B3 /* StrengthRatioWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E8EEAF24108A824288C80B1 /* StrengthRatioWidget.swift */; };
+		8B7F03B86C8D1E4F2E449347 /* WeeklySetsAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91B9D953B9A05ACC0B1B53B0 /* WeeklySetsAccessoryWidget.swift */; };
+		8CB75673931BC7F1DA965FDC /* LiftTrendWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C97E3944D072800FA7C7F6F /* LiftTrendWidget.swift */; };
+		8D132CD6CB5AABA7C382808F /* WidgetTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA899D7CDBBAAE9B30EA610 /* WidgetTheme.swift */; };
+		8DD31A6D5B382FE2DE4516D3 /* ActivityStateComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38B8DABED17E049DB48C54E /* ActivityStateComponents.swift */; };
+		8E80979BCD82338BABCC5844 /* MuscleFreshnessWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 044F114102698145DC6C56A3 /* MuscleFreshnessWidget.swift */; };
+		904DAB6D1B0A07A37E55F96F /* ActivityStateComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38B8DABED17E049DB48C54E /* ActivityStateComponents.swift */; };
+		905CA4C41C6EDFB7E320D55D /* ExtrasComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 645F19C54853A74EAE8D0348 /* ExtrasComponents.swift */; };
+		90BFFF7066CBD0333EEE44E7 /* PlateauWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FF48361A7AA17328E5AF8C2 /* PlateauWidget.swift */; };
+		93B6CCED3F6A9DEB0695EA3F /* WidgetShapes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0236A53582CC0410804A0D26 /* WidgetShapes.swift */; };
+		940DAC9CCF7962BD7498BC94 /* OverloadAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2C4FCE014F4E8C4FB22667 /* OverloadAccessoryWidget.swift */; };
+		94C31BFACD2E377CFE4C6BD6 /* ReadinessWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6544C412E07E925BAA1EFFC7 /* ReadinessWidget.swift */; };
+		98C122AA94533212BD20FB1F /* StrengthIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 413CBF309A2C9E950724691D /* StrengthIntents.swift */; };
+		98FBF6E705263FAA9992520D /* PulseStrengthCore in Frameworks */ = {isa = PBXBuildFile; productRef = 5AA71792236FC07EAC553798 /* PulseStrengthCore */; };
+		996A53F573F108BCC7309700 /* ActivityState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC8C3B75696CEAC24FAD3EA /* ActivityState.swift */; };
+		9CE39D7ACD65E612D1AF0803 /* WorkoutControlState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF8874912F5512E8139A2B5 /* WorkoutControlState.swift */; };
+		9D336B8D070B2957908BC109 /* BenchModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1AE9166FE3C91FEF33A2003 /* BenchModeView.swift */; };
 		9E1915B3CA9EF355DBDE5C7F /* PulseStrengthWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 513C7FC858D8CD9B5D0C167D /* PulseStrengthWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9E1EB28419E442B63CFEDC4C /* StrengthIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 413CBF309A2C9E950724691D /* StrengthIntents.swift */; };
+		9ED672DB522B8172C18C2B2D /* WatchGoalWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 440DFEA1691623A78AD1C3E7 /* WatchGoalWidgets.swift */; };
+		A132AFE7269FCA27FADC7A56 /* ControlIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC6106BD64A5B41B72B70C8 /* ControlIntents.swift */; };
+		A342E6778A3DE1339DAAF2EB /* ActivityComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E604A55A06793D4699A2D342 /* ActivityComponents.swift */; };
+		A42398BB48813596CF32C659 /* WeeklyGoalAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DD42DDA32FE24BC9DD1398 /* WeeklyGoalAccessoryWidget.swift */; };
+		A43DE06436D1D21E84A9F5FA /* WidgetIntentDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 681CD308D10E9AA6594A27ED /* WidgetIntentDispatch.swift */; };
+		A52ECA6579DCEBB2A491E685 /* FinishControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6CAA23244866C41604627D2 /* FinishControl.swift */; };
 		A62B485384B63E9F1EC7FAE8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1410FB4F5A91BB23E1F27EB /* Assets.xcassets */; };
+		A80EC86C24A15F6B44CE3690 /* WidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C997BF7CEAC8480FDA8AFAB /* WidgetSnapshotTests.swift */; };
+		A839C66EFE25FF2077A5DA8E /* SnapshotProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F602644FE9072E53C18C41D9 /* SnapshotProvider.swift */; };
+		A8F43EF6621F393266DC9A07 /* NextUpAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318B774577E3FE3864899EB7 /* NextUpAccessoryWidget.swift */; };
+		A9076B9B9BE85CF7E9C52AF9 /* WatchWidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C6E1CF938C6D0C0DE215DEE /* WatchWidgetData.swift */; };
+		AA6C2B800554C9B3B9863E2D /* PulseStrengthActivity in Frameworks */ = {isa = PBXBuildFile; productRef = D7FE1EB3C11B122AE966AB7A /* PulseStrengthActivity */; };
 		AAB1BA90E716320321F2DA1A /* PulseStrengthWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 61A7929DBD816B52CEEA5264 /* PulseStrengthWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AD5759BB6491D96ACA1C1BBD /* PulseStrengthCore in Frameworks */ = {isa = PBXBuildFile; productRef = 3CB352F8D101D0275F7F5B59 /* PulseStrengthCore */; };
+		AE7EA4CDD635ACEDC50F290F /* PartnerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1931A4B9B06974F80A6263CC /* PartnerWidget.swift */; };
+		B18747CC644623AE0E6BA89D /* StrengthRatioWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E8EEAF24108A824288C80B1 /* StrengthRatioWidget.swift */; };
+		B58E4416B1CD0BB9E46469AC /* WeeklyGoalWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB21F89D771D4BC004F0D1F4 /* WeeklyGoalWidget.swift */; };
+		B9CA9ECB99EA385EBF45F95D /* NextUpWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DA590742F2017DAD48CB538 /* NextUpWatchWidget.swift */; };
+		BA0386FB5C27251366937CB9 /* LockScreenStates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25EDA54FFC1EEF5562149335 /* LockScreenStates.swift */; };
+		BC9B43FDAFB90310D18AFFC4 /* WatchWidgetData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C6E1CF938C6D0C0DE215DEE /* WatchWidgetData.swift */; };
 		BE71A16B32542D6737FD874F /* PulseStrengthWatchUI in Frameworks */ = {isa = PBXBuildFile; productRef = B73697F0520B2BAD86541946 /* PulseStrengthWatchUI */; };
+		BE74DD5C94270881481C406C /* LogSetWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAD6CFA1C490E37AE0E2A5FB /* LogSetWatchWidget.swift */; };
+		C10319436D3FA0A623F784CE /* FormCueWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D814908F39790B12EB1B1BD /* FormCueWidget.swift */; };
+		C2E75375FA6A9FD84B7CECFB /* LockAccessoryText.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC9CBCC09EA5DAEF95AC800A /* LockAccessoryText.swift */; };
+		C41AED274A9485771BAC4AEE /* MonthHeatmapWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B965633640AD348550E0F4CB /* MonthHeatmapWidget.swift */; };
+		C45919E20CDDB0BE36A73BDC /* WidgetShapes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0236A53582CC0410804A0D26 /* WidgetShapes.swift */; };
 		C511CC56C902BB36D3B87F05 /* WatchSnapshotFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB922E4870995876F6566984 /* WatchSnapshotFixtures.swift */; };
+		C57208668B83C7E4EE3488D7 /* WeeklyGoalAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8DD42DDA32FE24BC9DD1398 /* WeeklyGoalAccessoryWidget.swift */; };
 		C5C855357728CEF035D1D346 /* PulseStrengthActivity in Frameworks */ = {isa = PBXBuildFile; productRef = 741E1F7A2248FB724DDB0548 /* PulseStrengthActivity */; };
 		C5E7923953C5947F7AE810AA /* TourLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF30154EC68F8AB1DE11083 /* TourLayout.swift */; };
+		C7C3C000A2450EB469A18132 /* TemplateLauncherWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB642B204F0850164A6F4ED6 /* TemplateLauncherWidget.swift */; };
+		C8C7797AB89F7F637A07387D /* LockWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D967B8FCFD4A55AB610303D /* LockWidgetBundle.swift */; };
+		D13A3D0A665419AECCA4E308 /* TemplateLauncherWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB642B204F0850164A6F4ED6 /* TemplateLauncherWidget.swift */; };
 		D35C63DA961ABB641F944693 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EB2C77A8B867752B60670F36 /* PrivacyInfo.xcprivacy */; };
+		D3B100EC25034C5319BA0AC9 /* PlannedSessionActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D97BB5FF2DA1738C02EB8C6 /* PlannedSessionActivity.swift */; };
 		D4FF3378ECD8320C051243EE /* LiveSnapshotHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D8C353E873B8A325E01DBB /* LiveSnapshotHarness.swift */; };
 		D52F4F2B27F5DADFBB648E91 /* LiveSnapshotFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F45B60FC72FBE53481E5120B /* LiveSnapshotFixtures.swift */; };
+		D7CB5EE822760B3EAF3898F9 /* SnapshotProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F602644FE9072E53C18C41D9 /* SnapshotProvider.swift */; };
+		D7FB496F0565D45B678C7354 /* AddRestControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5062B51303926F39EF197B40 /* AddRestControl.swift */; };
+		D803A176334F4A6646559F82 /* LiveMomentIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251D09C26F7550BF044C6B32 /* LiveMomentIntents.swift */; };
+		D8D35960C58358E3CDD54F35 /* LiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B069BB17DCF7E1C911269D /* LiveActivityBundle.swift */; };
 		D9D2698483576616B078427F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B68251C5DA33F4888E23338E /* PrivacyInfo.xcprivacy */; };
+		DADE8BD175511E5C7E581550 /* WorkoutControlState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF8874912F5512E8139A2B5 /* WorkoutControlState.swift */; };
+		DB27AF6040B9752171516E41 /* ControlIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC6106BD64A5B41B72B70C8 /* ControlIntents.swift */; };
 		DE09BE398BBE7903F95BFE19 /* LiveActivitySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C9BFA3E27FA38E6C864D62 /* LiveActivitySnapshotTests.swift */; };
+		DF07CA1805923571B0C6E32B /* OverloadWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 271D58E983EFAA95627E2F70 /* OverloadWidget.swift */; };
+		DFC6D683D9E3D18021B5D1BB /* WatchIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3995A3D0E95F401E60C04876 /* WatchIntents.swift */; };
+		DFD2A5507820CC5F3AD52D5C /* DynamicIslandViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C6DCA1E1F00BD900FA2FA19 /* DynamicIslandViews.swift */; };
+		DFD6F513C94E634172D7DCFE /* NextUpWatchWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DA590742F2017DAD48CB538 /* NextUpWatchWidget.swift */; };
+		E0BE4A9F58B9C6F9C6BEA703 /* PartnerWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1931A4B9B06974F80A6263CC /* PartnerWidget.swift */; };
+		E13DFB27F1D6A4A3EB6A9F01 /* OverloadAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2C4FCE014F4E8C4FB22667 /* OverloadAccessoryWidget.swift */; };
 		E3C1018F0F6B4A9E1156AD83 /* PulseStrengthCore in Frameworks */ = {isa = PBXBuildFile; productRef = 001AB78FB9B24CE72BA9A87C /* PulseStrengthCore */; };
+		E6B47B0F826F056845C41A65 /* ActivityTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09D058C53D774333F0BE5D96 /* ActivityTheme.swift */; };
+		E783A58185F5C611305997B1 /* SnapshotProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F602644FE9072E53C18C41D9 /* SnapshotProvider.swift */; };
+		E812C3597EF9D34DBB0B7307 /* YearInIronWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE6428CEAE24FCBB3089D66 /* YearInIronWidget.swift */; };
+		E90F2449C7B6B0F1822158E4 /* StreakAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85AD4325EF0895FAE783E8EE /* StreakAccessoryWidget.swift */; };
 		E9EC3179AE28F814E5CB1A18 /* LockScreenActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 160871DFCA72A3A0674CC9B7 /* LockScreenActivityView.swift */; };
+		EA84B90121DD3F9E830113C1 /* LogSetControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2652DA698FE764CBE26A583A /* LogSetControl.swift */; };
+		EBD9FE49932302A520F74FC5 /* BodyMapWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F7B20E9F578CCD2C22103F5 /* BodyMapWidget.swift */; };
+		EC47DCA3E85AB966AA92E0FE /* DaysSinceAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1185D0A5EAFEA4321FF80C1F /* DaysSinceAccessoryWidget.swift */; };
+		EF1B08690590F48489985D8C /* WidgetText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB707453EEED273557AFBDA /* WidgetText.swift */; };
+		EFFBC5B9F64463A39E4EAF4D /* ActivityStateComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38B8DABED17E049DB48C54E /* ActivityStateComponents.swift */; };
+		F63F54A9233A0CA66AC835AE /* WeeklySetsWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF105FBD097BA095408E9A7B /* WeeklySetsWidget.swift */; };
+		F78A2528E544E0E3600779C2 /* WidgetText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB707453EEED273557AFBDA /* WidgetText.swift */; };
+		F89B53AA1EFB922009D8E7EA /* NextUpAccessoryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318B774577E3FE3864899EB7 /* NextUpAccessoryWidget.swift */; };
+		FCAECA304FC54EFC6F4F408D /* TrainingWeekWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 80F92B79B0781FF70D65CABD /* TrainingWeekWidget.swift */; };
 		FD0C1BA54E474833F887372E /* PulseStrengthWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 557B1CD3BA6834EB0E3B7EFB /* PulseStrengthWidgetsBundle.swift */; };
+		FD1DE65B69969B2997109ACF /* SessionTimelineWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46085AFFF331B1E7C0B68462 /* SessionTimelineWidget.swift */; };
+		FFDE97341219070F0425B314 /* SnapshotProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F602644FE9072E53C18C41D9 /* SnapshotProvider.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -59,6 +238,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 0B810FA5A9E56C4168BE3C2E;
 			remoteInfo = PulseStrengthWidgets;
+		};
+		24AEF1CAD65F90E82B0550D6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E4F2033DA8B0DB48B60FE07B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BBF896AF712D4CE99F443FA2;
+			remoteInfo = PulseStrengthWatchWidgets;
 		};
 		A4319A2AD9B4847A51C24FDD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -99,51 +285,156 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D9ED846C689053EA1AC09F49 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				22679B284EC59DCBF241158E /* PulseStrengthWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		01637A8BCC806CC38F30F0B0 /* WatchWidgetStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgetStyle.swift; sourceTree = "<group>"; };
+		0236A53582CC0410804A0D26 /* WidgetShapes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetShapes.swift; sourceTree = "<group>"; };
+		02741A4488BB3504569FEF05 /* RestDayWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestDayWidget.swift; sourceTree = "<group>"; };
+		044F114102698145DC6C56A3 /* MuscleFreshnessWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleFreshnessWidget.swift; sourceTree = "<group>"; };
+		04C18E84FD5EB6D2268FFB21 /* TrainingBlockWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingBlockWidget.swift; sourceTree = "<group>"; };
 		09D058C53D774333F0BE5D96 /* ActivityTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityTheme.swift; sourceTree = "<group>"; };
 		0C6DCA1E1F00BD900FA2FA19 /* DynamicIslandViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DynamicIslandViews.swift; sourceTree = "<group>"; };
+		0D814908F39790B12EB1B1BD /* FormCueWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormCueWidget.swift; sourceTree = "<group>"; };
+		0EC8C3B75696CEAC24FAD3EA /* ActivityState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityState.swift; sourceTree = "<group>"; };
+		0F7B20E9F578CCD2C22103F5 /* BodyMapWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyMapWidget.swift; sourceTree = "<group>"; };
+		1185D0A5EAFEA4321FF80C1F /* DaysSinceAccessoryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaysSinceAccessoryWidget.swift; sourceTree = "<group>"; };
 		12929ABCA60B58DBC291FABF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		13D20294A73708048494EBE9 /* WorkoutControlProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutControlProvider.swift; sourceTree = "<group>"; };
 		160871DFCA72A3A0674CC9B7 /* LockScreenActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenActivityView.swift; sourceTree = "<group>"; };
+		16FE31237B4BE92225166F35 /* WidgetSnapshotHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotHarness.swift; sourceTree = "<group>"; };
+		17F485C356AB8EF4597AFF7D /* ExtrasWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtrasWidgetBundle.swift; sourceTree = "<group>"; };
+		1931A4B9B06974F80A6263CC /* PartnerWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PartnerWidget.swift; sourceTree = "<group>"; };
+		1BC78F9622EADCE2E19A149F /* PulseStrengthWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PulseStrengthWidgets.entitlements; sourceTree = "<group>"; };
+		1CAADC545F1C46D3664BB5A9 /* StartNextControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartNextControl.swift; sourceTree = "<group>"; };
+		23CF1F97E972DF6D84D753B9 /* LiftTrendWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiftTrendWatchWidget.swift; sourceTree = "<group>"; };
+		251D09C26F7550BF044C6B32 /* LiveMomentIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveMomentIntents.swift; sourceTree = "<group>"; };
 		25E81ADFBEEE974FECB26914 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		25EDA54FFC1EEF5562149335 /* LockScreenStates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenStates.swift; sourceTree = "<group>"; };
+		2652DA698FE764CBE26A583A /* LogSetControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogSetControl.swift; sourceTree = "<group>"; };
+		271D58E983EFAA95627E2F70 /* OverloadWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverloadWidget.swift; sourceTree = "<group>"; };
 		273BBEA41C09838A23FEC3B9 /* PulseStrengthApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseStrengthApp.swift; sourceTree = "<group>"; };
+		2AB707453EEED273557AFBDA /* WidgetText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetText.swift; sourceTree = "<group>"; };
+		2DDE200CACB8064F1E08905A /* WatchWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgetBundle.swift; sourceTree = "<group>"; };
+		303E3FFED993E4CA4AABAA9C /* ControlsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlsBundle.swift; sourceTree = "<group>"; };
+		318B774577E3FE3864899EB7 /* NextUpAccessoryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextUpAccessoryWidget.swift; sourceTree = "<group>"; };
+		35AEED2E2F812ABBAC80AD9B /* PulseStrengthWatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PulseStrengthWatchWidgets.entitlements; sourceTree = "<group>"; };
 		370C601D67262C6BBB07C3A6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3995A3D0E95F401E60C04876 /* WatchIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchIntents.swift; sourceTree = "<group>"; };
 		3BD7F4BEB5107267EEE1B495 /* PulseStrengthWatchSnapshotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PulseStrengthWatchSnapshotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3D891BC5BB7F981889378D22 /* StrengthFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthFlowTests.swift; sourceTree = "<group>"; };
+		3D967B8FCFD4A55AB610303D /* LockWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockWidgetBundle.swift; sourceTree = "<group>"; };
+		3FF366102FA597A7604553C6 /* LockAccessoryComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockAccessoryComponents.swift; sourceTree = "<group>"; };
 		413CBF309A2C9E950724691D /* StrengthIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthIntents.swift; sourceTree = "<group>"; };
 		4307DFD24CDCB00FE4528165 /* PulseStrengthLiveSnapshotTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PulseStrengthLiveSnapshotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		440DFEA1691623A78AD1C3E7 /* WatchGoalWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchGoalWidgets.swift; sourceTree = "<group>"; };
+		443B0FCA615B5A2E9F883786 /* RecordWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordWatchWidget.swift; sourceTree = "<group>"; };
+		46085AFFF331B1E7C0B68462 /* SessionTimelineWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTimelineWidget.swift; sourceTree = "<group>"; };
+		47CC2FDC78406D2B2C9D898D /* NextUpControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextUpControl.swift; sourceTree = "<group>"; };
 		482E94B127422551748E3B90 /* WatchSnapshotSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSnapshotSupport.swift; sourceTree = "<group>"; };
 		4A73C2913588BDB049B08F05 /* PulseStrength.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PulseStrength.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4B9DFEE14085DDF20D6F3C13 /* PulseStrengthWatchWidgetSnapshotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PulseStrengthWatchWidgetSnapshotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4C97E3944D072800FA7C7F6F /* LiftTrendWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiftTrendWidget.swift; sourceTree = "<group>"; };
+		4C997BF7CEAC8480FDA8AFAB /* WidgetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshotTests.swift; sourceTree = "<group>"; };
+		4D3E7C96A9432C148B8E2429 /* HeartRateWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartRateWatchWidget.swift; sourceTree = "<group>"; };
+		4DA590742F2017DAD48CB538 /* NextUpWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextUpWatchWidget.swift; sourceTree = "<group>"; };
+		5062B51303926F39EF197B40 /* AddRestControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddRestControl.swift; sourceTree = "<group>"; };
 		513C7FC858D8CD9B5D0C167D /* PulseStrengthWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PulseStrengthWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5184F8954BEACF4A311CA40B /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		52285455D83BF225D3FE9915 /* PlatesControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlatesControl.swift; sourceTree = "<group>"; };
 		557B1CD3BA6834EB0E3B7EFB /* PulseStrengthWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseStrengthWidgetsBundle.swift; sourceTree = "<group>"; };
+		5A84110D8F261331CF48760D /* LogSetWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogSetWidget.swift; sourceTree = "<group>"; };
+		5FC8C4139D5E7F5FACA4A0B3 /* PauseControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PauseControl.swift; sourceTree = "<group>"; };
+		60761F1F2FF3D5B11299330D /* PlannedSessionSnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannedSessionSnapshots.swift; sourceTree = "<group>"; };
 		61A7929DBD816B52CEEA5264 /* PulseStrengthWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PulseStrengthWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		63B9CFC1BE8EB1606A77B38F /* PRSpotlightWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRSpotlightWidget.swift; sourceTree = "<group>"; };
+		645F19C54853A74EAE8D0348 /* ExtrasComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtrasComponents.swift; sourceTree = "<group>"; };
+		6544C412E07E925BAA1EFFC7 /* ReadinessWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessWidget.swift; sourceTree = "<group>"; };
+		681CD308D10E9AA6594A27ED /* WidgetIntentDispatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetIntentDispatch.swift; sourceTree = "<group>"; };
 		6C51AF512992ED434F3A9396 /* PulseStrengthKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PulseStrengthKit; path = Packages/PulseStrengthKit; sourceTree = SOURCE_ROOT; };
+		6CE6428CEAE24FCBB3089D66 /* YearInIronWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearInIronWidget.swift; sourceTree = "<group>"; };
+		6E8EEAF24108A824288C80B1 /* StrengthRatioWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthRatioWidget.swift; sourceTree = "<group>"; };
+		6FFD15C6B50B64A3800EBD2B /* RestControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestControl.swift; sourceTree = "<group>"; };
 		72D8C353E873B8A325E01DBB /* LiveSnapshotHarness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSnapshotHarness.swift; sourceTree = "<group>"; };
 		73C9BFA3E27FA38E6C864D62 /* LiveActivitySnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivitySnapshotTests.swift; sourceTree = "<group>"; };
+		7D97BB5FF2DA1738C02EB8C6 /* PlannedSessionActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlannedSessionActivity.swift; sourceTree = "<group>"; };
+		7DF8874912F5512E8139A2B5 /* WorkoutControlState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutControlState.swift; sourceTree = "<group>"; };
+		7FF48361A7AA17328E5AF8C2 /* PlateauWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlateauWidget.swift; sourceTree = "<group>"; };
 		80CF02A95DF2EE11DACEDD98 /* ARCHITECTURE.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ARCHITECTURE.md; sourceTree = "<group>"; };
+		80F92B79B0781FF70D65CABD /* TrainingWeekWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingWeekWidget.swift; sourceTree = "<group>"; };
+		841472771A908DFC08938295 /* PRAccessoryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PRAccessoryWidget.swift; sourceTree = "<group>"; };
+		85AD4325EF0895FAE783E8EE /* StreakAccessoryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreakAccessoryWidget.swift; sourceTree = "<group>"; };
+		8C2C4FCE014F4E8C4FB22667 /* OverloadAccessoryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverloadAccessoryWidget.swift; sourceTree = "<group>"; };
+		8C6E1CF938C6D0C0DE215DEE /* WatchWidgetData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgetData.swift; sourceTree = "<group>"; };
 		8FC342859CB1C9ACF29C9DFD /* PulseStrengthWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PulseStrengthWatch.entitlements; sourceTree = "<group>"; };
+		91B9D953B9A05ACC0B1B53B0 /* WeeklySetsAccessoryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySetsAccessoryWidget.swift; sourceTree = "<group>"; };
+		9555FC557E144B12E3A6F8AE /* HomeFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeFormatting.swift; sourceTree = "<group>"; };
 		97D4CF7FE036153CF634816C /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Signing.xcconfig; sourceTree = "<group>"; };
+		992A53259EC6144B7DD57EB1 /* RestWatchWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestWatchWidgets.swift; sourceTree = "<group>"; };
 		9F27AA698CEDCF09B813C953 /* project.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = project.yml; sourceTree = "<group>"; };
 		A0216BA0140A8ACC842F6D19 /* WatchSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSnapshotTests.swift; sourceTree = "<group>"; };
+		A5B069BB17DCF7E1C911269D /* LiveActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveActivityBundle.swift; sourceTree = "<group>"; };
+		A7DCE7A96ECE5B562133832E /* PulseStrengthWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PulseStrengthWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A940FAA749C252858BEF3559 /* FlowSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowSupport.swift; sourceTree = "<group>"; };
+		AB21F89D771D4BC004F0D1F4 /* WeeklyGoalWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyGoalWidget.swift; sourceTree = "<group>"; };
+		AC0E27FD13A96EAADD85FBE2 /* WatchWidgetTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgetTimeline.swift; sourceTree = "<group>"; };
+		AC9CBCC09EA5DAEF95AC800A /* LockAccessoryText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockAccessoryText.swift; sourceTree = "<group>"; };
+		AF105FBD097BA095408E9A7B /* WeeklySetsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySetsWidget.swift; sourceTree = "<group>"; };
 		B1410FB4F5A91BB23E1F27EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B68251C5DA33F4888E23338E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		B965633640AD348550E0F4CB /* MonthHeatmapWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthHeatmapWidget.swift; sourceTree = "<group>"; };
+		BDE10996FAD4FE3F87A91D20 /* WatchWidgetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgetSnapshotTests.swift; sourceTree = "<group>"; };
 		C11383CF820E4440CCD83F1A /* PulseStrengthUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PulseStrengthUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C1AE9166FE3C91FEF33A2003 /* BenchModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BenchModeView.swift; sourceTree = "<group>"; };
+		C6CAA23244866C41604627D2 /* FinishControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FinishControl.swift; sourceTree = "<group>"; };
+		CAD6CFA1C490E37AE0E2A5FB /* LogSetWatchWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogSetWatchWidget.swift; sourceTree = "<group>"; };
+		CBD6F2B16BB49DCD4924AACD /* WatchCountersWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCountersWidgets.swift; sourceTree = "<group>"; };
 		CD11956FA99A0FC4B2BA3471 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		CEA899D7CDBBAAE9B30EA610 /* WidgetTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetTheme.swift; sourceTree = "<group>"; };
 		D17D63AC10BE63F68AF8BD10 /* WorkoutLiveActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivity.swift; sourceTree = "<group>"; };
+		D1FEB5ADDE52C589D2D8C3E9 /* PulseStrengthWatchWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseStrengthWatchWidgetsBundle.swift; sourceTree = "<group>"; };
+		D38B8DABED17E049DB48C54E /* ActivityStateComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityStateComponents.swift; sourceTree = "<group>"; };
+		D574919858EA95C054E7A9B8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		DB642B204F0850164A6F4ED6 /* TemplateLauncherWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemplateLauncherWidget.swift; sourceTree = "<group>"; };
+		DB73DEAC3ED42E6864FC0DAC /* NextUpWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextUpWidget.swift; sourceTree = "<group>"; };
+		DBE19E94264B555E388F2D29 /* LoadedBarWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoadedBarWidget.swift; sourceTree = "<group>"; };
+		DCC6106BD64A5B41B72B70C8 /* ControlIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlIntents.swift; sourceTree = "<group>"; };
 		E1C3D8A49A2F28A65D6AAFF9 /* StrengthTourTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrengthTourTests.swift; sourceTree = "<group>"; };
 		E1FA38F36C4FB86AA870B866 /* PulseStrength.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PulseStrength.entitlements; sourceTree = "<group>"; };
 		E604A55A06793D4699A2D342 /* ActivityComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityComponents.swift; sourceTree = "<group>"; };
+		E79954EFA59CAF1C32EF0219 /* PulseStrengthWidgetSnapshotTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PulseStrengthWidgetSnapshotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		EB2C77A8B867752B60670F36 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F45B60FC72FBE53481E5120B /* LiveSnapshotFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSnapshotFixtures.swift; sourceTree = "<group>"; };
+		F602644FE9072E53C18C41D9 /* SnapshotProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotProvider.swift; sourceTree = "<group>"; };
 		F6E13FC599BDEE16AB16EAB0 /* PulseStrengthWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseStrengthWatchApp.swift; sourceTree = "<group>"; };
+		F88E164A73944A3962C24275 /* HomeComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeComponents.swift; sourceTree = "<group>"; };
+		F8DD42DDA32FE24BC9DD1398 /* WeeklyGoalAccessoryWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyGoalAccessoryWidget.swift; sourceTree = "<group>"; };
 		FB922E4870995876F6566984 /* WatchSnapshotFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSnapshotFixtures.swift; sourceTree = "<group>"; };
+		FCD353C5614F32E6F0865949 /* HomeWidgetBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeWidgetBundle.swift; sourceTree = "<group>"; };
+		FED7D3743154AF56E6275A5A /* PulseShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseShortcuts.swift; sourceTree = "<group>"; };
 		FFF30154EC68F8AB1DE11083 /* TourLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TourLayout.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		1083133F4A62BFB136890221 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				778D17179054F13AE9C7E686 /* PulseStrengthCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		15DB4A5A302E8155BA947EF6 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -160,6 +451,23 @@
 				36277A5312598DC6E455D529 /* PulseStrengthCore in Frameworks */,
 				5E3E4B981CDD5193AC7C52A1 /* PulseStrengthActivity in Frameworks */,
 				5C0C8F1801F2DCB9A8CC1B6A /* PulseStrengthIOS in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		639EB7E84CB2388635527A5D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				346AFEB619052B2451269D62 /* PulseStrengthCore in Frameworks */,
+				AA6C2B800554C9B3B9863E2D /* PulseStrengthActivity in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6520BFB550E365C2A163E720 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				98FBF6E705263FAA9992520D /* PulseStrengthCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -193,6 +501,47 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		007E4D0CC0B7ABD3A26C5808 /* PulseStrengthWatchWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				D574919858EA95C054E7A9B8 /* Info.plist */,
+				35AEED2E2F812ABBAC80AD9B /* PulseStrengthWatchWidgets.entitlements */,
+				D1FEB5ADDE52C589D2D8C3E9 /* PulseStrengthWatchWidgetsBundle.swift */,
+			);
+			path = PulseStrengthWatchWidgets;
+			sourceTree = "<group>";
+		};
+		12F29FB502E9A62951AD5DB4 /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				F602644FE9072E53C18C41D9 /* SnapshotProvider.swift */,
+				0236A53582CC0410804A0D26 /* WidgetShapes.swift */,
+				2AB707453EEED273557AFBDA /* WidgetText.swift */,
+				CEA899D7CDBBAAE9B30EA610 /* WidgetTheme.swift */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		14431B5C6B8A4A47027FFB2C /* Watch */ = {
+			isa = PBXGroup;
+			children = (
+				4D3E7C96A9432C148B8E2429 /* HeartRateWatchWidget.swift */,
+				23CF1F97E972DF6D84D753B9 /* LiftTrendWatchWidget.swift */,
+				CAD6CFA1C490E37AE0E2A5FB /* LogSetWatchWidget.swift */,
+				4DA590742F2017DAD48CB538 /* NextUpWatchWidget.swift */,
+				443B0FCA615B5A2E9F883786 /* RecordWatchWidget.swift */,
+				992A53259EC6144B7DD57EB1 /* RestWatchWidgets.swift */,
+				CBD6F2B16BB49DCD4924AACD /* WatchCountersWidgets.swift */,
+				440DFEA1691623A78AD1C3E7 /* WatchGoalWidgets.swift */,
+				3995A3D0E95F401E60C04876 /* WatchIntents.swift */,
+				2DDE200CACB8064F1E08905A /* WatchWidgetBundle.swift */,
+				8C6E1CF938C6D0C0DE215DEE /* WatchWidgetData.swift */,
+				01637A8BCC806CC38F30F0B0 /* WatchWidgetStyle.swift */,
+				AC0E27FD13A96EAADD85FBE2 /* WatchWidgetTimeline.swift */,
+			);
+			path = Watch;
+			sourceTree = "<group>";
+		};
 		1824EFD6224E3E678895C057 /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -201,9 +550,49 @@
 				C11383CF820E4440CCD83F1A /* PulseStrengthUITests.xctest */,
 				61A7929DBD816B52CEEA5264 /* PulseStrengthWatch.app */,
 				3BD7F4BEB5107267EEE1B495 /* PulseStrengthWatchSnapshotTests.xctest */,
+				A7DCE7A96ECE5B562133832E /* PulseStrengthWatchWidgets.appex */,
+				4B9DFEE14085DDF20D6F3C13 /* PulseStrengthWatchWidgetSnapshotTests.xctest */,
 				513C7FC858D8CD9B5D0C167D /* PulseStrengthWidgets.appex */,
+				E79954EFA59CAF1C32EF0219 /* PulseStrengthWidgetSnapshotTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		1C3A71CC81567107D8A475D5 /* Extras */ = {
+			isa = PBXGroup;
+			children = (
+				0F7B20E9F578CCD2C22103F5 /* BodyMapWidget.swift */,
+				645F19C54853A74EAE8D0348 /* ExtrasComponents.swift */,
+				17F485C356AB8EF4597AFF7D /* ExtrasWidgetBundle.swift */,
+				0D814908F39790B12EB1B1BD /* FormCueWidget.swift */,
+				DBE19E94264B555E388F2D29 /* LoadedBarWidget.swift */,
+				5A84110D8F261331CF48760D /* LogSetWidget.swift */,
+				1931A4B9B06974F80A6263CC /* PartnerWidget.swift */,
+				7FF48361A7AA17328E5AF8C2 /* PlateauWidget.swift */,
+				6544C412E07E925BAA1EFFC7 /* ReadinessWidget.swift */,
+				02741A4488BB3504569FEF05 /* RestDayWidget.swift */,
+				46085AFFF331B1E7C0B68462 /* SessionTimelineWidget.swift */,
+				6E8EEAF24108A824288C80B1 /* StrengthRatioWidget.swift */,
+				6CE6428CEAE24FCBB3089D66 /* YearInIronWidget.swift */,
+			);
+			path = Extras;
+			sourceTree = "<group>";
+		};
+		33D4A186EC8CEED5EEFE3960 /* Lock */ = {
+			isa = PBXGroup;
+			children = (
+				1185D0A5EAFEA4321FF80C1F /* DaysSinceAccessoryWidget.swift */,
+				3FF366102FA597A7604553C6 /* LockAccessoryComponents.swift */,
+				AC9CBCC09EA5DAEF95AC800A /* LockAccessoryText.swift */,
+				3D967B8FCFD4A55AB610303D /* LockWidgetBundle.swift */,
+				318B774577E3FE3864899EB7 /* NextUpAccessoryWidget.swift */,
+				8C2C4FCE014F4E8C4FB22667 /* OverloadAccessoryWidget.swift */,
+				841472771A908DFC08938295 /* PRAccessoryWidget.swift */,
+				85AD4325EF0895FAE783E8EE /* StreakAccessoryWidget.swift */,
+				F8DD42DDA32FE24BC9DD1398 /* WeeklyGoalAccessoryWidget.swift */,
+				91B9D953B9A05ACC0B1B53B0 /* WeeklySetsAccessoryWidget.swift */,
+			);
+			path = Lock;
 			sourceTree = "<group>";
 		};
 		3D424B715F61DCB9AF6800D0 /* PulseStrengthUITests */ = {
@@ -221,12 +610,51 @@
 			isa = PBXGroup;
 			children = (
 				E604A55A06793D4699A2D342 /* ActivityComponents.swift */,
+				0EC8C3B75696CEAC24FAD3EA /* ActivityState.swift */,
+				D38B8DABED17E049DB48C54E /* ActivityStateComponents.swift */,
 				09D058C53D774333F0BE5D96 /* ActivityTheme.swift */,
+				C1AE9166FE3C91FEF33A2003 /* BenchModeView.swift */,
 				0C6DCA1E1F00BD900FA2FA19 /* DynamicIslandViews.swift */,
+				A5B069BB17DCF7E1C911269D /* LiveActivityBundle.swift */,
 				160871DFCA72A3A0674CC9B7 /* LockScreenActivityView.swift */,
+				25EDA54FFC1EEF5562149335 /* LockScreenStates.swift */,
+				7D97BB5FF2DA1738C02EB8C6 /* PlannedSessionActivity.swift */,
 				D17D63AC10BE63F68AF8BD10 /* WorkoutLiveActivity.swift */,
 			);
 			path = LiveActivity;
+			sourceTree = "<group>";
+		};
+		44960B2342E6D1F8F6B8186F /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				12F29FB502E9A62951AD5DB4 /* Common */,
+				1C3A71CC81567107D8A475D5 /* Extras */,
+				62F3D868FA7E26D353BEE647 /* Home */,
+				33D4A186EC8CEED5EEFE3960 /* Lock */,
+				14431B5C6B8A4A47027FFB2C /* Watch */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+		62F3D868FA7E26D353BEE647 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				F88E164A73944A3962C24275 /* HomeComponents.swift */,
+				9555FC557E144B12E3A6F8AE /* HomeFormatting.swift */,
+				FCD353C5614F32E6F0865949 /* HomeWidgetBundle.swift */,
+				4C97E3944D072800FA7C7F6F /* LiftTrendWidget.swift */,
+				B965633640AD348550E0F4CB /* MonthHeatmapWidget.swift */,
+				044F114102698145DC6C56A3 /* MuscleFreshnessWidget.swift */,
+				DB73DEAC3ED42E6864FC0DAC /* NextUpWidget.swift */,
+				271D58E983EFAA95627E2F70 /* OverloadWidget.swift */,
+				63B9CFC1BE8EB1606A77B38F /* PRSpotlightWidget.swift */,
+				DB642B204F0850164A6F4ED6 /* TemplateLauncherWidget.swift */,
+				04C18E84FD5EB6D2268FFB21 /* TrainingBlockWidget.swift */,
+				80F92B79B0781FF70D65CABD /* TrainingWeekWidget.swift */,
+				AB21F89D771D4BC004F0D1F4 /* WeeklyGoalWidget.swift */,
+				AF105FBD097BA095408E9A7B /* WeeklySetsWidget.swift */,
+			);
+			path = Home;
 			sourceTree = "<group>";
 		};
 		88679C33DA3DBD9B249D4C0B /* PulseStrengthWatch */ = {
@@ -241,10 +669,32 @@
 			path = PulseStrengthWatch;
 			sourceTree = "<group>";
 		};
+		988B8AF4AC258289B9134026 /* Controls */ = {
+			isa = PBXGroup;
+			children = (
+				5062B51303926F39EF197B40 /* AddRestControl.swift */,
+				303E3FFED993E4CA4AABAA9C /* ControlsBundle.swift */,
+				C6CAA23244866C41604627D2 /* FinishControl.swift */,
+				2652DA698FE764CBE26A583A /* LogSetControl.swift */,
+				47CC2FDC78406D2B2C9D898D /* NextUpControl.swift */,
+				5FC8C4139D5E7F5FACA4A0B3 /* PauseControl.swift */,
+				52285455D83BF225D3FE9915 /* PlatesControl.swift */,
+				6FFD15C6B50B64A3800EBD2B /* RestControl.swift */,
+				1CAADC545F1C46D3664BB5A9 /* StartNextControl.swift */,
+				13D20294A73708048494EBE9 /* WorkoutControlProvider.swift */,
+			);
+			path = Controls;
+			sourceTree = "<group>";
+		};
 		AAF31B34E2DCA19A33C46F9E /* Intents */ = {
 			isa = PBXGroup;
 			children = (
+				DCC6106BD64A5B41B72B70C8 /* ControlIntents.swift */,
+				251D09C26F7550BF044C6B32 /* LiveMomentIntents.swift */,
+				FED7D3743154AF56E6275A5A /* PulseShortcuts.swift */,
 				413CBF309A2C9E950724691D /* StrengthIntents.swift */,
+				681CD308D10E9AA6594A27ED /* WidgetIntentDispatch.swift */,
+				7DF8874912F5512E8139A2B5 /* WorkoutControlState.swift */,
 			);
 			path = Intents;
 			sourceTree = "<group>";
@@ -259,6 +709,15 @@
 			path = PulseStrengthWatchSnapshotTests;
 			sourceTree = "<group>";
 		};
+		AB8002DE2E12530F00DD5B0A /* PulseStrengthWidgetSnapshotTests */ = {
+			isa = PBXGroup;
+			children = (
+				16FE31237B4BE92225166F35 /* WidgetSnapshotHarness.swift */,
+				4C997BF7CEAC8480FDA8AFAB /* WidgetSnapshotTests.swift */,
+			);
+			path = PulseStrengthWidgetSnapshotTests;
+			sourceTree = "<group>";
+		};
 		B183930144822A364C0DFDF9 /* Apps */ = {
 			isa = PBXGroup;
 			children = (
@@ -267,7 +726,10 @@
 				3D424B715F61DCB9AF6800D0 /* PulseStrengthUITests */,
 				88679C33DA3DBD9B249D4C0B /* PulseStrengthWatch */,
 				AB66401AE66440E6A4C45843 /* PulseStrengthWatchSnapshotTests */,
+				007E4D0CC0B7ABD3A26C5808 /* PulseStrengthWatchWidgets */,
+				D83BF8E87318DB1A83B2E2C4 /* PulseStrengthWatchWidgetSnapshotTests */,
 				BBB21F3A14375E349D5467BD /* PulseStrengthWidgets */,
+				AB8002DE2E12530F00DD5B0A /* PulseStrengthWidgetSnapshotTests */,
 				D7A0973D160E8BC795B70CAB /* Shared */,
 			);
 			path = Apps;
@@ -277,6 +739,7 @@
 			isa = PBXGroup;
 			children = (
 				25E81ADFBEEE974FECB26914 /* Info.plist */,
+				1BC78F9622EADCE2E19A149F /* PulseStrengthWidgets.entitlements */,
 				557B1CD3BA6834EB0E3B7EFB /* PulseStrengthWidgetsBundle.swift */,
 			);
 			path = PulseStrengthWidgets;
@@ -285,10 +748,20 @@
 		D7A0973D160E8BC795B70CAB /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				988B8AF4AC258289B9134026 /* Controls */,
 				AAF31B34E2DCA19A33C46F9E /* Intents */,
 				438B6DB893D5F7F9290A6750 /* LiveActivity */,
+				44960B2342E6D1F8F6B8186F /* Widgets */,
 			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		D83BF8E87318DB1A83B2E2C4 /* PulseStrengthWatchWidgetSnapshotTests */ = {
+			isa = PBXGroup;
+			children = (
+				BDE10996FAD4FE3F87A91D20 /* WatchWidgetSnapshotTests.swift */,
+			);
+			path = PulseStrengthWatchWidgetSnapshotTests;
 			sourceTree = "<group>";
 		};
 		E14D6BDD1953CA903D582319 = {
@@ -310,6 +783,7 @@
 				73C9BFA3E27FA38E6C864D62 /* LiveActivitySnapshotTests.swift */,
 				F45B60FC72FBE53481E5120B /* LiveSnapshotFixtures.swift */,
 				72D8C353E873B8A325E01DBB /* LiveSnapshotHarness.swift */,
+				60761F1F2FF3D5B11299330D /* PlannedSessionSnapshots.swift */,
 			);
 			path = PulseStrengthLiveSnapshotTests;
 			sourceTree = "<group>";
@@ -345,6 +819,25 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		04AC9405F71EC3E41E0B62BE /* PulseStrengthWatchWidgetSnapshotTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 22442CBB78CC8B6A6A9A87E6 /* Build configuration list for PBXNativeTarget "PulseStrengthWatchWidgetSnapshotTests" */;
+			buildPhases = (
+				43F2FC653E5F135F8C02097C /* Sources */,
+				1083133F4A62BFB136890221 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PulseStrengthWatchWidgetSnapshotTests;
+			packageProductDependencies = (
+				929FC8A6333FDD4BD7D2BF04 /* PulseStrengthCore */,
+			);
+			productName = PulseStrengthWatchWidgetSnapshotTests;
+			productReference = 4B9DFEE14085DDF20D6F3C13 /* PulseStrengthWatchWidgetSnapshotTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		094873236127A8260BF5BD8D /* PulseStrengthWatchSnapshotTests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = BE9713E7461AF13349B0417C /* Build configuration list for PBXNativeTarget "PulseStrengthWatchSnapshotTests" */;
@@ -411,6 +904,26 @@
 			productReference = 4A73C2913588BDB049B08F05 /* PulseStrength.app */;
 			productType = "com.apple.product-type.application";
 		};
+		1B1AE02BC0DD38C807A2B68D /* PulseStrengthWidgetSnapshotTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B162F028F6A461FDAE9AC7E3 /* Build configuration list for PBXNativeTarget "PulseStrengthWidgetSnapshotTests" */;
+			buildPhases = (
+				7A1666A1001912146229B307 /* Sources */,
+				639EB7E84CB2388635527A5D /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PulseStrengthWidgetSnapshotTests;
+			packageProductDependencies = (
+				F71C1DB0038FBD217EC840DB /* PulseStrengthCore */,
+				D7FE1EB3C11B122AE966AB7A /* PulseStrengthActivity */,
+			);
+			productName = PulseStrengthWidgetSnapshotTests;
+			productReference = E79954EFA59CAF1C32EF0219 /* PulseStrengthWidgetSnapshotTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		2E65E8BE10A658B2B55C887E /* PulseStrengthUITests */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F6B60F4F82BAC2B67A44A9F3 /* Build configuration list for PBXNativeTarget "PulseStrengthUITests" */;
@@ -456,10 +969,12 @@
 				A12CC5FD7F0CA80057D56DA7 /* Sources */,
 				1F4ABACBA2C62F97AD1C68AF /* Resources */,
 				D28F01B29F9280093B0BC7AE /* Frameworks */,
+				D9ED846C689053EA1AC09F49 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				61455369B1DAE4F31F3DA109 /* PBXTargetDependency */,
 			);
 			name = PulseStrengthWatch;
 			packageProductDependencies = (
@@ -470,6 +985,25 @@
 			productReference = 61A7929DBD816B52CEEA5264 /* PulseStrengthWatch.app */;
 			productType = "com.apple.product-type.application";
 		};
+		BBF896AF712D4CE99F443FA2 /* PulseStrengthWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DE124E92500EB08EDE33A4EA /* Build configuration list for PBXNativeTarget "PulseStrengthWatchWidgets" */;
+			buildPhases = (
+				80F8FD3623CF230ECC4486F2 /* Sources */,
+				6520BFB550E365C2A163E720 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PulseStrengthWatchWidgets;
+			packageProductDependencies = (
+				5AA71792236FC07EAC553798 /* PulseStrengthCore */,
+			);
+			productName = PulseStrengthWatchWidgets;
+			productReference = A7DCE7A96ECE5B562133832E /* PulseStrengthWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -479,6 +1013,10 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
+					04AC9405F71EC3E41E0B62BE = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
 					094873236127A8260BF5BD8D = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -488,6 +1026,10 @@
 						ProvisioningStyle = Automatic;
 					};
 					0F4F8AEA8AA607373201708C = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					1B1AE02BC0DD38C807A2B68D = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
@@ -501,6 +1043,10 @@
 						ProvisioningStyle = Automatic;
 					};
 					46AD51688FC7F00CF568F802 = {
+						DevelopmentTeam = "";
+						ProvisioningStyle = Automatic;
+					};
+					BBF896AF712D4CE99F443FA2 = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
@@ -526,9 +1072,12 @@
 				0F4F8AEA8AA607373201708C /* PulseStrength */,
 				0B810FA5A9E56C4168BE3C2E /* PulseStrengthWidgets */,
 				46AD51688FC7F00CF568F802 /* PulseStrengthWatch */,
+				BBF896AF712D4CE99F443FA2 /* PulseStrengthWatchWidgets */,
 				2E65E8BE10A658B2B55C887E /* PulseStrengthUITests */,
 				33F70715746757327E3379F5 /* PulseStrengthLiveSnapshotTests */,
 				094873236127A8260BF5BD8D /* PulseStrengthWatchSnapshotTests */,
+				1B1AE02BC0DD38C807A2B68D /* PulseStrengthWidgetSnapshotTests */,
+				04AC9405F71EC3E41E0B62BE /* PulseStrengthWatchWidgetSnapshotTests */,
 			);
 		};
 /* End PBXProject section */
@@ -565,11 +1114,129 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		43F2FC653E5F135F8C02097C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7AFDC8E94736F549B21C2C01 /* HeartRateWatchWidget.swift in Sources */,
+				5F16D6083D23D48944D00E69 /* LiftTrendWatchWidget.swift in Sources */,
+				BE74DD5C94270881481C406C /* LogSetWatchWidget.swift in Sources */,
+				B9CA9ECB99EA385EBF45F95D /* NextUpWatchWidget.swift in Sources */,
+				6C523470ECBF1A0DD508BBE0 /* RecordWatchWidget.swift in Sources */,
+				09C678C46327659653F28E4D /* RestWatchWidgets.swift in Sources */,
+				A839C66EFE25FF2077A5DA8E /* SnapshotProvider.swift in Sources */,
+				7C9A8A0621B279E4BDF8A382 /* WatchCountersWidgets.swift in Sources */,
+				9ED672DB522B8172C18C2B2D /* WatchGoalWidgets.swift in Sources */,
+				DFC6D683D9E3D18021B5D1BB /* WatchIntents.swift in Sources */,
+				6BB7C6DBB60D091EF7BADCC3 /* WatchWidgetBundle.swift in Sources */,
+				BC9B43FDAFB90310D18AFFC4 /* WatchWidgetData.swift in Sources */,
+				3AC309115390252C1335FD80 /* WatchWidgetSnapshotTests.swift in Sources */,
+				1CB89F0B889DB47F83FA0E46 /* WatchWidgetStyle.swift in Sources */,
+				57265A72651FDB83D2C32C3E /* WatchWidgetTimeline.swift in Sources */,
+				176BD5661CD13E6896B97383 /* WidgetShapes.swift in Sources */,
+				EF1B08690590F48489985D8C /* WidgetText.swift in Sources */,
+				8D132CD6CB5AABA7C382808F /* WidgetTheme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A1666A1001912146229B307 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A342E6778A3DE1339DAAF2EB /* ActivityComponents.swift in Sources */,
+				5D0D8DD09CCCDFCA91A6A967 /* ActivityState.swift in Sources */,
+				904DAB6D1B0A07A37E55F96F /* ActivityStateComponents.swift in Sources */,
+				E6B47B0F826F056845C41A65 /* ActivityTheme.swift in Sources */,
+				7C4011824F37BA247B8AB052 /* BenchModeView.swift in Sources */,
+				EBD9FE49932302A520F74FC5 /* BodyMapWidget.swift in Sources */,
+				DB27AF6040B9752171516E41 /* ControlIntents.swift in Sources */,
+				EC47DCA3E85AB966AA92E0FE /* DaysSinceAccessoryWidget.swift in Sources */,
+				DFD2A5507820CC5F3AD52D5C /* DynamicIslandViews.swift in Sources */,
+				14C935A526E4B3AEEA9AB918 /* ExtrasComponents.swift in Sources */,
+				5BE22FBE3E9E5774082539A2 /* ExtrasWidgetBundle.swift in Sources */,
+				C10319436D3FA0A623F784CE /* FormCueWidget.swift in Sources */,
+				789F51706AC7753565B3891F /* HomeComponents.swift in Sources */,
+				01503A46BD13012FEE285738 /* HomeFormatting.swift in Sources */,
+				218EBB6552486218299CD7A6 /* HomeWidgetBundle.swift in Sources */,
+				8CB75673931BC7F1DA965FDC /* LiftTrendWidget.swift in Sources */,
+				D8D35960C58358E3CDD54F35 /* LiveActivityBundle.swift in Sources */,
+				D803A176334F4A6646559F82 /* LiveMomentIntents.swift in Sources */,
+				50EF2690DF19A16A1E6EBF47 /* LiveSnapshotFixtures.swift in Sources */,
+				12EB608713886056F8F89AA1 /* LoadedBarWidget.swift in Sources */,
+				4DAE556505F3D86098A612DB /* LockAccessoryComponents.swift in Sources */,
+				29762B6130771223370E0B57 /* LockAccessoryText.swift in Sources */,
+				32A02B73CA202ABD52E211E6 /* LockScreenActivityView.swift in Sources */,
+				BA0386FB5C27251366937CB9 /* LockScreenStates.swift in Sources */,
+				6B58B1BA252B31DEB5DEEBDF /* LockWidgetBundle.swift in Sources */,
+				868F0E70B6551DBB700BAE56 /* LogSetWidget.swift in Sources */,
+				19FCC18924A592480C6B7836 /* MonthHeatmapWidget.swift in Sources */,
+				558B76456FB3B1C2EAA386F4 /* MuscleFreshnessWidget.swift in Sources */,
+				A8F43EF6621F393266DC9A07 /* NextUpAccessoryWidget.swift in Sources */,
+				87C5C1E1E05DEB72A9F116E8 /* NextUpWidget.swift in Sources */,
+				940DAC9CCF7962BD7498BC94 /* OverloadAccessoryWidget.swift in Sources */,
+				DF07CA1805923571B0C6E32B /* OverloadWidget.swift in Sources */,
+				09A66F32637905690CD1B954 /* PRAccessoryWidget.swift in Sources */,
+				608A61B5B274E8362EF42BC2 /* PRSpotlightWidget.swift in Sources */,
+				AE7EA4CDD635ACEDC50F290F /* PartnerWidget.swift in Sources */,
+				02AEF2988DD6F529F17FFFD1 /* PlannedSessionActivity.swift in Sources */,
+				886E154CEED799E9CD062581 /* PlateauWidget.swift in Sources */,
+				556E0244CC7BCA24028A9458 /* ReadinessWidget.swift in Sources */,
+				1288D0CBCD75E766D88CC026 /* RestDayWidget.swift in Sources */,
+				FD1DE65B69969B2997109ACF /* SessionTimelineWidget.swift in Sources */,
+				D7CB5EE822760B3EAF3898F9 /* SnapshotProvider.swift in Sources */,
+				E90F2449C7B6B0F1822158E4 /* StreakAccessoryWidget.swift in Sources */,
+				98C122AA94533212BD20FB1F /* StrengthIntents.swift in Sources */,
+				8A96E3B26C7334B248A514B3 /* StrengthRatioWidget.swift in Sources */,
+				D13A3D0A665419AECCA4E308 /* TemplateLauncherWidget.swift in Sources */,
+				123201A005F87F19AB93D5E7 /* TrainingBlockWidget.swift in Sources */,
+				FCAECA304FC54EFC6F4F408D /* TrainingWeekWidget.swift in Sources */,
+				C57208668B83C7E4EE3488D7 /* WeeklyGoalAccessoryWidget.swift in Sources */,
+				B58E4416B1CD0BB9E46469AC /* WeeklyGoalWidget.swift in Sources */,
+				4B54B69F46B82F17BD1C66FD /* WeeklySetsAccessoryWidget.swift in Sources */,
+				63888CA3C9C5ADE47E243084 /* WeeklySetsWidget.swift in Sources */,
+				54EDB181DB2C6DF3FE3C9E28 /* WidgetIntentDispatch.swift in Sources */,
+				93B6CCED3F6A9DEB0695EA3F /* WidgetShapes.swift in Sources */,
+				3010DD1C2A0A656DA13BB5F6 /* WidgetSnapshotHarness.swift in Sources */,
+				A80EC86C24A15F6B44CE3690 /* WidgetSnapshotTests.swift in Sources */,
+				19050EFF1E3E0EF448B78820 /* WidgetText.swift in Sources */,
+				1B7DA4B6B065E1034F03F02C /* WidgetTheme.swift in Sources */,
+				3834292528CC342DCB94FAA5 /* WorkoutControlState.swift in Sources */,
+				2C7FCB9849EDEA1344FBFF0F /* WorkoutLiveActivity.swift in Sources */,
+				E812C3597EF9D34DBB0B7307 /* YearInIronWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		80F8FD3623CF230ECC4486F2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6B19A267268B5D3A0F856434 /* HeartRateWatchWidget.swift in Sources */,
+				5A9B336974C1E8635761227C /* LiftTrendWatchWidget.swift in Sources */,
+				69B1A40861BF7B96B259D5DE /* LogSetWatchWidget.swift in Sources */,
+				DFD6F513C94E634172D7DCFE /* NextUpWatchWidget.swift in Sources */,
+				42A4806C39E1A81D70861A65 /* PulseStrengthWatchWidgetsBundle.swift in Sources */,
+				843C10B98F8184C7FD71C65B /* RecordWatchWidget.swift in Sources */,
+				6A0268C55FBA57A6328B4C72 /* RestWatchWidgets.swift in Sources */,
+				E783A58185F5C611305997B1 /* SnapshotProvider.swift in Sources */,
+				5C8095EE49BCFA33ED08EB30 /* WatchCountersWidgets.swift in Sources */,
+				811E8B38D770984A182EE764 /* WatchGoalWidgets.swift in Sources */,
+				7CF075EEBE4F38197094B9E1 /* WatchIntents.swift in Sources */,
+				06184B973CE4DEB3652CA740 /* WatchWidgetBundle.swift in Sources */,
+				A9076B9B9BE85CF7E9C52AF9 /* WatchWidgetData.swift in Sources */,
+				11417E0CECECFDD26DF83A5B /* WatchWidgetStyle.swift in Sources */,
+				08DD6A3C1829833932739840 /* WatchWidgetTimeline.swift in Sources */,
+				C45919E20CDDB0BE36A73BDC /* WidgetShapes.swift in Sources */,
+				3B0BC817B054211F4B0BFE50 /* WidgetText.swift in Sources */,
+				247FD477620209DC7D45738A /* WidgetTheme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A12CC5FD7F0CA80057D56DA7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				845E0866820AD085A7CAF04C /* PulseStrengthWatchApp.swift in Sources */,
+				88619FB6441F627B1BBE4734 /* WatchIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -588,8 +1255,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A132AFE7269FCA27FADC7A56 /* ControlIntents.swift in Sources */,
+				3FC9D5FA7741423D4ED8DBD3 /* LiveMomentIntents.swift in Sources */,
+				0AD7BFB880321FBDD658734C /* PulseShortcuts.swift in Sources */,
 				65890B14CCDB288FC32DA69A /* PulseStrengthApp.swift in Sources */,
 				662F7C6F96173CBB76514770 /* StrengthIntents.swift in Sources */,
+				7152F7ECC61E5CD7C0F75B61 /* WidgetIntentDispatch.swift in Sources */,
+				9CE39D7ACD65E612D1AF0803 /* WorkoutControlState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -598,12 +1270,73 @@
 			buildActionMask = 2147483647;
 			files = (
 				45BBB90268466655DAC74D81 /* ActivityComponents.swift in Sources */,
+				4BD49B8B980C4C8936CBAF0F /* ActivityState.swift in Sources */,
+				EFFBC5B9F64463A39E4EAF4D /* ActivityStateComponents.swift in Sources */,
 				5B3F42029C65D494B0620734 /* ActivityTheme.swift in Sources */,
+				D7FB496F0565D45B678C7354 /* AddRestControl.swift in Sources */,
+				0890B5F862E46732A9C79225 /* BenchModeView.swift in Sources */,
+				10BAB8511177671A56B288EB /* BodyMapWidget.swift in Sources */,
+				5FBF3448093A1EC7E41FB89C /* ControlIntents.swift in Sources */,
+				7AD8D00B71480F2BABE6FB9E /* ControlsBundle.swift in Sources */,
+				6C61AA3A9EFB0832F455205F /* DaysSinceAccessoryWidget.swift in Sources */,
 				56A4233AC4BE29A5AD635D6D /* DynamicIslandViews.swift in Sources */,
+				905CA4C41C6EDFB7E320D55D /* ExtrasComponents.swift in Sources */,
+				7BE97A9F8ACBB31BA58CEEA4 /* ExtrasWidgetBundle.swift in Sources */,
+				A52ECA6579DCEBB2A491E685 /* FinishControl.swift in Sources */,
+				01E14EE1C645765B72046039 /* FormCueWidget.swift in Sources */,
+				836B03FE99F0C98B2F3FCFC0 /* HomeComponents.swift in Sources */,
+				83E3978CAC28D09D5F7552F6 /* HomeFormatting.swift in Sources */,
+				593104C891FD8DACB303402F /* HomeWidgetBundle.swift in Sources */,
+				0D288EB868250399AB3B60E7 /* LiftTrendWidget.swift in Sources */,
+				149C70DF6184EE75DB3AD117 /* LiveActivityBundle.swift in Sources */,
+				08F14E335181E009AE676E6D /* LiveMomentIntents.swift in Sources */,
+				1F1D68BF615ECB25FACB3FCB /* LoadedBarWidget.swift in Sources */,
+				5C1D741ABD840A6A317E6829 /* LockAccessoryComponents.swift in Sources */,
+				C2E75375FA6A9FD84B7CECFB /* LockAccessoryText.swift in Sources */,
 				690EBC88CDF88794BDCDA280 /* LockScreenActivityView.swift in Sources */,
+				4F0A125F8EE0F3D756B742CA /* LockScreenStates.swift in Sources */,
+				C8C7797AB89F7F637A07387D /* LockWidgetBundle.swift in Sources */,
+				EA84B90121DD3F9E830113C1 /* LogSetControl.swift in Sources */,
+				519715CF538D8FD1F05B9B6C /* LogSetWidget.swift in Sources */,
+				C41AED274A9485771BAC4AEE /* MonthHeatmapWidget.swift in Sources */,
+				8E80979BCD82338BABCC5844 /* MuscleFreshnessWidget.swift in Sources */,
+				F89B53AA1EFB922009D8E7EA /* NextUpAccessoryWidget.swift in Sources */,
+				1DBCEE5656C4B4817DD53533 /* NextUpControl.swift in Sources */,
+				32756537464152B81406130E /* NextUpWidget.swift in Sources */,
+				E13DFB27F1D6A4A3EB6A9F01 /* OverloadAccessoryWidget.swift in Sources */,
+				5F5CD1121130422DEA3681B8 /* OverloadWidget.swift in Sources */,
+				56AA46D251B4BD01E89E1D92 /* PRAccessoryWidget.swift in Sources */,
+				2EB8B7439609828A699BCCC7 /* PRSpotlightWidget.swift in Sources */,
+				E0BE4A9F58B9C6F9C6BEA703 /* PartnerWidget.swift in Sources */,
+				4649BC64DF07D9EBBF2469DA /* PauseControl.swift in Sources */,
+				D3B100EC25034C5319BA0AC9 /* PlannedSessionActivity.swift in Sources */,
+				90BFFF7066CBD0333EEE44E7 /* PlateauWidget.swift in Sources */,
+				04545A93FB237A2EFD229EB2 /* PlatesControl.swift in Sources */,
 				FD0C1BA54E474833F887372E /* PulseStrengthWidgetsBundle.swift in Sources */,
+				94C31BFACD2E377CFE4C6BD6 /* ReadinessWidget.swift in Sources */,
+				24039F7C0E2A2511B7BE40A6 /* RestControl.swift in Sources */,
+				1FA3756096C7AED8495207AD /* RestDayWidget.swift in Sources */,
+				4B4B299A740C900F43B3B248 /* SessionTimelineWidget.swift in Sources */,
+				FFDE97341219070F0425B314 /* SnapshotProvider.swift in Sources */,
+				545C7C34C35BB89208CC2955 /* StartNextControl.swift in Sources */,
+				690D35C9B2D3208888888F75 /* StreakAccessoryWidget.swift in Sources */,
 				1F8F68787C6BD392C1E2DA19 /* StrengthIntents.swift in Sources */,
+				B18747CC644623AE0E6BA89D /* StrengthRatioWidget.swift in Sources */,
+				C7C3C000A2450EB469A18132 /* TemplateLauncherWidget.swift in Sources */,
+				72847D0E5EA16F4A1A2852ED /* TrainingBlockWidget.swift in Sources */,
+				50580CC75C35ED2D3E15A2F8 /* TrainingWeekWidget.swift in Sources */,
+				A42398BB48813596CF32C659 /* WeeklyGoalAccessoryWidget.swift in Sources */,
+				4EB77B98C59E2B078EF828DE /* WeeklyGoalWidget.swift in Sources */,
+				8B7F03B86C8D1E4F2E449347 /* WeeklySetsAccessoryWidget.swift in Sources */,
+				F63F54A9233A0CA66AC835AE /* WeeklySetsWidget.swift in Sources */,
+				20F5713695E3B32CD2356D45 /* WidgetIntentDispatch.swift in Sources */,
+				6AF04F3A19E52C867C59E8CB /* WidgetShapes.swift in Sources */,
+				F78A2528E544E0E3600779C2 /* WidgetText.swift in Sources */,
+				7996204062348EEAF45092F5 /* WidgetTheme.swift in Sources */,
+				6C01318EFA494B22CE48BC33 /* WorkoutControlProvider.swift in Sources */,
+				29F2D81DA3859A29210D8808 /* WorkoutControlState.swift in Sources */,
 				0FF258B677FA07DDB5D42CDD /* WorkoutLiveActivity.swift in Sources */,
+				503C15FB0BE3B84EA21D035E /* YearInIronWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -612,13 +1345,24 @@
 			buildActionMask = 2147483647;
 			files = (
 				51E7FBB5954B280D26FF66BF /* ActivityComponents.swift in Sources */,
+				996A53F573F108BCC7309700 /* ActivityState.swift in Sources */,
+				8DD31A6D5B382FE2DE4516D3 /* ActivityStateComponents.swift in Sources */,
 				603B46A22BAC305A405C5C03 /* ActivityTheme.swift in Sources */,
+				9D336B8D070B2957908BC109 /* BenchModeView.swift in Sources */,
+				55A7F0A74109699403BCBCA2 /* ControlIntents.swift in Sources */,
 				3F0394B0A699FB356F18A33A /* DynamicIslandViews.swift in Sources */,
+				31D9531CF7F7F9CCD061C168 /* LiveActivityBundle.swift in Sources */,
 				DE09BE398BBE7903F95BFE19 /* LiveActivitySnapshotTests.swift in Sources */,
+				1FC3DF95F63A26C732C578B3 /* LiveMomentIntents.swift in Sources */,
 				D52F4F2B27F5DADFBB648E91 /* LiveSnapshotFixtures.swift in Sources */,
 				D4FF3378ECD8320C051243EE /* LiveSnapshotHarness.swift in Sources */,
 				E9EC3179AE28F814E5CB1A18 /* LockScreenActivityView.swift in Sources */,
+				85BF0246CE9273788C3601DF /* LockScreenStates.swift in Sources */,
+				17E9F594A0E305C597E11171 /* PlannedSessionActivity.swift in Sources */,
+				14A5BB2993FC13BD55C9C028 /* PlannedSessionSnapshots.swift in Sources */,
 				9E1EB28419E442B63CFEDC4C /* StrengthIntents.swift in Sources */,
+				A43DE06436D1D21E84A9F5FA /* WidgetIntentDispatch.swift in Sources */,
+				DADE8BD175511E5C7E581550 /* WorkoutControlState.swift in Sources */,
 				77435FE6DDD47136A8F542AF /* WorkoutLiveActivity.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -630,6 +1374,11 @@
 			isa = PBXTargetDependency;
 			target = 46AD51688FC7F00CF568F802 /* PulseStrengthWatch */;
 			targetProxy = B3D8D87EEE85712DF58192C8 /* PBXContainerItemProxy */;
+		};
+		61455369B1DAE4F31F3DA109 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BBF896AF712D4CE99F443FA2 /* PulseStrengthWatchWidgets */;
+			targetProxy = 24AEF1CAD65F90E82B0550D6 /* PBXContainerItemProxy */;
 		};
 		616699260916422DCB563D09 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -644,9 +1393,44 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		08944B8BFF5ECE03D21D8728 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID).watchwidgetsnapshottests";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+		0E1DAAD79EE6EA10D04197FA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID).watchwidgetsnapshottests";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
 		17BC5E53211C002564E6139F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Apps/PulseStrengthWidgets/PulseStrengthWidgets.entitlements;
 				INFOPLIST_FILE = Apps/PulseStrengthWidgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -831,6 +1615,7 @@
 		978AC961ACD24415DFFF13C5 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Apps/PulseStrengthWidgets/PulseStrengthWidgets.entitlements;
 				INFOPLIST_FILE = Apps/PulseStrengthWidgets/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -861,6 +1646,40 @@
 				TARGETED_DEVICE_FAMILY = 4;
 			};
 			name = Debug;
+		};
+		A1C46675A1F45836A14D153F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Apps/PulseStrengthWatchWidgets/PulseStrengthWatchWidgets.entitlements;
+				INFOPLIST_FILE = Apps/PulseStrengthWatchWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID).watchkitapp.widgets";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		B46EEC1617F6B07FD26D4D66 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID).widgetsnapshottests";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
 		};
 		BB3991A77CE634C862B9E0EA /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -948,6 +1767,23 @@
 			};
 			name = Debug;
 		};
+		D37B0EF997039B2DE14B2F96 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID).widgetsnapshottests";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
 		E4494E66B37E5A3D9159FF63 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -981,6 +1817,23 @@
 			};
 			name = Release;
 		};
+		F6739DD624EC0832D13B9868 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Apps/PulseStrengthWatchWidgets/PulseStrengthWatchWidgets.entitlements;
+				INFOPLIST_FILE = Apps/PulseStrengthWatchWidgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID).watchkitapp.widgets";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -989,6 +1842,15 @@
 			buildConfigurations = (
 				BB3991A77CE634C862B9E0EA /* Debug */,
 				617FFB2BCCBC1928D7C57B89 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		22442CBB78CC8B6A6A9A87E6 /* Build configuration list for PBXNativeTarget "PulseStrengthWatchWidgetSnapshotTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0E1DAAD79EE6EA10D04197FA /* Debug */,
+				08944B8BFF5ECE03D21D8728 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -1020,11 +1882,29 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		B162F028F6A461FDAE9AC7E3 /* Build configuration list for PBXNativeTarget "PulseStrengthWidgetSnapshotTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D37B0EF997039B2DE14B2F96 /* Debug */,
+				B46EEC1617F6B07FD26D4D66 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		BE9713E7461AF13349B0417C /* Build configuration list for PBXNativeTarget "PulseStrengthWatchSnapshotTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				991C0D157936F311A61D28C6 /* Debug */,
 				656C1D0FE14689C59455D765 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DE124E92500EB08EDE33A4EA /* Build configuration list for PBXNativeTarget "PulseStrengthWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1C46675A1F45836A14D153F /* Debug */,
+				F6739DD624EC0832D13B9868 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -1073,6 +1953,10 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = PulseStrengthCore;
 		};
+		5AA71792236FC07EAC553798 /* PulseStrengthCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PulseStrengthCore;
+		};
 		741E1F7A2248FB724DDB0548 /* PulseStrengthActivity */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PulseStrengthActivity;
@@ -1080,6 +1964,10 @@
 		7A7A0911DB83BE15D04513E5 /* PulseStrengthWatchUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PulseStrengthWatchUI;
+		};
+		929FC8A6333FDD4BD7D2BF04 /* PulseStrengthCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PulseStrengthCore;
 		};
 		B3AFA3E20E9AAD3875070551 /* PulseStrengthActivity */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -1100,6 +1988,14 @@
 		D0EE92A7C7E8FB74155E12F9 /* PulseStrengthIOS */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = PulseStrengthIOS;
+		};
+		D7FE1EB3C11B122AE966AB7A /* PulseStrengthActivity */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PulseStrengthActivity;
+		};
+		F71C1DB0038FBD217EC840DB /* PulseStrengthCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PulseStrengthCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

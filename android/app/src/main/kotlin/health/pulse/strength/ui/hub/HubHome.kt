@@ -30,6 +30,7 @@ import androidx.compose.material.icons.rounded.AddCircleOutline
 import androidx.compose.material.icons.rounded.EditNote
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Psychology
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.DropdownMenu
@@ -50,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -73,6 +75,7 @@ import health.pulse.strength.core.RecoveryProvider
 import health.pulse.strength.core.StrengthData
 import health.pulse.strength.core.StrengthStore
 import health.pulse.strength.core.WorkoutTemplate
+import health.pulse.strength.core.widgets.WidgetContext
 import health.pulse.strength.ui.components.DumbbellGlyph
 import health.pulse.strength.ui.components.ExerciseMediaView
 import health.pulse.strength.ui.theme.PulseFont
@@ -140,6 +143,10 @@ internal fun HubHome(
     time: HubTime,
     actions: HubActions,
     modifier: Modifier = Modifier,
+    /** Workouts per week the person aims for: the goal of the "Sessions" figure and of the goal widgets. */
+    weeklyGoal: Int = HubFormat.SESSION_GOAL,
+    /** Sets the weekly goal; null hides the stepper under "This Week" (no settings to keep it in). */
+    onWeeklyGoalChange: ((Int) -> Unit)? = null,
 ) {
     val colors = PulseTheme.colors
     val scrollState = rememberScrollState()
@@ -193,7 +200,7 @@ internal fun HubHome(
                         Column(Modifier.weight(1f)) {
                             RecoverySection(recovery, actions, topGap = 0.dp, firstInColumn = true)
                             RecentSection(home, time, actions, topGap = HubSectionSpacing)
-                            WeekSection(home, time, topGap = HubSectionSpacing)
+                            WeekSection(home, time, topGap = HubSectionSpacing, goal = weeklyGoal, onGoalChange = onWeeklyGoalChange)
                             LibraryRow(home, actions, topGap = HubSectionSpacing)
                         }
                     }
@@ -203,7 +210,7 @@ internal fun HubHome(
                     TemplatesSection(home, actions, topGap = HubSectionSpacing)
                     RecoverySection(recovery, actions, topGap = HubSectionSpacing, firstInColumn = false)
                     RecentSection(home, time, actions, topGap = HubSectionSpacing)
-                    WeekSection(home, time, topGap = HubSectionSpacing)
+                    WeekSection(home, time, topGap = HubSectionSpacing, goal = weeklyGoal, onGoalChange = onWeeklyGoalChange)
                     LibraryRow(home, actions, topGap = HubSectionSpacing)
                 }
             }
@@ -617,24 +624,55 @@ private fun RecentSection(home: HubHomeData, time: HubTime, actions: HubActions,
 }
 
 @Composable
-private fun WeekSection(home: HubHomeData, time: HubTime, topGap: Dp) {
+private fun WeekSection(home: HubHomeData, time: HubTime, topGap: Dp, goal: Int, onGoalChange: ((Int) -> Unit)?) {
     val week = remember(home.history, time) { HubFormat.weekStats(home.history, time.today, time.zone, time.firstDayOfWeek) }
     Column(Modifier.padding(top = topGap)) {
         HubSectionHeader(title = "This Week")
-        HubWeekCard(week)
+        HubWeekCard(week, goal = goal)
+        if (onGoalChange != null) HubWeeklyGoalRow(goal, onGoalChange, Modifier.padding(top = 8.dp))
     }
 }
 
 @Composable
-internal fun HubWeekCard(week: HubWeekStats, modifier: Modifier = Modifier) {
+internal fun HubWeekCard(week: HubWeekStats, modifier: Modifier = Modifier, goal: Int = HubFormat.SESSION_GOAL) {
     HubStatRow(
         stats = listOf(
-            HubStat("Sessions", "${week.sessions} of ${maxOf(HubFormat.SESSION_GOAL, week.sessions)}"),
+            HubStat("Sessions", "${week.sessions} of ${maxOf(goal, week.sessions)}"),
             HubStat("Sets", "${week.sets}"),
             HubStat("Volume", HubFormat.volumeOrDash(week.volumeKg)),
         ),
         modifier = modifier.fillMaxWidth().hubRowBackground().padding(12.dp),
     )
+}
+
+/** The weekly workout goal (1 to 7) with a stepper: the goal of the "Sessions" figure above and of the goal widgets. */
+@Composable
+internal fun HubWeeklyGoalRow(goal: Int, onChange: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val colors = PulseTheme.colors
+    val range = WidgetContext.weeklyGoalRange
+    Row(
+        modifier.fillMaxWidth().hubRowBackground().padding(start = 12.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f).padding(vertical = 10.dp)) {
+            Text("Weekly goal", style = PulseFont.text(15.sp, FontWeight.Medium), color = colors.ink)
+            Text(
+                if (goal == 1) "1 workout a week" else "$goal workouts a week",
+                style = PulseFont.footnote,
+                color = colors.inkSecondary,
+            )
+        }
+        HubGoalStepButton(Icons.Rounded.Remove, "Fewer workouts per week", enabled = goal > range.first) { onChange(goal - 1) }
+        HubGoalStepButton(Icons.Rounded.Add, "More workouts per week", enabled = goal < range.last) { onChange(goal + 1) }
+    }
+}
+
+@Composable
+private fun HubGoalStepButton(icon: ImageVector, description: String, enabled: Boolean, onClick: () -> Unit) {
+    val colors = PulseTheme.colors
+    IconButton(onClick = onClick, enabled = enabled) {
+        Icon(icon, contentDescription = description, tint = if (enabled) colors.greenText else colors.inkTertiary)
+    }
 }
 
 @Composable

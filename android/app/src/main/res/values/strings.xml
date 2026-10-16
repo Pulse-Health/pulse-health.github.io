@@ -31,4 +31,116 @@
     <string name="hc_rationale_offline">Pulse Strength works entirely on your device. It has no accounts and no internet access, so nothing you log is sent anywhere. You can turn this off at any time in the app\'s settings or in Health Connect.</string>
     <string name="privacy_policy">Privacy policy</string>
     <string name="close">Close</string>
+
+    <!-- ==== strings-host:begin ==== -->
+    <!-- ==== strings-host:end ==== -->
+
+    <!-- ==== strings-glance-home:begin ==== -->
+    <string name="widget_next_up_label">Next up</string>
+    <string name="widget_next_up_description">Your next workout in one tap. Starts it when you press Start.</string>
+    <string name="widget_next_up_wide_label">Next workout</string>
+    <string name="widget_next_up_wide_description">Your next workout with its first exercises and a Start button.</string>
+    <string name="widget_weekly_goal_label">Weekly goal</string>
+    <string name="widget_weekly_goal_description">Workouts finished this week against your goal.</string>
+    <string name="widget_weekly_goal_themed_label">Weekly goal (themed)</string>
+    <string name="widget_weekly_goal_themed_description">Workouts finished this week against your goal, in your wallpaper colours.</string>
+    <string name="widget_pr_spotlight_label">PR spotlight</string>
+    <string name="widget_pr_spotlight_description">Your latest personal record.</string>
+    <string name="widget_muscle_freshness_label">Muscle freshness</string>
+    <string name="widget_muscle_freshness_description">Days since each muscle group was trained.</string>
+    <string name="widget_overload_label">Beat last time</string>
+    <string name="widget_overload_description">What you lifted last time and the weight to try today.</string>
+    <string name="widget_weekly_sets_label">Weekly sets</string>
+    <string name="widget_weekly_sets_description">Working sets per muscle group this week against the target.</string>
+    <string name="widget_lift_trend_label">Lift trend</string>
+    <string name="widget_lift_trend_description">The estimated one-rep max of a lift of your choice over its last sessions.</string>
+    <string name="widget_training_week_label">Training week</string>
+    <string name="widget_training_week_description">This week\'s workouts, your last session, your latest record and a Start button.</string>
+    <string name="widget_template_launcher_label">Template launcher</string>
+    <string name="widget_template_launcher_description">A Start button for each of your workout templates.</string>
+    <string name="widget_month_heatmap_label">Month heatmap</string>
+    <string name="widget_month_heatmap_description">Every training day of the month, shaded by volume.</string>
+    <string name="widget_training_block_label">Training block</string>
+    <string name="widget_training_block_description">Your four-week training block at a glance. Made for tablets.</string>
+    <string name="widget_lift_trend_config_title">Choose a lift</string>
+    <string name="widget_lift_trend_config_hint">The widget shows the estimated one-rep max of this lift. You can change it later.</string>
+    <string name="widget_lift_trend_config_empty">No lifts yet. Lifts you train regularly appear here after a few workouts. The widget shows your first lift once there is one.</string>
+    <string name="widget_lift_trend_config_add">Add widget</string>
+    <string name="widget_lift_trend_config_selected">Selected</string>
+    <!-- ==== strings-glance-home:end ==== -->
+
+    <!-- ==== strings-glance-extras:begin ==== -->
+    <!-- Lock screen and glanceable hub widgets (LS-01 ... LS-11) -->
+    <string name="widget_weekly_goal_compact_label">Weekly goal gauge</string>
+    <string name="widget_weekly_goal_compact_description">A compact gauge of the workouts you finished this week against your goal.</string>
+    <string name="widget_days_since_label">Days since training</string>
+    <string name="widget_days_since_description">How many days have passed since your last workout.</string>
+    <string name="widget_streak_label">Week streak</string>
+    <string name="widget_streak_description">The number of weeks in a row that you met your workout goal.</string>
+    <string name="widget_quick_start_label">Quick start</string>
+    <string name="widget_quick_start_description">One tap starts your next workout, or opens the one that is running.</string>
+    <string name="widget_next_up_compact_label">Next workout</string>
+    <string name="widget_next_up_compact_description">Your next workout, its exercises and how long it takes.</string>
+    <string name="widget_weekly_sets_compact_label">Volume progress</string>
+    <string name="widget_weekly_sets_compact_description">Sets finished this week against the target, and the muscle group that lags.</string>
+    <string name="widget_pr_compact_label">Latest record</string>
+    <string name="widget_pr_compact_description">Your newest personal record with its estimated one-rep max.</string>
+    <string name="widget_overload_compact_label">Overload target</string>
+    <string name="widget_overload_compact_description">What to lift today to beat last time.</string>
+    <string name="widget_inline_week_label">Weekly goal line</string>
+    <string name="widget_inline_week_description">One line: how many workouts you finished this week.</string>
+    <string name="widget_inline_split_label">Split line</string>
+    <string name="widget_inline_split_description">One line: your next split and how long ago you last trained it.</string>
+    <string name="widget_inline_rest_label">Rest day line</string>
+    <string name="widget_inline_rest_description">One line: a rest day and when training resumes. Shows your split on training days.</string>
+
+    <!-- Wilder ideas (WI-01 ... WI-11) -->
+    <string name="widget_body_map_label">Body map</string>
+    <string name="widget_body_map_description">Front and back silhouettes shaded by the sets each muscle group got this week.</string>
+    <string name="widget_log_set_label">Log a set</string>
+    <string name="widget_log_set_description">Adjust the next set, log it and control the rest timer without opening the app.</string>
+    <string name="widget_partner_label">Gym partner</string>
+    <string name="widget_partner_description">Your week next to your training partners\' weeks.</string>
+    <string name="widget_form_cue_label">Form cue</string>
+    <string name="widget_form_cue_description">One coaching cue for the first lift of your next workout.</string>
+    <string name="widget_loaded_bar_label">Loaded bar</string>
+    <string name="widget_loaded_bar_description">The plates to load on each side for today\'s top set.</string>
+    <string name="widget_rest_day_label">Rest-day swap</string>
+    <string name="widget_rest_day_description">A short recovery routine on rest days, your next workout otherwise.</string>
+    <string name="widget_strength_ratio_label">Strength ratio</string>
+    <string name="widget_strength_ratio_description">Your estimated one-rep max on a main lift against your bodyweight.</string>
+    <string name="widget_year_in_iron_label">Year in iron</string>
+    <string name="widget_year_in_iron_description">The tonnes you lifted this year, month by month.</string>
+    <string name="widget_readiness_label">Readiness</string>
+    <string name="widget_readiness_description">Today\'s readiness from Pulse, to decide how hard to push.</string>
+    <string name="widget_plateau_label">Plateau watch</string>
+    <string name="widget_plateau_description">Lifts that have stalled, with one way to move them.</string>
+    <string name="widget_session_timeline_label">Session timeline</string>
+    <string name="widget_session_timeline_description">How the time of your last workout was split between lifting and rest.</string>
+    <!-- ==== strings-glance-extras:end ==== -->
+
+    <!-- ==== strings-system:begin ==== -->
+    <string name="live_channel_summary">Workout summaries and plans</string>
+    <string name="live_channel_summary_description">The summary after a workout and the countdown to a planned session. Silent.</string>
+    <string name="live_channel_reminder">Workout reminders</string>
+    <string name="live_channel_reminder_description">A reminder when a planned session is due.</string>
+    <string name="bench_mode_label">Bench mode</string>
+    <string name="tile_start_next_label">Start workout</string>
+    <string name="tile_log_set_label">Log set</string>
+    <string name="tile_rest_label">Rest</string>
+    <string name="tile_add_rest_label">+30 s rest</string>
+    <string name="tile_plates_label">Plates</string>
+    <string name="tile_pause_label">Pause workout</string>
+    <string name="tile_finish_label">Finish workout</string>
+    <string name="tile_next_up_label">Next up</string>
+    <string name="shortcut_primary_short">Primary action</string>
+    <string name="shortcut_primary_long">Log set, skip rest or start workout</string>
+    <string name="shortcut_start_short">Start workout</string>
+    <string name="shortcut_start_long">Start the next workout</string>
+    <string name="shortcut_plates_short">Plates</string>
+    <string name="shortcut_plates_long">Open the plate calculator</string>
+    <!-- ==== strings-system:end ==== -->
+
+    <!-- ==== strings-wear:begin ==== -->
+    <!-- ==== strings-wear:end ==== -->
 </resources>

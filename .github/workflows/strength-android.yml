@@ -1,8 +1,9 @@
 # Pulse Strength (android/): verifies the Kotlin core and the Compose app, builds the release bundle and, on request, uploads it to Google Play.
 #
-#   verify         Unit tests of :core (JUnit) and :app (Robolectric: Compose UI, services), Android lint, a debug build. Uploads the test
-#                  reports, the lint report and the rendered UI screenshots (artifact `android-screens`, 14 days). Runs on every pull
-#                  request / push that touches android/.
+#   verify         Unit tests of :core (JUnit), :app (Robolectric: Compose UI, services, widgets) and :wear (tiles, complications), Android
+#                  lint, debug builds of the phone and the watch app. Uploads the test reports, the lint reports, the debug APKs and the
+#                  rendered UI and widget screenshots (artifact `android-screens`, 14 days). Runs on every pull request / push that
+#                  touches android/ or widgets/.
 #   version        Works out the versionName and versionCode of a release (tag `android-vX.Y.Z`, or `pulse.versionName` of
 #                  android/gradle.properties / 1.0.0) and refuses a tag that is not on main. No secrets.
 #   release-build  UNSIGNED release bundle (.aab) and APK with R8 shrinking, to prove that the release build works, plus the guard
@@ -28,11 +29,13 @@ on:
   pull_request:
     paths:
       - 'android/**'
+      - 'widgets/**'
       - '.github/workflows/strength-android.yml'
   push:
     branches: [main]
     paths:
       - 'android/**'
+      - 'widgets/**'
       - '.github/workflows/strength-android.yml'
     tags:
       - 'android-v*'
@@ -89,8 +92,8 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Unit tests, lint, debug build
-        run: ./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug
+      - name: Unit tests, lint, debug builds (phone and watch)
+        run: ./gradlew :core:test :app:testDebugUnitTest :wear:testDebugUnitTest :app:lintDebug :wear:lintDebug :app:assembleDebug :wear:assembleDebug
 
       - name: Upload reports
         if: always()
@@ -100,7 +103,20 @@ jobs:
           path: |
             android/core/build/reports/tests
             android/app/build/reports/tests
+            android/wear/build/reports/tests
             android/app/build/reports/lint-results-debug.html
+            android/wear/build/reports/lint-results-debug.html
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Upload the debug APKs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: strength-android-apks
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/wear/build/outputs/apk/debug/*.apk
           retention-days: 14
           if-no-files-found: ignore
 

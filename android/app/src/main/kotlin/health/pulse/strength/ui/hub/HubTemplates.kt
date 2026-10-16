@@ -23,6 +23,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -245,13 +246,22 @@ internal fun HubTemplateDetailScreen(
     time: HubTime,
     actions: HubActions,
     modifier: Modifier = Modifier,
+    planner: SessionPlanner = rememberSessionPlanner(),
 ) {
     val template = home.templates.firstOrNull { it.id == templateID }
+    var showsPlanner by rememberSaveable { mutableStateOf(false) }
     HubScreenFrame(
         title = template?.name ?: "Template",
         onBack = actions.pop,
         modifier = modifier,
         actions = {
+            IconButton(onClick = { showsPlanner = true }, enabled = template != null) {
+                Icon(
+                    Icons.Rounded.CalendarMonth,
+                    contentDescription = "Plan a session",
+                    tint = if (template != null) PulseTheme.colors.greenText else PulseTheme.colors.inkTertiary,
+                )
+            }
             TextButton(onClick = { actions.edit(HubEditorTarget.Existing(templateID)) }, enabled = template != null) {
                 Text("Edit", style = PulseFont.text(17.sp, FontWeight.SemiBold))
             }
@@ -287,6 +297,14 @@ internal fun HubTemplateDetailScreen(
                 }
             }
         }
+    }
+    if (showsPlanner && template != null) {
+        HubPlanSessionSheet(
+            template = template,
+            planner = planner,
+            templateName = { id -> home.templates.firstOrNull { it.id == id }?.name },
+            onDismiss = { showsPlanner = false },
+        )
     }
 }
 

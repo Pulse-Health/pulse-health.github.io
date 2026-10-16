@@ -9,7 +9,8 @@
 #               simulators AND for the iOS / watchOS devices without code signing, plus the package tests: what a user
 #               who opens the project in a current Xcode gets.
 #   visual      Screenshots of the running UI, in parallel with `apple`: XcodeGen, then the Lock Screen / Dynamic Island snapshot
-#               test and the iPhone UI flow test on an iPhone simulator and the Watch snapshot test on a watchOS simulator.
+#               test, the widget snapshot test (Home Screen, StandBy, Lock Screen and extra widgets) and the iPhone UI flow test on an
+#               iPhone simulator and the Watch snapshot test and the Watch widget snapshot test on a watchOS simulator.
 #               Uploads the PNGs, logs and result summaries as artifact `strength-screens` (14 days) and the zipped .xcresult
 #               bundles as `strength-xcresults` (3 days). Failed assertions do not fail the job; only "no PNG at all" does.
 #               See ios/README.md, "Screenshots in CI".
@@ -23,11 +24,13 @@ on:
   pull_request:
     paths:
       - 'ios/**'
+      - 'widgets/**'
       - '.github/workflows/strength-ios.yml'
   push:
     branches: [main]
     paths:
       - 'ios/**'
+      - 'widgets/**'
       - '.github/workflows/strength-ios.yml'
   workflow_dispatch:
 
@@ -675,6 +678,24 @@ jobs:
             -resultBundlePath "$RESULTS_DIR/live.xcresult" \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Widget snapshots (iPhone simulator)
+        id: widgets
+        continue-on-error: true
+        timeout-minutes: 10
+        working-directory: ios
+        run: |
+          if [ -z "${IOS_UDID:-}" ]; then
+            echo "::error::No iPhone simulator is available (see the step 'Boot an iPhone simulator')"
+            exit 1
+          fi
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodebuild-widget.log" \
+            xcodebuild test -project PulseStrength.xcodeproj -scheme PulseStrengthWidgetSnapshots \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$IOS_UDID" \
+            -parallel-testing-enabled NO \
+            -resultBundlePath "$RESULTS_DIR/widget.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+
       - name: UI flow of the iPhone app (iPhone simulator)
         id: ui
         continue-on-error: true
@@ -730,6 +751,24 @@ jobs:
             -resultBundlePath "$RESULTS_DIR/watch.xcresult" \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Watch widget snapshots (watchOS simulator)
+        id: watchwidgets
+        continue-on-error: true
+        timeout-minutes: 10
+        working-directory: ios
+        run: |
+          if [ -z "${WATCH_UDID:-}" ]; then
+            echo "::error::No watchOS simulator is available (see the step 'Boot a watchOS simulator')"
+            exit 1
+          fi
+          "$RUNNER_TEMP/run_logged.sh" "$LOG_DIR/xcodebuild-watchwidget.log" \
+            xcodebuild test -project PulseStrength.xcodeproj -scheme PulseStrengthWatchWidgetSnapshots \
+            -configuration Debug \
+            -destination "platform=watchOS Simulator,id=$WATCH_UDID" \
+            -parallel-testing-enabled NO \
+            -resultBundlePath "$RESULTS_DIR/watchwidget.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+
       # --- Collection ---------------------------------------------------------------------------------------------------------
       # xcresult summaries (`xcresulttool get test-results`, Xcode 16; every call may fail without consequence), a fallback that
       # exports the PNG attachments of a bundle when its suite wrote no PNG files itself, the logs, and the zipped bundles.
@@ -752,7 +791,7 @@ jobs:
             cat "$failures"
           done
 
-          for suite in ui live watch; do
+          for suite in ui live watch widget watchwidget; do
             bundle="$RESULTS_DIR/$suite.xcresult"
             if [ "$(count "$suite-*.png")" -eq 0 ] && [ -d "$bundle" ]; then
               echo "No $suite-*.png was written to $SCREENS_DIR: trying to export the attachments of $suite.xcresult"
@@ -785,9 +824,9 @@ jobs:
           tidy() { LC_ALL=C sed -E 's#/Users/runner/work/[^/]+/[^/]+/##g' | LC_ALL=C cut -c1-300; }
           {
             echo "strength-ios visual digest"
-            echo "PNGs: ui=$(count 'ui-*.png') live=$(count 'live-*.png') watch=$(count 'watch-*.png') total=$(count '*.png')"
+            echo "PNGs: ui=$(count 'ui-*.png') onboarding=$(count 'onboarding-*.png') live=$(count 'live-*.png') watch=$(count 'watch-*.png') widget=$(count 'widget-*.png') watchwidget=$(count 'watchwidget-*.png') total=$(count '*.png')"
 
-            for name in xcodegen xcodebuild-live xcodebuild-ui xcodebuild-watch; do
+            for name in xcodegen xcodebuild-live xcodebuild-widget xcodebuild-ui xcodebuild-watch xcodebuild-watchwidget; do
               log="$LOG_DIR/$name.log"
               echo ""
               if [ ! -f "$log" ]; then
@@ -813,6 +852,12 @@ jobs:
               grep "SUMMARY:" "$SCREENS_DIR/ui-flow-log.txt" | cut -c1-300 || true
               grep -A2 -E "\] (FAILED|SKIPPED)" "$SCREENS_DIR/ui-flow-log.txt" | cut -c1-300 | head -n 120 || true
             fi
+            if [ -f "$SCREENS_DIR/onboarding-default-flow-log.txt" ]; then
+              echo ""
+              echo "===== onboarding-default-flow-log.txt: summary and FAILED / SKIPPED steps ====="
+              grep "SUMMARY:" "$SCREENS_DIR/onboarding-default-flow-log.txt" | cut -c1-300 || true
+              grep -A2 -E "\] (FAILED|SKIPPED)" "$SCREENS_DIR/onboarding-default-flow-log.txt" | cut -c1-300 | head -n 120 || true
+            fi
             if [ -f "$SCREENS_DIR/live-measurements.txt" ]; then
               echo ""
               echo "===== live-measurements.txt: VIOLATION / note lines ====="
@@ -824,7 +869,7 @@ jobs:
               grep "BLANK" "$SCREENS_DIR/watch-manifest.txt" | cut -c1-200 | head -n 60 || true
             fi
 
-            for suite in ui live watch; do
+            for suite in ui onboarding live watch widget watchwidget; do
               echo ""
               echo "===== $suite: $(count "$suite-*.png") PNG file names ====="
               find "$SCREENS_DIR" -maxdepth 1 -type f -name "$suite-*.png" | sed 's#.*/##' | sort | paste -s -d ' ' - | fold -s -w 180 || true
@@ -848,9 +893,11 @@ jobs:
             echo "| xcodegen generate | ${{ steps.generate.outcome }} | |"
             echo "| iPhone simulator | ${{ steps.iphone.outcome }} | |"
             echo "| Lock Screen and Dynamic Island snapshots | ${{ steps.live.outcome }} | $(count 'live-*.png') |"
-            echo "| UI flow of the iPhone app | ${{ steps.ui.outcome }} | $(count 'ui-*.png') |"
+            echo "| Widget snapshots | ${{ steps.widgets.outcome }} | $(count 'widget-*.png') |"
+            echo "| UI flow of the iPhone app (and the onboarding tour) | ${{ steps.ui.outcome }} | $(count 'ui-*.png') + $(count 'onboarding-*.png') |"
             echo "| watchOS simulator | ${{ steps.watchsim.outcome }} | |"
             echo "| Watch page snapshots | ${{ steps.watch.outcome }} | $(count 'watch-*.png') |"
+            echo "| Watch widget snapshots | ${{ steps.watchwidgets.outcome }} | $(count 'watchwidget-*.png') |"
             echo ""
             echo "Screenshots: artifact **strength-screens** (PNGs, ui-flow-log.txt, digest.txt, logs/). Result bundles: artifact **strength-xcresults**."
             echo "A failed test step does not fail the job; only a run without any PNG does."
@@ -885,15 +932,19 @@ jobs:
           cat "$SCREENS_DIR/digest.txt" || echo "(no digest was written)"
           echo ""
           echo "================ strength-ios visual: verdict ================"
-          echo "step outcomes: generate=${{ steps.generate.outcome }} iphone=${{ steps.iphone.outcome }} live=${{ steps.live.outcome }} ui=${{ steps.ui.outcome }} watchsim=${{ steps.watchsim.outcome }} watch=${{ steps.watch.outcome }}"
+          echo "step outcomes: generate=${{ steps.generate.outcome }} iphone=${{ steps.iphone.outcome }} live=${{ steps.live.outcome }} widgets=${{ steps.widgets.outcome }} ui=${{ steps.ui.outcome }} watchsim=${{ steps.watchsim.outcome }} watch=${{ steps.watch.outcome }} watchwidgets=${{ steps.watchwidgets.outcome }}"
           ui="$(count 'ui-*.png')"
           live="$(count 'live-*.png')"
           watch="$(count 'watch-*.png')"
+          widget="$(count 'widget-*.png')"
+          watchwidget="$(count 'watchwidget-*.png')"
           total="$(count '*.png')"
-          echo "PNGs: ui=$ui live=$live watch=$watch total=$total"
+          echo "PNGs: ui=$ui live=$live watch=$watch widget=$widget watchwidget=$watchwidget total=$total"
           if [ "$ui" -eq 0 ]; then echo "::warning title=No UI flow screenshots::The iPhone UI flow produced no PNG (see the digest and the log of the UI flow step)"; fi
           if [ "$live" -eq 0 ]; then echo "::warning title=No Lock Screen screenshots::The Live Activity snapshot suite produced no PNG (see the digest)"; fi
           if [ "$watch" -eq 0 ]; then echo "::warning title=No Watch screenshots::The Watch snapshot suite produced no PNG (see the digest)"; fi
+          if [ "$widget" -eq 0 ]; then echo "::warning title=No widget screenshots::The widget snapshot suite produced no PNG (see the digest)"; fi
+          if [ "$watchwidget" -eq 0 ]; then echo "::warning title=No Watch widget screenshots::The Watch widget snapshot suite produced no PNG (see the digest)"; fi
           if [ "$total" -eq 0 ]; then
             echo "::error::No screenshot was produced at all"
             exit 1
@@ -1362,6 +1413,7 @@ jobs:
             -configuration Debug \
             -destination "id=$TOUR_UDID" \
             -only-testing:PulseStrengthUITests/StrengthTourTests \
+            -only-testing:PulseStrengthUITests/OnboardingTourTests \
             -parallel-testing-enabled NO \
             -resultBundlePath "$RESULTS_DIR/tour.xcresult" \
             CODE_SIGNING_ALLOWED=NO

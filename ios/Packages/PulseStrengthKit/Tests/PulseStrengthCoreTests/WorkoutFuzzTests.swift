@@ -373,6 +373,29 @@ final class WorkoutFuzzTests: XCTestCase {
             XCTAssertEqual(s.heartRate, b.heartRate, context)
         }
 
+        // the heart-rate series only grows by the sample of a heart-rate update (the reducer's now), keeps what it has, stays in order,
+        // at least 30 s apart, and never passes 360 samples
+        XCTAssertLessThanOrEqual(s.heartRateSeries.count, WorkoutReducer.maximumHeartRateSamples, "series length \(context)")
+        XCTAssertLessThanOrEqual(s.heartRateSeries.count, b.heartRateSeries.count + (isHeartRate ? 1 : 0), "series growth \(context)")
+        XCTAssertEqual(Array(s.heartRateSeries.prefix(b.heartRateSeries.count)), b.heartRateSeries, "series rewritten \(context)")
+        if s.heartRateSeries.count > b.heartRateSeries.count, case let .updateHeartRate(bpm) = action, let bpm {
+            XCTAssertEqual(s.heartRateSeries.last, HeartRateSample(bpm: bpm, at: now), "series sample \(context)")
+        }
+        for (earlier, later) in zip(s.heartRateSeries, s.heartRateSeries.dropFirst()) {
+            XCTAssertGreaterThanOrEqual(later.at.timeIntervalSince(earlier.at), WorkoutReducer.heartRateSampleInterval, "series spacing \(context)")
+        }
+
+        // a pending set has no time; a set that was logged by this step has the reducer's now; a set that stayed logged keeps its time
+        var setsBefore: [UUID: LoggedSet] = [:]
+        for entry in b.exercises { for set in entry.sets { setsBefore[set.id] = set } }
+        for entry in s.exercises {
+            for set in entry.sets {
+                if !set.isDone { XCTAssertNil(set.doneAt, "pending set with a time \(context)") }
+                guard let old = setsBefore[set.id], set.isDone else { continue }
+                XCTAssertEqual(set.doneAt, old.isDone ? old.doneAt : now, "set time \(context)")
+            }
+        }
+
         // the next pending set, when there is one, is pending; when there is none, everything is logged
         if let target = WorkoutTargets.nextPending(in: s) {
             XCTAssertFalse(s.exercises[target.exerciseIndex].sets[target.setIndex].isDone, "next pending is done \(context)")

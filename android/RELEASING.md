@@ -9,7 +9,7 @@ policy). What is left needs **your** accounts and decisions and cannot be done f
 | --- | --- |
 | **Application id** (`applicationId` in `app/build.gradle.kts`, currently the placeholder `health.pulse.strength`, the same string as the iOS bundle id) | The id of a Play app can **never** be changed after the first upload. Pick the final one first (for example `health.pulse.strength` or the id of the main Pulse app if this feature will live inside it) and search-and-replace the old one (`namespace` stays: it is only a code package). The CI workflow also names it (`packageName` in `.github/workflows/strength-android.yml`). |
 | **Developer account type** | A *personal* account created after 13 Nov 2023 must run a **closed test with at least 12 testers for 14 continuous days** before it may publish to production ([Google's rule](https://support.google.com/googleplay/android-developer/answer/14151465)). An organization account (needs a D-U-N-S number) does not. Plan the 14 days. |
-| **Privacy policy** | The dedicated page `strength-privacy.html` / `strength-datenschutz.html` in this repository is a draft written from what the app does (offline, no data collected). **Have it reviewed, merge it, and check that `https://pulse-health.github.io/strength-privacy.html` loads before submitting.** If you move to another host or domain, change `PrivacyLinks.policyUrl` in the app too. |
+| **Privacy policy** | The dedicated page `strength-privacy.html` / `strength-datenschutz.html` in this repository is a draft written from what the app does (offline, no data collected). **Have it reviewed, merge it, and check that `https://pulse-health.github.io/strength-privacy.html` loads before submitting.** If you move to another host or domain, change `PrivacyLinks.policyUrl` in the app too. **The page also describes the optional Wear OS app** (section 5a, English and German): the phone sends the week summary and the running workout to the paired watch through Google's Wearable Data Layer (part of Google Play services), which may relay the data when the two devices are not directly connected. Have that section reviewed with the rest, and keep it true to what the watch app does. The app itself still sends nothing to anyone else and still has no internet permission. |
 | **Health Connect** | The app declares `android.permission.health.WRITE_EXERCISE` (opt-in, write-only). That makes Google review the app's health data use (section 3.6). If you would rather ship v1 without it, remove it completely so that nothing promises it: delete the `uses-permission`, the two `PermissionsRationaleActivity` entries and the `<queries>` block in `app/src/main/AndroidManifest.xml`; the `health/` package, the Health Connect section of `ui/settings/SettingsScreen.kt` and the writer in `services/PulseServices.kt`; the `androidx.health.connect:connect-client` dependency (`app/build.gradle.kts`, `gradle/libs.versions.toml`; while it stays it merges an exported service into the manifest) and the `hc_rationale_*` strings; and the Health Connect text in `strength-privacy.html` / `strength-datenschutz.html` (section 5, the table row about the setting) and in both `store/metadata/android/*/full_description.txt`. |
 | **Exact alarms for the rest alert** | The rest-over alert is on time without any permission on Android 8-11 and 14+, and a few seconds late at most elsewhere (see "Known limitations"). If you want it exact on Android 12-13 and when the app is in the background on 14+, add `<uses-permission android:name="android.permission.USE_EXACT_ALARM" />` (granted at install on Android 13+; Google Play allows it only for apps whose core function is an alarm, timer or calendar, and asks you to declare it) or `SCHEDULE_EXACT_ALARM` (the user must allow "Alarms & reminders" on Android 14+). The code uses an exact alarm automatically whenever the permission is held; nothing else changes. Without it, no declaration is needed. |
 
@@ -131,6 +131,20 @@ older one (Android 8-12), in light and dark mode:
 - Backup/restore: `adb shell bmgr backupnow health.pulse.strength` then reinstall: templates and history return, the unfinished workout
   does not.
 - Install the **release** (R8-shrunk) build, not only the debug build, and click through every screen: shrinking bugs only show there.
+- **Home screen widgets** (`widgets/SPEC.md`, HS / LS / SB / WI ids): add each one in its smaller and larger sizes, in light and dark and with
+  Material You colours; a tap opens the right place; the Lift trend widget asks for a lift when it is added and again from its menu; the
+  numbers are still right after midnight (the app moves the snapshot on at midnight, see `surfaces/DayChange.kt`) and after changing the time
+  zone; the widgets show the empty state on a fresh install. On Android 12 and older the corners are square: that is expected.
+- **Quick Settings tiles** (CT-01 ... CT-08): add all eight; with a workout running Log set, Rest, +30 s and Pause work from the lock screen
+  and the others ask to unlock first. Long-press the app icon: the three shortcuts are there, and "Primary action" can be given to the Pixel
+  Quick Tap or a side key (it logs a set, skips the rest or starts the next workout).
+- **Planned session** (LA-06): on a template choose the calendar button, plan a start about 35 minutes ahead; the countdown notification
+  appears 30 minutes before, "Time to train" at the start, "Snooze 10 min" moves it, a restart of the phone keeps the plan, and starting any
+  workout ends it. **Bench mode** (SB-02, SB-04): tap the workout notification while resting; the screen stays on, shows over the lock screen,
+  and turns red on black between 22:00 and 06:00.
+- **Wear OS** (`wear/`): install the watch app and the phone app signed with the **same key** and the same application id; a tile, a
+  complication and the Ongoing Activity chip show the week and the running workout; Log set, +15 s and Skip on the watch reach the phone;
+  with the phone switched off the watch says "Your phone is not reachable". Each tile has a preview image for the tile gallery of the watch.
 
 ## 6. Store screenshots
 
@@ -157,8 +171,10 @@ real-device screenshots if you prefer; the Console accepts either.
 
 ## Known limitations of this first Android release
 
-- **Phone only.** The iOS app has an Apple Watch companion (heart rate, mirrored workout); the Android app has no Wear OS companion and
-  therefore no heart-rate display. The core was ported without the phone-to-watch sync protocol.
+- **The Wear OS app is a companion, not a standalone app.** It shows the week, the running workout and the next workout on tiles and
+  complications and sends Log set, rest and start commands to the phone through the Data Layer (`wear/`, `app/.../wear/`). It needs the phone
+  nearby (or connected), has no heart-rate recording of its own. Publish it under the same listing and the same
+  signing key as the phone app (Play Console, Wear OS form factor); that upload is not automated by the CI workflow.
 - **English only** (the iOS app is English only too) and **kilograms only**.
 - **Rest alert timing without special permissions** (the app declares no exact-alarm permission and runs no foreground service):
   Android 8-11 use an exact `PendingIntent` alarm; Android 14 and newer use an exact in-process alarm (the system deletes it about ten

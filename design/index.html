@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en" data-motion="full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <meta name="theme-color" content="#000000">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Rebase – Onboarding &amp; Login (design prototype)</title>
+    <!-- Respect "reduce motion" before the first paint (also switchable from the panel on desktop). -->
+    <script>document.documentElement.dataset.motion = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduced' : 'full';</script>
+    <link rel="preload" as="image" href="assets/hero-poster.jpg">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<noscript><p style="position:fixed;inset:0;display:grid;place-items:center;margin:0;padding:24px;background:#000;color:#fff;font:17px/1.4 system-ui,sans-serif;text-align:center;z-index:99">This design prototype needs JavaScript.</p></noscript>
+
+<!-- Icon sprite (24 x 24, stroke icons unless noted). Decorative: every use is aria-hidden. -->
+<svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="M17.94 17.94A10.1 10.1 0 0 1 12 19c-6.4 0-10-7-10-7a18.5 18.5 0 0 1 5.06-5.94M9.9 5.24A9.1 9.1 0 0 1 12 5c6.4 0 10 7 10 7a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24M2 2l20 20"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8.5a6 6 0 0 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17S18 15 18 8.5"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4.5" y="11" width="15" height="10" rx="2.5"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21.2l7.8-7.7 1-1.1a5.5 5.5 0 0 0 0-7.8z"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4.1 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+    <symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="M6.5 6.5v11M3.5 9.5v5M17.5 6.5v11M20.5 9.5v5M6.5 12h11"/></symbol>
+    <symbol id="i-scale" viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="4.5"/><path d="M8 9.6a5.2 5.2 0 0 1 8 0M12 9.4l1.7 1.9"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></symbol>
+    <symbol id="i-watch" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="3.5"/><path d="M9 6l.7-3.2a1.5 1.5 0 0 1 1.5-1.2h1.6a1.5 1.5 0 0 1 1.5 1.2L15 6M9 18l.7 3.2a1.5 1.5 0 0 0 1.5 1.2h1.6a1.5 1.5 0 0 0 1.5-1.2L15 18M12 9.5V12l1.7 1.2"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M9.5 2.5h5"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6M18 9h1.5a2.5 2.5 0 0 0 0-5H18M4 22h16M10 14.7V17c0 .6-.5 1-2 1.2-1.1.5-2 2-2 3.8M14 14.7V17c0 .6.5 1 2 1.2 1.1.5 2 2 2 3.8M18 2H6v7a6 6 0 0 0 12 0V2z"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.6 8.6 0 0 1-3.4-.7L3 21l1.8-5.3A8.4 8.4 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5z"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.4v.1"/></symbol>
+    <!-- filled glyphs -->
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1.3"/><rect x="14" y="5" width="4" height="14" rx="1.3"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.6v12.8a1 1 0 0 0 1.5.86l10.4-6.4a1 1 0 0 0 0-1.72L9.5 4.74A1 1 0 0 0 8 5.6z"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24"><path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></symbol>
+    <!-- Rebase mark: a low baseline that steps up to a higher one (placeholder until the final logo exists) -->
+    <symbol id="i-mark" viewBox="0 0 24 24"><path d="M3 17.5h5.5a3 3 0 0 0 3-3V9.5a3 3 0 0 1 3-3H21"/></symbol>
+</svg>
+
+<main class="stage">
+    <div class="device-slot" id="device-slot">
+        <div class="device is-intro" id="device" data-step="welcome" data-phase="welcome" data-slide="0">
+
+            <!-- ============ Background media: one clip behind every step ============ -->
+            <div class="media" aria-hidden="true">
+                <img class="media__poster" src="assets/hero-poster.jpg" alt="" decoding="async">
+                <video class="media__video" id="hero-video" muted loop playsinline preload="auto" tabindex="-1"
+                       disablepictureinpicture disableremoteplayback>
+                    <source src="assets/hero.mp4" type="video/mp4">
+                </video>
+                <div class="media__grade"></div>
+                <div class="media__veil"></div>
+                <div class="media__grain"></div>
+            </div>
+
+            <!-- Device chrome: only drawn in the desktop frame, the phone supplies its own -->
+            <div class="chrome statusbar" aria-hidden="true">
+                <span class="statusbar__time">9:41</span>
+                <span class="statusbar__icons">
+                    <svg width="18" height="12" viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+                    <svg width="17" height="12" viewBox="0 0 17 12"><path d="M8.5 2.4c2.2 0 4.2.9 5.7 2.3l1.2-1.2A10.2 10.2 0 0 0 8.5.7 10.2 10.2 0 0 0 1.6 3.5l1.2 1.2A8.5 8.5 0 0 1 8.5 2.4zm0 3.6c1.3 0 2.5.5 3.4 1.3l1.2-1.2a6.7 6.7 0 0 0-9.2 0l1.2 1.2A4.9 4.9 0 0 1 8.5 6zm0 3.5c.6 0 1.1.2 1.5.6l-1.5 1.5L7 10.1c.4-.4.9-.6 1.5-.6z"/></svg>
+                    <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.8" fill="none" stroke="currentColor" opacity=".4"/><rect x="2" y="2" width="20" height="9" rx="2.5"/><path d="M25 4.5v4c.8-.3 1.5-1.1 1.5-2s-.7-1.7-1.5-2z" opacity=".5"/></svg>
+                </span>
+            </div>
+            <div class="chrome island" aria-hidden="true"></div>
+
+            <!-- ============ Persistent top bar (brand / back, setup progress, motion control) ============ -->
+            <header class="topbar" id="topbar">
+                <div class="topbar__left">
+                    <div class="brand" id="brand">
+                        <span class="mark" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" width="20" height="20"><path d="M3 17.5h5.5a3 3 0 0 0 3-3V9.5a3 3 0 0 1 3-3H21" pathLength="1"/></svg>
+                        </span>
+                        <span class="brand__name">Rebase</span>
+                    </div>
+                    <button type="button" class="icon-btn" id="btn-back" data-i18n-attr="aria-label:setup.back">
+                        <svg class="ico" width="18" height="18" aria-hidden="true"><use href="#i-chevron-left"/></svg>
+                    </button>
+                </div>
+                <div class="progress" id="progress" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1">
+                    <i></i><i></i><i></i><i></i>
+                </div>
+                <div class="topbar__right">
+                    <button type="button" class="icon-btn" id="btn-motion" aria-pressed="false" data-i18n-attr="aria-label:video.pause">
+                        <svg class="ico ico--fill ico-pause" width="16" height="16" aria-hidden="true"><use href="#i-pause"/></svg>
+                        <svg class="ico ico--fill ico-play" width="16" height="16" aria-hidden="true"><use href="#i-play"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- ============ 1 · Welcome: three highlights over the video ============ -->
+            <section class="screen welcome" id="screen-welcome" aria-labelledby="welcome-h1">
+                <h1 class="sr-only" id="welcome-h1" data-i18n="welcome.h1"></h1>
+                <div class="welcome__block">
+                    <div class="pager" id="pager" role="group" aria-roledescription="carousel" data-i18n-attr="aria-label:pager.label">
+                        <button type="button" class="bar" data-i="0"><i></i></button>
+                        <button type="button" class="bar" data-i="1"><i></i></button>
+                        <button type="button" class="bar" data-i="2"><i></i></button>
+                    </div>
+
+                    <div class="slides" id="slides" aria-live="off">
+                        <div class="slide" data-i="0" role="group" aria-roledescription="slide">
+                            <h2 class="slide__title" data-i18n="s1.title"></h2>
+                            <p class="slide__sub" data-i18n="s1.sub"></p>
+                        </div>
+                        <div class="slide" data-i="1" role="group" aria-roledescription="slide">
+                            <h2 class="slide__title" data-i18n="s2.title"></h2>
+                            <p class="slide__sub" data-i18n="s2.sub"></p>
+                        </div>
+                        <div class="slide" data-i="2" role="group" aria-roledescription="slide">
+                            <h2 class="slide__title" data-i18n="s3.title"></h2>
+                            <p class="slide__sub" data-i18n="s3.sub"></p>
+                        </div>
+                    </div>
+
+                    <!-- Previews built from the app's own components (see README, "What the previews mirror") -->
+                    <div class="proofs" id="proofs" aria-hidden="true">
+                        <div class="proof proof--plan glass" data-i="0">
+                            <div class="proof__main">
+                                <p class="proof__eyebrow" data-i18n="p1.eyebrow"></p>
+                                <p class="proof__title num" data-i18n="p1.title"></p>
+                                <div class="chips">
+                                    <span class="chip"><i style="--dot: var(--recovery-good)"></i><span data-i18n="p1.chest"></span></span>
+                                    <span class="chip"><i style="--dot: var(--recovery-fair)"></i><span data-i18n="p1.back"></span></span>
+                                    <span class="chip"><i style="--dot: var(--recovery-good)"></i><span data-i18n="p1.arms"></span></span>
+                                </div>
+                            </div>
+                            <div class="readiness">
+                                <div class="ring ring--lg" style="--p: 82; --c: var(--recovery-good)">
+                                    <svg viewBox="0 0 48 48"><circle class="ring__track" cx="24" cy="24" r="21"/><circle class="ring__value" cx="24" cy="24" r="21" pathLength="100"/></svg>
+                                    <span class="ring__num num">82</span>
+                                </div>
+                                <span class="readiness__label" data-i18n="p1.level"></span>
+                            </div>
+                        </div>
+
+                        <div class="proof proof--rest glass" data-i="1">
+                            <div class="rest">
+                                <div class="ring ring--md" id="rest-ring" style="--p: 93; --c: var(--recovery-good)">
+                                    <svg viewBox="0 0 48 48"><circle class="ring__track" cx="24" cy="24" r="21"/><circle class="ring__value" cx="24" cy="24" r="21" pathLength="100"/></svg>
+                                    <svg class="ico ring__icon" width="18" height="18"><use href="#i-timer"/></svg>
+                                </div>
+                                <div class="rest__text">
+                                    <span class="rest__label" data-i18n="p2.rest"></span>
+                                    <span class="rest__time num" id="rest-time">1:24</span>
+                                </div>
+                                <div class="rest__btns">
+                                    <span class="mini">−15</span><span class="mini">+15</span><span class="mini mini--skip" data-i18n="p2.skip"></span>
+                                </div>
+                            </div>
+                            <p class="rest__meta">
+                                <svg class="ico ico--fill beat" width="13" height="13" aria-hidden="true"><use href="#i-heart"/></svg>
+                                <span class="num">142</span> <span data-i18n="p2.bpm"></span>
+                                <span class="dotsep">·</span>
+                                <span data-i18n="p2.meta"></span>
+                            </p>
+                        </div>
+
+                        <div class="proof proof--pr glass" data-i="2">
+                            <div class="pr__text">
+                                <span class="pill"><svg class="ico" width="13" height="13"><use href="#i-trophy"/></svg><span data-i18n="p3.pill"></span></span>
+                                <p class="pr__title" data-i18n="p3.title"></p>
+                                <p class="pr__meta num" data-i18n="p3.meta"></p>
+                            </div>
+                            <svg class="spark" viewBox="0 0 100 52" width="100" height="52">
+                                <defs>
+                                    <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0" stop-color="#30d158" stop-opacity=".35"/>
+                                        <stop offset="1" stop-color="#30d158" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <path class="spark__area" d="M2 44 L18 38 L34 40 L50 30 L66 31 L82 18 L96 8 L96 52 L2 52 Z" fill="url(#spark-fill)"/>
+                                <path class="spark__line" d="M2 44 L18 38 L34 40 L50 30 L66 31 L82 18 L96 8" pathLength="1"/>
+                                <circle class="spark__dot" cx="96" cy="8" r="3.5"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="cta">
+                        <button type="button" class="btn btn--primary" id="btn-start" data-i18n="welcome.start"></button>
+                        <p class="cta__login"><span data-i18n="welcome.have"></span> <button type="button" class="link" id="btn-login" data-i18n="welcome.login"></button></p>
+                        <p class="legal" data-i18n-html="legal.welcome"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ 2 · Sign up / log in sheet ============ -->
+            <div class="scrim" id="scrim"></div>
+            <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" inert>
+                <div class="sheet__grab" id="sheet-grab" aria-hidden="true"><i></i></div>
+                <button type="button" class="icon-btn icon-btn--close" id="sheet-close" data-i18n-attr="aria-label:sheet.close">
+                    <svg class="ico" width="14" height="14" aria-hidden="true"><use href="#i-x"/></svg>
+                </button>
+
+                <div class="seg" id="seg" role="tablist" data-mode="signup" data-i18n-attr="aria-label:seg.label">
+                    <i class="seg__thumb" aria-hidden="true"></i>
+                    <button type="button" role="tab" id="tab-signup" data-mode="signup" aria-selected="true" aria-controls="auth-panel" data-i18n="seg.signup"></button>
+                    <button type="button" role="tab" id="tab-login" data-mode="login" aria-selected="false" aria-controls="auth-panel" tabindex="-1" data-i18n="seg.login"></button>
+                </div>
+
+                <div class="sheet__body" id="auth-panel" role="tabpanel" aria-labelledby="tab-signup">
+                    <h2 class="sheet__title" id="sheet-title" tabindex="-1"></h2>
+                    <p class="sheet__sub" id="sheet-sub"></p>
+
+                    <button type="button" class="btn btn--apple" id="btn-apple">
+                        <span class="spinner" aria-hidden="true"></span>
+                        <svg class="ico ico--fill" width="19" height="19" aria-hidden="true"><use href="#i-apple"/></svg>
+                        <span data-i18n="auth.apple"></span>
+                    </button>
+
+                    <div class="or" role="separator"><span data-i18n="auth.or"></span></div>
+
+                    <!-- Prototype only: nothing is sent or stored. autocomplete is off so password managers stay quiet;
+                         the app should use .emailAddress / .password / .newPassword content types. -->
+                    <form id="auth-form" novalidate autocomplete="off" data-1p-ignore data-lpignore="true">
+                        <div class="field" id="field-email">
+                            <label for="in-email" data-i18n="auth.email"></label>
+                            <input id="in-email" name="email" type="email" inputmode="email" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="next" aria-describedby="msg-email" data-i18n-attr="placeholder:auth.emailPh">
+                        </div>
+                        <p class="msg" id="msg-email" aria-live="polite"></p>
+
+                        <div class="field" id="field-pw">
+                            <label for="in-pw" data-i18n="auth.password"></label>
+                            <input id="in-pw" name="password" type="password" autocomplete="off" autocapitalize="none" enterkeyhint="go" aria-describedby="msg-pw">
+                            <button type="button" class="field__toggle" id="btn-eye" aria-pressed="false" data-i18n-attr="aria-label:auth.showPw">
+                                <svg class="ico ico-eye" width="20" height="20" aria-hidden="true"><use href="#i-eye"/></svg>
+                                <svg class="ico ico-eye-off" width="20" height="20" aria-hidden="true"><use href="#i-eye-off"/></svg>
+                            </button>
+                        </div>
+                        <p class="msg msg--hint" id="msg-pw" aria-live="polite"></p>
+
+                        <div class="sheet__row">
+                            <button type="button" class="link" id="btn-forgot" data-i18n="auth.forgot"></button>
+                        </div>
+
+                        <button type="submit" class="btn btn--primary" id="btn-submit">
+                            <span class="btn__label"></span>
+                            <span class="spinner" aria-hidden="true"></span>
+                        </button>
+                    </form>
+
+                    <p class="legal" id="sheet-legal"></p>
+                </div>
+            </section>
+
+            <!-- ============ 3 · Setup: profile (main goal + experience, as the privacy policy's coaching profile) ============ -->
+            <section class="screen setup" id="screen-profile" data-screen="profile" aria-labelledby="profile-title" inert>
+                <div class="setup__head">
+                    <h1 id="profile-title" tabindex="-1" data-i18n="profile.title"></h1>
+                    <p data-i18n="profile.sub"></p>
+                </div>
+                <div class="setup__body">
+                    <fieldset>
+                        <legend class="sr-only" data-i18n="profile.goal"></legend>
+                        <ul class="options">
+                            <li><label class="opt">
+                                <input type="radio" name="goal" value="strength">
+                                <span class="opt__card">
+                                    <span class="opt__icon" style="--tint: var(--green)"><svg class="ico" width="22" height="22" aria-hidden="true"><use href="#i-dumbbell"/></svg></span>
+                                    <span class="opt__text"><b data-i18n="goal.strength"></b><small data-i18n="goal.strength.sub"></small></span>
+                                    <span class="opt__check" aria-hidden="true"><svg class="ico" width="14" height="14"><use href="#i-check"/></svg></span>
+                                </span>
+                            </label></li>
+                            <li><label class="opt">
+                                <input type="radio" name="goal" value="active">
+                                <span class="opt__card">
+                                    <span class="opt__icon" style="--tint: var(--heart)"><svg class="ico" width="22" height="22" aria-hidden="true"><use href="#i-heart"/></svg></span>
+                                    <span class="opt__text"><b data-i18n="goal.active"></b><small data-i18n="goal.active.sub"></small></span>
+                                    <span class="opt__check" aria-hidden="true"><svg class="ico" width="14" height="14"><use href="#i-check"/></svg></span>
+                                </span>
+                            </label></li>
+                            <li><label class="opt">
+                                <input type="radio" name="goal" value="recover">
+                                <span class="opt__card">
+                                    <span class="opt__icon" style="--tint: var(--blue-text)"><svg class="ico" width="22" height="22" aria-hidden="true"><use href="#i-moon"/></svg></span>
+                                    <span class="opt__text"><b data-i18n="goal.recover"></b><small data-i18n="goal.recover.sub"></small></span>
+                                    <span class="opt__check" aria-hidden="true"><svg class="ico" width="14" height="14"><use href="#i-check"/></svg></span>
+                                </span>
+                            </label></li>
+                            <li><label class="opt">
+                                <input type="radio" name="goal" value="performance">
+                                <span class="opt__card">
+                                    <span class="opt__icon" style="--tint: var(--recovery-fair)"><svg class="ico" width="22" height="22" aria-hidden="true"><use href="#i-flame"/></svg></span>
+                                    <span class="opt__text"><b data-i18n="goal.performance"></b><small data-i18n="goal.performance.sub"></small></span>
+                                    <span class="opt__check" aria-hidden="true"><svg class="ico" width="14" height="14"><use href="#i-check"/></svg></span>
+                                </span>
+                            </label></li>
+                        </ul>
+                    </fieldset>
+                    <fieldset class="levels-set">
+                        <legend class="sr-only" data-i18n="profile.level"></legend>
+                        <p class="levels__legend" aria-hidden="true" data-i18n="profile.level"></p>
+                        <div class="levels">
+                            <label><input type="radio" name="level" value="beginner"><span data-i18n="level.beginner"></span></label>
+                            <label><input type="radio" name="level" value="intermediate"><span data-i18n="level.intermediate"></span></label>
+                            <label><input type="radio" name="level" value="advanced"><span data-i18n="level.advanced"></span></label>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="setup__foot">
+                    <button type="button" class="btn btn--primary" id="btn-profile-next" disabled data-i18n="profile.continue"></button>
+                </div>
+            </section>
+
+            <!-- ============ 4 · Setup: Apple Health ============ -->
+            <section class="screen setup" id="screen-health" data-screen="health" aria-labelledby="health-title" inert>
+                <div class="setup__head">
+                    <h1 id="health-title" tabindex="-1" data-i18n="health.title"></h1>
+                    <p data-i18n="health.sub"></p>
+                </div>
+                <div class="setup__body">
+                    <ul class="group">
+                        <li class="row">
+                            <span class="row__icon" style="--tint: var(--green)"><svg class="ico" width="20" height="20" aria-hidden="true"><use href="#i-dumbbell"/></svg></span>
+                            <span class="row__text"><b data-i18n="health.workouts"></b><small data-i18n="health.workouts.sub"></small></span>
+                            <span class="tag tag--write" data-i18n="health.write"></span>
+                        </li>
+                        <li class="row">
+                            <span class="row__icon" style="--tint: var(--heart)"><svg class="ico ico--fill" width="20" height="20" aria-hidden="true"><use href="#i-heart"/></svg></span>
+                            <span class="row__text"><b data-i18n="health.hr"></b><small data-i18n="health.hr.sub"></small></span>
+                            <span class="tag" data-i18n="health.watch"></span>
+                        </li>
+                        <li class="row">
+                            <span class="row__icon" style="--tint: var(--blue-text)"><svg class="ico" width="20" height="20" aria-hidden="true"><use href="#i-scale"/></svg></span>
+                            <span class="row__text"><b data-i18n="health.body"></b><small data-i18n="health.body.sub"></small></span>
+                            <span class="tag" data-i18n="health.optional"></span>
+                        </li>
+                    </ul>
+                </div>
+                <div class="setup__foot">
+                    <p class="note">
+                        <svg class="ico" width="16" height="16" aria-hidden="true"><use href="#i-lock"/></svg>
+                        <span data-i18n-html="health.note"></span>
+                    </p>
+                    <button type="button" class="btn btn--primary" id="btn-health-yes">
+                        <svg class="ico ico--fill" width="18" height="18" aria-hidden="true"><use href="#i-heart"/></svg>
+                        <span data-i18n="health.connect"></span>
+                    </button>
+                    <button type="button" class="btn btn--text" id="btn-health-no" data-i18n="health.later"></button>
+                </div>
+            </section>
+
+            <!-- ============ 5 · Setup: AI Coaching consent (optional, off by default; privacy policy §7) ============ -->
+            <section class="screen setup" id="screen-coach" data-screen="coach" aria-labelledby="coach-title" inert>
+                <div class="setup__head">
+                    <h1 id="coach-title" tabindex="-1" data-i18n="coach.title"></h1>
+                    <p data-i18n="coach.sub"></p>
+                </div>
+                <div class="setup__body">
+                    <p class="group-label" data-i18n="coach.shared"></p>
+                    <ul class="group">
+                        <li class="row">
+                            <span class="row__icon" style="--tint: var(--green)"><svg class="ico" width="20" height="20" aria-hidden="true"><use href="#i-user"/></svg></span>
+                            <span class="row__text"><b data-i18n="coach.r1"></b><small data-i18n="coach.r1.sub"></small></span>
+                        </li>
+                        <li class="row">
+                            <span class="row__icon" style="--tint: var(--heart)"><svg class="ico" width="20" height="20" aria-hidden="true"><use href="#i-heart"/></svg></span>
+                            <span class="row__text"><b data-i18n="coach.r2"></b><small data-i18n="coach.r2.sub"></small></span>
+                        </li>
+                        <li class="row">
+                            <span class="row__icon" style="--tint: var(--blue-text)"><svg class="ico" width="20" height="20" aria-hidden="true"><use href="#i-chat"/></svg></span>
+                            <span class="row__text"><b data-i18n="coach.r3"></b><small data-i18n="coach.r3.sub"></small></span>
+                        </li>
+                    </ul>
+                    <p class="note">
+                        <svg class="ico" width="16" height="16" aria-hidden="true"><use href="#i-lock"/></svg>
+                        <span data-i18n="coach.never"></span>
+                    </p>
+                </div>
+                <div class="setup__foot">
+                    <p class="consent" data-i18n-html="coach.consent"></p>
+                    <!-- Equal size and weight on purpose: declining must be as easy as accepting -->
+                    <button type="button" class="btn btn--primary" id="btn-coach-yes" data-i18n="coach.on"></button>
+                    <button type="button" class="btn btn--glass" id="btn-coach-no" data-i18n="coach.off"></button>
+                </div>
+            </section>
+
+            <!-- ============ 6 · Setup: notifications ============ -->
+            <section class="screen setup" id="screen-notify" data-screen="notify" aria-labelledby="notify-title" inert>
+                <div class="setup__head">
+                    <h1 id="notify-title" tabindex="-1" data-i18n="notify.title"></h1>
+                    <p data-i18n="notify.sub"></p>
+                </div>
+                <div class="setup__body">
+                    <div class="notif glass" aria-hidden="true">
+                        <span class="mark mark--sm"><svg viewBox="0 0 24 24" width="22" height="22"><use href="#i-mark"/></svg></span>
+                        <div class="notif__text">
+                            <div class="notif__top"><b data-i18n="notify.app"></b><span data-i18n="notify.time"></span></div>
+                            <p data-i18n-html="notify.body"></p>
+                        </div>
+                    </div>
+                    <ul class="points">
+                        <li><span class="points__check"><svg class="ico" width="13" height="13" aria-hidden="true"><use href="#i-check"/></svg></span><span data-i18n="notify.p1"></span></li>
+                        <li><span class="points__check"><svg class="ico" width="13" height="13" aria-hidden="true"><use href="#i-check"/></svg></span><span data-i18n="notify.p2"></span></li>
+                    </ul>
+                </div>
+                <div class="setup__foot">
+                    <button type="button" class="btn btn--primary" id="btn-notify-yes">
+                        <svg class="ico" width="19" height="19" aria-hidden="true"><use href="#i-bell"/></svg>
+                        <span data-i18n="notify.on"></span>
+                    </button>
+                    <button type="button" class="btn btn--text" id="btn-notify-no" data-i18n="notify.later"></button>
+                </div>
+            </section>
+
+            <!-- ============ 7 · Done ============ -->
+            <section class="screen setup setup--done" id="screen-done" data-screen="done" aria-labelledby="done-title" inert>
+                <div class="done">
+                    <div class="done__badge" aria-hidden="true">
+                        <span class="done__ripple"></span><span class="done__ripple"></span>
+                        <svg viewBox="0 0 96 96" width="96" height="96">
+                            <circle class="done__track" cx="48" cy="48" r="42"/>
+                            <circle class="done__ring" cx="48" cy="48" r="42" pathLength="1"/>
+                            <path class="done__check" d="M30 49.5l12.5 12.5L67 36" pathLength="1"/>
+                        </svg>
+                    </div>
+                    <h1 id="done-title" tabindex="-1" data-i18n="done.title"></h1>
+                    <p class="done__sub" data-i18n="done.sub"></p>
+                    <ul class="summary" id="summary"></ul>
+                </div>
+                <div class="setup__foot">
+                    <button type="button" class="btn btn--primary" id="btn-finish" data-i18n="done.start"></button>
+                </div>
+            </section>
+
+            <div class="toast" id="toast" role="status" aria-live="polite"></div>
+            <div class="chrome home-indicator" aria-hidden="true"></div>
+        </div>
+    </div>
+
+    <!-- ============ Desktop-only prototype panel ============ -->
+    <aside class="panel" aria-label="Prototype controls">
+        <p class="panel__kicker">Rebase · design prototype</p>
+        <h2 class="panel__title">Onboarding &amp; login</h2>
+        <p class="panel__lead" data-i18n="panel.lead"></p>
+
+        <ol class="panel__steps" id="panel-steps">
+            <li><button type="button" data-go="welcome"><span>1</span><b data-i18n="panel.welcome"></b></button></li>
+            <li><button type="button" data-go="signup"><span>2</span><b data-i18n="panel.signup"></b></button></li>
+            <li><button type="button" data-go="login"><span>3</span><b data-i18n="panel.login"></b></button></li>
+            <li><button type="button" data-go="profile"><span>4</span><b data-i18n="panel.profile"></b></button></li>
+            <li><button type="button" data-go="health"><span>5</span><b data-i18n="panel.health"></b></button></li>
+            <li><button type="button" data-go="coach"><span>6</span><b data-i18n="panel.coach"></b></button></li>
+            <li><button type="button" data-go="notify"><span>7</span><b data-i18n="panel.notify"></b></button></li>
+            <li><button type="button" data-go="done"><span>8</span><b data-i18n="panel.done"></b></button></li>
+        </ol>
+
+        <div class="panel__group">
+            <span class="panel__label" id="lang-label" data-i18n="panel.language"></span>
+            <div class="panel__toggle" role="group" aria-labelledby="lang-label">
+                <button type="button" data-lang="en" aria-pressed="true">EN</button>
+                <button type="button" data-lang="de" aria-pressed="false">DE</button>
+            </div>
+        </div>
+        <div class="panel__group">
+            <label class="panel__check"><input type="checkbox" id="opt-reduce"> <span data-i18n="panel.reduce"></span></label>
+        </div>
+
+        <p class="panel__fine" data-i18n="panel.fine"></p>
+    </aside>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

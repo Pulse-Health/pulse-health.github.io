@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The play glyph in the brand green, for the SMALL_IMAGE form of the Start complication (small images are not tinted by the watch face). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="12"
+    android:viewportHeight="12">
+    <path
+        android:fillColor="#FF30D158"
+        android:pathData="M3,1.5 v9 l7.5,-4.5 z" />
+</vector>

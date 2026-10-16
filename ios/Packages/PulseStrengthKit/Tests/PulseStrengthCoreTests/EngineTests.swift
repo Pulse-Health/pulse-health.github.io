@@ -805,6 +805,7 @@ final class EngineSyncTests: XCTestCase {
         copy.heartRate = nil
         copy.heartRateSum = 0
         copy.heartRateCount = 0
+        copy.heartRateSeries = []
         return copy
     }
 

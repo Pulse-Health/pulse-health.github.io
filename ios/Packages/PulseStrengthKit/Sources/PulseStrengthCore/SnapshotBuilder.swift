@@ -3,6 +3,11 @@ import Foundation
 /// Builds the small `WorkoutSnapshot` shown by the Live Activity, the Dynamic Island and the Apple Watch.
 public enum SnapshotBuilder {
     /// The snapshot of `state` at `now`; its target is the next pending set (`WorkoutTargets.nextPending`).
+    ///
+    /// Besides the flat fields it carries the live context that follows from the state alone (widgets/SPEC.md section 2, "Live
+    /// moments"): the set dots of the shown exercise (`exerciseDoneSets`, `exerciseSetCount`), the running `superset`, the `plates`
+    /// of the target set and the `coachTip` shown while resting. The record `moment` and the `finish` card depend on what just
+    /// happened, not on the state, so the app sets them (`prMoment(from:to:now:lifetime:)`, `finishBrief(from:savedToHealth:)`).
     public static func make(from state: WorkoutState, now: Date) -> WorkoutSnapshot {
         let target = WorkoutTargets.nextPending(in: state)
         let totals = PresenterSupport.totals(of: state)
@@ -69,7 +74,12 @@ public enum SnapshotBuilder {
             loggedSets: totals.loggedSets,
             totalSets: totals.totalSets,
             nextSetText: nextSetText,
-            nextExerciseName: nextExerciseName(in: state, after: shownIndex)
+            nextExerciseName: nextExerciseName(in: state, after: shownIndex),
+            exerciseDoneSets: shown?.doneCount,
+            exerciseSetCount: shown?.sets.count,
+            superset: supersetBrief(in: state, shownIndex: shownIndex),
+            plates: plateBrief(for: targetSet, exercise: shown?.exercise),
+            coachTip: coachTipBrief(in: state, phase: phase)
         )
     }
 

@@ -2,6 +2,11 @@
 
 package health.pulse.strength.core
 
+import health.pulse.strength.core.widgets.CoachTipBrief
+import health.pulse.strength.core.widgets.FinishBrief
+import health.pulse.strength.core.widgets.PRMoment
+import health.pulse.strength.core.widgets.PlateBrief
+import health.pulse.strength.core.widgets.SupersetBrief
 import java.time.Instant
 import java.util.UUID
 import kotlinx.serialization.SerialName
@@ -72,4 +77,18 @@ data class WorkoutSnapshot(
     /** "Set 4 · 82.5 kg × 6" */
     val nextSetText: String,
     val nextExerciseName: String? = null,
+
+    /** Sets of the shown exercise that are logged / in total (the "set dots"). */
+    val exerciseDoneSets: Int? = null,
+    val exerciseSetCount: Int? = null,
+    /** A personal record that was just logged; cleared by an update at its `expiresAt`. */
+    val moment: PRMoment? = null,
+    /** The running superset; null when the shown exercise is not in one. */
+    val superset: SupersetBrief? = null,
+    /** Plates for the target set; null unless the target is a barbell weight exercise. */
+    val plates: PlateBrief? = null,
+    /** A one-tap suggestion shown while resting. */
+    val coachTip: CoachTipBrief? = null,
+    /** Set on the final content of a finished workout. */
+    val finish: FinishBrief? = null,
 )

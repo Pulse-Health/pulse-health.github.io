@@ -38,6 +38,9 @@ class StrengthAppEnvironment private constructor(
      */
     val openWorkoutRequested: StateFlow<Boolean> = mutableOpenWorkoutRequested.asStateFlow()
 
+    /** The screen that a widget, tile or notification link asked for; the root composable shows it and clears it. */
+    val hostRequests = HostRequests()
+
     /** Asks the UI to show the active workout (it does nothing without a workout in progress). */
     fun requestOpenWorkout() {
         mutableOpenWorkoutRequested.value = true

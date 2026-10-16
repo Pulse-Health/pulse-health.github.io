@@ -10,7 +10,8 @@ import PulseStrengthCore
 /// * Starting a workout (`controller.startWorkout(template:)`) or resuming one presents the active workout.
 /// * Minimising hides the cover; the bar then offers "Resume".
 /// * Finishing hides the cover and, once it is gone, presents the summary (discarding presents nothing).
-/// * `pulse-strength://workout` (the Live Activity's `widgetURL`) opens the active workout when one exists.
+/// * `pulse-strength://` links (`StrengthDeepLink`: the Live Activity's `widgetURL`, widgets, controls) open the running workout, start a
+///   workout or show the hub; links that arrive through the widget command inbox take the same path.
 /// * The walkthrough sheet (`StrengthWalkthroughView`) opens when `environment.showsWalkthrough` is set: the host calls
 ///   `environment.showWalkthroughAfterOnboarding()` when onboarding ends, and the hub's More menu replays it.
 @MainActor
@@ -26,9 +27,13 @@ public struct PulseStrengthRootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
-    public init(environment: StrengthAppEnvironment) {
+    /// False when the onboarding already asked for the notification and Health permissions (at their own steps).
+    private let requestsPermissionsAtLaunch: Bool
+
+    public init(environment: StrengthAppEnvironment, requestsPermissionsAtLaunch: Bool = true) {
         self._environment = ObservedObject(wrappedValue: environment)
         self._controller = ObservedObject(wrappedValue: environment.controller)
+        self.requestsPermissionsAtLaunch = requestsPermissionsAtLaunch
     }
 
     // MARK: Body
@@ -72,6 +77,16 @@ public struct PulseStrengthRootView: View {
         .dynamicTypeSize(PulseDynamicType.screenRange)
         .onOpenURL { (url: URL) in
             handleURL(url)
+        }
+        .onChange(of: environment.pendingDeepLink) { _, link in
+            guard let link else { return }
+            environment.pendingDeepLink = nil
+            handle(link)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                environment.sceneBecameActive()
+            }
         }
         .task(id: environment.showsWalkthrough) {
             // The walkthrough comes first: the permission prompts would cover it. Closing it runs this again (the prompts
@@ -222,17 +237,40 @@ public struct PulseStrengthRootView: View {
     }
 
     private func handleURL(_ url: URL) {
-        guard url.scheme?.lowercased() == StrengthConfig.urlScheme.lowercased() else { return }
-        let host = url.host?.lowercased()
-        if host == StrengthConfig.workoutURL.host?.lowercased() {
+        guard let link = StrengthDeepLink(url: url) else { return }
+        handle(link)
+    }
+
+    /// Opens what a widget, control, Live Activity, the Action button or a reminder asked for (widgets/SPEC.md section 4). Starting a workout
+    /// while one runs only shows the running one: the hub offers to resume instead of replacing it.
+    private func handle(_ link: StrengthDeepLink) {
+        switch link {
+        case .workout, .plates:
             presentActiveWorkout()
-        } else if host == StrengthConfig.weightURL.host?.lowercased() {
+        case .weight:
             environment.requestWeightEntry()
+        case .startNext:
+            startWorkout(environment.store.nextTemplate)
+        case .start(let templateID):
+            guard let template = environment.store.templates.first(where: { $0.id == templateID }) else { return }
+            startWorkout(template)
+        case .startEmpty(let name):
+            if controller.state == nil {
+                controller.startWorkout(template: nil, name: name)
+                playStartHaptic()
+            }
+            presentActiveWorkout()
+        case .exercise(let exerciseID):
+            // The hub pushes the detail; a running workout stays minimised.
+            showsActiveWorkout = false
+            environment.pendingExerciseID = exerciseID
+        case .hub:
+            showsActiveWorkout = false
         }
     }
 
     private func requestPermissions() async {
-        guard environment.hasSystemServices else { return }
+        guard requestsPermissionsAtLaunch, environment.hasSystemServices else { return }
         await environment.services.requestPermissions()
     }
 

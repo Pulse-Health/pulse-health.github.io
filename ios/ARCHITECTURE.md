@@ -25,7 +25,9 @@ ios/
       PulseStrengthCore/     platform neutral (Foundation only): models, reducer, presenter, stores, sync
       PulseStrengthActivity/ iOS: ActivityAttributes + command bus (shared by app and widget)
       PulseStrengthIOS/      iOS: SwiftUI screens, services (Live Activity manager, notifications, HealthKit, Watch bridge)
+        Onboarding/          the first-run flow (5.6)
         Resources/ExerciseMedia/*.jpg   form demo frames "<mediaKey>-a.jpg" / "-b.jpg" (placeholders of unverified provenance, see README "Exercise photos")
+        Resources/Onboarding/           the hero clip "onboarding-hero.mp4" and its poster
       PulseStrengthWatchUI/  watchOS: SwiftUI screens, workout session, WatchConnectivity client
     Tests/PulseStrengthCoreTests/
   Apps/
@@ -526,10 +528,37 @@ built-in exercises replaced by the library's definition, custom exercises never 
 by id: a known template is replaced but keeps its `lastPerformed`; a known plan keeps its place in the rotation and its active flag; a new
 plan becomes the active one. Importing the same file twice therefore changes nothing but the content it carries.
 
+### 3.7 Onboarding: `OnboardingModels.swift`, `OnboardingFlow.swift`, `OnboardingModel.swift`, `OnboardingServices.swift` and friends (area: first run)
+
+The first-run flow follows the same split as the workout: a pure state machine in Core, a thin observable wrapper, and views that only render it.
+Contract (all `public`, Foundation only; the prototype in `design/` is the reference for the screens):
+
+* `OnboardingStep` (`welcome`, `auth`, `profile`, `health`, `coach`, `notify`, `done`; `setupSteps`, `setupNumber`, `isSetup`, `previous`, `next`),
+  `AuthMode` (`signUp`, `logIn`), `TrainingGoal`, `ExperienceLevel`, `OnboardingAnswers` (goal, level and three optional yes/no answers: `nil` is "not asked yet"),
+  `OnboardingOutcome` (`finished(answers)` for a new account, `signedIn` for an existing one), `OnboardingBrand.name`.
+* `OnboardingState` + `OnboardingAction` -> `OnboardingReducer.reduce(_:_:)`. An action that does not fit the screen (an answer to a step that is not showing,
+  `finish` before the last screen, `continueFromProfile` without a goal and a level) returns the state unchanged. `.authenticated` leads to `profile` on the
+  sign-up tab and ends the flow (`outcome = .signedIn`) on the log-in tab. AI Coaching is never implied: `OnboardingState.preview(at:)` leaves it off.
+* `OnboardingModel` (`@MainActor`, `ObservableObject`, compiled with Combine or the stand-in): `state`, the form (`email`, `password`, `isPasswordVisible`,
+  `emailIsInvalid`, `passwordIsInvalid`, `authError`, `focusRequest`), `busy` (`submit`, `apple`, `reset`, `health`, `notifications`), `notice` (the toast),
+  `isMotionPaused`, and one method per button (`submit()`, `continueWithApple()`, `forgotPassword()`, `connectHealth()`, `answerCoach(_:)`, `enableNotifications()`, ...).
+  While a request or a system sheet is up nothing else starts, the sheet cannot be closed and the tabs cannot be switched. The password is cleared
+  when the form is used or closed. `onComplete` is called once with the outcome.
+* `OnboardingServices` (`@MainActor` protocol): `authenticate(mode:email:password:)`, `authenticateWithApple(mode:)`, `sendPasswordReset(to:)` (all throw
+  `OnboardingAuthError`: `invalidCredentials`, `accountExists`, `cancelled`, `failed`), `requestHealthAccess() -> Bool`, `requestNotificationAccess() -> Bool`.
+  `SimulatedOnboardingServices` answers as told after a pause (previews, UI tests, the app until an account service exists).
+* `OnboardingCopy(language:)`: every string in English and German (`OnboardingText` has one case per plain string; `OnboardingCopyTables.swift` is generated from
+  `design/app.js` with an exhaustive `switch` per language, so a missing translation does not compile), plus the sentences with links and bold parts
+  (`[OnboardingRun]`), the parameterised texts and the account messages. German is the informal "du". `OnboardingLegal` maps the two documents to the pages of the website.
+* `CredentialsValidator` (an email needs one "@" and a dotted domain; a new password needs 8 characters, a log-in only a password), `HighlightPlayback`
+  (the clock of the three bars: 6.5 s each, the remainder carries over, one tick never moves it more than 0.5 s so a returning app does not skip highlights),
+  `OnboardingSummary` (the chips of the last screen), `OnboardingRecord` + `OnboardingRecordStore` (what is kept in `UserDefaults` once the flow is over, and the
+  `askedForPermissions` rule), `OnboardingLaunchMode` (`firstLaunch`, `skip`, `always`, from the launch arguments).
+
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
-  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 700 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 716 (the controller and
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 860 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 905 (the controller and
   store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
   phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
   40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice. `SyncHardeningTests.swift` holds one
@@ -543,6 +572,10 @@ plan becomes the active one. Importing the same file twice therefore changes not
   notice after a workout was adopted. `SyncWatchHealth2Tests.swift` covers when the phone ended the workout (`lastEndNoticeSentAt`: late, legacy and ghost notices,
   ignored notices, workouts that ended on the Watch itself, the controller forwards) with the Health end time rule (`SyncReconciler.healthWorkoutEnd`), and the rule
   that decides whether an end notice received without a workout belongs to a Health session nobody claimed (`SyncReconciler.endNotice(sentAt:settlesSessionStartedAt:)`).
+  The onboarding (3.7) has `OnboardingFlowTests.swift` (every path through the reducer, ignored actions, Back, AI Coaching never implied), `OnboardingModelTests.swift`
+  (the model against scripted services that can hold a call: busy states, failures, permission answers, the toast; Combine or the stand-in), `OnboardingCredentialsTests.swift`,
+  `OnboardingCopyTests.swift` (both languages complete, no leftover product name, the legal sentences, summary), `HighlightPlaybackTests.swift` and `OnboardingRecordTests.swift`
+  (record store, simulated services, launch arguments).
 * Apple-only files cannot be compiled on Linux: they are syntax-checked with `swiftc -parse` while writing, reviewed adversarially against the
   iOS 17 / watchOS 10 SDK APIs, and compiled and exercised by the macOS CI jobs (`apple`, `visual`, `matrix`). The README's "Verification status"
   lists what is verified and what needs real hardware.
@@ -744,11 +777,80 @@ phone ends the workout.
   session runs does not turn the pending save into a discard. Known limit: the notice names the workout that ended LAST; if the phone also started and discarded a
   later workout before the Watch recovered, its flag decides for the recovered one.
 
-### 5.6 Project, CI, docs
+### 5.6 Onboarding screens (`Sources/PulseStrengthIOS/Onboarding/`)
+
+Dark only (the clip is the surface): `OnboardingTheme.swift` holds the dark values of `PulseTheme` as fixed colours, the glass and button styles, the rich-text helper
+and the Rebase mark. Every file is wrapped in `#if os(iOS)` and uses only iOS 17 APIs (no iOS 26 glass).
+
+| File | Public API / contents |
+| --- | --- |
+| `OnboardingFlowView.swift` | `OnboardingFlowView(services:copy:state:onComplete:)`: backdrop, welcome screen, the five setup screens (each waits right of the middle, slides in, leaves left; going back reverses it), top bar, toast, and the account `.sheet` |
+| `OnboardingGate.swift` | `OnboardingGate(services:store:showsAlways:content:)`: the flow while there is no `OnboardingRecord`, then `content(record)`; `PulseOnboardingServices(system:simulatedLatency:)`: permissions through `PulseServices.requestHealthPermission()` / `requestNotificationPermission()`, account calls simulated |
+| `OnboardingBackdrop.swift` | the poster, the muted looping clip (`AVPlayerLooper` in an `AVPlayerLayer`, no audio session), two dark gradients, the veil; the clip plays on welcome and auth only and stops for Reduce Motion, Low Power Mode, the pause button and a backgrounded app |
+| `OnboardingWelcomeView.swift`, `OnboardingProofCards.swift` | three highlights driven by `HighlightPlayback` (tap a bar or swipe to move, hold to pause) with their preview cards (plan + readiness ring, rest timer + heart rate, new PR + sparkline); previews are decorative and hidden from VoiceOver; at accessibility text sizes the screen scrolls (below the top bar) and drops the previews |
+| `OnboardingAuthSheet.swift` | Sign up / Log in switch, Continue with Apple, email and password fields with inline errors, a system sheet whose first detent is as tall as the form (measured by the sheet itself, kept at the tallest it has been, never shorter than 540 pt; full height at accessibility text sizes), the focused field is scrolled to the middle of the room above the keyboard (`ScrollViewReader`), `interactiveDismissDisabled` while busy |
+| `OnboardingSetupLayout.swift`, `OnboardingSetupScreens.swift`, `OnboardingDoneView.swift` | head + scrolling body (bottom fade while there is more) + pinned buttons; at accessibility text sizes everything scrolls together. Profile, Health, Coach, Notify, Done |
+| `OnboardingChrome.swift` | top bar (brand or Back, whichever is not shown is left out of the view tree instead of being faded and hidden; four progress bars; pause button) and toast |
+
+* **Accessibility.** Titles are headings and receive VoiceOver focus when their step appears; hidden steps are `accessibilityHidden`; the pager bars are buttons with
+  "Show highlight 2 of 3"; errors are announced; every control has an `accessibilityIdentifier` of the form `onboarding.<name>` for the UI tests.
+* **Short phones** (under 760 pt, the iPhone SE) drop the preview cards and the option subtitles, like the prototype's container query.
+* **Host wiring.** `PulseStrengthApp` creates the services and the record store once; `-PulseUITest` skips the flow unless `-PulseShowOnboarding` is also passed.
+  `PulseStrengthRootView(environment:requestsPermissionsAtLaunch:)` no longer asks for Health and notifications at launch after the setup steps did.
+
+### 5.7 Project, CI, docs
 
 `project.yml` (XcodeGen) defines targets PulseStrength (iOS app, embeds the widget extension and the Watch app; sources `Apps/PulseStrength` + `Apps/Shared/Intents`), PulseStrengthWidgets
 (app-extension; sources `Apps/PulseStrengthWidgets` + `Apps/Shared/Intents` + `Apps/Shared/LiveActivity`), PulseStrengthWatch (watchOS app) with the package products as dependencies, entitlements and Info.plist properties from 5.1, schemes. `Apps/*` contains the `@main` entry points, plists, entitlements,
-asset catalogs (AccentColor, placeholder AppIcon). `.github/workflows/strength-ios.yml`: Linux job (`swift test`, with and without `-Xswiftc -DPULSE_COMBINE_SHIM`) and a macOS job
+asset catalogs (AccentColor, placeholder AppIcon). Since the widgets (5.7) the project also has `PulseStrengthWatchWidgets` (watchOS widget extension, embedded in the Watch app; sources `Apps/PulseStrengthWatchWidgets` + `Apps/Shared/Widgets/Common` + `Apps/Shared/Widgets/Watch`), the extension takes `Apps/Shared/Widgets` (without `Watch/`) and `Apps/Shared/Controls` as well (and `Apps/Shared/Intents` without `PulseShortcuts.swift`, which is app only), and two more snapshot-test targets with their schemes (`PulseStrengthWidgetSnapshots`, `PulseStrengthWatchWidgetSnapshots`).
+`.github/workflows/strength-ios.yml`: Linux job (`swift test`, with and without `-Xswiftc -DPULSE_COMBINE_SHIM`) and a macOS job
 (`swift test` of the package on macOS, `xcodegen generate` plus a check that the committed `PulseStrength.xcodeproj` is unchanged, `xcodebuild build` of the iOS and watchOS schemes for the simulators with `CODE_SIGNING_ALLOWED=NO`). `README.md`
 documents setup, what is verified and what is not, integration with the Pulse app (replace `RecoveryProvider`, the App Group id, the bundle ids, the media source), and the
 source of the form photos (Free Exercise DB; they are placeholders with no cleared image licence, see "Exercise photos").
+
+### 5.7 Widgets, controls and live surfaces
+
+The catalogue (68 designs, ids `HS-01` ... `WI-11`), the exact rule behind every figure and the platform mapping are [`../widgets/SPEC.md`](../widgets/SPEC.md); [`../widgets/README.md`](../widgets/README.md)
+maps the areas to files on both platforms. This section is the iOS contract.
+
+**Data (`PulseStrengthCore/Widgets/`, Foundation only, tested on Linux and macOS).**
+* `WidgetSnapshot` and its value types are generated (`WidgetSnapshot.generated.swift`, `WidgetSnapshotPreview.generated.swift`, from `widgets/tools/schema.py`, which also writes the Kotlin twin; the
+  CI job `widgets-contract` fails when a generated file is stale). Surfaces read nothing else. The live-surface fields of `WorkoutSnapshot` (`exerciseDoneSets`, `exerciseSetCount`, `moment`, `superset`, `plates`, `coachTip`, `finish`) are optional,
+  so content written by an older build still decodes.
+* `WidgetSnapshotBuilder.build(data:context:now:)` produces the snapshot (SPEC section 2). `WidgetContext` carries what the host adds: the weekly goal (1 to 7, default 4, a persisted setting of `StrengthSettings`), body weight,
+  readiness, training partners, the running `WorkoutSnapshot` and the time zone. `SnapshotBuilder.make` fills the live-moment fields (superset round, plate math, coach tip) and `prMoment(from:to:now:lifetime:)` / `finishBrief(from:savedToHealth:)`
+  build the record flash and the finish card (SPEC "Live moments").
+* `WidgetSnapshotStore`: `widget-snapshot.json` in the App Group directory (`directory(groupID:)`), `save` writes atomically, `loadForDisplay(now:)` rebuilds the parts that depend on the day when the file is older than midnight.
+* `WidgetCommandInbox` (`pending-commands.json`, at most 64 commands, none older than 10 minutes) and `PendingWidgetCommand`: where an extension leaves a workout command or a deep link for the app.
+* `StrengthDeepLink` parses `pulse-strength://workout | start-next | start?template=<uuid> | start-empty?name= | exercise/<id> | hub | plates | weight`.
+
+**App side (`PulseStrengthIOS/Services`, `StrengthAppEnvironment`).**
+* `WidgetPublisher` (a `WorkoutSideEffect`) rebuilds the snapshot after a change of the workout, the templates, the history or the weekly goal, coalesces bursts (300 ms), publishes heart-rate-only changes at most every 10 s, skips a write that equals the last one
+  except for its time stamp, writes it into the App Group and calls `WidgetCenter.reloadAllTimelines()` and `ControlCenter.reloadAllControls()`. `onPublish` feeds `WatchWidgetSnapshotSender`.
+* `WidgetCommandDrain` applies the inbox at launch, when the app becomes active and on the Darwin notification `StrengthConfig.commandInboxNotification`.
+* `LiveActivityManager` flashes a record on the Live Activity for four seconds and ends the activity with the finish card; `PlannedSessionManager` runs the second activity type (`PlannedSessionAttributes`) of LA-06: the countdown before a
+  planned session, and the notification at its start.
+
+**Intents (`Apps/Shared/Intents`; app and widget extension, except `PulseShortcuts.swift`, which is app only).**
+* `StrengthIntents.swift`: the Live Activity buttons (`LogSetIntent`, `NudgeSetIntent`, `AdjustRestIntent`, `SkipRestIntent`), `LiveActivityIntent`s that run in the app's process.
+* `ControlIntents.swift`: the controls' intents. Intents that change the workout (log next set, skip rest, pause / resume as a `SetValueIntent`) are `LiveActivityIntent`s; the ones that need the app (start next, plate calculator, finish) set `openAppWhenRun`
+  and leave a deep link. Nothing finishes a workout from outside the app: Finish opens the running workout, which asks for the confirmation.
+* `LiveMomentIntents.swift`: apply the coach tip, start or snooze a planned session, plan a session (with its `AppEntity`).
+* `PulseShortcuts.swift`: the App Shortcuts and `PrimaryActionIntent` for the Action button (log set while logging, skip rest while resting, start next otherwise); it is a `ForegroundContinuableIntent`, which extensions cannot use.
+* `WidgetIntentDispatch` is the one place an intent sends a command: through `WorkoutCommandBus` when it runs in the app, into the inbox (plus the Darwin notification) when it runs in an extension, and `openApp(_:origin:)` for links.
+  `WorkoutControlState` is the pure rule of what a control shows for a snapshot.
+
+**Views.**
+* `Apps/Shared/Widgets/Common`: `WidgetTheme` (tokens, adaptive colours, the container background), `WidgetText` / `NumberText` (the wording rules of SPEC), `WidgetShapes` (ring gauge, bar meter, pills), `SnapshotProvider` (timeline entry and provider:
+  an entry now, one at the end of a running rest, a reload after the next midnight).
+* `Home` (HS-01 ... HS-12, SB-01, SB-03, SB-04), `Lock` (LS-01 ... LS-11, accessory families), `Extras` (WI-01 ... WI-11), `Controls` (CT-01 ... CT-09) and `LiveActivity` (LA-01 ... LA-10, SB-02, the planned-session activity) each end in a bundle:
+  `HomeWidgetBundle`, `LockWidgetBundle`, `ExtrasWidgetBundle`, `ControlsBundle`, `LiveActivityBundle`. `PulseStrengthWidgets` lists them through `.body`, because a `WidgetBundle` is not itself a `Widget` and cannot be nested as a value.
+* `Watch` (WA-01 ... WA-10): `WatchWidgetBundle` in `PulseStrengthWatchWidgets`. The phone sends the Watch snapshot under the key `"w"` of the WatchConnectivity application context; `WatchWidgetSnapshotReceiver` (Watch app) stores it in the Watch's App Group
+  and reloads the widgets, which never talk to the phone themselves. Widget buttons are `WatchIntents.swift` intents that exist in the Watch app too.
+* Widgets that depend on the family or on the container background take it as an explicit value in tests (`familyOverride`, `HomeSurface`), because `widgetFamily` and `showsWidgetContainerBackground` are read-only in the SwiftUI environment.
+
+**Tests.** `Tests/PulseStrengthCoreTests` covers the builder rules (one test file per SPEC rule group), the live moments, the persisted fields behind them and the golden file `widgets/fixtures/golden-sample.json` (rewritten with
+`UPDATE_GOLDEN=1 swift test --filter WidgetSnapshotGoldenTests`, compared by the Kotlin core). `PulseStrengthWidgetSnapshotTests`, `PulseStrengthWatchWidgetSnapshotTests` and `PulseStrengthLiveSnapshotTests` draw every view that
+a widget, complication or Live Activity uses (light and dark, preview and empty data, the running-workout states) with `ImageRenderer` into `widget-*.png`, `watchwidget-*.png` and `live-*.png`, which the `visual` job uploads in
+`strength-screens`. These renders show layout, colour and wording; `ImageRenderer` neither draws the widget container background nor runs timers, so StandBy tinting, countdown text, buttons and the system's chrome are not covered.
+

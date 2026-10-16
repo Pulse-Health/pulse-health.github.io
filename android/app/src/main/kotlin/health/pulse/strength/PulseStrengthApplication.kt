@@ -1,6 +1,8 @@
 package health.pulse.strength
 
 import android.app.Application
+import health.pulse.strength.runtime.StrengthRuntime
+import health.pulse.strength.surfaces.DayChange
 
 class PulseStrengthApplication : Application() {
     /** The shared environment; created on first use, which is process start ([onCreate]) in the running app. */
@@ -11,5 +13,9 @@ class PulseStrengthApplication : Application() {
         environment.services?.let { registerActivityLifecycleCallbacks(it.foreground) }
         // Touch it now so that a notification action that starts the process in the background finds the running workout restored.
         environment.controller.restoreFromDisk()
+        // The widgets, tiles and complications read the same environment through the runtime seam (widgets/SPEC.md section 3).
+        StrengthRuntime.init(this)
+        // The widgets draw "today" from the snapshot: it is built again at the next midnight, even if the app is not running then.
+        DayChange.schedule(this)
     }
 }
