@@ -11,6 +11,53 @@
     <!-- ==== strings-glance-home:end ==== -->
 
     <!-- ==== strings-glance-extras:begin ==== -->
+    <!-- Lock screen and glanceable hub widgets (LS-01 ... LS-11) -->
+    <string name="widget_weekly_goal_compact_label">Weekly goal gauge</string>
+    <string name="widget_weekly_goal_compact_description">A compact gauge of the workouts you finished this week against your goal.</string>
+    <string name="widget_days_since_label">Days since training</string>
+    <string name="widget_days_since_description">How many days have passed since your last workout.</string>
+    <string name="widget_streak_label">Week streak</string>
+    <string name="widget_streak_description">The number of weeks in a row that you met your workout goal.</string>
+    <string name="widget_quick_start_label">Quick start</string>
+    <string name="widget_quick_start_description">One tap starts your next workout, or opens the one that is running.</string>
+    <string name="widget_next_up_compact_label">Next workout</string>
+    <string name="widget_next_up_compact_description">Your next workout, its exercises and how long it takes.</string>
+    <string name="widget_weekly_sets_compact_label">Volume progress</string>
+    <string name="widget_weekly_sets_compact_description">Sets finished this week against the target, and the muscle group that lags.</string>
+    <string name="widget_pr_compact_label">Latest record</string>
+    <string name="widget_pr_compact_description">Your newest personal record with its estimated one-rep max.</string>
+    <string name="widget_overload_compact_label">Overload target</string>
+    <string name="widget_overload_compact_description">What to lift today to beat last time.</string>
+    <string name="widget_inline_week_label">Weekly goal line</string>
+    <string name="widget_inline_week_description">One line: how many workouts you finished this week.</string>
+    <string name="widget_inline_split_label">Split line</string>
+    <string name="widget_inline_split_description">One line: your next split and how long ago you last trained it.</string>
+    <string name="widget_inline_rest_label">Rest day line</string>
+    <string name="widget_inline_rest_description">One line: a rest day and when training resumes. Shows your split on training days.</string>
+
+    <!-- Wilder ideas (WI-01 ... WI-11) -->
+    <string name="widget_body_map_label">Body map</string>
+    <string name="widget_body_map_description">Front and back silhouettes shaded by the sets each muscle group got this week.</string>
+    <string name="widget_log_set_label">Log a set</string>
+    <string name="widget_log_set_description">Adjust the next set, log it and control the rest timer without opening the app.</string>
+    <string name="widget_partner_label">Gym partner</string>
+    <string name="widget_partner_description">Your week next to your training partners\' weeks.</string>
+    <string name="widget_form_cue_label">Form cue</string>
+    <string name="widget_form_cue_description">One coaching cue for the first lift of your next workout.</string>
+    <string name="widget_loaded_bar_label">Loaded bar</string>
+    <string name="widget_loaded_bar_description">The plates to load on each side for today\'s top set.</string>
+    <string name="widget_rest_day_label">Rest-day swap</string>
+    <string name="widget_rest_day_description">A short recovery routine on rest days, your next workout otherwise.</string>
+    <string name="widget_strength_ratio_label">Strength ratio</string>
+    <string name="widget_strength_ratio_description">Your estimated one-rep max on a main lift against your bodyweight.</string>
+    <string name="widget_year_in_iron_label">Year in iron</string>
+    <string name="widget_year_in_iron_description">The tonnes you lifted this year, month by month.</string>
+    <string name="widget_readiness_label">Readiness</string>
+    <string name="widget_readiness_description">Today\'s readiness from Pulse, to decide how hard to push.</string>
+    <string name="widget_plateau_label">Plateau watch</string>
+    <string name="widget_plateau_description">Lifts that have stalled, with one way to move them.</string>
+    <string name="widget_session_timeline_label">Session timeline</string>
+    <string name="widget_session_timeline_description">How the time of your last workout was split between lifting and rest.</string>
     <!-- ==== strings-glance-extras:end ==== -->
 
     <!-- ==== strings-system:begin ==== -->
