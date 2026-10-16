@@ -21,7 +21,7 @@ accounts, keys and decisions (application id, upload key, Play Console, privacy 
 android/
   README.md  RELEASING.md       this file; the release guide
   settings.gradle.kts, build.gradle.kts, gradle/libs.versions.toml, gradlew   Gradle 9.8 / AGP 9.4 / Kotlin 2.4 (version catalog)
-  core/                         pure Kotlin (JVM) port of PulseStrengthCore: no Android dependency, 700+ unit tests
+  core/                         pure Kotlin (JVM) port of PulseStrengthCore: no Android dependency, 870+ unit tests
     src/main/kotlin/health/pulse/strength/core/
       Models, WorkoutState, WorkoutAction, Presentation, Snapshot, Completed   the value types (kotlinx.serialization)
       WorkoutReducer, WorkoutFactory, WorkoutTargets                           every change to a workout (pure function)
