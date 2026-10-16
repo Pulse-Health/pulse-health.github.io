@@ -4,6 +4,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasScrollAction
@@ -15,6 +16,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.google.common.truth.Truth.assertThat
+import health.pulse.strength.core.Equipment
+import health.pulse.strength.core.MuscleGroup
 import health.pulse.strength.ui.PickerMode
 import org.junit.Rule
 import org.junit.Test
@@ -194,12 +197,71 @@ class ExercisePickerSheetTest {
         val custom = fixture.store.customExercises
         assertThat(custom.map { it.name }).containsExactly("Landmine")
         rule.onNodeWithText("Add 1 exercise").assertExists()
-        // The search was cleared so the new exercise is visible in the list.
-        rule.onNodeWithText("Create custom exercise").assertExists()
+        // The search was cleared (the placeholder is back) and the list scrolled to the new exercise, so it is in view, checked.
+        rule.onNodeWithText("Search").assertExists()
+        rule.onNodeWithText("Landmine").assertIsDisplayed().assert(checked(true))
         rule.onNodeWithText("Add 1 exercise").performClick()
         rule.waitForIdle()
         assertThat(fixture.exercises.last().exercise.name).isEqualTo("Landmine")
         assertThat(dismissed).isEqualTo(1)
+    }
+
+    /** Creates "Landmine press" (the form's Chest / Barbell) through the "Create ..." row, which must be in view. */
+    private fun createLandmine() {
+        rule.onNodeWithText("Create custom exercise").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Name").performTextInput("Landmine press")
+        rule.onNodeWithText("Save").performClick()
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun aCreatedExerciseIsNotHiddenByTheActiveChips() {
+        open()
+        rule.onNodeWithText("Legs").performClick()
+        rule.onNodeWithText("Machine").performClick()
+        rule.onNodeWithText("Landmine press").assertDoesNotExist()
+        createLandmine()
+        rule.onNodeWithText("Add 1 exercise").assertExists()
+        // The chips are back to All / Any, and the new row, checked, is in view although the library is longer than the screen.
+        rule.onNodeWithText("${fixture.store.exercises.size} exercises").assertExists()
+        rule.onNodeWithText("Landmine press").assertIsDisplayed().assert(checked(true))
+        rule.onNodeWithText("Add 1 exercise").performClick()
+        rule.waitForIdle()
+        assertThat(fixture.exercises.last().exercise.name).isEqualTo("Landmine press")
+    }
+
+    @Test
+    fun aCreatedExerciseReplacesTheSelectionInReplaceModeAndShows() {
+        val target = fixture.exercises[1]
+        open(PickerMode.Replace(target.id))
+        search("push-up")
+        rule.onNodeWithText("Push-up").performClick()
+        rule.onNodeWithContentDescription("Clear search").performClick()
+        rule.onNodeWithText("Core").performClick()
+        createLandmine()
+        rule.onNodeWithText("Replace with Landmine press").assertExists()
+        rule.onNodeWithText("Landmine press").assertIsDisplayed().assert(SemanticsMatcher.expectValue(SemanticsProperties.Selected, true))
+    }
+
+    @Test
+    @Config(qualifiers = "w891dp-h411dp-land-xxhdpi")
+    fun aCreatedExerciseShowsInAListWhoseHeaderScrollsAway() {
+        // The chips are items of the list in a short window: they stay where they were, the new row is scrolled to past them.
+        val form = PickerFormState(muscle = MuscleGroup.LEGS, equipment = Equipment.MACHINE)
+        rule.setContent {
+            PulseTestTheme {
+                SheetFrame(fullHeight = true) {
+                    ExercisePickerSheetContent(fixture.store, fixture.controller, PickerMode.Add, onClose = {}, form = form)
+                }
+            }
+        }
+        rule.waitForIdle()
+        scrollTo("Create custom exercise")
+        createLandmine()
+        assertThat(form.muscle).isNull()
+        assertThat(form.equipment).isNull()
+        rule.onNodeWithText("Landmine press").assertIsDisplayed().assert(checked(true))
     }
 
     @Test

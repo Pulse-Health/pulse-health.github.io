@@ -4,15 +4,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -137,6 +142,12 @@ internal fun rememberPickerFormState(): PickerFormState = rememberSaveable(saver
 private val EquipmentChoices: List<Equipment> =
     listOf(Equipment.BARBELL, Equipment.DUMBBELL, Equipment.CABLE, Equipment.MACHINE, Equipment.BODYWEIGHT)
 
+/**
+ * The room above the keyboard (dp at the default font size) that fits the 56 dp title bar, the 48 dp search field with its gap, the
+ * 68 dp action bar and the "Create ..." row with two rows of matches (56 + 2 x 64).
+ */
+private val CompactRoom = 366.dp
+
 /** One library row of the picker. */
 internal class ExercisePickerRow(
     val exercise: Exercise,
@@ -207,7 +218,13 @@ internal fun ExercisePickerSheetContent(
         }
     }
 
-    /** A custom exercise came back from the create form: save it to the library, select it and clear the search. */
+    /** The custom exercise to bring into view once it is in the list (set by [handleCreated]). */
+    var revealID by remember { mutableStateOf<String?>(null) }
+
+    /**
+     * A custom exercise came back from the create form: save it to the library, select it, clear the search and the filters (the
+     * form's muscle and equipment need not match the chips set here, and the chips have no "Other") and scroll to its row.
+     */
     fun handleCreated(exercise: Exercise) {
         store.addCustomExercise(exercise)
         selection = when (mode) {
@@ -215,6 +232,9 @@ internal fun ExercisePickerSheetContent(
             PickerMode.Add -> if (exercise.id in selection) selection else selection + exercise.id
         }
         query = ""
+        muscle = null
+        equipment = null
+        revealID = exercise.id
     }
 
     fun confirm() {
@@ -254,23 +274,54 @@ internal fun ExercisePickerSheetContent(
         )
     }
 
-    Box(modifier.fillMaxSize()) {
+    // While the keyboard is up the matches must stay in view: the filters and the count (below the search field, which stays where
+    // it is) give way to them, and in a window too short for that (landscape) so do the title bar and the action bar. The state is
+    // derived so that only the keyboard appearing or going away recomposes, not every frame of its animation.
+    val density = LocalDensity.current
+    val ime = WindowInsets.ime
+    val imeVisible by remember(ime, density) { derivedStateOf { ime.getBottom(density) > 0 } }
+    val showFilters = !imeVisible
+
+    BoxWithConstraints(modifier.fillMaxSize()) {
         // Tall windows keep the search field and the filters in view; on a short one (small phone, landscape, large font) they
         // scroll away with the list, which then gets the room. The decision uses the screen, not the space left above the keyboard:
         // opening the keyboard must not rearrange the screen under the finger that just tapped the search field.
-        val density = LocalDensity.current
         val windowHeight = with(density) { LocalWindowInfo.current.containerSize.height.toDp() }
         val pinHeader = windowHeight / density.fontScale >= 700.dp
+        // maxHeight is the room above the keyboard. Where it does not fit the title bar, the search field, the action bar and two
+        // rows of matches, the title bar and the action bar wait until the keyboard is gone (Search on the keyboard closes it).
+        val compact = imeVisible && maxHeight < CompactRoom.scaledWithFont()
+        // The items in front of the "Create ..." row when the header scrolls with the list: search field, filters, count.
+        val headerItems = when {
+            pinHeader -> 0
+            showFilters -> 3
+            else -> 1
+        }
+        LaunchedEffect(revealID, rows) {
+            val id = revealID ?: return@LaunchedEffect
+            val position = rows.indexOfFirst { it.exercise.id == id }
+            // The library has not caught up with the new exercise yet: this runs again with the next rows.
+            if (position < 0) return@LaunchedEffect
+            revealID = null
+            // The "Create ..." row, or the row before it, stays above it for context.
+            listState.scrollToItem(headerItems + position)
+        }
         Column(Modifier.fillMaxSize()) {
-            SheetTitleBar(
-                title = if (mode is PickerMode.Add) "Add Exercise" else "Replace Exercise",
-                leading = SheetBarButton("Cancel", semibold = false, onClick = onClose),
-            )
+            if (!compact) {
+                SheetTitleBar(
+                    title = if (mode is PickerMode.Add) "Add Exercise" else "Replace Exercise",
+                    leading = SheetBarButton("Cancel", semibold = false, onClick = onClose),
+                )
+            }
             if (pinHeader) {
                 SearchField(query, { query = it }, { focusManager.clearFocus() }, Modifier.padding(horizontal = 16.dp))
-                Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp)) {
-                    filters()
-                    countLabel()
+                if (showFilters) {
+                    Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp)) {
+                        filters()
+                        countLabel()
+                    }
+                } else {
+                    Spacer(Modifier.height(10.dp))
                 }
             }
             LazyColumn(
@@ -280,8 +331,10 @@ internal fun ExercisePickerSheetContent(
             ) {
                 if (!pinHeader) {
                     item(key = "search") { SearchField(query, { query = it }, { focusManager.clearFocus() }) }
-                    item(key = "filters") { Box(Modifier.padding(top = 10.dp)) { filters() } }
-                    item(key = "count") { countLabel() }
+                    if (showFilters) {
+                        item(key = "filters") { Box(Modifier.padding(top = 10.dp)) { filters() } }
+                        item(key = "count") { countLabel() }
+                    }
                 }
                 item(key = "create") {
                     CreateRow(
@@ -314,7 +367,9 @@ internal fun ExercisePickerSheetContent(
                     }
                 }
             }
-            ActionBar(title = actionTitle, enabled = selection.isNotEmpty() && !didSubmit, active = selection.isNotEmpty(), onClick = ::confirm)
+            if (!compact) {
+                ActionBar(title = actionTitle, enabled = selection.isNotEmpty() && !didSubmit, active = selection.isNotEmpty(), onClick = ::confirm)
+            }
         }
     }
 

@@ -3,6 +3,9 @@ package health.pulse.strength.ui.sheets
 import android.view.View
 import androidx.core.graphics.Insets
 import androidx.core.view.WindowInsetsCompat
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -14,6 +17,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowDialog
@@ -35,18 +39,7 @@ class SheetInsetsTest {
     private fun dp(value: Int) = (value * density).toInt()
 
     /** Delivers system bar and keyboard insets (dp) to the window of the latest sheet. */
-    private fun deliverInsets(status: Int = 0, navigation: Int = 0, ime: Int = 0) {
-        val decor: View = ShadowDialog.getLatestDialog().window!!.decorView
-        val insets = WindowInsetsCompat.Builder()
-            .setInsets(WindowInsetsCompat.Type.statusBars(), Insets.of(0, dp(status), 0, 0))
-            .setInsets(WindowInsetsCompat.Type.navigationBars(), Insets.of(0, 0, 0, dp(navigation)))
-            .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, dp(ime)))
-            .setVisible(WindowInsetsCompat.Type.ime(), ime > 0)
-            .build()
-            .toWindowInsets()!!
-        rule.runOnUiThread { decor.dispatchApplyWindowInsets(insets) }
-        rule.waitForIdle()
-    }
+    private fun deliverInsets(status: Int = 0, navigation: Int = 0, ime: Int = 0) = rule.deliverSheetInsets(status, navigation, ime)
 
     private fun bottomOf(text: String) = rule.onNodeWithText(text).fetchSemanticsNode().boundsInRoot.bottom
 
@@ -89,6 +82,74 @@ class SheetInsetsTest {
         val search = rule.onNodeWithContentDescription("Search exercises").fetchSemanticsNode().boundsInRoot
         assertThat(search.bottom).isAtMost(keyboardTop)
         assertThat(search.top).isAtLeast(dp(24).toFloat())
+    }
+
+    /** The height of the display in px (the sheet window is as tall). */
+    private fun displayHeight() = RuntimeEnvironment.getApplication().resources.displayMetrics.heightPixels.toFloat()
+
+    /** The visible parts of the picker's result rows (the rows with a check circle). */
+    private fun resultRows(): List<Rect> =
+        rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ToggleableState)).fetchSemanticsNodes().map { it.boundsInRoot }
+
+    /** Opens the picker, types a search that matches many exercises and brings up a keyboard of [ime] dp; returns the search field. */
+    private fun openPickerWithKeyboard(status: Int, navigation: Int, ime: Int): Rect {
+        rule.setContent {
+            PulseTestTheme { ExercisePickerSheet(fixture.store, fixture.controller, PickerMode.Add, onDismiss = {}) }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Search exercises").performTextInput("press")
+        deliverInsets(status = status, navigation = navigation, ime = ime)
+        val search = rule.onNodeWithContentDescription("Search exercises").fetchSemanticsNode().boundsInRoot
+        assertThat(search.bottom).isAtMost(displayHeight() - dp(ime))
+        assertThat(search.top).isAtLeast(dp(status).toFloat())
+        return search
+    }
+
+    /** The result rows that show in full between the search field and the keyboard. */
+    private fun fullRowsAbove(keyboardTop: Float, search: Rect) =
+        resultRows().filter { it.height >= dp(64) - 1f && it.top >= search.bottom - 1f && it.bottom <= keyboardTop + 1f }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun pickerShowsSeveralMatchesAboveTheKeyboardOnASmallPhone() {
+        val search = openPickerWithKeyboard(status = 24, navigation = 24, ime = 300)
+        val keyboardTop = displayHeight() - dp(300)
+        assertThat(fullRowsAbove(keyboardTop, search).size).isAtLeast(2)
+        // The title bar and the action bar stay in a window that has the room.
+        assertThat(bottomOf("Select exercises")).isAtMost(keyboardTop + 1f)
+        rule.onNodeWithText("Cancel").assertExists()
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h914dp-xxhdpi")
+    fun pickerShowsSeveralMatchesAboveTheKeyboardOnATallPhone() {
+        val search = openPickerWithKeyboard(status = 24, navigation = 24, ime = 300)
+        val keyboardTop = displayHeight() - dp(300)
+        assertThat(fullRowsAbove(keyboardTop, search).size).isAtLeast(2)
+        assertThat(bottomOf("Select exercises")).isAtMost(keyboardTop + 1f)
+    }
+
+    @Test
+    @Config(qualifiers = "w891dp-h411dp-land-xxhdpi")
+    fun pickerShowsAMatchAboveTheKeyboardInLandscape() {
+        val search = openPickerWithKeyboard(status = 24, navigation = 24, ime = 200)
+        val keyboardTop = displayHeight() - dp(200)
+        // About 160 dp are left: the search field and the first match (the title bar and the action bar wait for the keyboard to go).
+        val visible = resultRows().filter { it.top >= search.bottom - 1f && it.bottom <= keyboardTop + 1f }
+        assertThat(visible).isNotEmpty()
+        assertThat(visible.first().height).isAtLeast(dp(48).toFloat())
+    }
+
+    @Test
+    @Config(qualifiers = "w360dp-h800dp-xxhdpi")
+    fun theFiltersAndTheCountGiveWayToTheKeyboardAndComeBack() {
+        openPickerWithKeyboard(status = 24, navigation = 24, ime = 300)
+        rule.onNodeWithText("Chest").assertDoesNotExist()
+        rule.onNodeWithText("Machine").assertDoesNotExist()
+        deliverInsets(status = 24, navigation = 24, ime = 0)
+        rule.onNodeWithText("Chest").assertExists()
+        rule.onNodeWithText("Machine").assertExists()
+        rule.onNodeWithText("Select exercises").assertExists()
     }
 
     @Test
