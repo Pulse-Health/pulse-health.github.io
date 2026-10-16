@@ -27,7 +27,7 @@ internal class LiveCommands(
     private val clock: () -> Instant,
     private val publish: suspend () -> Unit,
 ) : WorkoutCommands {
-    override suspend fun startNext() = perform { controller.startWorkout(WidgetSnapshotBuilder.nextTemplate(store.templates)) }
+    override suspend fun startNext() = perform { startNextWorkout() }
 
     override suspend fun startTemplate(templateId: String) = perform {
         val id = uuid(templateId) ?: return@perform
@@ -70,7 +70,7 @@ internal class LiveCommands(
     override suspend fun primaryAction() = perform {
         val state = controller.state.value
         when {
-            state == null -> controller.startWorkout(WidgetSnapshotBuilder.nextTemplate(store.templates))
+            state == null -> startNextWorkout()
             SnapshotBuilder.make(state, clock()).phase == SnapshotPhase.RESTING -> send(WorkoutAction.SkipRest)
             else -> send(WorkoutAction.LogNextSet)
         }
@@ -80,6 +80,9 @@ internal class LiveCommands(
         withContext(main) { change() }
         publish()
     }
+
+    /** Starts the template of the rotation, or an empty workout without templates, unless a workout is running. */
+    private fun startNextWorkout() = controller.startWorkout(WidgetSnapshotBuilder.nextTemplate(store.templates))
 
     private fun send(action: WorkoutAction) = controller.send(action, ActionOrigin.LIVE_ACTIVITY)
 

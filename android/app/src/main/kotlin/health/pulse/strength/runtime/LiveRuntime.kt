@@ -29,17 +29,17 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -58,8 +58,11 @@ import kotlinx.coroutines.withContext
  * * the date, the time or the time zone is set ([rebuild] is for whoever learns of that outside this process),
  * * a command of a surface was applied, so the snapshot shows its effect when the command returns.
  *
- * A snapshot is published only when it shows something new (everything but its time stamp and the workout's revision), and every
- * publication refreshes the surfaces after [refreshDelay] without another one, so a burst of changes redraws them once.
+ * A snapshot is published only when it shows something new (everything but its time stamp and the workout's revision). The surfaces are
+ * refreshed once the snapshot has not changed for [refreshDelay] and differs from the one they show (at first the snapshot of the start,
+ * which they draw from when they are created; later the one they were last refreshed for), so a burst of changes redraws them once.
+ *
+ * The runtime lives as long as the process. [close] ends it for a test: it stops the coroutines and unregisters the receiver.
  */
 class LiveRuntime(
     context: Context,
@@ -80,6 +83,15 @@ class LiveRuntime(
     private val lock = Any()
     private val published = MutableStateFlow(build())
 
+    /** One tick per notice that the date, the time or the time zone was set (several at once count as one). */
+    private val clockTicks = Channel<Unit>(Channel.CONFLATED)
+
+    private val clockReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            clockTicks.trySend(Unit)
+        }
+    }
+
     override val snapshots: SnapshotSource = object : SnapshotSource {
         override val snapshot: StateFlow<WidgetSnapshot> = published.asStateFlow()
     }
@@ -87,16 +99,32 @@ class LiveRuntime(
     override val commands: WorkoutCommands = LiveCommands(store, controller, main, clock) { publish(force = false) }
 
     init {
+        val clockChanges = IntentFilter().apply {
+            addAction(Intent.ACTION_DATE_CHANGED)
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
+        }
+        ContextCompat.registerReceiver(appContext, clockReceiver, clockChanges, ContextCompat.RECEIVER_NOT_EXPORTED)
+        val atStart = published.value
         scope.launch { changes().conflate().collect { rebuildNow(force = false) } }
-        scope.launch { clockChanges().collect { rebuildNow(force = true) } }
-        scope.launch { refreshAfterPublications() }
+        scope.launch { clockTicks.receiveAsFlow().collect { rebuildNow(force = true) } }
+        scope.launch { refreshAfterPublications(shown = atStart) }
     }
 
     override suspend fun rebuild() = publish(force = true)
 
-    /** Stops following the app; the surfaces keep the last snapshot. */
+    /**
+     * Stops following the app: ends the coroutines and unregisters the receiver right away, on the calling thread, rather than in a
+     * clean-up that a coroutine would run later, when the context may be gone. The surfaces keep the last snapshot. Closing twice, or
+     * after the context lost the receiver, is fine.
+     */
     fun close() {
         scope.cancel()
+        try {
+            appContext.unregisterReceiver(clockReceiver)
+        } catch (_: IllegalArgumentException) {
+            // The platform's way of saying that the receiver is not registered (any more).
+        }
     }
 
     private suspend fun publish(force: Boolean) = withContext(compute) { rebuildNow(force) }
@@ -118,12 +146,12 @@ class LiveRuntime(
 
     private fun build(): WidgetSnapshot {
         val now = clock()
-        val context = WidgetContext(
+        val widgetContext = WidgetContext(
             weeklyGoal = weeklyGoal.value,
             zone = zone(),
             active = controller.state.value?.let { SnapshotBuilder.make(it, now) },
         )
-        return WidgetSnapshotBuilder.make(store.data.value, context, now)
+        return WidgetSnapshotBuilder.make(store.data.value, widgetContext, now)
     }
 
     // region What triggers a new snapshot
@@ -145,30 +173,21 @@ class LiveRuntime(
         emit(Unit)
     }
 
-    /** Emits when the system says that the date, the time or the time zone was set. */
-    private fun clockChanges(): Flow<Unit> = callbackFlow<Unit> {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context, intent: Intent) {
-                trySend(Unit)
-            }
-        }
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_DATE_CHANGED)
-            addAction(Intent.ACTION_TIME_CHANGED)
-            addAction(Intent.ACTION_TIMEZONE_CHANGED)
-        }
-        ContextCompat.registerReceiver(appContext, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
-        awaitClose { appContext.unregisterReceiver(receiver) }
-    }.conflate()
-
     // endregion
 
-    /** Refreshes the surfaces once the snapshot has not changed for [refreshDelay]. A surface that fails must not stop the following ones. */
+    /**
+     * Refreshes the surfaces once the snapshot has not changed for [refreshDelay], unless it shows what they show already: [shown] to
+     * begin with, then the snapshot they were last refreshed for (a new time stamp alone is no reason). A surface that fails must not
+     * stop the following ones, and a refresh that failed is tried again with the next publication.
+     */
     @OptIn(FlowPreview::class)
-    private suspend fun refreshAfterPublications() {
-        published.debounce(refreshDelay).collect {
+    private suspend fun refreshAfterPublications(shown: WidgetSnapshot) {
+        var refreshedFor = shown
+        published.debounce(refreshDelay).collect { snapshot ->
+            if (refreshedFor.hasSameContentAs(snapshot)) return@collect
             try {
                 refreshSurfaces(appContext)
+                refreshedFor = snapshot
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
