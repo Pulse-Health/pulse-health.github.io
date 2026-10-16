@@ -5,8 +5,8 @@
    No external requests: Open Sans is self-hosted (fonts/, SIL OFL 1.1), so no visitor
    data goes to a font CDN.
 
-   Colours: the default is the "Lavendel" palette. The previous green palette ("alte Farben")
-   is one attribute away: <html data-theme="gruen">.
+   Colours: the default is the green palette (the design's "alte Farben" page, which is the one the
+   canvas opens on). The "Lavendel" palette of the design is one attribute away: <html data-theme="lavendel">.
    --------------------------------------------------------------------------- */
 
 @font-face { font-family: "Open Sans"; font-style: normal; font-weight: 300; font-display: swap; src: url("fonts/open-sans-latin-300-normal.woff2") format("woff2"); }
@@ -15,50 +15,52 @@
 @font-face { font-family: "Open Sans"; font-style: normal; font-weight: 700; font-display: swap; src: url("fonts/open-sans-latin-700-normal.woff2") format("woff2"); }
 
 :root {
-  /* Lavendel (default) */
-  --accent: #907dda;            /* lines, borders, rings */
-  --accent-rgb: 144, 125, 218;
-  --accent-end: #6a55c2;        /* second stop of the logo disc */
-  --accent-deep: #6a55c2;       /* accent used for text on light backgrounds */
-  --ink: #333333;
-  --muted: #6b7080;
-  --line: #e5e4ea;
-  --bg: #ffffff;
-  --bg-alt: #f3f4f8;
-  --dark-bg: #2f3032;           /* hero base and footer */
-  --dark-card: #2f3032;
-  --on-dark: #e7e6f1;
-  --on-dark-muted: #bdc4d0;
-  --shade: rgba(20, 20, 24, 0.62);
-  --panel-strong: #6a55c2;
-  --panel-soft: #e2e4ec;
-  --figure-bg: #f7f7f9;
-  --figure-line: #e1e1e8;
-  --menu-bg: #e5e4ea;
-
-  --font: "Open Sans", Helvetica, Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-:root[data-theme="gruen"] {
-  --accent: #2ec76b;
+  /* Green (default) */
+  --accent: #2ec76b;            /* lines, borders, rings */
   --accent-rgb: 46, 199, 107;
-  --accent-end: #24a659;
-  --accent-deep: #1b8447;
+  --accent-end: #24a659;        /* second stop of the logo disc */
+  --accent-deep: #1b8447;       /* accent used for text on light backgrounds */
   --ink: #12141a;
   --muted: #62636b;
   --line: #e9e9ef;
+  --bg: #ffffff;
   --bg-alt: #f6f7f9;
-  --dark-bg: radial-gradient(54.35% 54.35% at 13.82% 7%, #17251d 0%, #0f1218 100%);
+  --dark-bg: radial-gradient(54.35% 54.35% at 13.82% 7%, #17251d 0%, #0f1218 100%); /* hero base and footer */
   --dark-card: #12141a;
   --on-dark: #f5f5f7;
   --on-dark-muted: #9ea0aa;
+  --on-dark-line: rgba(245, 245, 247, 0.4);
   --shade: rgba(15, 18, 24, 0.62);
   --panel-strong: #1b8447;
   --panel-soft: #dedee4;
   --figure-bg: #f7f7f9;
   --figure-line: #dedee4;
   --menu-bg: #e9e9ef;
+
+  --font: "Open Sans", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root[data-theme="lavendel"] {
+  --accent: #907dda;
+  --accent-rgb: 144, 125, 218;
+  --accent-end: #6a55c2;
+  --accent-deep: #6a55c2;
+  --ink: #333333;
+  --muted: #6b7080;
+  --line: #e5e4ea;
+  --bg-alt: #f3f4f8;
+  --dark-bg: #2f3032;
+  --dark-card: #2f3032;
+  --on-dark: #e7e6f1;
+  --on-dark-muted: #bdc4d0;
+  --on-dark-line: rgba(231, 230, 241, 0.4);
+  --shade: rgba(20, 20, 24, 0.62);
+  --panel-strong: #6a55c2;
+  --panel-soft: #e2e4ec;
+  --figure-bg: #f7f7f9;
+  --figure-line: #e1e1e8;
+  --menu-bg: #e5e4ea;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -167,6 +169,12 @@ img, svg { display: block; }
   color: var(--on-dark-muted); transition: color 0.15s;
 }
 .nav__links a:hover { color: var(--on-dark); }
+.nav__links a.nav__cta {
+  position: absolute; right: 20px; top: 17px; padding: 8px 14px; font-size: 13px; font-weight: 600; line-height: 18px;
+  color: var(--on-dark); border: 1px solid var(--on-dark-line); border-radius: 3px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.nav__links a.nav__cta:hover { background: rgba(255, 255, 255, 0.1); border-color: var(--on-dark); }
 .nav__toggle { display: none; }
 
 /* buttons */
@@ -378,6 +386,11 @@ img, svg { display: block; }
   }
   .js .nav__links a { line-height: 52px; padding: 0; color: var(--ink); }
   .js .nav__links a:hover { color: var(--accent-deep); }
+  .js .nav__links a.nav__cta {
+    position: static; align-self: center; margin: 10px 0 8px; line-height: 18px; padding: 8px 14px;
+    color: var(--accent-deep); border-color: var(--accent);
+  }
+  .js .nav__links a.nav__cta:hover { background: rgba(var(--accent-rgb), 0.12); border-color: var(--accent); }
   .js .nav__toggle {
     position: absolute; right: 8px; top: 0; width: 56px; height: 70px; padding: 0; border: 0; background: none;
     display: flex; align-items: center; justify-content: center; color: var(--on-dark); cursor: pointer;

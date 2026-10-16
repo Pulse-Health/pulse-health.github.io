@@ -20,13 +20,15 @@ Preview locally: `python3 -m http.server` in the repository root, then open `/we
 
 ## Colours
 
-The design has two palettes. **Lavendel** is the default. The previous green palette ("alte Farben") is one attribute away:
+The design has two palettes. **Green** (the design's "alte Farben" page, the one the canvas opens on) is the default. The
+**Lavendel** palette is one attribute away:
 
 ```html
-<html lang="de" data-theme="gruen">
+<html lang="de" data-theme="lavendel">
 ```
 
-Every colour lives in the variables at the top of `style.css`; nothing else changes between the two.
+Every colour lives in the variables at the top of `style.css`; nothing else changes between the two. The favicon in `assets/` is green;
+for Lavendel use the gradient `#907dda` to `#6a55c2` in `favicon.svg` and re-export the PNGs.
 
 ## Hero film and intro
 
@@ -47,12 +49,15 @@ immediately. The sequence is already built. To switch it on once there is a film
 
 The intro is skipped for `prefers-reduced-motion` and when JavaScript is off.
 
-## Deliberately left out
+## Konsole button and what is left out
 
-- **Anmelden (sign-in) and "Zur Konsole".** The design has a sign-in page and links to it, but there is no console or login backend
-  in this repository. A form that collects an e-mail address and does nothing would be misleading, so the nav button, the sign-in
-  page and the "Zur Konsole" button are not built. The text of the "Für Fachleute" section is unchanged. Add them once the console exists.
-- **English version.** The design is German only.
+The navigation has a **Konsole** button (top right on desktop, bottom of the menu on mobile). There is no console or login backend
+in this repository, so for now the button scrolls to the "Für Fachleute" section, which explains the console. When the console exists,
+point it there: it is the link with `class="nav__cta"` in `index.html`.
+
+Not built, because there is nothing behind them yet: the sign-in page of the design and the "Zur Konsole" button at the end of the
+"Für Fachleute" section. A form that collects an e-mail address and does nothing would be misleading. The design is German only, so
+there is no English version.
 
 ## Putting it live
 
