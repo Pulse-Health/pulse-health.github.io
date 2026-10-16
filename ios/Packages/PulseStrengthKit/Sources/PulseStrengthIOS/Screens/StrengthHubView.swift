@@ -42,6 +42,7 @@ private enum HubEditorTarget: Identifiable {
 public struct StrengthHubView: View {
     @ObservedObject private var store: StrengthStore
     @ObservedObject private var controller: WorkoutController
+    @ObservedObject private var environment: StrengthAppEnvironment
     private let onStart: (WorkoutTemplate?) -> Void
     private let onResume: () -> Void
 
@@ -58,6 +59,7 @@ public struct StrengthHubView: View {
     ) {
         self._store = ObservedObject(wrappedValue: environment.store)
         self._controller = ObservedObject(wrappedValue: environment.controller)
+        self._environment = ObservedObject(wrappedValue: environment)
         self.onStart = onStart
         self.onResume = onResume
     }
@@ -153,7 +155,8 @@ public struct StrengthHubView: View {
                 subtitle: recommendedSubtitle(template, now: now),
                 readiness: HubMuscles.readiness(controller.recovery),
                 chips: HubMuscles.chips(for: template, recovery: controller.recovery),
-                coach: HubCoach.message(template: template, store: store, recovery: controller.recovery),
+                coach: hubNote(for: template),
+                nextTime: nextTimeItems(for: template, now: now),
                 primaryTitle: runsThis ? "Resume Workout" : "Start Workout",
                 onPrimary: {
                     primaryAction(template, runsThis: runsThis)
@@ -163,6 +166,26 @@ public struct StrengthHubView: View {
                 }
             )
         }
+    }
+
+    /// The coach note of the card. The readiness sentence is left out while the recovery numbers are the demo constants.
+    private func hubNote(for template: WorkoutTemplate) -> String? {
+        HubNoteBuilder.message(
+            template: template,
+            exercise: { store.exercise(id: $0) },
+            recovery: controller.isUsingDemoRecovery ? nil : controller.recovery
+        )
+    }
+
+    /// "Next time" lines from the progression engine for the first exercises of the template that have something to aim for.
+    private func nextTimeItems(for template: WorkoutTemplate, now: Date) -> [NextTimeItem] {
+        CoachPlanner.nextTime(
+            for: template,
+            exercise: { store.exercise(id: $0) },
+            history: { store.history(for: $0, now: now) },
+            audience: environment.audience,
+            now: now
+        )
     }
 
     private func recommendedSubtitle(_ template: WorkoutTemplate, now: Date) -> String {
@@ -436,6 +459,7 @@ private struct HubRecommendedCard: View {
     let readiness: Int
     let chips: [HubMuscleChip]
     let coach: String?
+    let nextTime: [NextTimeItem]
     let primaryTitle: String
     let onPrimary: () -> Void
     let onEdit: () -> Void
@@ -451,6 +475,9 @@ private struct HubRecommendedCard: View {
             }
             if !template.entries.isEmpty {
                 thumbnails
+            }
+            if !nextTime.isEmpty {
+                nextTimeBlock
             }
             if let coach = coach {
                 coachNote(coach)
@@ -530,6 +557,40 @@ private struct HubRecommendedCard: View {
                     .frame(width: 46, height: 46)
             }
         }
+    }
+
+    /// "Next time" under the thumbnails: one row per exercise, the exercise and what to aim for, with the reason underneath.
+    private var nextTimeBlock: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Next time")
+                .pulseFont(12, .semibold, relativeTo: .footnote)
+                .foregroundStyle(PulseTheme.inkSecondary)
+            ForEach(nextTime) { item in
+                nextTimeRow(item)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func nextTimeRow(_ item: NextTimeItem) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HubAdaptiveStack(alignment: .firstTextBaseline, spacing: 8, stackedSpacing: 2) {
+                Text(verbatim: item.exerciseName)
+                    .pulseFont(14, .semibold, relativeTo: .subheadline)
+                    .foregroundStyle(PulseTheme.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text(verbatim: item.line.headline)
+                    .pulseFont(14, .semibold, relativeTo: .subheadline)
+                    .foregroundStyle(PulseTheme.greenText)
+            }
+            if let detail = item.line.detail {
+                Text(verbatim: detail)
+                    .pulseFont(12, relativeTo: .footnote)
+                    .foregroundStyle(PulseTheme.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func coachNote(_ text: String) -> some View {
@@ -1150,16 +1211,6 @@ private enum HubFormat {
         return (sessions: sessions, sets: sets, volume: volume)
     }
 
-    /// The exercise name without its equipment prefix, lower case: "Barbell bench press" -> "bench press".
-    static func shortName(_ exercise: Exercise) -> String {
-        var name = exercise.name
-        let prefix = exercise.equipment.title.lowercased() + " "
-        if name.lowercased().hasPrefix(prefix) {
-            name = String(name.dropFirst(prefix.count))
-        }
-        return name.lowercased()
-    }
-
     /// "5 sets · 85 kg × 6 · Rest 2:30" (last working set of the plan).
     static func planSummary(_ entry: TemplateEntry) -> String {
         let count = entry.plannedSets.count
@@ -1283,23 +1334,7 @@ private enum HubMuscles {
 
     /// The template's muscle groups, most exercises first (ties keep the order of first use).
     static func musclesUsed(by template: WorkoutTemplate) -> [MuscleGroup] {
-        var counts: [MuscleGroup: Int] = [:]
-        var firstUse: [MuscleGroup] = []
-        for entry in template.entries {
-            let muscle = entry.exercise.muscle
-            if counts[muscle] == nil {
-                firstUse.append(muscle)
-            }
-            counts[muscle, default: 0] += 1
-        }
-        let indexed = Array(firstUse.enumerated())
-        let sorted = indexed.sorted { lhs, rhs in
-            let left = counts[lhs.element] ?? 0
-            let right = counts[rhs.element] ?? 0
-            if left != right { return left > right }
-            return lhs.offset < rhs.offset
-        }
-        return sorted.map { $0.element }
+        HubNoteBuilder.musclesUsed(by: template)
     }
 
     /// Up to three chips "Chest 88%" with a recovery dot.
@@ -1310,83 +1345,6 @@ private enum HubMuscles {
             chips.append(HubMuscleChip(id: muscle.rawValue, title: muscle.title + " \(value)%", color: color(value)))
         }
         return chips
-    }
-
-    /// "Chest" or "Chest and shoulders".
-    static func sentenceSubject(_ muscles: [MuscleGroup]) -> String {
-        guard let first = muscles.first else { return "" }
-        if muscles.count > 1 {
-            return first.title + " and " + muscles[1].title.lowercased()
-        }
-        return first.title
-    }
-
-    /// True when `sentenceSubject(_:)` takes "are": two groups, or one group whose name is a plural noun
-    /// ("Legs are recovered", "Chest is recovered").
-    static func isPlural(_ muscles: [MuscleGroup]) -> Bool {
-        if muscles.count > 1 { return true }
-        guard let only = muscles.first else { return false }
-        switch only {
-        case .shoulders, .arms, .legs:
-            return true
-        case .chest, .back, .core:
-            return false
-        }
-    }
-}
-
-// MARK: - Coach note
-
-@MainActor
-private enum HubCoach {
-    /// "Chest and shoulders are recovered. Aim for 85 kg × 6 on your last bench press set."
-    static func message(template: WorkoutTemplate, store: StrengthStore, recovery: RecoveryProvider) -> String? {
-        var sentences: [String] = []
-        if let readiness = readinessSentence(template: template, recovery: recovery) {
-            sentences.append(readiness)
-        }
-        if let target = targetSentence(template: template, store: store) {
-            sentences.append(target)
-        }
-        if sentences.isEmpty { return nil }
-        return sentences.joined(separator: " ")
-    }
-
-    private static func readinessSentence(template: WorkoutTemplate, recovery: RecoveryProvider) -> String? {
-        let lead = Array(HubMuscles.musclesUsed(by: template).prefix(2))
-        if lead.isEmpty { return nil }
-        let tired = lead.filter { HubMuscles.percent($0, recovery) < 60 }
-        if tired.isEmpty {
-            return HubMuscles.sentenceSubject(lead) + (HubMuscles.isPlural(lead) ? " are recovered." : " is recovered.")
-        }
-        return HubMuscles.sentenceSubject(tired) + (HubMuscles.isPlural(tired) ? " are still recovering." : " is still recovering.")
-    }
-
-    /// The first weight exercise with a history: the lightest weight on its last working set that beats the best estimated 1RM.
-    private static func targetSentence(template: WorkoutTemplate, store: StrengthStore) -> String? {
-        for entry in template.entries {
-            let exercise = store.exercise(id: entry.exercise.id) ?? entry.exercise
-            guard exercise.tracksWeight, exercise.previousBestE1RM > 0 else { continue }
-            let normal = entry.plannedSets.last(where: { $0.type == .normal })
-            let working = normal ?? entry.plannedSets.last(where: { $0.type != .warmup })
-            guard let planned = working, planned.reps > 0 else { continue }
-            let weight = beatingWeight(for: exercise, reps: planned.reps)
-            return "Aim for \(NumberText.kg(weight)) kg × \(planned.reps) on your last \(HubFormat.shortName(exercise)) set."
-        }
-        return nil
-    }
-
-    private static func beatingWeight(for exercise: Exercise, reps: Int) -> Double {
-        let step = max(0.5, exercise.weightStepKg)
-        let target = exercise.previousBestE1RM + 0.05
-        let factor = 1 + Double(reps) / 30
-        var weight = max(step, (target / factor / step).rounded(.down) * step)
-        var iterations = 0
-        while Estimated1RM.epley(weightKg: weight, reps: reps) <= target && iterations < 400 {
-            weight += step
-            iterations += 1
-        }
-        return weight
     }
 }
 

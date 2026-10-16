@@ -257,7 +257,7 @@ private extension WorkoutPresenter {
 /// Calculations and texts shared by the presenter, the summary builder and the snapshot builder.
 enum PresenterSupport {
     /// A personal record must beat the running best by more than this many kilograms of estimated 1RM.
-    static let recordMargin = 0.05
+    static let recordMargin = TargetWeight.recordMargin
 
     /// Estimated 1RM and personal-record flag of one set.
     struct SetAnalysis: Equatable {
@@ -349,27 +349,10 @@ enum PresenterSupport {
     }
 
     /// The lowest multiple of `step` whose Epley estimate with `reps` exceeds `baseline` by more than the record margin.
+    ///
+    /// Delegates to `TargetWeight.lowestBeating`, the one copy shared with the hub note.
     static func lowestBeatingWeight(baseline: Double, reps: Int, step: Double) -> Double? {
-        guard baseline.isFinite, baseline > 0, reps > 0, step > 0, step.isFinite else { return nil }
-        let threshold = baseline + recordMargin
-        func beats(_ weight: Double) -> Bool { Estimated1RM.epley(weightKg: weight, reps: reps) > threshold }
-
-        let minimum = threshold / (1 + Double(reps) / 30)
-        var multiples = (minimum / step).rounded(.up)
-        guard multiples.isFinite, multiples < 1e9 else { return nil }
-        multiples = max(1, multiples)
-        // Correct a possible off-by-one from floating point rounding in either direction.
-        var guardCount = 0
-        while multiples > 1, beats((multiples - 1) * step), guardCount < 8 {
-            multiples -= 1
-            guardCount += 1
-        }
-        while !beats(multiples * step), guardCount < 16 {
-            multiples += 1
-            guardCount += 1
-        }
-        let weight = multiples * step
-        return beats(weight) ? weight : nil
+        TargetWeight.lowestBeating(baseline: baseline, reps: reps, step: step)
     }
 
     // MARK: Rest

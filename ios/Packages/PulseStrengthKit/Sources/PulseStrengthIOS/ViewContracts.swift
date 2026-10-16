@@ -39,6 +39,18 @@ public extension EnvironmentValues {
     }
 }
 
+private struct CoachAudienceKey: EnvironmentKey {
+    static let defaultValue: AudienceProfile = .unknown
+}
+
+public extension EnvironmentValues {
+    /// What the host app knows about the person (age group, muscles to avoid); the coach is more careful when it is unknown.
+    var coachAudience: AudienceProfile {
+        get { self[CoachAudienceKey.self] }
+        set { self[CoachAudienceKey.self] = newValue }
+    }
+}
+
 /// Callbacks of the exercise card (the active-workout screen presents the sheets).
 public struct ExerciseCardActions {
     /// Open the keypad for a set's weight or reps.

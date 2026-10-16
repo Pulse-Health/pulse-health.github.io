@@ -15,6 +15,9 @@ struct ExerciseCardView: View {
     let controller: WorkoutController
     let actions: ExerciseCardActions
 
+    /// What the host knows about the person; the coach is more careful when it is unknown.
+    @Environment(\.coachAudience) private var audience
+
     /// Whether the note text field is shown (the pencil button toggles it, as in the design).
     @State private var isNoteOpen: Bool = false
     @FocusState private var isNoteFocused: Bool
@@ -38,6 +41,7 @@ struct ExerciseCardView: View {
             )
             controlsRow
             noteSection
+            suggestionSection
             tipSection
         }
         .frame(maxWidth: .infinity)
@@ -236,15 +240,46 @@ struct ExerciseCardView: View {
 
     @ViewBuilder
     private var tipSection: some View {
-        if let tip = card.coachTip {
+        if audience.showsPersonalRecordTips, let tip = card.coachTip {
             CoachTipView(text: tip)
         }
+    }
+
+    /// "Next time · 82.5 kg × 6" from the progression engine, before the first set of the exercise is logged.
+    @ViewBuilder
+    private var suggestionSection: some View {
+        if let suggestion = currentSuggestion {
+            CoachSuggestionView(
+                line: suggestion.line,
+                canApply: !suggestion.actions.isEmpty,
+                onApply: { apply(suggestion) }
+            )
+        }
+    }
+
+    private var currentSuggestion: WorkoutSuggestion? {
+        guard let entry = controller.state?.exercises.first(where: { $0.id == card.exerciseID }) else { return nil }
+        let now = Date()
+        return CoachPlanner.suggestion(
+            for: entry,
+            history: controller.store.history(for: entry.exercise.id, now: now),
+            audience: audience,
+            now: now
+        )
     }
 
     // MARK: Actions
 
     private func setRef(for row: ActiveWorkoutPresentation.SetRow) -> SetRef {
         SetRef(exerciseID: card.exerciseID, setID: row.id)
+    }
+
+    /// "Apply": sets the pending working sets to the suggested weight and reps through the normal actions (undoable like any edit).
+    private func apply(_ suggestion: WorkoutSuggestion) {
+        ExerciseCardHaptics.impact(.light)
+        for action in suggestion.actions {
+            controller.send(action)
+        }
     }
 
     /// Check circle: logs or un-logs the set with an impact haptic.

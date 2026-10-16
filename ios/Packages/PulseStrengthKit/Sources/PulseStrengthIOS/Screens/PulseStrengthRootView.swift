@@ -56,6 +56,7 @@ public struct PulseStrengthRootView: View {
             summaryCover(workout)
         }
         .environment(\.watchStatus, environment.watchStatus)
+        .environment(\.coachAudience, environment.audience)
         .tint(PulseTheme.green)
         // The whole app follows the user's text size up to accessibility3 (its screens scroll); the dense screens
         // (the active workout cover, the in-progress bar) narrow this range below.
@@ -82,6 +83,7 @@ public struct PulseStrengthRootView: View {
             }
         )
         .environment(\.watchStatus, environment.watchStatus)
+        .environment(\.coachAudience, environment.audience)
         .tint(PulseTheme.green)
         // The workout screen, its keypad and the rest dock cannot scroll as a page: their text stops growing at xxxLarge.
         .dynamicTypeSize(PulseDynamicType.activeWorkoutRange)

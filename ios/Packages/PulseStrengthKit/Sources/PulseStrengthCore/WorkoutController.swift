@@ -23,8 +23,15 @@ public final class WorkoutController: ObservableObject {
     /// Muscle recovery lookup used by `presentation(now:)`; replace it with the Pulse app's real model.
     public var recovery: RecoveryProvider {
         get { engine.recovery }
-        set { engine.recovery = newValue }
+        set {
+            engine.recovery = newValue
+            isUsingDemoRecovery = false
+        }
     }
+
+    /// True until a recovery model is passed to the initializer or assigned to `recovery`. The numbers are then the demo constants
+    /// (`DemoRecovery`), so a screen should not turn them into advice such as "Chest is recovered".
+    public private(set) var isUsingDemoRecovery: Bool
 
     private let engine: WorkoutEngine
 
@@ -33,16 +40,17 @@ public final class WorkoutController: ObservableObject {
         store: StrengthStore,
         persistence: FileStrengthPersistence?,
         role: WorkoutRole = .authority,
-        recovery: @escaping RecoveryProvider = DemoRecovery.provider,
+        recovery: RecoveryProvider? = nil,
         clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = store
         self.role = role
+        self.isUsingDemoRecovery = (recovery == nil)
         self.engine = WorkoutEngine(
             role: role,
             persistence: persistence,
             data: StoreDataAdapter(store: store),
-            recovery: recovery,
+            recovery: recovery ?? DemoRecovery.provider,
             clock: clock
         )
         engine.onUpdate = { [weak self] in self?.republish() }

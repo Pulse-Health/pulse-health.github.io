@@ -25,6 +25,11 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// Apple Watch state worth telling the user about; the root view publishes it as `\.watchStatus`.
     @Published public var watchStatus: WatchStatus
 
+    /// What the host app knows about the person; the root view publishes it as `\.coachAudience`. The standalone build knows
+    /// nothing (`.unknown`), so the coach takes smaller weight steps. The Pulse app sets it from the age group and the body areas
+    /// the person asked to avoid.
+    @Published public var audience: AudienceProfile = .unknown
+
     /// The live environment of the running app (persistence in Application Support or the App Group container, demo data when the store is empty).
     public static let shared: StrengthAppEnvironment = StrengthAppEnvironment.live()
 
