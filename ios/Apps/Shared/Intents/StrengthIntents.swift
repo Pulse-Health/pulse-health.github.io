@@ -30,9 +30,10 @@ import PulseStrengthCore
 
 /// Shared forwarding code of the four intents.
 private enum LiveActivityDispatch {
-    /// Sends `action` to the running app, marked as coming from the Live Activity.
+    /// Sends `action` to the running app (or, from a widget extension process, to the App Group inbox the app drains), marked as coming from
+    /// the Live Activity. See WidgetIntentDispatch.swift.
     static func send(_ action: WorkoutAction) async {
-        await WorkoutCommandBus.shared.perform(action, origin: .liveActivity)
+        await WidgetIntentDispatch.send(action, origin: .liveActivity)
     }
 }
 

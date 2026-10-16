@@ -39,17 +39,17 @@ iOS: `accessoryCircular`, `accessoryRectangular`, `accessoryInline` families of 
 
 | id | idea | content | iOS widget (family) | Android |
 |---|---|---|---|---|
-| LS-01 | Weekly goal gauge | `week` 3/4 gauge | `WeeklyGoalWidget` (circular) | `WeeklyGoalCompactWidget` 1x1 |
-| LS-02 | Days since training | `week.daysSinceLastWorkout` | `StreakWidget` (circular) | `DaysSinceWidget` 1x1 |
-| LS-03 | Week streak | `week.streakWeeks` flame | `StreakWidget` (circular) | `StreakWidget` 1x1 |
-| LS-04 | Quick start | play glyph, starts `nextUp` | `NextUpWidget` (circular) | `QuickStartWidget` 1x1 |
-| LS-05 | Next workout | `nextUp` | `NextUpWidget` (rectangular) | `NextUpCompactWidget` 3x1 |
-| LS-06 | Volume progress | `weeklySets.totalSets/totalTarget`, lagging muscle | `WeeklySetsWidget` (rectangular) | `WeeklySetsCompactWidget` 3x1 |
-| LS-07 | Latest record | `latestPR` | `PRSpotlightWidget` (rectangular) | `PrCompactWidget` 3x1 |
-| LS-08 | Overload target | `overload` | `OverloadWidget` (rectangular) | `OverloadCompactWidget` 3x1 |
-| LS-09 | Inline: weekly goal | "3 of 4 workouts this week" | `WeeklyGoalWidget` (inline) | `InlineStatusWidget` 4x1 (text mode "week") |
-| LS-10 | Inline: split | "Push day · last 5 days ago" | `NextUpWidget` (inline) | `InlineStatusWidget` (mode "split") |
-| LS-11 | Inline: rest day | "Rest day · back on Sat" | `NextUpWidget` (inline, when `restDay != nil`) | `InlineStatusWidget` (mode "rest") |
+| LS-01 | Weekly goal gauge | `week` 3/4 gauge | `WeeklyGoalAccessoryWidget` (circular) | `WeeklyGoalCompactWidget` 1x1 |
+| LS-02 | Days since training | `week.daysSinceLastWorkout` | `DaysSinceAccessoryWidget` (circular) | `DaysSinceWidget` 1x1 |
+| LS-03 | Week streak | `week.streakWeeks` flame | `StreakAccessoryWidget` (circular) | `StreakWidget` 1x1 |
+| LS-04 | Quick start | play glyph, starts `nextUp` | `NextUpAccessoryWidget` (circular) | `QuickStartWidget` 1x1 |
+| LS-05 | Next workout | `nextUp` | `NextUpAccessoryWidget` (rectangular) | `NextUpCompactWidget` 3x1 |
+| LS-06 | Volume progress | `weeklySets.totalSets/totalTarget`, lagging muscle | `WeeklySetsAccessoryWidget` (rectangular) | `WeeklySetsCompactWidget` 3x1 |
+| LS-07 | Latest record | `latestPR` | `PRAccessoryWidget` (rectangular) | `PrCompactWidget` 3x1 |
+| LS-08 | Overload target | `overload` | `OverloadAccessoryWidget` (rectangular) | `OverloadCompactWidget` 3x1 |
+| LS-09 | Inline: weekly goal | "3 of 4 workouts this week" | `WeeklyGoalAccessoryWidget` (inline) | `InlineStatusWidget` 4x1 (text mode "week") |
+| LS-10 | Inline: split | "Push day · last 5 days ago" | `NextUpAccessoryWidget` (inline) | `InlineStatusWidget` (mode "split") |
+| LS-11 | Inline: rest day | "Rest day · back on Sat" | `NextUpAccessoryWidget` (inline, shown instead of LS-10 when `restDay != nil`) | `InlineStatusWidget` (mode "rest") |
 
 ### StandBy, iPad, tablet (board "StandBy & iPad")
 
@@ -259,34 +259,40 @@ appended to the App Group command inbox (`pending-commands.json`) and the app dr
 
 ## 6. Files and ownership (so parallel work merges cleanly)
 
+Home Screen widgets and Lock Screen accessories are separate WidgetKit widgets (separate `kind`s): the Home Screen ones support
+`systemSmall/Medium/Large/ExtraLarge`, the `*AccessoryWidget`s support the `accessory*` families. StandBy shows the Home Screen `systemSmall` widgets.
+
 iOS (`ios/`):
 
 | path | owner |
 |---|---|
-| `Packages/PulseStrengthKit/Sources/PulseStrengthCore/Widgets/` (builder, analytics, store, inbox, settings) | core |
-| `Apps/Shared/Widgets/Home/` | home |
-| `Apps/Shared/Widgets/Lock/`, `Apps/Shared/Widgets/StandBy/`, `Apps/Shared/Widgets/Extras/` | lock-extras |
-| `Apps/Shared/Widgets/Watch/` (compiled into the watchOS widget extension) | watch |
-| `Apps/Shared/LiveActivity/` (changes), `Apps/Shared/Controls/`, `Apps/Shared/Intents/` (new files) | live-controls |
-| `Apps/PulseStrengthWidgets/`, `Apps/PulseStrengthWatchWidgets/`, `project.yml`, entitlements, `PulseStrengthApp.swift`, app wiring in `PulseStrengthIOS/` | integration |
+| `Packages/PulseStrengthKit/Sources/PulseStrengthCore/**` (builder, analytics, store, inbox, settings, reducer fields), `Tests/PulseStrengthCoreTests/**` | core |
+| `Apps/Shared/Widgets/Home/` (HS-01...HS-12, SB-01, SB-03, SB-04) | home |
+| `Apps/Shared/Widgets/Lock/` (LS-01...LS-11) | lock |
+| `Apps/Shared/Widgets/Extras/` (WI-01...WI-11) | extras |
+| `Apps/Shared/Widgets/Watch/` (WA-01...WA-10), `PulseStrengthIOS/Services/WatchWidgetSnapshotSender.swift`, the additive widget-snapshot key in `PhoneWatchBridge.swift` and `WatchConnectivityClient.swift`, `PulseStrengthWatchUI/WatchWidgetSnapshotReceiver.swift` | watch |
+| `Apps/Shared/LiveActivity/**` (changes), `PulseStrengthIOS/Services/LiveActivityManager.swift`, `PulseStrengthIOS/Services/PlannedSessionManager.swift`, `Apps/Shared/Intents/LiveMomentIntents.swift`, `Apps/Shared/PlannedSession/` (LA-01...LA-10, SB-02) | live |
+| `Apps/Shared/Controls/**`, `Apps/Shared/Intents/StrengthIntents.swift`, `Apps/Shared/Intents/WidgetIntentDispatch.swift`, `Apps/Shared/Intents/ControlIntents.swift` (CT-01...CT-10) | controls |
+| `Apps/PulseStrengthWidgets/`, `Apps/PulseStrengthWatchWidgets/`, `project.yml`, entitlements and Info.plists, `PulseStrengthApp.swift`, `PulseStrengthIOS/` except the files named above, widget snapshot tests, CI, docs | integration |
+| `Apps/Shared/Widgets/Common/` | read-only for everyone (integration changes it) |
 
-Every area exposes ONE `WidgetBundle` (`HomeWidgetBundle`, `LockWidgetBundle`, `StandByWidgetBundle`, `ExtrasWidgetBundle`, `ControlsBundle`, `WatchWidgetBundle`) in
-its own folder; `PulseStrengthWidgetsBundle.swift` only composes them. Shared drawing helpers (rings, sparklines, bars, theme) live in
-`Apps/Shared/Widgets/Common/` (owner: home; the others only read).
+Every area exposes ONE `WidgetBundle` (`HomeWidgetBundle`, `LockWidgetBundle`, `ExtrasWidgetBundle`, `WatchWidgetBundle`, `ControlsBundle`) in its own folder;
+`PulseStrengthWidgetsBundle.swift` only composes them.
 
 Android (`android/`), package `health.pulse.strength`:
 
 | path | owner |
 |---|---|
-| `core/` | core |
-| `app/.../runtime/`, `app/.../data/` | core (`StrengthRuntime` first exists as a preview-backed fake) |
-| `app/.../ui/` | host |
-| `app/.../widgets/common/`, `.../widgets/home/` | glance-home |
-| `app/.../widgets/lock/`, `.../widgets/tablet/`, `.../widgets/extras/` | glance-extras |
-| `app/.../live/`, `.../controls/` | system |
-| `wear/` and `app/.../wear/` | wear |
+| `core/`, `app/.../runtime/`, `app/.../data/` | core (`StrengthRuntime` first exists as a preview-backed fake) |
+| `app/.../ui/`, `MainActivity.kt`, `PulseApp.kt`, host manifest region | host |
+| `app/.../widgets/home/`, `app/.../widgets/tablet/` (HS-01...HS-12, SB-01, SB-03) | glance-home |
+| `app/.../widgets/lock/`, `app/.../widgets/extras/` (LS-01...LS-11, WI-01...WI-11) | glance-extras |
+| `app/.../live/`, `app/.../controls/`, `res/xml/shortcuts.xml` (LA-01...LA-10, SB-02, SB-04, CT-01...CT-10) | system |
+| `wear/` and `app/.../wear/` (WA-01...WA-10) | wear |
+| `app/.../widgets/common/` | read-only for everyone (integration changes it) |
 
-`AndroidManifest.xml`, `strings.xml` and `build.gradle.kts` have one marked region per owner; add only inside your region.
+`AndroidManifest.xml`, `strings.xml` and `build.gradle.kts` have one marked region per owner; add only inside your region (a dependency you need that is not in
+`build.gradle.kts` goes into your final report; the integrator adds it).
 
 ## 7. Look
 
