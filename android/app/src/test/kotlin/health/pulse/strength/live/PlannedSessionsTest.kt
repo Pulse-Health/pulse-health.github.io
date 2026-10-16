@@ -14,6 +14,7 @@ import health.pulse.strength.core.widgets.WidgetSnapshot
 import health.pulse.strength.core.widgets.preview
 import health.pulse.strength.runtime.PreviewRuntime
 import health.pulse.strength.runtime.StrengthRuntime
+import health.pulse.strength.surfaces.DayChange
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -45,7 +46,9 @@ class PlannedSessionsTest {
         StrengthRuntime.installForTest(PreviewRuntime())
     }
 
+    /** The alarms of the planned session: the midnight alarm that the application keeps for the widgets is not one of them. */
     private fun alarms() = shadowOf(app.getSystemService(AlarmManager::class.java)).scheduledAlarms
+        .filter { actionOf(it) != DayChange.ACTION_MIDNIGHT }
     private fun store() = PlannedSessionStore(app.getSharedPreferences("pulse_planned_session", Context.MODE_PRIVATE))
     private fun countdown(): Notification? = shadowOf(manager).getNotification(CardKind.PLANNED.notificationId)
     private fun due(): Notification? = shadowOf(manager).getNotification(CardKind.PLANNED_DUE.notificationId)

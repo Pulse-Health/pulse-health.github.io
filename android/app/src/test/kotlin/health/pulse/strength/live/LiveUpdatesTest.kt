@@ -16,6 +16,7 @@ import health.pulse.strength.core.widgets.WidgetCommands
 import health.pulse.strength.runtime.PreviewRuntime
 import health.pulse.strength.runtime.StrengthRuntime
 import health.pulse.strength.services.WorkoutNotifications
+import health.pulse.strength.surfaces.DayChange
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -65,7 +66,9 @@ class LiveUpdatesTest {
         return WorkoutActionReceiver.decode(shadowOf(action.actionIntent).savedIntent.getStringExtra(WorkoutActionReceiver.EXTRA_COMMAND)!!)!!
     }
 
+    /** The alarms of the live notification: the midnight alarm that the application keeps for the widgets is not one of them. */
     private fun alarms() = shadowOf(app.getSystemService(AlarmManager::class.java)).scheduledAlarms
+        .filter { intentOf(it).action != DayChange.ACTION_MIDNIGHT }
 
     /** The intent that the alarm delivers; Robolectric offers no other accessor than the field it deprecated. */
     @Suppress("DEPRECATION")
