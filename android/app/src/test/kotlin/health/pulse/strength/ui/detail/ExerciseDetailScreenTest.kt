@@ -1,7 +1,10 @@
 package health.pulse.strength.ui.detail
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -330,6 +333,33 @@ class ExerciseDetailScreenTest {
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Set 1, 80 kg × 6, RIR 3").assertDoesNotExist()
     }
+
+    @Test
+    fun aSessionRowSaysWhatTheTapDoesInTheImperative() {
+        showBench()
+        // TalkBack speaks "Double tap to <label>".
+        rule.onNode(hasText("Jan 7 · Upper A · Push")).assertClickLabel("Show every set of this session")
+        rule.onNode(hasText("Jan 7 · Upper A · Push")).performClick()
+        rule.waitForIdle()
+        rule.onNode(hasText("Jan 7 · Upper A · Push")).assertClickLabel("Hide the sets of this session")
+    }
+
+    @Test
+    fun seeAllSaysWhatItExpands() {
+        val bench = library("bench")
+        val workouts = (0 until 8).map { index ->
+            ResultFixtures.workout(bench, "Session $index", daysAgo = 3.0 + index * 5, sets = listOf(work(70.0 + index, 8)))
+        }
+        show(bench, ResultFixtures.storeWith(*workouts.toTypedArray()))
+        rule.onNodeWithText("See All").assertClickLabel("Show all sessions")
+        rule.onNodeWithText("See All").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Show Less").assertClickLabel("Show fewer sessions")
+    }
+
+    private fun SemanticsNodeInteraction.assertClickLabel(label: String) = assert(
+        SemanticsMatcher("click label is \"$label\"") { it.config.getOrNull(SemanticsActions.OnClick)?.label == label },
+    )
 
     @Test
     fun theScreenFollowsTheStore() {

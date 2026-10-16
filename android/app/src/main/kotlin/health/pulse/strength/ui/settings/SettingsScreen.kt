@@ -2,11 +2,14 @@ package health.pulse.strength.ui.settings
 
 import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -36,12 +40,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -127,7 +135,12 @@ fun SettingsScreen(environment: StrengthAppEnvironment, onBack: () -> Unit, modi
                         .pulseClickable(role = Role.Button, onClick = onBack),
                     contentAlignment = Alignment.Center,
                 ) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, tint = colors.ink) }
-                Text("Settings", style = PulseFont.title, color = colors.ink, modifier = Modifier.padding(start = 4.dp))
+                Text(
+                    "Settings",
+                    style = PulseFont.title,
+                    color = colors.ink,
+                    modifier = Modifier.padding(start = 4.dp).semantics { heading() },
+                )
             }
 
             Section("Notifications") {
@@ -156,42 +169,65 @@ fun SettingsScreen(environment: StrengthAppEnvironment, onBack: () -> Unit, modi
             }
 
             Section("Health Connect") {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Save workouts to Health Connect", style = PulseFont.headline, color = colors.ink)
-                        Text(
-                            "Each finished workout is saved as a strength-training session. The app only writes; it never reads your health data.",
-                            style = PulseFont.footnote,
-                            color = colors.inkSecondary,
-                        )
-                    }
-                    Switch(
-                        checked = healthConnectEnabled,
-                        onCheckedChange = { wantsOn ->
-                            healthMessage = null
-                            availability = HealthConnectSupport.availability(context)
-                            if (!wantsOn) {
-                                services?.settings?.setHealthConnectEnabled(false)
-                            } else {
-                                when (availability) {
-                                    HealthConnectSupport.Availability.AVAILABLE -> scope.launch {
-                                        if (HealthConnectSupport.hasWritePermission(context)) {
-                                            services?.settings?.setHealthConnectEnabled(true)
-                                        } else {
-                                            healthLauncher.launch(HealthConnectSupport.permissions)
-                                        }
-                                    }
-                                    HealthConnectSupport.Availability.UPDATE_REQUIRED ->
-                                        healthMessage = "Health Connect needs an update before it can be used."
-                                    HealthConnectSupport.Availability.UNAVAILABLE ->
-                                        healthMessage = "Health Connect is not available on this device."
+                val onHealthToggle: (Boolean) -> Unit = { wantsOn ->
+                    healthMessage = null
+                    availability = HealthConnectSupport.availability(context)
+                    if (!wantsOn) {
+                        services?.settings?.setHealthConnectEnabled(false)
+                    } else {
+                        when (availability) {
+                            HealthConnectSupport.Availability.AVAILABLE -> scope.launch {
+                                if (HealthConnectSupport.hasWritePermission(context)) {
+                                    services?.settings?.setHealthConnectEnabled(true)
+                                } else {
+                                    healthLauncher.launch(HealthConnectSupport.permissions)
                                 }
                             }
-                        },
-                        colors = SwitchDefaults.colors(checkedTrackColor = colors.green, checkedThumbColor = colors.onGreen),
-                    )
+                            HealthConnectSupport.Availability.UPDATE_REQUIRED ->
+                                healthMessage = "Health Connect needs an update before it can be used."
+                            HealthConnectSupport.Availability.UNAVAILABLE ->
+                                healthMessage = "Health Connect is not available on this device."
+                        }
+                    }
                 }
-                healthMessage?.let { Text(it, style = PulseFont.footnote, color = colors.destructive) }
+                Column {
+                    // The whole row is the switch: its text is the name TalkBack speaks, and the Switch inside only draws the state.
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .pulseMinHeight(48.dp)
+                            .toggleable(value = healthConnectEnabled, role = Role.Switch, onValueChange = onHealthToggle),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Save workouts to Health Connect", style = PulseFont.headline, color = colors.ink)
+                            Text(
+                                "Each finished workout is saved as a strength-training session. The app only writes; it never reads your health data.",
+                                style = PulseFont.footnote,
+                                color = colors.inkSecondary,
+                            )
+                        }
+                        Switch(
+                            checked = healthConnectEnabled,
+                            onCheckedChange = null,
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.green,
+                                checkedThumbColor = colors.onGreen,
+                                // The default off state is the tertiary ink on the card: under 3:1 in dark mode.
+                                uncheckedTrackColor = colors.card,
+                                uncheckedThumbColor = colors.inkSecondary,
+                                uncheckedBorderColor = colors.inkSecondary,
+                            ),
+                        )
+                    }
+                    // Always in the tree, so TalkBack speaks the message when it appears (why the switch did not turn on).
+                    Box(Modifier.fillMaxWidth().semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }) {
+                        healthMessage?.let {
+                            Text(it, style = PulseFont.footnote, color = colors.destructive, modifier = Modifier.padding(top = 12.dp))
+                        }
+                    }
+                }
                 if (availability == HealthConnectSupport.Availability.AVAILABLE) {
                     ActionRow(title = "Manage in Health Connect", onClick = { openHealthConnect(context) })
                 } else if (availability == HealthConnectSupport.Availability.UPDATE_REQUIRED) {
@@ -212,11 +248,11 @@ fun SettingsScreen(environment: StrengthAppEnvironment, onBack: () -> Unit, modi
             Section("About") {
                 InfoRow("Version", versionName(context))
                 InfoRow("Exercise photos", "Free Exercise DB (public domain)")
-                ActionRow(title = "Contact", onClick = { sendEmail(context) })
+                ActionRow(title = "Contact", detail = PrivacyLinks.supportEmail, onClick = { sendEmail(context) })
                 Text(
                     "Built with Kotlin, Jetpack Compose and other open-source software under the Apache License 2.0.",
                     style = PulseFont.footnote,
-                    color = colors.inkTertiary,
+                    color = colors.inkSecondary,
                 )
             }
         }
@@ -241,20 +277,53 @@ private fun Section(title: String, content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun ActionRow(title: String, onClick: () -> Unit) {
+private fun ActionRow(title: String, onClick: () -> Unit, detail: String? = null) {
+    val colors = PulseTheme.colors
     Row(
         Modifier.fillMaxWidth().pulseMinHeight(48.dp).pulseClickable(role = Role.Button, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, style = PulseFont.text(17.sp, FontWeight.SemiBold), color = PulseTheme.colors.greenText)
+        Column {
+            Text(title, style = PulseFont.text(17.sp, FontWeight.SemiBold), color = colors.greenText)
+            if (detail != null) Text(detail, style = PulseFont.footnote, color = colors.inkSecondary)
+        }
     }
 }
 
+/**
+ * Label and value of the About card. They share a line while the value fits beside the label in at most two lines without breaking
+ * a word; at big font sizes and on narrow windows the value goes under the label instead. One TalkBack stop either way.
+ */
 @Composable
 private fun InfoRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, style = PulseFont.body, color = PulseTheme.colors.ink)
-        Text(value, style = PulseFont.body, color = PulseTheme.colors.inkSecondary)
+    val colors = PulseTheme.colors
+    Layout(
+        content = {
+            Text(label, style = PulseFont.body, color = colors.ink)
+            Text(value, style = PulseFont.body, color = colors.inkSecondary)
+        },
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+    ) { measurables, constraints ->
+        val (labelItem, valueItem) = measurables
+        val width = constraints.maxWidth
+        val labelWidth = labelItem.maxIntrinsicWidth(Constraints.Infinity)
+        val valueSpace = width - labelWidth - 12.dp.roundToPx()
+        val beside = valueSpace > 0 &&
+            valueSpace >= valueItem.minIntrinsicWidth(Constraints.Infinity) &&
+            valueItem.minIntrinsicHeight(valueSpace) <= 2 * valueItem.minIntrinsicHeight(Constraints.Infinity)
+        val labelPlaceable = labelItem.measure(Constraints(maxWidth = if (beside) labelWidth else width))
+        val valuePlaceable = valueItem.measure(Constraints(maxWidth = if (beside) valueSpace else width))
+        if (beside) {
+            layout(width, maxOf(labelPlaceable.height, valuePlaceable.height)) {
+                labelPlaceable.placeRelative(0, 0)
+                valuePlaceable.placeRelative(width - valuePlaceable.width, 0)
+            }
+        } else {
+            layout(width, labelPlaceable.height + valuePlaceable.height) {
+                labelPlaceable.placeRelative(0, 0)
+                valuePlaceable.placeRelative(0, labelPlaceable.height)
+            }
+        }
     }
 }
 
@@ -271,22 +340,44 @@ private fun openNotificationSettings(context: Context) {
 
 private fun openHealthConnect(context: Context) = safeStart(context, HealthConnectClient.getHealthConnectManageDataIntent(context))
 
-private fun openHealthConnectStore(context: Context) {
-    safeStart(context, Intent(Intent.ACTION_VIEW, "market://details?id=com.google.android.apps.healthdata".toUri()))
+private const val HEALTH_CONNECT_PACKAGE = "com.google.android.apps.healthdata"
+
+/** The Play Store app first; a device without it (or with another store) still shows the listing on the web. */
+internal fun openHealthConnectStore(context: Context) {
+    val store = Intent(Intent.ACTION_VIEW, "market://details?id=$HEALTH_CONNECT_PACKAGE".toUri())
+    val web = Intent(Intent.ACTION_VIEW, "https://play.google.com/store/apps/details?id=$HEALTH_CONNECT_PACKAGE".toUri())
+    if (!tryStart(context, store)) safeStart(context, web)
 }
 
-private fun openUrl(context: Context, url: String) = safeStart(context, Intent(Intent.ACTION_VIEW, url.toUri()))
+private fun openUrl(context: Context, url: String) {
+    safeStart(context, Intent(Intent.ACTION_VIEW, url.toUri()), "No web browser found. The link was copied to the clipboard.", url)
+}
 
 private fun sendEmail(context: Context) {
-    safeStart(context, Intent(Intent.ACTION_SENDTO, "mailto:${PrivacyLinks.supportEmail}".toUri()))
+    val address = PrivacyLinks.supportEmail
+    val intent = Intent(Intent.ACTION_SENDTO, "mailto:$address".toUri())
+    safeStart(context, intent, "No e-mail app found. The address was copied to the clipboard.", address)
 }
 
-private fun safeStart(context: Context, intent: Intent) {
-    try {
-        context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-    } catch (_: ActivityNotFoundException) {
-        // Nothing can handle it on this device; the row simply does nothing.
+private fun tryStart(context: Context, intent: Intent): Boolean = try {
+    context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    true
+} catch (_: ActivityNotFoundException) {
+    false
+}
+
+/** Starts [intent]. If nothing can handle it, say so (a silent row looks broken) and put [copyOnFailure], if any, on the clipboard. */
+private fun safeStart(
+    context: Context,
+    intent: Intent,
+    unavailable: String = "This is not available on this device.",
+    copyOnFailure: String? = null,
+) {
+    if (tryStart(context, intent)) return
+    if (copyOnFailure != null) {
+        context.getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText("Pulse Strength", copyOnFailure))
     }
+    Toast.makeText(context, unavailable, Toast.LENGTH_LONG).show()
 }
 
 @Suppress("unused")
