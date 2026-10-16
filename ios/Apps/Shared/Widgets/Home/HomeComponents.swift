@@ -9,6 +9,28 @@ import SwiftUI
 import WidgetKit
 import PulseStrengthCore
 
+// MARK: - Surface
+
+/// How the system draws a Home Screen widget. The root view of a widget reads these four values from the environment and hands them to its
+/// layout as one plain value: `widgetFamily` and `showsWidgetContainerBackground` are read-only in the environment, so a renderer that does not
+/// host the widget (the snapshot tests) could not reach the medium, StandBy and night layouts any other way.
+struct HomeSurface: Equatable {
+    var family: WidgetFamily = .systemSmall
+    /// False in StandBy by day, where the system draws a small widget without its card.
+    var showsContainerBackground = true
+    /// True in StandBy at night, where the system tints everything red.
+    var isLuminanceReduced = false
+    var renderingMode: WidgetRenderingMode = .fullColor
+
+    var isMedium: Bool { family == .systemMedium }
+    /// StandBy by day: the small widget without its card, drawn in the dark appearance with larger type.
+    var isStandBy: Bool { !showsContainerBackground }
+    /// StandBy at night: a small widget with reduced luminance, drawn in red on black.
+    var isNight: Bool { isLuminanceReduced && !isMedium }
+    /// The system's tinted mode (HS-06): one accent colour, no coloured fills.
+    var isTinted: Bool { renderingMode != .fullColor }
+}
+
 // MARK: - Labels
 
 /// The small upper-case label above a value ("NEXT UP").

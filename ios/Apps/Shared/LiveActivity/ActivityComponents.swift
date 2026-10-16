@@ -208,15 +208,18 @@ struct ActivityAppBadge: View {
 struct ActivityHeartRateLabel: View {
     let bpm: Int
     var size: CGFloat = 15
+    var weight: Font.Weight = .regular
+    /// Size of the heart glyph (12 pt beside the 15 pt figure of the header, 14 pt in the compact island).
+    var heartSize: CGFloat = 12
     var color: Color
 
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: "heart.fill")
-                .font(.system(size: 12))
+                .font(.system(size: heartSize))
                 .foregroundStyle(ActivityTheme.heart)
             Text(String(bpm))
-                .font(ActivityTheme.number(size, .regular))
+                .font(ActivityTheme.number(size, weight))
                 .foregroundStyle(color)
                 .lineLimit(1)
         }
@@ -385,7 +388,7 @@ struct ActivityRestCountdownText: View {
 ///   only way a ring keeps draining inside a Live Activity.
 /// * Paused: a static ring at the frozen fraction.
 /// * Rest over: a static full ring.
-/// With `centerFontSize` the countdown ("Go" when over) is drawn in the middle.
+/// With `centerFontSize` the countdown ("Go" when over) is drawn in the middle, in `centerColor`.
 struct ActivityRestRing: View {
     let state: WorkoutSnapshot
     let phase: SnapshotPhase
@@ -393,6 +396,7 @@ struct ActivityRestRing: View {
     let lineWidth: CGFloat
     let track: Color
     var centerFontSize: CGFloat? = nil
+    var centerColor: Color = Color.white
     /// Snapshot tests only (nil in production): draw a static ring for this instant instead of a live `ProgressView`.
     @Environment(\.activityStaticNow) private var staticNow
 
@@ -405,7 +409,7 @@ struct ActivityRestRing: View {
                     phase: phase,
                     size: fontSize,
                     weight: .bold,
-                    color: Color.white
+                    color: centerColor
                 )
             }
         }
@@ -561,8 +565,11 @@ struct ActivitySteppers: View {
 // MARK: - Log set button
 
 /// Green "Log set" capsule. Runs `LogSetIntent` for one specific set, so a late tap can never log another set.
+/// In a superset the title names the member that is logged ("Log A2").
 struct ActivityLogButton: View {
     let intent: LogSetIntent
+    var title: String = "Log set"
+    var spokenTitle: String = "Log set"
     var height: CGFloat = 44
     var fillsWidth: Bool = true
     var fontSize: CGFloat = 17
@@ -571,7 +578,7 @@ struct ActivityLogButton: View {
         Button(intent: intent) {
             HStack(spacing: 8) {
                 ActivityGlyph(kind: .check, size: 16, lineWidth: 3.2, color: Color.white)
-                Text("Log set")
+                Text(title)
                     .font(ActivityTheme.text(fontSize, .semibold))
                     .foregroundStyle(Color.white)
                     .lineLimit(1)
@@ -582,7 +589,7 @@ struct ActivityLogButton: View {
             .background(ActivityTheme.buttonGreen, in: Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Log set")
+        .accessibilityLabel(spokenTitle)
     }
 
     private var maxWidth: CGFloat? {

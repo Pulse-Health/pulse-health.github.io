@@ -14,6 +14,7 @@ private enum HubRoute: Hashable {
     case workout(UUID)
     case recovery
     case settings
+    case exercise(String)
 }
 
 private enum HubEditorTarget: Identifiable {
@@ -46,7 +47,7 @@ private enum HubEditorTarget: Identifiable {
 public struct StrengthHubView: View {
     @ObservedObject private var store: StrengthStore
     @ObservedObject private var controller: WorkoutController
-    private let environment: StrengthAppEnvironment
+    @ObservedObject private var environment: StrengthAppEnvironment
     private let onStart: (WorkoutTemplate?) -> Void
     private let onResume: () -> Void
 
@@ -67,7 +68,7 @@ public struct StrengthHubView: View {
     ) {
         self._store = ObservedObject(wrappedValue: environment.store)
         self._controller = ObservedObject(wrappedValue: environment.controller)
-        self.environment = environment
+        self._environment = ObservedObject(wrappedValue: environment)
         self.onStart = onStart
         self.onResume = onResume
     }
@@ -110,6 +111,14 @@ public struct StrengthHubView: View {
         }
         .navigationDestination(item: $route) { (target: HubRoute) in
             destination(for: target)
+        }
+        // A widget or control asked for one exercise (`pulse-strength://exercise/<id>`); an id the store does not know shows the hub.
+        .onChange(of: environment.pendingExerciseID, initial: true) { _, exerciseID in
+            guard let exerciseID else { return }
+            environment.pendingExerciseID = nil
+            if store.exercise(id: exerciseID) != nil {
+                route = .exercise(exerciseID)
+            }
         }
         .sheet(item: $editor) { (target: HubEditorTarget) in
             HubTemplateEditorSheet(store: store, template: template(for: target))
@@ -570,6 +579,10 @@ public struct StrengthHubView: View {
             HubRecoveryView(recovery: controller.recovery)
         case .settings:
             StrengthSettingsView(environment: environment)
+        case .exercise(let exerciseID):
+            if let exercise = store.exercise(id: exerciseID) {
+                ExerciseDetailView(exercise: exercise, store: store)
+            }
         }
     }
 
@@ -1858,6 +1871,7 @@ private struct HubTemplateDetailView: View {
     let onStart: (WorkoutTemplate) -> Void
     let onResume: () -> Void
     @State var showsEditor = false
+    @State var showsPlanner = false
     @State var showsBusyAlert = false
 
     init(
@@ -1884,7 +1898,13 @@ private struct HubTemplateDetailView: View {
             .navigationTitle(template?.name ?? "Template")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    Button {
+                        showsPlanner = true
+                    } label: {
+                        Label("Plan a session", systemImage: "calendar.badge.clock")
+                    }
+                    .disabled(template == nil)
                     Button("Edit") {
                         showsEditor = true
                     }
@@ -1893,6 +1913,11 @@ private struct HubTemplateDetailView: View {
             }
             .sheet(isPresented: $showsEditor) {
                 HubTemplateEditorSheet(store: store, template: template)
+            }
+            .sheet(isPresented: $showsPlanner) {
+                if let template = template {
+                    PlanSessionSheet(template: template)
+                }
             }
             .alert("Workout in progress", isPresented: $showsBusyAlert) {
                 Button("Resume") {

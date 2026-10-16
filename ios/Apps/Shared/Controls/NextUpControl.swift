@@ -17,6 +17,7 @@ struct NextUpControl: ControlWidget {
             ControlWidgetButton(action: StartNextIntent()) {
                 Label(state.nextUpTitle, systemImage: "dumbbell.fill")
             }
+            .tint(WidgetTheme.green)
         }
         .displayName("Next up")
         .description("Shows the workout that is next in your split and starts it with one press.")
