@@ -85,7 +85,7 @@ object WorkoutReducer {
             val target = k.toLong() + action.delta.toLong()
             if (target > Int.MAX_VALUE || target < Int.MIN_VALUE) s else moveExercise(s, k, target.toInt())
         }
-        is WorkoutAction.ReplaceExercise -> replaceExercise(s, action.exerciseID, action.with)
+        is WorkoutAction.ReplaceExercise -> replaceExercise(s, action.exerciseID, action.with, now)
         is WorkoutAction.ToggleSuperset -> toggleSuperset(s, action.exerciseID)
         is WorkoutAction.SetRest -> {
             val k = s.exerciseIndex(action.exerciseID) ?: return s
@@ -329,7 +329,7 @@ object WorkoutReducer {
         return s.copy(exercises = list, currentIndex = if (index >= 0) index else s.currentIndex)
     }
 
-    private fun replaceExercise(s: WorkoutState, exerciseID: UUID, replacement: Exercise): WorkoutState {
+    private fun replaceExercise(s: WorkoutState, exerciseID: UUID, replacement: Exercise, now: Instant): WorkoutState {
         val k = s.exerciseIndex(exerciseID) ?: return s
         val old = s.exercises[k]
         var next = s.updateExercise(k) {
@@ -339,6 +339,18 @@ object WorkoutReducer {
         // A deleted set of the old exercise no longer fits the new one.
         val payload = next.undo?.payload
         if (payload is UndoPayload.DeletedSet && payload.exerciseID == old.id) next = next.copy(undo = null)
+        // Replacing throws away what was logged on the old exercise (and its note): keep it restorable for a few seconds. An exercise
+        // with no logged set and no note has only planned values to lose, which are cheap to enter again, so it leaves a pending undo
+        // of something else alone.
+        if (old.sets.any { it.isDone } || old.note.isNotEmpty()) {
+            next = next.copy(
+                undo = UndoEntry(
+                    payload = UndoPayload.ReplacedExercise(old),
+                    title = "Replaced " + old.exercise.name,
+                    expiresAt = now.addingTimeInterval(undoWindow),
+                ),
+            )
+        }
         return next
     }
 
@@ -434,6 +446,17 @@ object WorkoutReducer {
                 if (s.exercises.any { e -> e.sets.any { it.id == payload.set.id } }) return s
                 val at = maxOf(0, minOf(payload.index, s.exercises[k].sets.size))
                 s.updateExercise(k) { entry2 -> entry2.copy(sets = entry2.sets.toMutableList().also { it.add(at, payload.set) }) }
+            }
+            is UndoPayload.ReplacedExercise -> {
+                val original = payload.exercise
+                // The replacement carries the entry id of the original; if that entry is gone the undo has nothing to swap back.
+                val k = s.exerciseIndex(original.id) ?: return s
+                val current = s.exercises[k]
+                // Swapping back would throw away what was logged on the replacement in the meantime: then the undo is simply spent.
+                if (current.sets.any { it.isDone } || current.note.isNotEmpty()) return s
+                // The superset group is whatever the entry belongs to now (its partner may have been toggled since); a group never has
+                // a single member.
+                s.updateExercise(k) { original.copy(supersetGroup = current.supersetGroup) }.copy(currentIndex = k)
             }
         }
     }

@@ -1205,6 +1205,102 @@ class WorkoutReducerListEditTests {
         assertThat(t.undo).isNotNull()
     }
 
+    // region Replace exercise leaves an undo when something would be lost (port of the Swift tests added after the first port)
+
+    @Test
+    fun testReplacingAnExerciseWithLoggedSetsLeavesAnUndoThatSwapsTheOriginalBack() {
+        var s = RedFix.designState()
+        s = RedFix.reduced(s, RedFix.toggle(s, 3, 0), at = 1)
+        s = s.copy(exercises = s.exercises.mapIndexed { i, e -> if (i == 3) e.copy(note = "slow") else e })
+        val original = s.exercises[3]
+        s = RedFix.reduced(s, WorkoutAction.ReplaceExercise(original.id, RedFix.pushup), at = 2)
+        assertThat(s.exercises[3].exercise.id).isEqualTo("pushup")
+        assertThat(s.undo?.title).isEqualTo("Replaced " + original.exercise.name)
+        assertThat(s.undo?.expiresAt).isEqualTo(RedFix.t0.addingTimeInterval(2 + WorkoutReducer.undoWindow))
+
+        s = RedFix.reduced(s, WorkoutAction.Undo, at = 3)
+        assertWithMessage("the logged set, its values and the note are back").that(s.exercises[3]).isEqualTo(original)
+        assertThat(s.exercises[3].sets[0].isDone).isTrue()
+        assertThat(s.currentIndex).isEqualTo(3)
+        assertThat(s.undo).isNull()
+    }
+
+    @Test
+    fun testTheReplaceUndoFollowsTheCurrentSupersetGroup() {
+        var s = RedFix.designState()
+        s = RedFix.reduced(s, RedFix.toggle(s, 3, 0), at = 1)
+        assertThat(s.exercises[3].supersetGroup).isEqualTo("A")
+        assertThat(s.exercises[4].supersetGroup).isEqualTo("A")
+        s = RedFix.reduced(s, WorkoutAction.ReplaceExercise(RedFix.ex(s, 3), RedFix.pushup), at = 2)
+        // the partner leaves the group, so the replacement is released from it as well
+        s = RedFix.reduced(s, WorkoutAction.ToggleSuperset(RedFix.ex(s, 4)), at = 3)
+        assertThat(s.exercises[3].supersetGroup).isNull()
+        s = RedFix.reduced(s, WorkoutAction.Undo, at = 4)
+        assertWithMessage("the original is back").that(s.exercises[3].exercise.id).isEqualTo("lateral")
+        assertWithMessage("it does not rejoin a group its partner left").that(s.exercises[3].supersetGroup).isNull()
+        val groups = s.exercises.mapNotNull { it.supersetGroup }.groupBy { it }
+        assertWithMessage("a group never has a single member").that(groups.values.all { it.size > 1 }).isTrue()
+    }
+
+    @Test
+    fun testTheReplaceUndoDoesNotThrowAwayWorkDoneOnTheReplacement() {
+        var s = RedFix.designState()
+        s = RedFix.reduced(s, RedFix.toggle(s, 3, 0), at = 1)
+        s = RedFix.reduced(s, WorkoutAction.ReplaceExercise(RedFix.ex(s, 3), RedFix.pushup), at = 2)
+        s = RedFix.reduced(s, RedFix.toggle(s, 3, 0), at = 3)             // a set of the replacement is logged
+        val before = s.exercises
+        s = RedFix.reduced(s, WorkoutAction.Undo, at = 4)
+        assertWithMessage("the logged set of the replacement is kept").that(s.exercises).isEqualTo(before)
+        assertWithMessage("the undo is spent").that(s.undo).isNull()
+    }
+
+    @Test
+    fun testTheReplaceUndoExpires() {
+        var s = RedFix.designState()
+        s = RedFix.reduced(s, RedFix.toggle(s, 3, 0), at = 1)
+        val replacement = RedFix.ex(s, 3)
+        s = RedFix.reduced(s, WorkoutAction.ReplaceExercise(replacement, RedFix.pushup), at = 2)
+        s = RedFix.reduced(s, WorkoutAction.Undo, at = 2 + WorkoutReducer.undoWindow + 1)
+        assertWithMessage("too late: the replacement stays").that(s.exercises[3].exercise.id).isEqualTo("pushup")
+        assertThat(s.undo).isNull()
+    }
+
+    @Test
+    fun testReplacingAnUntouchedExerciseLeavesAnotherUndoAlone() {
+        var s = RedFix.designState()
+        s = RedFix.reduced(s, WorkoutAction.DeleteSet(RedFix.ex(s, 2), RedFix.setID(s, 2, 0)), at = 1)
+        val pending = s.undo
+        assertThat(pending).isNotNull()
+        s = RedFix.reduced(s, WorkoutAction.ReplaceExercise(RedFix.ex(s, 1), RedFix.squat), at = 2)
+        assertWithMessage("nothing was logged on the replaced exercise, so nothing was lost").that(s.undo).isEqualTo(pending)
+    }
+
+    @Test
+    fun testTheReplaceUndoDoesNothingWhenTheEntryIsGone() {
+        var s = RedFix.designState()
+        s = RedFix.reduced(s, RedFix.toggle(s, 3, 0), at = 1)
+        val id = RedFix.ex(s, 3)
+        s = RedFix.reduced(s, WorkoutAction.ReplaceExercise(id, RedFix.pushup), at = 2)
+        s = s.copy(exercises = s.exercises.filterIndexed { i, _ -> i != 3 })
+        val before = s.exercises
+        s = RedFix.reduced(s, WorkoutAction.Undo, at = 3)
+        assertThat(s.exercises).isEqualTo(before)
+        assertThat(s.undo).isNull()
+    }
+
+    @Test
+    fun testTheReplacePayloadSurvivesPersistence() {
+        var s = RedFix.designState()
+        s = RedFix.reduced(s, RedFix.toggle(s, 3, 0), at = 1)
+        s = RedFix.reduced(s, WorkoutAction.ReplaceExercise(RedFix.ex(s, 3), RedFix.pushup), at = 2)
+        val text = StrengthJson.format.encodeToString(WorkoutState.serializer(), s)
+        val decoded = StrengthJson.format.decodeFromString(WorkoutState.serializer(), text)
+        assertThat(decoded).isEqualTo(s)
+        assertWithMessage("the replaced payload was not kept").that(decoded.undo?.payload).isInstanceOf(UndoPayload.ReplacedExercise::class.java)
+    }
+
+    // endregion
+
     @Test
     fun testAddExercisesAppendsEntriesWithDefaultSetsAndRest() {
         var s = RedFix.designState()
