@@ -90,11 +90,11 @@ class FileStrengthPersistence(val directory: File) {
         return result
     }
 
-    /** Replaces the personal bests. */
+    /** Replaces the personal bests. The keys are written in sorted order (as the Swift core's `.sortedKeys` does): the same value gives the same bytes. */
     @Throws(IOException::class)
     fun savePersonalBests(bests: Map<String, PersonalBest>) {
         write(
-            StrengthJson.format.encodeToString(MapSerializer(String.serializer(), PersonalBest.serializer()), bests),
+            StrengthJson.format.encodeToString(MapSerializer(String.serializer(), PersonalBest.serializer()), bests.toSortedMap()),
             FileName.personalBests,
         )
     }
