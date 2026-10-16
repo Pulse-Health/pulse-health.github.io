@@ -163,6 +163,12 @@ public struct StrengthHubView: View {
             } label: {
                 Label("Settings", systemImage: "gearshape")
             }
+            Button {
+                environment.startWalkthrough()
+            } label: {
+                Label("App Walkthrough", systemImage: "questionmark.circle")
+            }
+            .accessibilityIdentifier("hub-walkthrough")
         } label: {
             Image(systemName: "ellipsis.circle")
                 .font(.system(size: 20, weight: .regular))

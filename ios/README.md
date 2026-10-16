@@ -179,7 +179,7 @@ each test log, the number of PNGs per suite and their file names (also saved as 
 warning annotation; the log of its step then usually shows a compile error of the test code. The UI flow keeps going after a
 failed step, so open `ui-flow-log.txt` first: it names the steps that failed, with the screenshot taken at that point.
 
-* **`matrix` job:** a short second tour (`StrengthTourTests`, 14 screenshots, about 3 minutes) on four simulators in parallel: `dark` (dark mode), `xxl` (accessibility-extra-large text), `se` (iPhone SE 3rd generation, 375 x 667 pt) and `ios17` (oldest installed iOS 17+ runtime). A simulator the runner lacks prints `SKIPPED: <reason>`; the entry still succeeds.
+* **`matrix` job:** a short second tour (`StrengthTourTests`, 21 screenshots, about 4 minutes; 15 to 21 are the pages of the walkthrough) on four simulators in parallel: `dark` (dark mode), `xxl` (accessibility-extra-large text), `se` (iPhone SE 3rd generation, 375 x 667 pt) and `ios17` (oldest installed iOS 17+ runtime). A simulator the runner lacks prints `SKIPPED: <reason>`; the entry still succeeds.
 * **Artifact `strength-matrix-<name>`** (14 days): `tour-<name>-NN-*.png`, `tour-<name>-layout.txt` (frames of header, navigator, card and rest dock, `pageScrolls`, `LAYOUT VIOLATION` lines), `tour-<name>-flow-log.txt`, `simulator-settings.txt`, `digest.txt` (also printed at the end of the job log).
 * The tour belongs to the `PulseStrengthUITests` scheme, so `visual` runs it once more with the defaults (`tour-default-*` in `strength-screens`).
 
@@ -261,6 +261,9 @@ The seams are plain protocols and closures:
   and the 25 built-in keys stay the contract.
 * **UI entry point.** `PulseStrengthRootView(environment:)` is one view with its own `NavigationStack`; embed it, or use
   `StrengthHubView`, `ActiveWorkoutView` and the sheets individually. It handles `pulse-strength://workout` through `onOpenURL`.
+* **Walkthrough after onboarding.** Call `environment.showWalkthroughAfterOnboarding()` where the Pulse app's onboarding ends: it opens the
+  tour (`StrengthWalkthroughView`, presented by `PulseStrengthRootView`) the first time and never again by itself, so calling it on every
+  launch is fine. It needs no extra wiring; the seen-flag is one integer in `UserDefaults` (`WalkthroughMemory`). See [Walkthrough](#walkthrough-after-onboarding).
 * **Live Activity.** Add `Apps/Shared/LiveActivity` and `Apps/Shared/Intents` as sources of the Pulse widget extension,
   list `WorkoutLiveActivity()` in its `WidgetBundle`, compile `Apps/Shared/Intents` into the Pulse app target as well, and touch
   `StrengthAppEnvironment.shared` during app launch (see `PulseStrengthApp.init()`), so a button press that launches the app in the
@@ -287,6 +290,26 @@ The form-demo frames in `Packages/PulseStrengthKit/Sources/PulseStrengthIOS/Reso
 exercises, two frames each. The app shows the line "Demo photos: Free Exercise DB (public domain)." in the form sheets.
 They are demo material: the real Pulse app may prefer licensed GIFs or video with a consistent look, which the media seam
 above allows without touching the rest of the feature.
+
+## Walkthrough after onboarding
+
+A short tour of the Strength feature that follows onboarding: seven swipeable pages (welcome, today's workout on the hub, logging sets,
+the rest timer, shaping a workout, finishing, and where everything else lives), each with a small picture drawn in the theme colours, a
+sentence and up to three tips. "Skip", "Get Started" and a swipe down all close it; "Back" and the page dots are on every page.
+
+* **When it opens.** `StrengthAppEnvironment.showWalkthroughAfterOnboarding()` opens it once (it remembers the version it showed, see
+  `Walkthrough.version`: raise it to show a revised tour again), and not while a workout runs. The standalone app calls it at launch because it has
+  no onboarding of its own, so its first launch stands in for "after onboarding". The permission prompts (notifications, Health) wait until the
+  tour has closed, so they do not cover it. Previews and the UI-test mode (`-PulseUITest`) never open it by themselves.
+* **Replay.** Hub > More > **App Walkthrough** (`environment.startWalkthrough()`).
+* **Where the text lives.** `Walkthrough.steps` in `PulseStrengthCore/Walkthrough.swift`, next to `WalkthroughProgress` (the page logic) and
+  `Walkthrough.shouldShow(seenVersion:)`; `WalkthroughTests` covers them on Linux. The pictures are in `Screens/StrengthWalkthroughView.swift`,
+  chosen by the step's `id`. When a screen the tour describes changes, change its step.
+* **Verification.** The Core logic is unit-tested (`WalkthroughTests`, on Linux in CI). The screen compiles with Xcode 16 and 26, and CI renders it:
+  `StrengthTourTests` opens it from the More menu, pages through all seven pages and takes screenshots 15 to 21 in every `matrix` configuration
+  (dark mode, accessibility-extra-large text, iPhone SE, oldest available runtime). The screenshots were looked at in the simulator: nothing overflows,
+  `Next` / `Get Started` stay visible, and on the SE and at large text the pages scroll inside (a short fade at the bottom shows there is more). Not tried:
+  a real device, VoiceOver, Reduce Motion, landscape and iPad layouts.
 
 ## Training plans and importing them
 
