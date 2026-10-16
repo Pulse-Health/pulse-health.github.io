@@ -182,11 +182,25 @@ private struct WalkthroughPage: View {
                 }
             }
             .padding(.horizontal, 24)
-            .padding(.bottom, 16)
+            // Clears the fade below, so the last line of a scrolled-to-the-end page is not faded.
+            .padding(.bottom, 36)
             .frame(maxWidth: 560)
             .frame(maxWidth: .infinity)
         }
         .scrollBounceBehavior(.basedOnSize)
+        // On a small phone or at large text the page is taller than the space above the dots and scrolls; without a cue the
+        // cut-off edge looks like the end of the content. The bottom fades out instead (invisible when everything fits).
+        .mask {
+            VStack(spacing: 0) {
+                Rectangle()
+                LinearGradient(
+                    colors: [Color.black, Color.black.opacity(0)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: 28)
+            }
+        }
     }
 
     private var points: some View {

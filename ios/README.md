@@ -305,9 +305,11 @@ sentence and up to three tips. "Skip", "Get Started" and a swipe down all close 
 * **Where the text lives.** `Walkthrough.steps` in `PulseStrengthCore/Walkthrough.swift`, next to `WalkthroughProgress` (the page logic) and
   `Walkthrough.shouldShow(seenVersion:)`; `WalkthroughTests` covers them on Linux. The pictures are in `Screens/StrengthWalkthroughView.swift`,
   chosen by the step's `id`. When a screen the tour describes changes, change its step.
-* **Verification.** The Core logic is unit-tested. The SwiftUI screen was written without a Swift toolchain at hand and is compiled and
-  photographed by CI: `StrengthTourTests` opens it from the More menu and takes screenshots 15 to 21 (one per page) in every `matrix` configuration
-  (dark mode, large text, iPhone SE). Look at those before trusting the layout; it has not been seen on a device, with VoiceOver, or in landscape.
+* **Verification.** The Core logic is unit-tested (`WalkthroughTests`, on Linux in CI). The screen compiles with Xcode 16 and 26, and CI renders it:
+  `StrengthTourTests` opens it from the More menu, pages through all seven pages and takes screenshots 15 to 21 in every `matrix` configuration
+  (dark mode, accessibility-extra-large text, iPhone SE, oldest available runtime). The screenshots were looked at in the simulator: nothing overflows,
+  `Next` / `Get Started` stay visible, and on the SE and at large text the pages scroll inside (a short fade at the bottom shows there is more). Not tried:
+  a real device, VoiceOver, Reduce Motion, landscape and iPad layouts.
 
 ## Training plans and importing them
 
