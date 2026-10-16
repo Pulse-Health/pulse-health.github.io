@@ -3,8 +3,9 @@
 // The Home Screen widgets (systemSmall / systemMedium / systemLarge / systemExtraLarge, HS-01...HS-12 and SB-01, SB-03, SB-04).
 // PulseStrengthWidgetsBundle composes this bundle with the others.
 //
-// A widget builder holds a limited number of widgets in the older SDKs (five at first), so the widgets are grouped by size into three small
-// bundles and `HomeWidgetBundle`, the one entry of this area, lists the groups through their `body`.
+// A `WidgetBundle` is not a `Widget` (only its `body` is), and a widget builder takes at most ten widgets, so the eleven widgets of this area
+// are grouped by size into three small bundles and `HomeWidgetBundle`, the one entry of this area, lists the groups through their `body`.
+// The extension's top-level bundle lists this one the same way: `HomeWidgetBundle().body`.
 
 #if os(iOS)
 import SwiftUI
