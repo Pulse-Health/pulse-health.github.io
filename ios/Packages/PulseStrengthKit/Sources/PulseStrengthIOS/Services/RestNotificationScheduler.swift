@@ -3,15 +3,47 @@ import Foundation
 import UserNotifications
 import PulseStrengthCore
 
-/// Keeps notifications that arrive while the app is in the foreground out of sight: the rest dock and the
-/// haptic already tell the user that the rest is over.
-final class RestNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+/// What the user did with a weigh-in reminder notification.
+enum WeightReminderResponse: Sendable, Equatable {
+    /// Tapped the notification: open the weight entry.
+    case open
+    /// Typed a weight into the "Log weight" action (the raw text; it may not be a weight).
+    case log(text: String)
+}
+
+/// The one delegate of the notification center (the center has a single delegate, so every notification of the feature goes through it).
+///
+/// * Keeps notifications that arrive while the app is in the foreground out of sight: the rest dock and the haptic already tell
+///   the user that the rest is over, and the hub already shows the weigh-in card.
+/// * Passes the user's reaction to a weigh-in reminder (a tap, or a weight typed into the notification) to `onWeightReminder`.
+final class StrengthNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    /// The delegate every scheduler of the feature installs. The center holds its delegate weakly; this instance lives for the process.
+    static let shared = StrengthNotificationDelegate()
+
+    /// Called on an arbitrary queue; set once, by the weigh-in reminder scheduler.
+    var onWeightReminder: (@Sendable (WeightReminderResponse) -> Void)?
+
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        defer { completionHandler() }
+        guard response.notification.request.identifier.hasPrefix(StrengthConfig.weightReminderIDPrefix) else { return }
+        if response.actionIdentifier == StrengthConfig.weightReminderLogActionID,
+           let typed = response as? UNTextInputNotificationResponse {
+            onWeightReminder?(.log(text: typed.userText))
+        } else if response.actionIdentifier == UNNotificationDefaultActionIdentifier {
+            onWeightReminder?(.open)
+        }
     }
 }
 
@@ -39,8 +71,8 @@ final class RestNotificationScheduler: WorkoutSideEffect {
     }
 
     private let center: UNUserNotificationCenter
-    /// The center holds its delegate weakly, so the scheduler keeps it alive.
-    private let delegate = RestNotificationDelegate()
+    /// The shared delegate of the feature (see `StrengthNotificationDelegate`).
+    private let delegate = StrengthNotificationDelegate.shared
     /// What is currently scheduled with the system; nil when nothing is.
     private var scheduled: Plan?
 

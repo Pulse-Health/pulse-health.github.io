@@ -16,6 +16,9 @@ public final class FileStrengthPersistence: @unchecked Sendable {
         static let history = "history.json"
         static let customExercises = "custom-exercises.json"
         static let personalBests = "personal-bests.json"
+        static let plans = "plans.json"
+        static let bodyWeights = "body-weights.json"
+        static let weighInPreferences = "weigh-in-preferences.json"
         static let acknowledgedCommands = "acknowledged-commands.json"
     }
 
@@ -83,6 +86,14 @@ public final class FileStrengthPersistence: @unchecked Sendable {
     /// Replaces the saved workout templates.
     public func saveTemplates(_ templates: [WorkoutTemplate]) throws { try write(templates, to: FileName.templates) }
 
+    // MARK: Plans
+
+    /// The saved training plans (empty when none or unreadable).
+    public func loadPlans() -> [WorkoutPlan] { readList(FileName.plans) }
+
+    /// Replaces the saved training plans.
+    public func savePlans(_ plans: [WorkoutPlan]) throws { try write(plans, to: FileName.plans) }
+
     // MARK: History
 
     /// The finished workouts, newest first (empty when none or unreadable).
@@ -111,6 +122,27 @@ public final class FileStrengthPersistence: @unchecked Sendable {
 
     /// Replaces the personal bests.
     public func savePersonalBests(_ bests: [String: PersonalBest]) throws { try write(bests, to: FileName.personalBests) }
+
+    // MARK: Body weight
+
+    /// The weigh-ins, newest first (empty when none or unreadable).
+    public func loadBodyWeights() -> [BodyWeightEntry] { readList(FileName.bodyWeights) }
+
+    /// Replaces the weigh-ins.
+    public func saveBodyWeights(_ entries: [BodyWeightEntry]) throws { try write(entries, to: FileName.bodyWeights) }
+
+    /// The weigh-in reminder preferences (the defaults, with the reminder off, when none or unreadable).
+    public func loadWeighInPreferences() -> WeighInPreferences {
+        guard let data = read(FileName.weighInPreferences),
+              let decoded = try? StrengthJSON.makeDecoder().decode(WeighInPreferences.self, from: data)
+        else { return WeighInPreferences() }
+        return decoded
+    }
+
+    /// Replaces the weigh-in reminder preferences.
+    public func saveWeighInPreferences(_ preferences: WeighInPreferences) throws {
+        try write(preferences, to: FileName.weighInPreferences)
+    }
 
     // MARK: File access
 

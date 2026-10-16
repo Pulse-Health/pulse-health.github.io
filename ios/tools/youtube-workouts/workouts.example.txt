@@ -1,12 +1,19 @@
 // One "# Name" line per workout, then one line per video, in the order the parts are meant to be watched.
-// A playlist URL stands for all its videos, in playlist order.
+// A playlist URL stands for all its videos, in playlist order (read as the parts of ONE workout).
+// "@plan NAME" puts the workouts that follow into a plan, a rotation in file order; "@days N" is its weekly target;
+// "@plan -" ends it.
 
-# Full body strength
+@plan Full body rotation
+@days 3
+
+# Workout A
 https://www.youtube.com/watch?v=AAAAAAAAAAA
 https://www.youtube.com/watch?v=BBBBBBBBBBB
 
-# Legs and glutes
+# Workout B
 https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxx
 
-# Quick shoulder session
+@plan -
+
+# Quick shoulder session (in no plan)
 https://youtu.be/CCCCCCCCCCC

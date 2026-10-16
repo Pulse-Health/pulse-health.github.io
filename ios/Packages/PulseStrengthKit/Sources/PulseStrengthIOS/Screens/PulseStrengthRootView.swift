@@ -11,6 +11,8 @@ import PulseStrengthCore
 /// * Minimising hides the cover; the bar then offers "Resume".
 /// * Finishing hides the cover and, once it is gone, presents the summary (discarding presents nothing).
 /// * `pulse-strength://workout` (the Live Activity's `widgetURL`) opens the active workout when one exists.
+/// * The walkthrough sheet (`StrengthWalkthroughView`) opens when `environment.showsWalkthrough` is set: the host calls
+///   `environment.showWalkthroughAfterOnboarding()` when onboarding ends, and the hub's More menu replays it.
 @MainActor
 public struct PulseStrengthRootView: View {
     @ObservedObject private var environment: StrengthAppEnvironment
@@ -59,6 +61,14 @@ public struct PulseStrengthRootView: View {
         .fullScreenCover(item: $summary) { (workout: CompletedWorkout) in
             summaryCover(workout)
         }
+        .sheet(isPresented: $environment.showsWeightEntry) {
+            BodyWeightEntrySheet(store: environment.store)
+        }
+        .sheet(isPresented: $environment.showsWalkthrough, onDismiss: {
+            environment.walkthroughClosed()
+        }, content: {
+            walkthroughSheet
+        })
         .environment(\.watchStatus, environment.watchStatus)
         .tint(PulseTheme.green)
         // The whole app follows the user's text size up to accessibility3 (its screens scroll); the dense screens
@@ -67,8 +77,21 @@ public struct PulseStrengthRootView: View {
         .onOpenURL { (url: URL) in
             handleURL(url)
         }
-        .task {
+        .task(id: environment.showsWalkthrough) {
+            // The walkthrough comes first: the permission prompts would cover it. Closing it runs this again (the prompts
+            // only ever appear once, so asking again later is harmless).
+            guard !environment.showsWalkthrough else { return }
             await requestPermissions()
+        }
+        .task {
+            // The launch itself: `onChange` below only sees the changes after it.
+            environment.refreshOnActive()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // A delivered reminder leaves the list of future ones, the clock or time zone may have changed, and Health may have new weights.
+            if phase == .active {
+                environment.refreshOnActive()
+            }
         }
     }
 
@@ -89,6 +112,17 @@ public struct PulseStrengthRootView: View {
         .tint(PulseTheme.green)
         // The workout screen, its keypad and the rest dock cannot scroll as a page: their text stops growing at xxxLarge.
         .dynamicTypeSize(PulseDynamicType.activeWorkoutRange)
+    }
+
+    /// The tour that follows onboarding; "Skip", "Get Started" and a swipe down all end up in `walkthroughClosed()`.
+    private var walkthroughSheet: some View {
+        StrengthWalkthroughView(
+            onClose: {
+                environment.showsWalkthrough = false
+            }
+        )
+        .tint(PulseTheme.green)
+        .dynamicTypeSize(PulseDynamicType.screenRange)
     }
 
     private func summaryCover(_ workout: CompletedWorkout) -> some View {
@@ -193,8 +227,12 @@ public struct PulseStrengthRootView: View {
 
     private func handleURL(_ url: URL) {
         guard url.scheme?.lowercased() == StrengthConfig.urlScheme.lowercased() else { return }
-        guard url.host?.lowercased() == StrengthConfig.workoutURL.host?.lowercased() else { return }
-        presentActiveWorkout()
+        let host = url.host?.lowercased()
+        if host == StrengthConfig.workoutURL.host?.lowercased() {
+            presentActiveWorkout()
+        } else if host == StrengthConfig.weightURL.host?.lowercased() {
+            environment.requestWeightEntry()
+        }
     }
 
     private func requestPermissions() async {

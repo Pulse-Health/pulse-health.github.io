@@ -1,8 +1,8 @@
 // PulseStrengthApp.swift
 //
 // Entry point of the standalone iOS host app. It shows the Strength hub of PulseStrengthKit, behind the first-run onboarding
-// (welcome, sign up / log in, profile, Apple Health, AI Coaching, notifications); when the feature is integrated into the Pulse app,
-// only `PulseStrengthRootView(environment:)` moves over (see README.md).
+// (welcome, sign up / log in, profile, Apple Health, AI Coaching, notifications) and followed by the walkthrough; when the feature is
+// integrated into the Pulse app, only `PulseStrengthRootView(environment:)` moves over (see README.md).
 
 #if os(iOS)
 import SwiftUI
@@ -34,12 +34,14 @@ struct PulseStrengthApp: App {
             environment = StrengthAppEnvironment.shared
         }
         self.environment = environment
-        self.onboardingMode = OnboardingLaunchMode.resolve(arguments: arguments)
+        let mode = OnboardingLaunchMode.resolve(arguments: arguments)
+        self.onboardingMode = mode
 
+        let store: OnboardingRecordStore
         if environment.hasSystemServices {
             // The live services ask the system at their own steps of the onboarding.
             self.onboardingServices = PulseOnboardingServices(system: environment.services)
-            self.onboardingStore = OnboardingRecordStore()
+            store = OnboardingRecordStore()
         } else {
             // UI tests: nothing is asked of the system, the pauses are short, and the record of a completed onboarding is a
             // throwaway one, so a test neither depends on nor changes the real one.
@@ -47,7 +49,17 @@ struct PulseStrengthApp: App {
             let defaults = UserDefaults(suiteName: suite) ?? UserDefaults.standard
             defaults.removePersistentDomain(forName: suite)
             self.onboardingServices = PulseOnboardingServices(system: nil, simulatedLatency: 0.15)
-            self.onboardingStore = OnboardingRecordStore(defaults: defaults)
+            store = OnboardingRecordStore(defaults: defaults)
+        }
+        self.onboardingStore = store
+
+        // The walkthrough follows the onboarding. When the flow is not going to run (it was completed on an earlier launch, or it is
+        // switched off), the launch stands in for "after onboarding": the tour opens once and never again by itself. It is set before
+        // the first screen so that the permission prompts of the root view wait for it. When the flow runs, `OnboardingGate` says
+        // when it is over (below). Previews and UI tests have no walkthrough memory, so this does nothing there.
+        let runsOnboarding = mode == .always || (mode == .firstLaunch && store.load() == nil)
+        if !runsOnboarding {
+            environment.showWalkthroughAfterOnboarding()
         }
     }
 
@@ -60,6 +72,9 @@ struct PulseStrengthApp: App {
                     services: onboardingServices,
                     store: onboardingStore,
                     showsAlways: onboardingMode == .always,
+                    onFinish: { (_: OnboardingRecord) in
+                        environment.showWalkthroughAfterOnboarding()
+                    },
                     content: { (record: OnboardingRecord?) in
                         // An account that went through the setup steps was already asked for Health and notifications there.
                         PulseStrengthRootView(

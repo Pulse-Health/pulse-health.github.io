@@ -49,12 +49,14 @@ public final class PulseOnboardingServices: OnboardingServices {
 /// Shows the onboarding on the first launch and the app afterwards.
 ///
 /// The record that the flow leaves behind (when it ended, what the user answered) is kept in `store`; as long as there is none, the
-/// flow runs. `content` receives the record (nil when the onboarding was bypassed), so the app can tell whether the setup steps
-/// already asked for the Health and notification permissions.
+/// flow runs. `onFinish` is called once when the flow is over, before the app appears (the host starts what follows onboarding,
+/// for example the walkthrough). `content` receives the record (nil when the onboarding was bypassed), so the app can tell whether
+/// the setup steps already asked for the Health and notification permissions.
 @MainActor
 public struct OnboardingGate<Content: View>: View {
     private let services: OnboardingServices
     private let store: OnboardingRecordStore
+    private let onFinish: (OnboardingRecord) -> Void
     private let content: (OnboardingRecord?) -> Content
 
     @State private var record: OnboardingRecord?
@@ -65,11 +67,13 @@ public struct OnboardingGate<Content: View>: View {
         services: OnboardingServices,
         store: OnboardingRecordStore = OnboardingRecordStore(),
         showsAlways: Bool = false,
+        onFinish: @escaping (OnboardingRecord) -> Void = { (_: OnboardingRecord) in },
         @ViewBuilder content: @escaping (OnboardingRecord?) -> Content
     ) {
         let saved = store.load()
         self.services = services
         self.store = store
+        self.onFinish = onFinish
         self.content = content
         self._record = State(initialValue: saved)
         self._isOnboarding = State(initialValue: showsAlways || saved == nil)
@@ -94,6 +98,7 @@ public struct OnboardingGate<Content: View>: View {
         let completed = OnboardingRecord(completedAt: Date(), outcome: outcome)
         store.save(completed)
         record = completed
+        onFinish(completed)
         isOnboarding = false
     }
 }

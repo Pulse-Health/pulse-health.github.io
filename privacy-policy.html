@@ -54,7 +54,7 @@
         <h1>Privacy Policy</h1>
         
         <div class="meta">
-            <strong>Effective Date:</strong> June 23, 2026 &middot; <strong>Last updated:</strong> October 13, 2026<br>
+            <strong>Effective Date:</strong> June 23, 2026 &middot; <strong>Last updated:</strong> October 16, 2026<br>
             <strong>Language:</strong> English | <a href="datenschutz.html">Deutsch</a><br>
             <strong>See also:</strong> <a href="terms.html">Terms of Service</a> · <a href="impressum.html">Impressum</a>
         </div>
@@ -117,6 +117,12 @@
                 <td>Separate explicit consent (Art. 9(2)(a) GDPR); individual entries are never transmitted</td>
             </tr>
             <tr>
+                <td>Body Weight (Strength weigh-ins &amp; reminder settings)</td>
+                <td>You provide; Apple Health, if you turn on the sync</td>
+                <td>Stays on your device</td>
+                <td>Explicit consent (Art. 9(2)(a) GDPR); never sent to the AI coach &mdash; see Section 4d</td>
+            </tr>
+            <tr>
                 <td>AI Coaching Queries (incl. health metrics)</td>
                 <td>Your questions</td>
                 <td>EU-hosted AI models (Mistral AI 🇫🇷 FR) via Eden AI (🇫🇷 FR) — EU-internal</td>
@@ -162,7 +168,7 @@
 
         <h2>4. Apple HealthKit</h2>
         <p>
-            <strong>Data Collected:</strong> Heart rate, workout data, fitness metrics, sleep data, plus your date of birth and biological sex, from Apple Watch and iPhone. Your date of birth is used on your device only (to derive an age range) and is never sent to the AI provider.
+            <strong>Data Collected:</strong> Heart rate, workout data, fitness metrics, sleep data, plus your date of birth and biological sex, from Apple Watch and iPhone. Your date of birth is used on your device only (to derive an age range) and is never sent to the AI provider. If you turn on the body weight sync in the Strength settings, your body weight is also read from and written to Apple Health (Section 4d).
         </p>
         <p>
             <strong>Storage:</strong> This data remains on your device and your private iCloud. 
@@ -246,6 +252,49 @@
                 during onboarding, can reveal health information.</li>
             <li><strong>Not medical advice:</strong> plans are general suggestions; see Sections 7 and 8
                 of our <a href="terms.html">Terms of Service</a>.</li>
+        </ul>
+
+        <h2>4d. Body Weight (Strength, optional)</h2>
+        <p>
+            If you use the Strength feature, Pulse lets you record your body weight over time and can remind
+            you to update it. Your weigh-ins are used to show your history and, once you have logged a weight,
+            two estimates on an exercise&rsquo;s records page: your strength relative to your body weight
+            (barbell lifts) and an estimated load for bodyweight exercises such as push-ups, dips and pull-ups.
+            Both are calculated on your device.
+        </p>
+        <ul>
+            <li><strong>Opt-in:</strong> nothing is recorded unless you enter it yourself (in the Strength
+                settings, or with the &ldquo;Log weight&rdquo; action of a reminder notification) or you turn on
+                the Apple Health sync described below.</li>
+            <li><strong>What is stored:</strong> the date, time and weight (kg) of each weigh-in, whether it
+                was entered in Pulse or came from Apple Health, and your reminder settings (on/off, how often,
+                time of day).</li>
+            <li><strong>Storage:</strong> on your device only. Weigh-ins are <strong>never</strong> sent to our
+                servers (Supabase) or to any other recipient, and they are <strong>not part of any request to the
+                AI coach</strong>. They are separate from the height and weight in your profile (Section 7). Like
+                other app data, they may be included in a backup of your iPhone that Apple makes (iCloud or
+                computer backup); we have no access to it.</li>
+            <li><strong>Reminder:</strong> a local notification scheduled by your iPhone &mdash; no server is
+                involved. Nothing is scheduled unless you turn the reminder on in the Strength settings. It uses
+                the app&rsquo;s notification permission (the same one as the rest-timer alert), which you can change
+                in the iOS Settings at any time. While the reminder is on, a weigh-in that is due is also shown as
+                a card inside the app.</li>
+            <li><strong>Apple Health (optional, off by default):</strong> if you turn on &ldquo;Sync with Apple
+                Health&rdquo; in the Strength settings, Pulse asks for your permission to read and to write your
+                body weight in Apple Health. While it is on, Pulse saves each weight you enter to Apple Health,
+                removes that entry from Apple Health again when you delete it in Pulse, and adds the body weights
+                that Apple Health already has (for example from a smart scale or another app) to your history in
+                Pulse. You can withdraw the permission at any time in the iOS Settings (Health &rarr; Data Access
+                &amp; Devices) or turn the sync off in Pulse.</li>
+            <li><strong>Not shared:</strong> your body weight is not sold, not used for advertising and not
+                shared with third parties.</li>
+            <li><strong>Legal basis:</strong> explicit consent (Art. 9(2)(a) GDPR), which you can withdraw at any
+                time with effect for the future by turning off the reminder or the sync, deleting your weigh-ins
+                or uninstalling the app.</li>
+            <li><strong>Retention:</strong> on your device until you delete the weigh-in or uninstall the app.
+                Weigh-ins you entered yourself can be deleted in the Strength settings. A weight that was copied
+                from Apple Health is read-only in Pulse and cannot be deleted there individually; it is removed
+                when you uninstall the app and stays in Apple Health, where you manage it.</li>
         </ul>
 
         <h2>5. Supabase Data Storage</h2>
@@ -606,8 +655,8 @@
 
         <hr style="margin: 40px 0;">
         <p style="text-align: center; color: #999; font-size: 12px;">
-            Last Updated: October 13, 2026<br>
-            Version 1.1
+            Last Updated: October 16, 2026<br>
+            Version 1.2
         </p>
     </div>
     <script src="site.js"></script>

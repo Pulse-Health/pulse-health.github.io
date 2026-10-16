@@ -10,7 +10,7 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (758 tests, 800 with the Combine
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (851 tests, 896 with the Combine
 > stand-in). The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow
 > `strength-ios` has compiled it with Xcode 16 for the iOS and watchOS simulators, run a 30-step UI flow through the real
 > iPhone app, rendered the Lock Screen, Dynamic Island and Watch screens, and re-run the app in dark mode, at large text
@@ -181,7 +181,7 @@ each test log, the number of PNGs per suite and their file names (also saved as 
 warning annotation; the log of its step then usually shows a compile error of the test code. The UI flow keeps going after a
 failed step, so open `ui-flow-log.txt` first: it names the steps that failed, with the screenshot taken at that point.
 
-* **`matrix` job:** a short second tour (`StrengthTourTests`, 14 screenshots, about 3 minutes) on four simulators in parallel: `dark` (dark mode), `xxl` (accessibility-extra-large text), `se` (iPhone SE 3rd generation, 375 x 667 pt) and `ios17` (oldest installed iOS 17+ runtime). A simulator the runner lacks prints `SKIPPED: <reason>`; the entry still succeeds.
+* **`matrix` job:** a short second tour (`StrengthTourTests`, 21 screenshots, about 4 minutes; 15 to 21 are the pages of the walkthrough) on four simulators in parallel: `dark` (dark mode), `xxl` (accessibility-extra-large text), `se` (iPhone SE 3rd generation, 375 x 667 pt) and `ios17` (oldest installed iOS 17+ runtime). A simulator the runner lacks prints `SKIPPED: <reason>`; the entry still succeeds.
 * **Artifact `strength-matrix-<name>`** (14 days): `tour-<name>-NN-*.png`, `tour-<name>-layout.txt` (frames of header, navigator, card and rest dock, `pageScrolls`, `LAYOUT VIOLATION` lines), `tour-<name>-flow-log.txt`, `simulator-settings.txt`, `digest.txt` (also printed at the end of the job log).
 * The tour belongs to the `PulseStrengthUITests` scheme, so `visual` runs it once more with the defaults (`tour-default-*` in `strength-screens`).
 
@@ -275,7 +275,8 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | Bundle ids | `health.pulse.strength`, `.widgets`, `.watchkitapp` | `PULSE_APP_BUNDLE_ID` in `Config/Signing.xcconfig` (the Watch `Info.plist` reads it for `WKCompanionAppBundleIdentifier`) |
 | Notification id | `health.pulse.strength.rest` | `StrengthConfig.restNotificationID` (Core); only a label, it does not have to match the bundle id |
 | App Group | `group.health.pulse.strength` (not used by this standalone build: no entitlement) | `StrengthConfig.appGroupID` (Core); when sharing data with the Pulse app add the App Groups capability to the app (and the widget) and use the same id |
-| URL scheme | `pulse-strength://workout` | `StrengthConfig.urlScheme` / `workoutURL` and `CFBundleURLTypes` in `Apps/PulseStrength/Info.plist` |
+| Weigh-in notification ids | `health.pulse.strength.weight.0` ... `.2` (category `health.pulse.strength.weight.category`) | `StrengthConfig.weightReminderIDPrefix` / `weightReminderCategoryID` (Core); only labels |
+| URL scheme | `pulse-strength://workout`, `pulse-strength://weight` | `StrengthConfig.urlScheme` / `workoutURL` / `weightURL` and `CFBundleURLTypes` in `Apps/PulseStrength/Info.plist` |
 | Team | empty | `DEVELOPMENT_TEAM` in `Config/Signing.xcconfig` (or `Config/Signing.local.xcconfig`) |
 | Names, version | "Pulse Strength", 1.0.0 (1) | `CFBundleDisplayName` in the three `Info.plist` files, `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `project.yml` |
 | Permission texts | Health usage descriptions | `NSHealthShareUsageDescription` / `NSHealthUpdateUsageDescription` in the iOS and Watch `Info.plist` files |
@@ -310,6 +311,9 @@ The seams are plain protocols and closures:
   and the 25 built-in keys stay the contract.
 * **UI entry point.** `PulseStrengthRootView(environment:)` is one view with its own `NavigationStack`; embed it, or use
   `StrengthHubView`, `ActiveWorkoutView` and the sheets individually. It handles `pulse-strength://workout` through `onOpenURL`.
+* **Walkthrough after onboarding.** Call `environment.showWalkthroughAfterOnboarding()` where the Pulse app's onboarding ends: it opens the
+  tour (`StrengthWalkthroughView`, presented by `PulseStrengthRootView`) the first time and never again by itself, so calling it on every
+  launch is fine. It needs no extra wiring; the seen-flag is one integer in `UserDefaults` (`WalkthroughMemory`). See [Walkthrough](#walkthrough-after-onboarding).
 * **Live Activity.** Add `Apps/Shared/LiveActivity` and `Apps/Shared/Intents` as sources of the Pulse widget extension,
   list `WorkoutLiveActivity()` in its `WidgetBundle`, compile `Apps/Shared/Intents` into the Pulse app target as well, and touch
   `StrengthAppEnvironment.shared` during app launch (see `PulseStrengthApp.init()`), so a button press that launches the app in the
@@ -325,7 +329,7 @@ own repository before using it for a product (then delete the `exclude` entry).
 
 | Target | Capability / setting |
 | --- | --- |
-| iOS app | HealthKit (reads heart rate and active energy, writes workouts); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); the notification permission is requested at runtime by `PulseServices.requestPermissions()`; URL type `pulse-strength`. No background mode is declared because none is needed. |
+| iOS app | HealthKit (reads heart rate and active energy, writes workouts; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
 | Widget extension | No capability; `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
 | Watch app | HealthKit; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). |
 
@@ -337,6 +341,39 @@ exercises, two frames each. The app shows the line "Demo photos: Free Exercise D
 They are demo material: the real Pulse app may prefer licensed GIFs or video with a consistent look, which the media seam
 above allows without touching the rest of the feature.
 
+## Walkthrough after onboarding
+
+A short tour of the Strength feature that follows onboarding: seven swipeable pages (welcome, today's workout on the hub, logging sets,
+the rest timer, shaping a workout, finishing, and where everything else lives), each with a small picture drawn in the theme colours, a
+sentence and up to three tips. "Skip", "Get Started" and a swipe down all close it; "Back" and the page dots are on every page.
+
+* **When it opens.** `StrengthAppEnvironment.showWalkthroughAfterOnboarding()` opens it once (it remembers the version it showed, see
+  `Walkthrough.version`: raise it to show a revised tour again), and not while a workout runs. The standalone app calls it at launch because it has
+  no onboarding of its own, so its first launch stands in for "after onboarding". The permission prompts (notifications, Health) wait until the
+  tour has closed, so they do not cover it. Previews and the UI-test mode (`-PulseUITest`) never open it by themselves.
+* **Replay.** Hub > More > **App Walkthrough** (`environment.startWalkthrough()`).
+* **Where the text lives.** `Walkthrough.steps` in `PulseStrengthCore/Walkthrough.swift`, next to `WalkthroughProgress` (the page logic) and
+  `Walkthrough.shouldShow(seenVersion:)`; `WalkthroughTests` covers them on Linux. The pictures are in `Screens/StrengthWalkthroughView.swift`,
+  chosen by the step's `id`. When a screen the tour describes changes, change its step.
+* **Verification.** The Core logic is unit-tested (`WalkthroughTests`, on Linux in CI). The screen compiles with Xcode 16 and 26, and CI renders it:
+  `StrengthTourTests` opens it from the More menu, pages through all seven pages and takes screenshots 15 to 21 in every `matrix` configuration
+  (dark mode, accessibility-extra-large text, iPhone SE, oldest available runtime). The screenshots were looked at in the simulator: nothing overflows,
+  `Next` / `Get Started` stay visible, and on the SE and at large text the pages scroll inside (a short fade at the bottom shows there is more). Not tried:
+  a real device, VoiceOver, Reduce Motion, landscape and iPad layouts.
+
+## Training plans and importing them
+
+A **plan** is a rotation of workouts (Upper, Lower, Push, Pull, Legs, then Upper again), not a calendar: it has no weekdays, so a
+missed day never leaves it behind. The Strength hub shows the active plan with its next workout tagged "next up", how many of its workouts
+were done in the last 7 days, and a "Skip" button; doing a workout moves the rotation to the one after it, and the "Start Workout" card
+recommends the plan's next workout. Workouts can carry rep ranges (8–10) and a note per exercise (technique cues).
+
+Plans come from a file: `tools/youtube-workouts/yt_workout.py` turns YouTube workout videos into `pulse-import.json`; put that file on
+the phone (AirDrop, Files) and choose **More › Import Plan…** in the Strength hub. Importing the same file again replaces the earlier copy
+and keeps your place in the rotation. Details: [ARCHITECTURE.md §3.6](ARCHITECTURE.md) and
+[tools/youtube-workouts/README.md](tools/youtube-workouts/README.md). The plan screens are compiled by CI's Xcode jobs; they have not
+been run on a device (the UI flow tests do not exercise them).
+
 ## Verification status
 
 State at the last commit of this branch; the numbers come from the `strength-ios` workflow
@@ -344,7 +381,7 @@ State at the last commit of this branch; the numbers come from the `strength-ios
 
 **Verified**
 
-* **Core (`PulseStrengthCore`)**: 700 unit tests (716 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
+* **Core (`PulseStrengthCore`)**: 793 unit tests (812 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
   reducer, presenter, snapshot and summary builders, persistence, the phone <-> Watch sync protocol (acknowledgements, optimistic
   replay, delivery fuzzing with dropped, duplicated and reordered messages), exercise library and sample data.
 * **Compiles**: `xcodegen generate`, then `xcodebuild` of the iOS app (with the widget extension and the embedded Watch app) and of the
@@ -387,6 +424,13 @@ CI and the simulators cannot show any of these, and none of them has been tried:
   and the workout saved by the Watch when `usedWatch` is true.
 * **Rest notification**: the time-sensitive local notification at the end of the rest with the app in the background and the phone
   locked, its cancellation on skip, pause, finish and discard, the haptic when the rest ends in the foreground, and the Watch haptic.
+* **Weigh-in reminder**: Settings (hub "More" menu) > turn the reminder on (the permission prompt), pick a time a minute or two ahead, lock the phone and
+  wait: the notification, its "Log weight" text action (the weight appears in Settings > History and the reminder moves out by one interval), a tap that opens the
+  entry sheet, and the hub card when the permission was refused. Also change the time zone and the clock and bring the app to the foreground.
+* **Apple Health body weight**: Settings > Sync with Apple Health (the Health permission sheet lists Weight), a weight entered in the app appears in the Health app
+  (Browse > Body Measurements > Weight) and disappears there when it is deleted in the app; a weight added in the Health app (or by a smart scale) appears under Settings > History as
+  "Apple Health" after the app is opened again, cannot be swiped away, and counts as a weigh-in for the reminder; refusing "Weight" sharing shows the footer hint. Then open the detail
+  of a barbell lift ("Relative strength") and of Push-up / Chest dip / Pull-up ("Best session load (est.)") with a weigh-in on record.
 * Also worth a pass on a device: WatchConnectivity reachability and the "Watch not connected" / "Health access denied" banners,
   a workout written to Health by the phone when no Watch is used, Dynamic Island layouts on a 14 Pro or newer,
   VoiceOver in the active-workout screen, and Reduce Motion (form demos, heart beat).
