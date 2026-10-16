@@ -37,11 +37,12 @@ class HubWeeklyGoalTest {
 
     private fun showHome(goal: Int, onChange: ((Int) -> Unit)?, store: StrengthStore = HubTestSupport.environment().store) {
         val time = HubTime(LocalDate.of(2026, 1, 17), ZoneId.of("UTC"), DayOfWeek.SUNDAY)
+        val home = homeData(store.data.value, runningTemplateID = null)
         rule.setPulseContent {
             HubHome(
                 store = store,
                 recovery = DemoRecovery.provider,
-                home = homeData(store.data.value, runningTemplateID = null),
+                home = home,
                 time = time,
                 actions = actions,
                 weeklyGoal = goal,
