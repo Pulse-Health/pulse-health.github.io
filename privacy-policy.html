@@ -125,7 +125,7 @@
             <tr>
                 <td>AI Coaching Queries (incl. health metrics)</td>
                 <td>Your questions</td>
-                <td>EU-hosted AI models of Mistral AI (🇫🇷 FR), directly through its EU interface — EU-internal</td>
+                <td>EU-hosted AI models (Mistral AI 🇫🇷 FR) via Eden AI (🇫🇷 FR) — EU-internal</td>
                 <td>Explicit consent (Art. 9(2)(a) GDPR); EU-internal pipeline: servers and AI providers in the EU; for the backend provider Railway (based in the USA) see Section 5</td>
             </tr>
             <tr>
@@ -137,7 +137,7 @@
             <tr>
                 <td>AI-Generated Training &amp; Meal Plans (Premium)</td>
                 <td>Your plan settings (goal, level, schedule, equipment, body areas to avoid, optional short text and, if entered during onboarding, illness notes and physical limitations)</td>
-                <td>Request: EU-hosted AI models of Mistral AI (EU-internal). The generated plan stays on your device</td>
+                <td>Request: EU-hosted AI models via Eden AI (EU-internal). The generated plan stays on your device</td>
                 <td>Explicit consent (Art. 9(2)(a) GDPR); EU-internal pipeline: servers and AI providers in the EU; for the backend provider Railway (based in the USA) see Section 5</td>
             </tr>
             <tr>
@@ -396,11 +396,12 @@
         <h2>7. AI Coaching &amp; AI Features (EU-hosted models, EU-internal)</h2>
         <p>
             <strong>Processing pipeline:</strong> AI requests (coaching and plan generation) pass
-            from a backend service at Railway in the EU (Amsterdam) directly to the EU interface of
-            <strong>Mistral AI</strong> (Mistral AI SAS, France, EU), whose language models process
-            them. No intermediary is involved; the former AI-API aggregator Eden AI is no longer used.
-            Only models on our list of EU-hosted models are used for these features. We may change
-            the models or providers; in every case the processing for these features takes place on
+            from a backend service at Railway in the EU (Amsterdam) to <strong>Eden AI</strong> (Eden AI SAS, France,
+            EU), an AI-API aggregator, via its EU endpoint. Eden AI forwards them to EU-hosted
+            language models: currently models of <strong>Mistral AI</strong> (Mistral AI SAS, France,
+            EU). Only models on our list of EU-hosted models are used for these features. We may change
+            the models or providers, and may connect to a provider's EU interface directly instead of
+            going through Eden AI; in every case the processing for these features takes place on
             servers in the EU, and this page is updated accordingly. The entire pipeline runs on
             servers in the EU, and <strong>no data is sent to AI providers outside the EU for coaching
             or plan generation</strong>. OpenAI is no longer used.
@@ -452,7 +453,7 @@
             <li><strong>Encryption in transit:</strong> All data is encrypted via TLS 1.3 during transmission.</li>
             <li><strong>EU relay:</strong> Requests pass through the app's backend service at Railway
                 in the EU (Amsterdam, Netherlands), serving as an intermediary layer before reaching
-                the EU-hosted models of Mistral AI (France). For Railway's
+                Eden AI (France) and the EU-hosted models (Mistral AI, France). For Railway's
                 headquarters in the USA, see Section 5.</li>
         </ul>
         <p>
@@ -461,23 +462,25 @@
             complete chat history (the AI provider receives only a summary of your coaching history).
         </p>
         <p>
-            <strong>Location:</strong> 🇪🇺 European Union (Mistral AI in France; backend
+            <strong>Location:</strong> 🇪🇺 European Union (Eden AI and Mistral AI in France; backend
             service at Railway in Amsterdam, Netherlands)
         </p>
         <p>
             <strong>Retention:</strong> Retention of AI request data (coaching and plan generation) is
-            governed by Mistral AI's data-processing terms. We are finalizing the data-processing
-            agreement and will update this page once the retention periods are confirmed.
+            governed by the Eden AI and Mistral AI data-processing terms. We are finalizing the
+            applicable data-processing agreements and will update this page once the retention
+            periods are confirmed.
         </p>
         <p>
             <strong>Protection &amp; Transfer Mechanism:</strong> Because the AI pipeline is
-            EU-internal (EU-hosted models of Mistral AI in France, called directly),
+            EU-internal (Eden AI in France forwarding to EU-hosted models of Mistral AI in France),
             no transfer to AI providers outside the EU arises for coaching or plan generation. The
             backend service in front of it runs at Railway on servers in the EU; because Railway is
             based in the USA, access from the USA cannot be ruled out; the safeguard for this is the EU
-            Standard Contractual Clauses (Section 5). A data-processing agreement with Mistral AI
-            (Art. 28 GDPR) is being finalized before broad rollout
-            (<strong>Mistral AI DPA pending</strong>).
+            Standard Contractual Clauses (Section 5). An Eden AI
+            data-processing agreement (Art. 28 GDPR) and a due-diligence review of Mistral AI are
+            being finalized before broad rollout
+            (<strong>Eden AI DPA + Mistral AI due-diligence pending</strong>).
         </p>
         <p>
             <strong>Opt-out:</strong> You can disable AI Coaching in the app settings at any time.
@@ -564,26 +567,26 @@
                 <td>SCC</td>
             </tr>
             <tr>
-                <td><strong>Eden AI</strong> (legacy)</td>
-                <td>Data Processor (AI aggregator) — no longer used</td>
+                <td><strong>Eden AI</strong></td>
+                <td>Data Processor (AI aggregator)</td>
                 <td>🇫🇷 France (EU)</td>
-                <td>Removed: AI requests go directly to Mistral AI, with no intermediary</td>
-                <td>N/A (removed)</td>
-                <td>N/A (removed)</td>
+                <td>Routes AI-coaching and plan-generation requests to EU-hosted models via its EU endpoint</td>
+                <td>⏳ Eden AI DPA pending</td>
+                <td>EU-internal</td>
             </tr>
             <tr>
                 <td><strong>Mistral AI</strong></td>
                 <td>Data Processor (language models)</td>
                 <td>🇫🇷 France (EU)</td>
-                <td>Language models for AI coaching and plan generation, directly through Mistral AI's EU interface</td>
-                <td>⏳ DPA pending</td>
+                <td>Language models for AI coaching and plan generation (currently reached via Eden AI; a direct connection to Mistral AI's EU interface may be used in future)</td>
+                <td>⏳ DPA / due-diligence pending</td>
                 <td>EU-internal</td>
             </tr>
             <tr>
                 <td><strong>OpenAI</strong> (legacy)</td>
                 <td>Data Processor (AI Coaching) — no longer used</td>
                 <td>🇺🇸 USA</td>
-                <td>Removed: AI coaching no longer uses OpenAI (now EU-internal with EU-hosted models of Mistral AI)</td>
+                <td>Removed: AI coaching no longer uses OpenAI (now EU-internal via Eden AI with EU-hosted models)</td>
                 <td>N/A (removed)</td>
                 <td>N/A (removed)</td>
             </tr>
