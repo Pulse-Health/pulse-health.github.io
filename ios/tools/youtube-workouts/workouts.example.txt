@@ -1,0 +1,12 @@
+// One "# Name" line per workout, then one line per video, in the order the parts are meant to be watched.
+// A playlist URL stands for all its videos, in playlist order.
+
+# Full body strength
+https://www.youtube.com/watch?v=AAAAAAAAAAA
+https://www.youtube.com/watch?v=BBBBBBBBBBB
+
+# Legs and glutes
+https://www.youtube.com/playlist?list=PLxxxxxxxxxxxxxxxx
+
+# Quick shoulder session
+https://youtu.be/CCCCCCCCCCC
