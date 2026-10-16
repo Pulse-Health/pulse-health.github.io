@@ -73,6 +73,14 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      - name: Validate the Gradle wrapper (checksum of android/gradle/wrapper/gradle-wrapper.jar)
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Android SDK packages (platform 37 and build-tools 36 are what the build compiles against)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;36.0.0"
+
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Unit tests, lint, debug build
@@ -117,6 +125,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+
+      - name: Validate the Gradle wrapper (checksum of android/gradle/wrapper/gradle-wrapper.jar)
+        uses: gradle/actions/wrapper-validation@v4
+
+      - name: Android SDK packages (platform 37 and build-tools 36 are what the build compiles against)
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;36.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
 
