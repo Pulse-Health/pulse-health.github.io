@@ -23,10 +23,11 @@ class WeeklySetsCompactWidget : PulseWidget() {
     override fun Content(snapshot: WidgetSnapshot) {
         val card = LockText.weeklySets(snapshot.weeklySets)
         val size = LocalSize.current
-        val metrics = CompactMetrics.forHeight(size.height)
+        val height = textHeight()
+        val metrics = CompactMetrics.forHeight(height)
         // The line under the bar goes when the row is too short for it (the smallest a launcher offers is 40 dp); the card still says it.
         val barBlock = 2 * GAP + BAR_HEIGHT.value
-        val showsDetail = size.height >= metrics.padding * 2 + (TextFit.height(metrics.detail.value + metrics.eyebrow.value) + barBlock).dp
+        val showsDetail = height >= metrics.padding * 2 + (TextFit.height(metrics.detail.value + metrics.eyebrow.value) + barBlock).dp
         WidgetCard(description = card.description, link = DeepLinks.hub, padding = metrics.padding) {
             Column(modifier = GlanceModifier.fillMaxWidth()) {
                 Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

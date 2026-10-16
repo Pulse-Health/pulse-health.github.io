@@ -22,9 +22,13 @@ import health.pulse.strength.widgets.common.MaskImage
 import health.pulse.strength.widgets.common.PulseWidget
 import health.pulse.strength.widgets.common.WidgetDimens
 import health.pulse.strength.widgets.lock.Eyebrow
+import health.pulse.strength.widgets.lock.FitSafety
 import health.pulse.strength.widgets.lock.PulseText
 import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
+import health.pulse.strength.widgets.lock.fontScale
+import health.pulse.strength.widgets.lock.rememberTextMeter
+import health.pulse.strength.widgets.lock.textHeight
 
 /**
  * WI-05 Loaded bar (2x2): the plates for today's heaviest barbell set, drawn on a half barbell in competition colours, with the weight
@@ -36,16 +40,20 @@ class LoadedBarWidget : PulseWidget() {
         val model = ExtrasText.loadedBar(snapshot.loadedBar)
         val layout = model?.layout ?: Barbell.layout(emptyList())
         val size = LocalSize.current
-        val compact = size.height < ExtrasText.COMPACT_BELOW_DP.dp
+        val compact = textHeight() < ExtrasText.COMPACT_BELOW_DP.dp
         val padding = if (compact) WidgetDimens.paddingCompact else WidgetDimens.padding
         val showEyebrow = !compact
         val totalSp = if (compact) 20f else 22f
-        // What the text below the drawing needs: the eyebrow, the weight, the plates (two lines when compact) and a possible note.
-        val textHeight = (if (showEyebrow) TextFit.height(12f) else 0f) +
+        // The plates in words take one line, or two (counted by wrapping them with the real font) when the widget is narrow or the text large.
+        val perSideLines = if (model == null) 1 else {
+            TextFit.lineCount(model.perSide, (size.width - padding * 2 - FitSafety).value, rememberTextMeter(12.sp, bold = false)).coerceAtMost(2)
+        }
+        // What the text below the drawing needs: the eyebrow, the weight, the plates and a possible note, at the size the user reads them.
+        val textNeeded = ((if (showEyebrow) TextFit.height(12f) else 0f) +
             TextFit.height(totalSp) +
-            TextFit.height(12f, if (compact) 2 else 1) +
-            (if (model?.note != null) TextFit.height(11f) else 0f) + 4f
-        val drawingHeight = (size.height - padding * 2 - textHeight.dp).coerceIn(24.dp, Barbell.HEIGHT.dp)
+            TextFit.height(12f, perSideLines) +
+            (if (model?.note != null) TextFit.height(11f) else 0f)) * fontScale() + 4f
+        val drawingHeight = (size.height - padding * 2 - textNeeded.dp).coerceIn(24.dp, Barbell.HEIGHT.dp)
         WidgetCard(
             description = model?.description ?: "Loaded bar: no barbell lift is planned for today",
             link = DeepLinks.plates,
@@ -59,7 +67,7 @@ class LoadedBarWidget : PulseWidget() {
                 }
                 if (model != null) {
                     PulseText(model.total, totalSp.sp, weight = FontWeight.Bold)
-                    PulseText(model.perSide, 12.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = if (compact) 2 else 1)
+                    PulseText(model.perSide, 12.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = perSideLines)
                     model.note?.let { PulseText(it, 11.sp, color = GlanceTheme.colors.error) }
                 } else {
                     PulseText("No barbell lift today", 13.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 2)

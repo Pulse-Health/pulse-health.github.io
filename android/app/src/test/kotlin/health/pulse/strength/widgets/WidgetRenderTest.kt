@@ -180,19 +180,22 @@ class WidgetRenderTest {
         return x to y
     }
 
-    /** True when the text of [this] is cut with an ellipsis, or does not fit its own box or the widget. */
-    private fun TextView.isCutOff(root: View): Boolean {
+    /**
+     * True when the text of [this] does not fit its own box or the widget, or (when [ellipsisCounts]) is shortened with an ellipsis. An
+     * ellipsis is the right way to cut a long text, so only the states with short, known text insist on none.
+     */
+    private fun TextView.isCutOff(root: View, ellipsisCounts: Boolean): Boolean {
         val textLayout = layout ?: return false
-        val ellipsized = (0 until textLayout.lineCount).any { textLayout.getEllipsisCount(it) > 0 }
+        val ellipsized = ellipsisCounts && (0 until textLayout.lineCount).any { textLayout.getEllipsisCount(it) > 0 }
         val (x, y) = positionIn(root)
         val clipped = textLayout.height > height - compoundPaddingTop - compoundPaddingBottom + 1
         val outside = x < -1 || y < -1 || x + width > root.width + 1 || y + height > root.height + 1
         return ellipsized || clipped || outside
     }
 
-    /** The texts of [view] that are cut off, shortened or outside the widget. */
-    private fun cutOffTexts(view: View): List<CharSequence> =
-        view.descendants().filterIsInstance<TextView>().filter { it.text.isNotEmpty() && it.isCutOff(view) }.map { it.text }
+    /** The texts of [view] that are cut off or outside the widget, and (when [ellipsisCounts]) those shortened with an ellipsis. */
+    private fun cutOffTexts(view: View, ellipsisCounts: Boolean = true): List<CharSequence> =
+        view.descendants().filterIsInstance<TextView>().filter { it.text.isNotEmpty() && it.isCutOff(view, ellipsisCounts) }.map { it.text }
 
     /** What every widget must hold in the states that have short, known text: nothing is cut off, shortened or outside the widget. */
     private fun checkFits(label: String, view: View) {
@@ -207,10 +210,10 @@ class WidgetRenderTest {
     private fun structuralProblems(view: View, bitmap: Bitmap): List<String> {
         val problems = mutableListOf<String>()
         val views = view.descendants()
-        // Something is drawn: not just the ground colour.
+        // Something is drawn: more than a few specks on the ground colour (a dash and a caption in the 40 dp cell are about 1% of it).
         val ground = bitmap.getPixel(0, 0)
         val pixels = IntArray(bitmap.width * bitmap.height).also { bitmap.getPixels(it, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height) }
-        if (pixels.count { it != ground } <= pixels.size / 50) problems += "almost nothing is drawn"
+        if (pixels.count { it != ground } <= pixels.size / 200) problems += "almost nothing is drawn"
         // Every image says what it is, or is part of a card that does, or is marked as decoration.
         for (image in views.filterIsInstance<ImageView>()) {
             val decorative = image.importantForAccessibility == View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -242,6 +245,54 @@ class WidgetRenderTest {
             }
         }
         assertWithMessage("states that break a rule of every widget").that(problems).isEmpty()
+    }
+
+    /** The snapshots of a running workout, one per phase the log-set widget draws. */
+    private fun logSetPhases(): Map<String, WidgetSnapshot> = mapOf(
+        "logging-weight" to WidgetFixtures.active(),
+        "logging-reps" to WidgetFixtures.active(tracking = TrackingKind.REPS_ONLY),
+        "logging-timed" to WidgetFixtures.active(tracking = TrackingKind.DURATION),
+        "resting" to WidgetFixtures.active(SnapshotPhase.RESTING, restRemainingSeconds = 75, at = Instant.now()),
+        "rest-over" to WidgetFixtures.active(SnapshotPhase.REST_OVER),
+        "paused" to WidgetFixtures.active(SnapshotPhase.RESTING, isPaused = true, restRemainingSeconds = 42),
+        "complete" to WidgetFixtures.active(SnapshotPhase.COMPLETE),
+    ).mapValues { (_, active) -> WidgetFixtures.preview.copy(active = active) }
+
+    /**
+     * Large text: at the font sizes "Large" (1.15) and "Largest" (1.3) of the system settings no text of any widget in any state is cut
+     * by the widget's edge or by the space the layout leaves it. A widget gives up optional lines and elements to keep that; at 1.15 even
+     * the states with short text lose nothing to an ellipsis.
+     */
+    @Test
+    fun largeTextNeverClipsAWidget() {
+        val problems = mutableListOf<String>()
+        try {
+            for (scale in listOf(1.15f, 1.3f)) {
+                RuntimeEnvironment.setFontScale(scale)
+                val noEllipsis = scale <= 1.15f
+                for (scenario in scenarios) {
+                    for ((stateName, snapshot) in states()) {
+                        for ((sizeName, size) in scenario.sizes) {
+                            val (view, bitmap) = render(scenario.widget, snapshot, size)
+                            save(bitmap, "font-$scale", "${scenario.name}-$stateName-$sizeName")
+                            val cut = cutOffTexts(view, ellipsisCounts = noEllipsis && stateName != "long")
+                            if (cut.isNotEmpty()) problems += "x$scale ${scenario.name}-$stateName-$sizeName: $cut"
+                        }
+                    }
+                }
+                for ((phase, snapshot) in logSetPhases()) {
+                    for ((sizeName, size) in fourByTwo) {
+                        val (view, bitmap) = render(LogSetWidget(), snapshot, size)
+                        save(bitmap, "font-$scale", "log-set-$phase-$sizeName")
+                        val cut = cutOffTexts(view, ellipsisCounts = noEllipsis)
+                        if (cut.isNotEmpty()) problems += "x$scale log-set-$phase-$sizeName: $cut"
+                    }
+                }
+            }
+        } finally {
+            RuntimeEnvironment.setFontScale(1f)
+        }
+        assertWithMessage("states with text cut at a large font size").that(problems).isEmpty()
     }
 
     @Test

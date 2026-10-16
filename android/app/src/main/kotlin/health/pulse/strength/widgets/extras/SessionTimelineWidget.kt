@@ -34,6 +34,7 @@ import health.pulse.strength.widgets.lock.PulseText
 import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
 import health.pulse.strength.widgets.lock.rememberTextMeter
+import health.pulse.strength.widgets.lock.textHeight
 
 /**
  * WI-11 Session timeline (4x2): how the time of the last workout was spent as one bar of lifting, rest and long-rest stretches, a legend
@@ -46,28 +47,39 @@ class SessionTimelineWidget : PulseWidget() {
         val session = snapshot.lastSession
         val model = ExtrasText.sessionTimeline(session)
         val size = LocalSize.current
-        val tight = size.height < ExtrasText.COMPACT_BELOW_DP.dp
+        val height = textHeight()
+        val tight = height < ExtrasText.COMPACT_BELOW_DP.dp
         val padding = if (tight) 12.dp else WidgetDimens.padding
         val gap = if (tight) 6.dp else 8.dp
+        val barHeight = if (tight) 22.dp else 26.dp
+        // The summary line goes when the title, the bar, the legend and the summary together do not fit (large text in a short widget).
+        val summaryNeeds = TextFit.height(15f) + TextFit.height(12f) + TextFit.height(13f) + (gap * 2 + barHeight).value
+        val showsSummary = (height - padding * 2).value + SLACK_DP >= summaryNeeds
         val innerWidth = size.width - padding * 2
+        // The name of the session follows the title. Where the whole name fits only after the title is shortened, it is; a name that is too
+        // long either way is cut with an ellipsis behind the whole title.
+        val titleMeter = rememberTextMeter(15.sp, bold = true)
+        val nameWidth = model.name?.let { rememberTextMeter(15.sp, bold = false).width(" · $it") } ?: 0f
+        val titleRoom = (innerWidth - FitSafety).value - nameWidth
+        val title = if (titleMeter.width("Session timeline") > titleRoom && titleMeter.width("Timeline") <= titleRoom) "Timeline" else "Session timeline"
         val tailRoom = innerWidth - FitSafety - rememberTextMeter(13.sp, bold = true).width(model.headline).dp
         val tail = TextFit.firstFitting(model.tails, tailRoom.value, rememberTextMeter(13.sp, bold = false))
         WidgetCard(description = model.description, link = DeepLinks.hub, padding = padding, contentAlignment = Alignment.TopStart) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
                 Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    PulseText("Session timeline", 15.sp, weight = FontWeight.Medium)
+                    PulseText(title, 15.sp, weight = FontWeight.Medium)
                     model.name?.let { PulseText(" · $it", 15.sp, GlanceModifier.defaultWeight(), color = GlanceTheme.colors.onSurfaceVariant) }
                 }
                 Spacer(GlanceModifier.height(gap))
                 if (model.hasBar && session != null) {
-                    TimelineBar(session.timeline, model.kinds, innerWidth, if (tight) 22.dp else 26.dp, model.description)
+                    TimelineBar(session.timeline, model.kinds, innerWidth, barHeight, model.description)
                     Spacer(GlanceModifier.height(gap))
                     Legend(model.kinds)
                 } else {
                     PulseText(model.message.orEmpty(), 13.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 3)
                 }
                 Spacer(GlanceModifier.defaultWeight())
-                if (model.headline.isNotEmpty()) {
+                if (showsSummary && model.headline.isNotEmpty()) {
                     Row(modifier = GlanceModifier.fillMaxWidth()) {
                         PulseText(model.headline, 13.sp, weight = FontWeight.Bold)
                         PulseText(tail, 13.sp, color = GlanceTheme.colors.onSurfaceVariant)
@@ -104,6 +116,11 @@ class SessionTimelineWidget : PulseWidget() {
                 }
             }
         }
+    }
+
+    private companion object {
+        /** The room a height may lack against the line heights counted by [TextFit]: those are a little generous. */
+        const val SLACK_DP = 2f
     }
 }
 

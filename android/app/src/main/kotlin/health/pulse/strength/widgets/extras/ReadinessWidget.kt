@@ -33,6 +33,7 @@ import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
 import health.pulse.strength.widgets.lock.rememberTextMeter
 import health.pulse.strength.widgets.lock.scaledSp
+import health.pulse.strength.widgets.lock.textHeight
 
 /**
  * WI-09 Readiness to load (4x2): the readiness score from the wider Pulse app on a ring that is green, yellow or red by thirds, and the
@@ -51,7 +52,7 @@ class ReadinessWidget : PulseWidget() {
         val adviceMeters = ExtrasText.adviceStyles.associate { it.adviceSp to rememberTextMeter(it.adviceSp.sp, bold = true) }
         val detailMeters = ExtrasText.adviceStyles.mapNotNull { it.detailSp }.associateWith { rememberTextMeter(it.sp, bold = false) }
         val layout = ExtrasText.adviceLayout(
-            room = (size.height - padding * 2).value,
+            room = (textHeight() - padding * 2).value,
             adviceLines = { TextFit.lineCount(model.headline, textWidth, adviceMeters.getValue(it)) },
             detailLines = { TextFit.lineCount(model.detail, textWidth, detailMeters.getValue(it)) },
         )

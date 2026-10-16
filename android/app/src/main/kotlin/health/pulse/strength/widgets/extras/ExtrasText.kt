@@ -77,8 +77,9 @@ internal object ExtrasText {
     }
 
     /**
-     * How the partner widget is laid out in [heightDp]: below 130 dp it uses smaller avatars and drops the sentence under the bars, so
-     * that you and one partner always fit; above, it fits as many lines (yours included) as the height allows, at most four.
+     * How the partner widget is laid out in [heightDp] (counted for text at its default size): below 130 dp it uses smaller avatars and
+     * drops the sentence under the bars, so that you and one partner always fit; above, it fits as many lines (yours included) as the
+     * height allows, at most four. When even that leaves no room for the title over the lines, the title goes before a line does.
      */
     data class PartnerLayout(
         val padding: Float,
@@ -86,12 +87,15 @@ internal object ExtrasText {
         val rowSlot: Float,
         val rows: Int,
         val showsFooter: Boolean,
+        val showsTitle: Boolean = true,
     )
 
     fun partnerLayout(heightDp: Float): PartnerLayout {
         if (heightDp < COMPACT_BELOW_DP) {
-            val rows = ((heightDp - 20f - TextFit.height(14f) - 4f) / 32f).toInt().coerceIn(2, 4)
-            return PartnerLayout(padding = 10f, avatar = 28f, rowSlot = 32f, rows = rows, showsFooter = false)
+            val withTitle = (heightDp - 20f - TextFit.height(14f) - 4f) / 32f
+            val showsTitle = withTitle >= 2f
+            val rows = (if (showsTitle) withTitle else (heightDp - 20f) / 32f).toInt().coerceIn(2, 4)
+            return PartnerLayout(padding = 10f, avatar = 28f, rowSlot = 32f, rows = rows, showsFooter = false, showsTitle = showsTitle)
         }
         val chrome = 28f + TextFit.height(15f) + 8f + TextFit.height(13f) + 4f
         return PartnerLayout(padding = 14f, avatar = 30f, rowSlot = 34f, rows = ((heightDp - chrome) / 34f).toInt().coerceIn(2, 4), showsFooter = true)
@@ -257,14 +261,18 @@ internal object ExtrasText {
 
     data class YearBar(val fraction: Float, val isCurrent: Boolean)
 
-    /** [captions] are the sentence under the figure from the longest to the shortest wording; the widget shows the first that fits. */
+    /**
+     * [eyebrows] and [captions] (the sentence under the figure) are listed from the longest to the shortest wording; the widget shows the
+     * first of each that fits.
+     */
     data class YearModel(
-        val eyebrow: String,
+        val eyebrows: List<String>,
         val tonnes: String,
         val captions: List<String>,
         val bars: List<YearBar>,
         val description: String,
     ) {
+        val eyebrow: String get() = eyebrows.first()
         val caption: String get() = captions.first()
     }
 
@@ -289,9 +297,9 @@ internal object ExtrasText {
         }
         val total = PulseFormat.number(year.tonnes, 1)
         val sessions = if (year.sessionCount == 1) "1 session" else "${year.sessionCount} sessions"
-        val captions = if (year.sessionCount > 0) listOf("across $sessions", sessions) else listOf("no sessions yet")
+        val captions = if (year.sessionCount > 0) listOf("across $sessions", sessions) else listOf("no sessions yet", "no sessions")
         return YearModel(
-            eyebrow = "Lifted in ${year.year}",
+            eyebrows = listOf("Lifted in ${year.year}", "Lifted ${year.year}", "${year.year}"),
             tonnes = total,
             captions = captions,
             bars = bars,

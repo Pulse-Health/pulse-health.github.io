@@ -23,6 +23,7 @@ import health.pulse.strength.widgets.lock.PulseText
 import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
 import health.pulse.strength.widgets.lock.rememberTextMeter
+import health.pulse.strength.widgets.lock.textHeight
 
 /**
  * WI-07 Strength ratio (2x2): a main lift's estimated 1RM against bodyweight ("1.24×") with a bar toward the goal ratio. Without a
@@ -34,7 +35,7 @@ class StrengthRatioWidget : PulseWidget() {
         val model = ExtrasText.strengthRatio(snapshot.strengthRatio)
         val size = LocalSize.current
         val roomy = size.width >= 140.dp
-        val compact = size.height < ExtrasText.COMPACT_BELOW_DP.dp
+        val compact = textHeight() < ExtrasText.COMPACT_BELOW_DP.dp
         val padding = if (roomy) WidgetDimens.padding else WidgetDimens.paddingCompact
         val fraction = model.fraction
         val figureSp = if (roomy) 36f else 28f
@@ -43,7 +44,7 @@ class StrengthRatioWidget : PulseWidget() {
         val footerLines = if (fraction != null) {
             1
         } else {
-            (((size.height - padding * 2).value - eyebrowHeight - TextFit.height(figureSp) - 6f) / TextFit.height(FOOTER_SP)).toInt().coerceIn(1, 3)
+            (((textHeight() - padding * 2).value - eyebrowHeight - TextFit.height(figureSp) - 6f) / TextFit.height(FOOTER_SP)).toInt().coerceIn(1, 3)
         }
         // The wording of the footer that says the most in the lines there are.
         val footer = TextFit.firstWithin(model.footers, (size.width - padding * 2 - FitSafety).value, footerLines, rememberTextMeter(FOOTER_SP.sp, bold = false))

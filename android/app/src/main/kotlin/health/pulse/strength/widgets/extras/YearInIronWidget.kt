@@ -28,6 +28,7 @@ import health.pulse.strength.widgets.lock.PulseText
 import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
 import health.pulse.strength.widgets.lock.rememberTextMeter
+import health.pulse.strength.widgets.lock.textHeight
 
 /**
  * WI-08 Year in iron (2x2): the tonnes lifted this calendar year, the sessions behind them and twelve monthly bars with the current month
@@ -40,7 +41,12 @@ class YearInIronWidget : PulseWidget() {
         val size = LocalSize.current
         val roomy = size.width >= 140.dp
         val padding = if (roomy) WidgetDimens.padding else WidgetDimens.paddingCompact
-        val caption = TextFit.firstFitting(model.captions, (size.width - padding * 2 - FitSafety).value, rememberTextMeter(13.sp, bold = false))
+        val width = (size.width - padding * 2 - FitSafety).value
+        val caption = TextFit.firstFitting(model.captions, width, rememberTextMeter(13.sp, bold = false))
+        // The eyebrow is drawn in capitals, so its wordings are measured in capitals.
+        val eyebrow = TextFit.firstFitting(model.eyebrows.map { it.uppercase() }, width, rememberTextMeter(12.sp, bold = true))
+        // The bars need the height that is left under the figure and its lines; below it (large text in a small widget) the text keeps it.
+        val showsBars = textHeight() >= BARS_FROM_DP
         WidgetCard(
             description = model.description,
             link = DeepLinks.hub,
@@ -49,7 +55,7 @@ class YearInIronWidget : PulseWidget() {
             contentAlignment = Alignment.TopStart,
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
-                Eyebrow(model.eyebrow, color = IronCard.secondary)
+                Eyebrow(eyebrow, color = IronCard.secondary)
                 Spacer(GlanceModifier.defaultWeight())
                 Row(verticalAlignment = Alignment.Bottom) {
                     PulseText(model.tonnes, if (roomy) 34.sp else 28.sp, weight = FontWeight.Bold, color = IronCard.text)
@@ -57,7 +63,7 @@ class YearInIronWidget : PulseWidget() {
                 }
                 PulseText(caption, 13.sp, color = IronCard.accent)
                 Spacer(GlanceModifier.defaultWeight())
-                MonthBars(model.bars, size.width - padding * 2)
+                if (showsBars) MonthBars(model.bars, size.width - padding * 2)
             }
         }
     }
@@ -77,6 +83,11 @@ class YearInIronWidget : PulseWidget() {
             )
             MaskImage(ExtrasCharts.yearMask(bars, current = true, widthPx = widthPx, heightPx = heightPx), IronCard.accent, modifier)
         }
+    }
+
+    private companion object {
+        /** The height, counted for text at its default size, from which the twelve bars fit under the text (the smallest 2x2 is 110 dp). */
+        val BARS_FROM_DP = 108.dp
     }
 }
 

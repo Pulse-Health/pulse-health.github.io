@@ -22,9 +22,13 @@ import health.pulse.strength.core.widgets.WidgetSnapshot
 import health.pulse.strength.widgets.common.PulseWidget
 import health.pulse.strength.widgets.common.WidgetDimens
 import health.pulse.strength.widgets.lock.Eyebrow
+import health.pulse.strength.widgets.lock.FitSafety
 import health.pulse.strength.widgets.lock.Glyph
 import health.pulse.strength.widgets.lock.PulseText
+import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
+import health.pulse.strength.widgets.lock.rememberTextMeter
+import health.pulse.strength.widgets.lock.textHeight
 
 /**
  * WI-06 Rest-day swap (2x2): on a rest day the slot of the next workout shows a short recovery routine whose Start opens an empty
@@ -37,8 +41,14 @@ class RestDayWidget : PulseWidget() {
         val card = ExtrasText.restDayCard(snapshot)
         val size = LocalSize.current
         val roomy = size.width >= 140.dp
-        val compact = size.height < ExtrasText.COMPACT_BELOW_DP.dp
+        val compact = textHeight() < ExtrasText.COMPACT_BELOW_DP.dp
         val padding = if (roomy) WidgetDimens.padding else WidgetDimens.paddingCompact
+        // The eyebrow is drawn in capitals, so its wordings are measured in capitals; a narrow card or large text takes a shorter one.
+        val trainingEyebrow = TextFit.firstFitting(
+            listOf("TRAINING DAY", "TRAINING", "TODAY"),
+            (size.width - padding * 2 - FitSafety).value,
+            rememberTextMeter(12.sp, bold = true),
+        )
         when (card) {
             is ExtrasText.RestDayCard.Rest -> WidgetCard(
                 description = "${card.reason}: ${card.title}, ${card.focus}. Start",
@@ -74,7 +84,7 @@ class RestDayWidget : PulseWidget() {
                 contentAlignment = Alignment.TopStart,
             ) {
                 Column(modifier = GlanceModifier.fillMaxSize()) {
-                    Eyebrow("Training day")
+                    Eyebrow(trainingEyebrow)
                     Spacer(GlanceModifier.defaultWeight())
                     PulseText(card.name, 17.sp, weight = FontWeight.Bold, maxLines = 2)
                     if (compact) {

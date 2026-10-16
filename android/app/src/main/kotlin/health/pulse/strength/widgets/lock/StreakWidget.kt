@@ -24,7 +24,7 @@ class StreakWidget : PulseWidget() {
         // The label grows with the cell but never past what is left of it under the flame or past its width, so the pair fits the smallest
         // cell too and "104 wk" after two years is made smaller instead of being cut.
         val flame = side * 0.34f
-        val room = ((inner - flame).value - 2f) / TextFit.LINE_FACTOR
+        val room = ((inner - flame).value - 2f) / (TextFit.LINE_FACTOR * fontScale())
         val labelSp = fittingSp(model.label, inner - FitSafety, maxSp = minOf(side.value * 0.24f, room), minSp = 7f)
         WidgetCard(description = model.description, link = DeepLinks.hub, cornerRadius = side / 2, padding = padding) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {

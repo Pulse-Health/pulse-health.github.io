@@ -21,6 +21,7 @@ import health.pulse.strength.widgets.lock.PulseText
 import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
 import health.pulse.strength.widgets.lock.rememberTextMeter
+import health.pulse.strength.widgets.lock.textHeight
 
 /**
  * WI-04 Form cue (2x2): one coaching cue for the first lift of the next workout, with its place among the exercise's cues. The cue is set
@@ -33,12 +34,12 @@ class FormCueWidget : PulseWidget() {
         val cue = ExtrasText.formCue(snapshot.formCue)
         val size = LocalSize.current
         val roomy = size.width >= 140.dp
-        val compact = size.height < ExtrasText.COMPACT_BELOW_DP.dp
+        val compact = textHeight() < ExtrasText.COMPACT_BELOW_DP.dp
         val padding = if (roomy) WidgetDimens.padding else WidgetDimens.paddingCompact
         // What the cue may use: the height left under the eyebrow (two lines, or the lift's name on one) and above the footer.
         val eyebrowHeight = TextFit.height(EYEBROW_SP, if (compact) 1 else 2)
         val footerHeight = if (compact || cue.footer.isEmpty()) 0f else TextFit.height(FOOTER_SP)
-        val room = (size.height - padding * 2).value - eyebrowHeight - footerHeight - GAP
+        val room = (textHeight() - padding * 2).value - eyebrowHeight - footerHeight - GAP
         val width = (size.width - padding * 2 - FitSafety).value
         val sizes = ExtrasText.cueTextSizes(roomy)
         val meters = sizes.map { rememberTextMeter(it.sp, bold = true) }

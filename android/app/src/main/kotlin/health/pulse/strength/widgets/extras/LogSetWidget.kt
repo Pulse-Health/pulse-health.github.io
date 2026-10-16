@@ -30,6 +30,7 @@ import health.pulse.strength.widgets.lock.PulseText
 import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
 import health.pulse.strength.widgets.lock.rememberTextMeter
+import health.pulse.strength.widgets.lock.textHeight
 
 /**
  * WI-02 Log from the Home Screen (4x2, interactive): follows the running workout so a set can be adjusted and logged, and the rest timer
@@ -45,8 +46,9 @@ class LogSetWidget : PulseWidget() {
     override fun Content(snapshot: WidgetSnapshot) {
         val view = LogSetModel.of(snapshot, System.currentTimeMillis())
         val size = LocalSize.current
-        val padding = if (size.height < ExtrasText.COMPACT_BELOW_DP.dp) 10.dp else 12.dp
-        val layout = Metrics(size.width, padding, tall = size.height >= 150.dp)
+        val height = textHeight()
+        val padding = if (height < ExtrasText.COMPACT_BELOW_DP.dp) 10.dp else 12.dp
+        val layout = Metrics(size.width, padding, tall = height >= 150.dp, showsEyebrow = (height - padding * 2).value >= MESSAGE_WITH_EYEBROW_DP)
         WidgetCard(
             description = null,
             link = if (view is LogSetView.Idle) DeepLinks.hub else DeepLinks.workout,
@@ -88,8 +90,11 @@ class LogSetWidget : PulseWidget() {
         }
     }
 
-    /** Sizes that depend on the width and height the launcher gave the widget. */
-    private class Metrics(width: Dp, padding: Dp, val tall: Boolean) {
+    /**
+     * Sizes that depend on the width and height the launcher gave the widget. [showsEyebrow] is false when the height (counted for text
+     * at its default size) cannot hold the eyebrow, the title and a two-line detail of a one-button message together.
+     */
+    private class Metrics(width: Dp, padding: Dp, val tall: Boolean, val showsEyebrow: Boolean) {
         private val wide = width >= 300.dp
         val innerWidth: Dp = width - padding * 2
         val primaryButton: Dp = if (wide) 104.dp else 80.dp
@@ -107,7 +112,7 @@ class LogSetWidget : PulseWidget() {
     private fun Message(eyebrow: String, title: String, detail: String, button: ButtonSpec?, metrics: Metrics) {
         Row(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = GlanceModifier.defaultWeight()) {
-                Eyebrow(eyebrow)
+                if (metrics.showsEyebrow) Eyebrow(eyebrow)
                 PulseText(title, 17.sp, weight = FontWeight.Bold)
                 PulseText(detail, 13.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 2)
             }
@@ -189,6 +194,11 @@ class LogSetWidget : PulseWidget() {
             Spacer(GlanceModifier.defaultWeight())
             PulseText("Next: ${view.nextSet}", 13.sp, color = GlanceTheme.colors.onSurfaceVariant)
         }
+    }
+
+    private companion object {
+        /** The eyebrow, a title and a two-line detail at their default size: what a message needs to show all three. */
+        val MESSAGE_WITH_EYEBROW_DP = TextFit.height(12f) + TextFit.height(17f) + TextFit.height(13f, 2)
     }
 }
 

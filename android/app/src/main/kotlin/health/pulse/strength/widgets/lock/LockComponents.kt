@@ -130,6 +130,21 @@ internal fun squareSide(): Dp {
     return minOf(size.width, size.height)
 }
 
+/** The user's font scale, 1.0 at the default size (a smaller scale is treated as 1.0: the layouts are checked at the default size). */
+@Composable
+internal fun fontScale(): Float = LocalContext.current.resources.configuration.fontScale.coerceAtLeast(1f)
+
+/**
+ * [height] as the layout budgets of the widgets count it. They count lines of text at their default size, so at a larger font size the
+ * same height counts as proportionally less, and a widget gives up its optional lines (a detail, a footer) sooner instead of clipping.
+ */
+@Composable
+internal fun textHeight(height: Dp): Dp = height / fontScale()
+
+/** The height of the widget as [textHeight] counts it. */
+@Composable
+internal fun textHeight(): Dp = textHeight(LocalSize.current.height)
+
 /** A type size that grows with [side] ([ratio] of it) but never drops below [minimum] sp, so a small cell stays legible. */
 internal fun scaledSp(side: Dp, ratio: Float, minimum: Float): TextUnit = maxOf(minimum, side.value * ratio).sp
 
@@ -190,8 +205,8 @@ internal fun MeterBar(
 
 /**
  * Padding and type sizes of the 3x1 widgets. A launcher decides how high a row is, so [forHeight] picks the largest set whose three lines
- * (the eyebrow, the headline, the detail) still fit; the last two sets drop the eyebrow, which the headline can do without, and the very
- * last one is for the smallest row a launcher can offer (40 dp).
+ * (the eyebrow, the headline, the detail) still fit; the last sets drop the eyebrow, which the headline can do without, and the very
+ * last one the detail as well, for the smallest row a launcher can offer (40 dp) or large text in a short row.
  */
 internal class CompactMetrics private constructor(
     val padding: Dp,
@@ -199,10 +214,11 @@ internal class CompactMetrics private constructor(
     val title: TextUnit,
     val detail: TextUnit,
     val showsEyebrow: Boolean = true,
+    val showsDetail: Boolean = true,
 ) {
     /** The height the lines of this set need, with a little air. */
-    private val neededHeight: Dp =
-        padding * 2 + TextFit.height((if (showsEyebrow) eyebrow.value else 0f) + title.value + detail.value).dp + 2.dp
+    private val neededHeight: Dp = padding * 2 +
+        TextFit.height((if (showsEyebrow) eyebrow.value else 0f) + title.value + (if (showsDetail) detail.value else 0f)).dp + 2.dp
 
     companion object {
         private val Tiers = listOf(
@@ -211,6 +227,7 @@ internal class CompactMetrics private constructor(
             CompactMetrics(padding = 7.dp, eyebrow = 11.sp, title = 14.sp, detail = 11.sp),
             CompactMetrics(padding = 6.dp, eyebrow = 11.sp, title = 14.sp, detail = 11.sp, showsEyebrow = false),
             CompactMetrics(padding = 4.dp, eyebrow = 10.sp, title = 13.sp, detail = 10.sp, showsEyebrow = false),
+            CompactMetrics(padding = 4.dp, eyebrow = 10.sp, title = 13.sp, detail = 10.sp, showsEyebrow = false, showsDetail = false),
         )
 
         fun forHeight(height: Dp): CompactMetrics = Tiers.firstOrNull { height >= it.neededHeight } ?: Tiers.last()
@@ -260,7 +277,7 @@ internal fun ThreeLineCard(
         Column(modifier = GlanceModifier.defaultWeight()) {
             if (metrics.showsEyebrow) Eyebrow(card.eyebrow, metrics.eyebrow)
             PulseText(title, metrics.title, weight = FontWeight.Bold)
-            if (card.detail.isNotEmpty()) {
+            if (metrics.showsDetail && card.detail.isNotEmpty()) {
                 PulseText(card.detail, metrics.detail, color = GlanceTheme.colors.onSurfaceVariant)
             }
         }

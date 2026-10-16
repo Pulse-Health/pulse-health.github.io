@@ -2,7 +2,6 @@ package health.pulse.strength.widgets.lock
 
 import androidx.compose.runtime.Composable
 import androidx.glance.GlanceTheme
-import androidx.glance.LocalSize
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import health.pulse.strength.R
 import health.pulse.strength.core.widgets.WidgetSnapshot
@@ -13,7 +12,7 @@ class PrCompactWidget : PulseWidget() {
     @Composable
     override fun Content(snapshot: WidgetSnapshot) {
         val card = LockText.latestRecord(snapshot.latestPR)
-        val metrics = CompactMetrics.forHeight(LocalSize.current.height)
+        val metrics = CompactMetrics.forHeight(textHeight())
         WidgetCard(description = card.description, link = card.link, padding = metrics.padding) {
             ThreeLineCard(
                 card = card,

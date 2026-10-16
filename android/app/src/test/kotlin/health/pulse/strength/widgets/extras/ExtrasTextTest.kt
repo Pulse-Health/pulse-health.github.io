@@ -81,6 +81,17 @@ class ExtrasTextTest {
     }
 
     @Test
+    fun theTitleGoesBeforeALineWhenLargeTextLeavesNoRoomForBoth() {
+        // 110 dp leaves 67.8 dp under the title for two lines of 32 dp.
+        assertThat(ExtrasText.partnerLayout(110f).showsTitle).isTrue()
+        assertThat(ExtrasText.partnerLayout(146f).showsTitle).isTrue()
+        // The same widget at a font scale of 1.3 counts as 85 dp: two lines still fit (65 dp), the title no longer does.
+        val large = ExtrasText.partnerLayout(85f)
+        assertThat(large.showsTitle).isFalse()
+        assertThat(large.rows).isEqualTo(2)
+    }
+
+    @Test
     fun aShortPartnerWidgetUsesSmallerAvatarsAndDropsTheSentence() {
         val compact = ExtrasText.partnerLayout(110f)
         val regular = ExtrasText.partnerLayout(146f)
@@ -259,6 +270,7 @@ class ExtrasTextTest {
     fun theYearShowsTonnesSessionsAndTwelveMonthlyBars() {
         val year = ExtrasText.yearInIron(preview.year, currentMonth = 9)
         assertThat(year.eyebrow).isEqualTo("Lifted in 2026")
+        assertThat(year.eyebrows).containsExactly("Lifted in 2026", "Lifted 2026", "2026").inOrder()
         assertThat(year.tonnes).isEqualTo("186.4")
         assertThat(year.captions).containsExactly("across 74 sessions", "74 sessions").inOrder()
         assertThat(year.caption).isEqualTo("across 74 sessions")
@@ -281,7 +293,7 @@ class ExtrasTextTest {
     fun aYearWithoutSessionsSaysSoAndDrawsNoBars() {
         val year = ExtrasText.yearInIron(empty.year, currentMonth = 9)
         assertThat(year.tonnes).isEqualTo("0")
-        assertThat(year.captions).containsExactly("no sessions yet")
+        assertThat(year.captions).containsExactly("no sessions yet", "no sessions").inOrder()
         assertThat(year.bars.all { it.fraction == 0f }).isTrue()
         val single = ExtrasText.yearInIron(preview.year.copy(sessionCount = 1), currentMonth = 9)
         assertThat(single.captions).containsExactly("across 1 session", "1 session").inOrder()
