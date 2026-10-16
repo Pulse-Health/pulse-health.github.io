@@ -88,9 +88,17 @@ object WorkoutNotifications {
                     .setWhen(snapshot.activeStart.toEpochMilli()).setShowWhen(true).setUsesChronometer(true)
                 logSetAction(context, snapshot)?.let { builder.addAction(it) }
             }
+            phase == SnapshotPhase.COMPLETE && snapshot.totalSets == 0 -> {
+                // A workout without exercises is "complete" for the builder; say what is actually going on.
+                builder.setContentTitle(snapshot.workoutName)
+                    .setContentText(context.getString(R.string.notification_empty_text))
+                    .setWhen(snapshot.activeStart.toEpochMilli()).setShowWhen(true).setUsesChronometer(true)
+            }
             phase == SnapshotPhase.COMPLETE -> {
                 builder.setContentTitle(context.getString(R.string.notification_complete_title))
-                    .setContentText(context.resources.getQuantityString(R.plurals.notification_complete_text, snapshot.loggedSets, snapshot.loggedSets, snapshot.volumeText))
+                    .setContentText(
+                        context.resources.getQuantityString(R.plurals.notification_complete_text, snapshot.loggedSets, snapshot.loggedSets, snapshot.volumeText),
+                    )
                     .setWhen(snapshot.activeStart.toEpochMilli()).setShowWhen(true).setUsesChronometer(true)
             }
             else -> {

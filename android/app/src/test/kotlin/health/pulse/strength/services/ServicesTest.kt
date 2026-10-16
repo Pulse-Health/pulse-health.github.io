@@ -99,6 +99,27 @@ class ServicesTest {
     }
 
     @Test
+    fun aWorkoutWithoutExercisesSaysSoInsteadOfAllSetsLogged() {
+        environment.controller.startWorkout(null, "Empty one")
+        val n = ongoing()
+        assertThat(title(n)).isEqualTo("Empty one")
+        assertThat(text(n)).isEqualTo("No exercises yet. Open the app to add some.")
+        assertThat(actionTitles(n)).isEmpty()
+    }
+
+    @Test
+    fun finishingEverySetShowsTheTotalsWithTheRightPlural() {
+        environment.controller.startWorkout(null, "One set")
+        val ex = ExerciseLibrary.exercise("bench")!!.copy(defaults = ExerciseLibrary.exercise("bench")!!.defaults.copy(sets = 1, restSeconds = 0))
+        environment.controller.send(WorkoutAction.AddExercises(listOf(ex)))
+        val entry = environment.controller.state.value!!.exercises[0]
+        environment.controller.send(WorkoutAction.LogSet(entry.id, entry.sets[0].id))
+        val n = ongoing()
+        assertThat(title(n)).isEqualTo("All sets logged")
+        assertThat(text(n)).isEqualTo("1 set · 480 kg")
+    }
+
+    @Test
     fun loggingASetStartsARestWithACountdownAndRestButtons() {
         startBenchWorkout()
         val state = environment.controller.state.value!!
