@@ -34,8 +34,8 @@ public struct WatchBannerView: View {
             )
         case .healthDenied:
             return Copy(
-                title: "Heart rate is off",
-                message: "Allow Pulse to read heart rate in the Health app.",
+                title: "Health access is off",
+                message: "Allow Pulse to save your workouts in the Health app.",
                 button: "Settings"
             )
         }

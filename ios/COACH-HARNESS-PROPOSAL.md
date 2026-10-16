@@ -279,7 +279,7 @@ Counsel should review this section; I am not a lawyer and several points are sec
 *What was built:* `TargetWeight` (the one copy of the arithmetic, public), `HubNoteBuilder` (extracted, checked against a verbatim copy
 of the old code over 4,000 random templates), `ProgressionEngine` with `CoachConfig`, `AudienceProfile` and `Recommendation`,
 `TemplateWriter`, `CoachPlanner`, the hub "Next time" block, the exercise-card suggestion with Apply, the readiness sentence hidden while
-the recovery numbers are demo data (`WorkoutController.isUsingDemoRecovery`), and `ARCHITECTURE.md` section 3.7.
+the recovery numbers are demo data (`WorkoutController.isUsingDemoRecovery`), and `ARCHITECTURE.md` section 3.8.
 
 *Review of the first implementation.* Four independent reviews (a fuzz run of about 300,000 cases, a strength-coach reading with 62
 scenarios and 11 trajectories, a read against this document, an iOS behaviour review) found about 55 issues. Fixed in the same pull request,

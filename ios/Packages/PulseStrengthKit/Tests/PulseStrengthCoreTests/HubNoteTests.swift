@@ -210,7 +210,8 @@ final class HubNoteTests: XCTestCase {
     func testAnUnusableExerciseIsSkippedAndTheNextOneIsUsed() {
         var broken = CoachFix.lib("squat")
         broken.previousBestE1RM = .infinity
-        let bench = CoachFix.lib("bench")
+        var bench = CoachFix.lib("bench")
+        bench.previousBestE1RM = 99 // the library carries no previous results any more: they come from the user's own history
         let template = WorkoutTemplate(name: "T", entries: [
             TemplateEntry(exercise: broken, plannedSets: [PlannedSet(weightKg: 80, reps: 6)], restSeconds: 90),
             TemplateEntry(exercise: bench, plannedSets: [PlannedSet(weightKg: 80, reps: 6)], restSeconds: 90),
