@@ -38,6 +38,29 @@
         <!-- ==== host:end ==== -->
 
         <!-- ==== glance-home:begin ==== -->
+        <!-- App widget providers must be exported so the launcher can send APPWIDGET_UPDATE (a broadcast only the system can send). -->
+        <receiver
+            android:name=".widgets.home.NextUpReceiver"
+            android:exported="true"
+            android:label="@string/widget_next_up_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/next_up_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.NextUpWideReceiver"
+            android:exported="true"
+            android:label="@string/widget_next_up_wide_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/next_up_wide_widget_info" />
+        </receiver>
         <receiver
             android:name=".widgets.home.WeeklyGoalReceiver"
             android:exported="true"
@@ -48,6 +71,127 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/weekly_goal_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.WeeklyGoalThemedReceiver"
+            android:exported="true"
+            android:label="@string/widget_weekly_goal_themed_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weekly_goal_themed_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.PrSpotlightReceiver"
+            android:exported="true"
+            android:label="@string/widget_pr_spotlight_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pr_spotlight_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.MuscleFreshnessReceiver"
+            android:exported="true"
+            android:label="@string/widget_muscle_freshness_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/muscle_freshness_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.OverloadReceiver"
+            android:exported="true"
+            android:label="@string/widget_overload_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/overload_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.WeeklySetsReceiver"
+            android:exported="true"
+            android:label="@string/widget_weekly_sets_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weekly_sets_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.LiftTrendReceiver"
+            android:exported="true"
+            android:label="@string/widget_lift_trend_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/lift_trend_widget_info" />
+        </receiver>
+        <!-- Exported and not protected by a permission on purpose: the launcher starts it with APPWIDGET_CONFIGURE when the widget is added or reconfigured. -->
+        <activity
+            android:name=".widgets.home.LiftTrendConfigActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:label="@string/widget_lift_trend_config_title"
+            android:theme="@style/Theme.PulseStrength.WidgetConfig">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+        <receiver
+            android:name=".widgets.home.TrainingWeekReceiver"
+            android:exported="true"
+            android:label="@string/widget_training_week_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/training_week_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.TemplateLauncherReceiver"
+            android:exported="true"
+            android:label="@string/widget_template_launcher_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/template_launcher_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.home.MonthHeatmapReceiver"
+            android:exported="true"
+            android:label="@string/widget_month_heatmap_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/month_heatmap_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.tablet.TrainingBlockReceiver"
+            android:exported="true"
+            android:label="@string/widget_training_block_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/training_block_widget_info" />
         </receiver>
         <!-- ==== glance-home:end ==== -->
 

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Window colour of the widget configuration screen, so the first frame already matches the Compose surface (night: values-night). -->
+    <color name="glance_home_config_background">#FFF2F2F7</color>
+
+    <style name="Theme.PulseStrength.WidgetConfig" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/glance_home_config_background</item>
+    </style>
+</resources>

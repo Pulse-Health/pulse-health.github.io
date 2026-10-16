@@ -6,8 +6,37 @@
     <!-- ==== strings-host:end ==== -->
 
     <!-- ==== strings-glance-home:begin ==== -->
+    <string name="widget_next_up_label">Next up</string>
+    <string name="widget_next_up_description">Your next workout in one tap. Starts it when you press Start.</string>
+    <string name="widget_next_up_wide_label">Next workout</string>
+    <string name="widget_next_up_wide_description">Your next workout with its first exercises and a Start button.</string>
     <string name="widget_weekly_goal_label">Weekly goal</string>
     <string name="widget_weekly_goal_description">Workouts finished this week against your goal.</string>
+    <string name="widget_weekly_goal_themed_label">Weekly goal (themed)</string>
+    <string name="widget_weekly_goal_themed_description">Workouts finished this week against your goal, in your wallpaper colours.</string>
+    <string name="widget_pr_spotlight_label">PR spotlight</string>
+    <string name="widget_pr_spotlight_description">Your latest personal record.</string>
+    <string name="widget_muscle_freshness_label">Muscle freshness</string>
+    <string name="widget_muscle_freshness_description">Days since each muscle group was trained.</string>
+    <string name="widget_overload_label">Beat last time</string>
+    <string name="widget_overload_description">What you lifted last time and the weight to try today.</string>
+    <string name="widget_weekly_sets_label">Weekly sets</string>
+    <string name="widget_weekly_sets_description">Working sets per muscle group this week against the target.</string>
+    <string name="widget_lift_trend_label">Lift trend</string>
+    <string name="widget_lift_trend_description">The estimated one-rep max of a lift of your choice over its last sessions.</string>
+    <string name="widget_training_week_label">Training week</string>
+    <string name="widget_training_week_description">This week\'s workouts, your last session, your latest record and a Start button.</string>
+    <string name="widget_template_launcher_label">Template launcher</string>
+    <string name="widget_template_launcher_description">A Start button for each of your workout templates.</string>
+    <string name="widget_month_heatmap_label">Month heatmap</string>
+    <string name="widget_month_heatmap_description">Every training day of the month, shaded by volume.</string>
+    <string name="widget_training_block_label">Training block</string>
+    <string name="widget_training_block_description">Your four-week training block at a glance. Made for tablets.</string>
+    <string name="widget_lift_trend_config_title">Choose a lift</string>
+    <string name="widget_lift_trend_config_hint">The widget shows the estimated one-rep max of this lift. You can change it later.</string>
+    <string name="widget_lift_trend_config_empty">No lifts yet. Lifts you train regularly appear here after a few workouts. The widget shows your first lift once there is one.</string>
+    <string name="widget_lift_trend_config_add">Add widget</string>
+    <string name="widget_lift_trend_config_selected">Selected</string>
     <!-- ==== strings-glance-home:end ==== -->
 
     <!-- ==== strings-glance-extras:begin ==== -->

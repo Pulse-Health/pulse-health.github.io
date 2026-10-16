@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="glance_home_config_background">#FF000000</color>
+
+    <style name="Theme.PulseStrength.WidgetConfig" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/glance_home_config_background</item>
+    </style>
+</resources>
