@@ -22,7 +22,7 @@ public enum WorkoutFactory {
                 sets: entry.plannedSets.map { LoggedSet(type: $0.type, weightKg: $0.weightKg, reps: $0.reps) },
                 restSeconds: max(0, entry.restSeconds),
                 supersetGroup: group,
-                note: "",
+                note: entry.note ?? "",
                 templateEntryID: entry.id
             )
         }
@@ -41,11 +41,12 @@ public enum WorkoutFactory {
     public static func updatedTemplate(_ template: WorkoutTemplate, from state: WorkoutState) -> WorkoutTemplate {
         var usedIDs = Set<UUID>()
         var entries: [TemplateEntry] = []
+        let previousEntries = Dictionary(template.entries.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         for workoutExercise in state.exercises {
             var entryID = workoutExercise.templateEntryID ?? UUID()
             if usedIDs.contains(entryID) { entryID = UUID() }
             usedIDs.insert(entryID)
-            entries.append(entry(id: entryID, from: workoutExercise))
+            entries.append(entry(id: entryID, from: workoutExercise, previous: previousEntries[entryID]))
         }
         var result = template
         result.entries = entries
@@ -65,13 +66,21 @@ public enum WorkoutFactory {
         )
     }
 
-    private static func entry(id: UUID, from workoutExercise: WorkoutExercise) -> TemplateEntry {
-        TemplateEntry(
+    /// `previous` is the entry this one replaces: its rep range survives for the sets that still have one (a set keeps the upper end
+    /// of its range while the reps done are below it; reaching the top of the range makes it a plain number).
+    private static func entry(id: UUID, from workoutExercise: WorkoutExercise, previous: TemplateEntry? = nil) -> TemplateEntry {
+        let note = workoutExercise.note.trimmingCharacters(in: .whitespacesAndNewlines)
+        return TemplateEntry(
             id: id,
             exercise: workoutExercise.exercise,
-            plannedSets: workoutExercise.sets.map { PlannedSet(type: $0.type, weightKg: $0.weightKg, reps: $0.reps) },
+            plannedSets: workoutExercise.sets.enumerated().map { offset, set in
+                var upper = previous.flatMap { offset < $0.plannedSets.count ? $0.plannedSets[offset].repsMax : nil }
+                if let value = upper, value <= set.reps { upper = nil }
+                return PlannedSet(type: set.type, weightKg: set.weightKg, reps: set.reps, repsMax: upper)
+            },
             restSeconds: workoutExercise.restSeconds,
-            supersetGroup: workoutExercise.supersetGroup
+            supersetGroup: workoutExercise.supersetGroup,
+            note: note.isEmpty ? nil : note
         )
     }
 }
