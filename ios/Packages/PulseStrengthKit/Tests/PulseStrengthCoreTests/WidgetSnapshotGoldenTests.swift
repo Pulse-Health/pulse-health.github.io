@@ -6,8 +6,19 @@ import XCTest
 /// (widgets/SPEC.md section 2). It is the builder's output for `StrengthData.demo(now:)` at 2026-10-16T09:41:00Z in UTC with a weekly
 /// goal of 4 and no body weight, so it holds no wall-clock value.
 ///
-/// After a deliberate change of a rule, rewrite the file with
-/// `UPDATE_GOLDEN=1 swift test --filter WidgetSnapshotGoldenTests` and commit it together with the Kotlin change.
+/// After a deliberate change of a rule, rewrite the file (from the repository root) with
+/// `UPDATE_GOLDEN=1 swift test --package-path ios/Packages/PulseStrengthKit --filter WidgetSnapshotGoldenTests`
+/// and commit it together with the Kotlin change. Without the variable the test compares and fails on any difference.
+///
+/// The input a port has to rebuild (`StrengthData.demo(now:)`, defined by `SampleData`), with `now` the instant above and every
+/// date counted back from it in whole days of 86,400 s (no rounding to the day):
+/// * templates `5EED0001-0000-4000-8000-00000000000N` for N = 1, 2, 3: "Upper A · Push", "Lower A · Quads", "Upper B · Pull"
+///   (their entries are `5EED0002-0000-4000-8000-<n as 12 hex digits>` for n = 1...6, 11...15 and 21...26 in that order);
+/// * five finished workouts `5EED0003-0000-4000-8000-00000000000N` for N = 1...5, newest first: "Upper B · Pull" 3 days before `now`
+///   (52 min), "Upper A · Push" 5 days (49 min), "Lower A · Quads" 7 days (61 min), "Upper A · Push" 10 days (56 min, the bench
+///   record) and "Upper A · Push" 15 days (51 min); the exercise ids are the built-in library's;
+/// * no training plan, no custom exercise, no body weight; the personal bests are those of the history.
+/// The context is `WidgetContext(timeZoneID: "UTC")`: weekly goal 4, no body weight, no readiness, no partners, no active workout.
 final class WidgetSnapshotGoldenTests: XCTestCase {
     private static let now = Date(timeIntervalSince1970: 1_792_143_660)   // 2026-10-16T09:41:00Z, a Friday
 

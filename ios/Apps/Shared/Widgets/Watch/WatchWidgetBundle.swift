@@ -17,9 +17,9 @@ import WidgetKit
 
 struct WatchWidgetBundle: WidgetBundle {
     var body: some Widget {
-        WatchFaceWidgetBundle()
-        WatchStatisticsWidgetBundle()
-        WatchWorkoutWidgetBundle()
+        WatchFaceWidgetBundle().body
+        WatchStatisticsWidgetBundle().body
+        WatchWorkoutWidgetBundle().body
     }
 }
 
