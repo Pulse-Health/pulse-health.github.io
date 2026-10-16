@@ -25,6 +25,20 @@ public protocol WorkoutDataProviding: AnyObject {
     func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error>
     /// The recovery of each muscle group at `now`, estimated from the finished workouts (see `RecoveryEstimator`).
     func recoveryProvider(now: Date) -> RecoveryProvider
+    /// The user's preferences: a new workout starts with their rest timer choices and weight unit.
+    var preferences: StrengthPreferences { get }
+    /// Saves new preferences (the engine remembers a rest timer choice made during a workout this way). `.failure` when they could
+    /// not be written; they change in memory anyway.
+    @discardableResult
+    func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error>
+}
+
+public extension WorkoutDataProviding {
+    /// The default preferences, for a provider that has none.
+    var preferences: StrengthPreferences { StrengthPreferences() }
+
+    /// Does nothing, for a provider that keeps no preferences.
+    func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error> { .success(()) }
 }
 
 // MARK: - Engine
@@ -60,6 +74,9 @@ public final class WorkoutEngine {
         get { recoveryOverride ?? data.recoveryProvider(now: clock()) }
         set { recoveryOverride = newValue }
     }
+    /// The locale whose decimal and grouping separators the texts of `presentation(now:)` and `snapshot(now:)` use (default: en_US).
+    /// The app sets `Locale.current`; the unit comes from the workout (`WorkoutSettings.weightUnit`).
+    public var displayLocale = DisplayFormat.metric.locale
     /// The workout in progress; nil when there is none.
     public private(set) var state: WorkoutState?
     /// The workout finished most recently (cleared when the next one starts).
@@ -230,7 +247,8 @@ public final class WorkoutEngine {
         for effect in effects { effect.workoutStarted(restored) }
     }
 
-    /// Starts a workout from `template`, or an empty one named `name` (default "Workout"), and tells the effects.
+    /// Starts a workout from `template`, or an empty one named `name` (default "Workout"), and tells the effects. The workout's
+    /// settings (rest timer, weight unit) are the user's current preferences.
     ///
     /// Returns false (and changes nothing) while a workout is already in progress, so a double tap cannot replace a running workout.
     @discardableResult
@@ -239,13 +257,15 @@ public final class WorkoutEngine {
         let now = clock()
         var started: WorkoutState
         if let template {
-            started = WorkoutFactory.makeWorkout(from: template, now: now)
+            started = WorkoutFactory.makeWorkout(from: template, now: now, preferences: data.preferences)
             for index in started.exercises.indices {
                 started.exercises[index].exercise = refreshed(started.exercises[index].exercise)
             }
         } else {
             let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            started = WorkoutFactory.makeEmpty(name: trimmed.isEmpty ? StrengthConfig.defaultWorkoutName : trimmed, now: now)
+            started = WorkoutFactory.makeEmpty(
+                name: trimmed.isEmpty ? StrengthConfig.defaultWorkoutName : trimmed, now: now, preferences: data.preferences
+            )
         }
         state = started
         lastCompleted = nil
@@ -280,6 +300,7 @@ public final class WorkoutEngine {
         WorkoutReducer.reduce(&new, action, now: reducerTime)
         guard new != old else { return }
         state = new
+        if role == .authority { rememberRestChoice(of: action, in: new) }
 
         let isHeartRate: Bool
         if case .updateHeartRate = action { isHeartRate = true } else { isHeartRate = false }
@@ -497,14 +518,18 @@ public final class WorkoutEngine {
 
     // MARK: Derived values
 
-    /// The active-workout screen model for `now`; nil without a workout.
+    /// The active-workout screen model for `now`; nil without a workout. Its weights are in the workout's unit, written with
+    /// `displayLocale`.
     public func presentation(now: Date) -> ActiveWorkoutPresentation? {
-        state.map { WorkoutPresenter.present($0, now: now, recovery: recoveryOverride ?? data.recoveryProvider(now: now)) }
+        state.map {
+            WorkoutPresenter.present($0, now: now, recovery: recoveryOverride ?? data.recoveryProvider(now: now), locale: displayLocale)
+        }
     }
 
-    /// The Live Activity / Watch snapshot for `now`; nil without a workout.
+    /// The Live Activity / Watch snapshot for `now`; nil without a workout. Its weights are in the workout's unit, written with
+    /// `displayLocale`.
     public func snapshot(now: Date) -> WorkoutSnapshot? {
-        state.map { SnapshotBuilder.make(from: $0, now: now) }
+        state.map { SnapshotBuilder.make(from: $0, now: now, locale: displayLocale) }
     }
 
     /// What changed against the template the workout started from (empty without a workout).
@@ -513,6 +538,22 @@ public final class WorkoutEngine {
     }
 
     // MARK: Helpers
+
+    /// Authority: a rest timer choice made during the workout (here, on the Watch or on the Live Activity) is the user's choice for the
+    /// next workouts too, so it is saved as a preference.
+    private func rememberRestChoice(of action: WorkoutAction, in state: WorkoutState) {
+        // Only the toggle the action names is written: the workout keeps its own value of the other one when Settings change it.
+        var preferences = data.preferences
+        switch action {
+        case .setAutoStartRest:
+            preferences.autoStartRest = state.settings.autoStartRest
+        case .setAlertWhenRestEnds:
+            preferences.alertWhenRestEnds = state.settings.alertWhenRestEnds
+        default:
+            return
+        }
+        if preferences != data.preferences { data.updatePreferences(preferences) }
+    }
 
     /// Adopts the phone's `incoming` state (mirror), see `receive(_: SyncEnvelope)`.
     private func adopt(_ incoming: WorkoutState, from envelope: SyncEnvelope) {

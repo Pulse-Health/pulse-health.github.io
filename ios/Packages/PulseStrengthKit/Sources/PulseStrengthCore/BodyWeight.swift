@@ -77,11 +77,12 @@ public enum BodyWeightRules {
         return normalised(value)
     }
 
-    /// "1.4×": a ratio with one decimal, written by hand like every number of the feature (no locale dependence).
-    public static func multipleText(_ ratio: Double) -> String {
+    /// "1.4×": a ratio with one decimal, written by hand like every number of the feature (the decimal mark of `locale`, en_US by default:
+    /// "1,4×" for de_DE).
+    public static func multipleText(_ ratio: Double, locale: Locale = DisplayFormat.metric.locale) -> String {
         guard ratio.isFinite, ratio >= 0 else { return "–" }
         let tenths = Int((ratio * 10).rounded())
-        return String(tenths / 10) + "." + String(tenths % 10) + "×"
+        return String(tenths / 10) + (locale.decimalSeparator ?? ".") + String(tenths % 10) + "×"
     }
 }
 

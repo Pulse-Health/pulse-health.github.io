@@ -1,8 +1,9 @@
 import Foundation
 
 /// Everything the active-workout screen needs, derived from a `WorkoutState` by
-/// `WorkoutPresenter.present(_:now:recovery:)`. Views render this and never recompute it.
-/// All strings are display-ready (locale independent: "." decimal, "," thousands).
+/// `WorkoutPresenter.present(_:now:recovery:locale:)`. Views render this and never recompute it.
+/// All strings are display-ready: weights are in the workout's unit (`WorkoutSettings.weightUnit`) and use the decimal and grouping
+/// separators of the locale the presentation was made for (en_US by default: "." decimal, "," thousands).
 public struct ActiveWorkoutPresentation: Equatable, Sendable {
 
     public struct Segment: Equatable, Sendable {
@@ -21,7 +22,7 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         /// "24:18", "1:02:03" or, when paused, "Paused · 24:18".
         public var clockText: String
         public var isPaused: Bool
-        /// Logged volume without separators of unit, e.g. "1,980" (warm-up sets excluded).
+        /// Logged volume in the workout's unit without the unit symbol, e.g. "1,980" (warm-up sets excluded).
         public var volumeText: String
         /// "7 of 19"
         public var setsText: String
@@ -91,6 +92,7 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         /// The first pending set of the current exercise (highlighted).
         public var isNext: Bool
         public var isPersonalRecord: Bool
+        /// The estimated one-rep max of a record set, rounded to a whole number of the workout's unit.
         public var estimated1RM: Int?
         public var rir: Int?
         /// "RIR 3" / "RIR 4+" when recorded on a done set.
@@ -141,7 +143,7 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         /// "2:30" or "Off".
         public var restText: String
         public var note: String
-        /// "kg", "Added" (repsOnly) or "" (duration).
+        /// The unit symbol ("kg" or "lb"), "Added" (repsOnly) or "" (duration).
         public var weightColumnTitle: String
         /// "Reps" or "Sec".
         public var repsColumnTitle: String
@@ -191,7 +193,7 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         public var fraction: Double
         /// "1:12", or "Go" when finished.
         public var remainingText: String
-        /// "Next · Set 4 · 82.5 kg × 6" or "All sets logged".
+        /// "Next · Set 4 · 82.5 kg × 6" (or "135 lb × 6") or "All sets logged".
         public var nextSetText: String
         /// Shows the "Reps left" selector (last logged set exists, is done and is not a warm-up).
         public var showsRIR: Bool

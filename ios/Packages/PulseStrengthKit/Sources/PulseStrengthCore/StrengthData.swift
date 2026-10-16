@@ -18,6 +18,8 @@ public struct StrengthData: Equatable, Sendable {
     public var bodyWeights: [BodyWeightEntry]
     /// How often the app asks the user to update their weight.
     public var weighIn: WeighInPreferences
+    /// The user's workout preferences (unit, rest timer, goal, ...), see `StrengthPreferences`.
+    public var preferences: StrengthPreferences
     /// True while `history` is known to lack workouts that could not be read from disk. The personal bests may then be the only
     /// trace of those workouts, so `recomputePersonalBests()` only raises them and never lowers or drops one.
     public var historyIsIncomplete: Bool
@@ -34,6 +36,7 @@ public struct StrengthData: Equatable, Sendable {
         personalBests: [String: PersonalBest] = [:],
         bodyWeights: [BodyWeightEntry] = [],
         weighIn: WeighInPreferences = WeighInPreferences(),
+        preferences: StrengthPreferences = StrengthPreferences(),
         historyIsIncomplete: Bool = false,
         usesDemoPreviousResults: Bool = false
     ) {
@@ -43,6 +46,7 @@ public struct StrengthData: Equatable, Sendable {
         self.personalBests = personalBests
         self.bodyWeights = bodyWeights
         self.weighIn = weighIn
+        self.preferences = preferences
         self.historyIsIncomplete = historyIsIncomplete
         self.usesDemoPreviousResults = usesDemoPreviousResults
     }
@@ -310,7 +314,11 @@ public extension StrengthData {
 
 public extension StrengthData {
     /// The sessions, e1RM trend, records and 30-day totals behind the exercise detail screen.
-    func history(for exerciseID: String, now: Date) -> ExerciseHistory {
+    ///
+    /// The texts in it ("85 kg × 5", the record rows) are written in the unit and with the separators of `format` (default: kilograms,
+    /// en_US); the numbers (`bestE1RM`, `volumeLast30Days`, the sets) stay in kilograms.
+    func history(for exerciseID: String, now: Date, format: DisplayFormat = .metric) -> ExerciseHistory {
+        let formatter = format.formatter
         let sessions = exerciseSessions(for: exerciseID)
         let tracking = sessions.first?.tracking ?? ExerciseLibrary.exercise(id: exerciseID)?.tracking
             ?? customExercises.first { $0.id == exerciseID }?.tracking ?? .weightReps
@@ -347,7 +355,7 @@ public extension StrengthData {
         var bestSetText: String?
         switch tracking {
         case .weightReps:
-            if bestValue > 0, bestReps > 0 { bestSetText = NumberText.kg(bestWeight) + " kg × " + String(bestReps) }
+            if bestValue > 0, bestReps > 0 { bestSetText = String(format: "%@ × %ld", formatter.textWithUnit(kg: bestWeight), bestReps) }
         case .repsOnly:
             if let top = StrengthData.topSet(in: sessions, by: { $0.reps }) {
                 bestSetText = String(top.value) + (top.value == 1 ? " rep" : " reps")
@@ -369,8 +377,11 @@ public extension StrengthData {
             bestSetDate: bestSetText == nil ? nil : bestDate,
             volumeLast30Days: volume,
             sessionsLast30Days: recent.count,
-            records: records(for: tracking, sessions: sessions, bestE1RM: bestValue, bestDate: bestDate, bestSetText: bestSetText)
-                + bodyWeightRecords(for: exerciseID, tracking: tracking, sessions: sessions, bestE1RM: tracking == .weightReps ? bestValue : 0, bestDate: bestDate)
+            records: records(for: tracking, sessions: sessions, bestE1RM: bestValue, bestDate: bestDate, bestSetText: bestSetText, formatter: formatter)
+                + bodyWeightRecords(
+                    for: exerciseID, tracking: tracking, sessions: sessions,
+                    bestE1RM: tracking == .weightReps ? bestValue : 0, bestDate: bestDate, formatter: formatter
+                )
         )
     }
 }
@@ -427,7 +438,8 @@ private extension StrengthData {
         sessions: [SessionItem],
         bestE1RM: Double,
         bestDate: Date?,
-        bestSetText: String?
+        bestSetText: String?,
+        formatter: WeightFormatter
     ) -> [ExerciseRecordRow] {
         guard !sessions.isEmpty else { return [] }
         var rows: [ExerciseRecordRow] = []
@@ -445,7 +457,7 @@ private extension StrengthData {
         switch tracking {
         case .weightReps:
             if bestE1RM > 0 {
-                rows.append(ExerciseRecordRow(id: "e1rm", label: "Estimated 1RM", value: NumberText.thousands(bestE1RM) + " kg", date: bestDate))
+                rows.append(ExerciseRecordRow(id: "e1rm", label: "Estimated 1RM", value: formatter.volumeWithUnit(kg: bestE1RM), date: bestDate))
             }
             if let text = bestSetText {
                 rows.append(ExerciseRecordRow(id: "bestSet", label: "Best set", value: text, date: bestDate))
@@ -460,11 +472,13 @@ private extension StrengthData {
                     }
                 }
                 if most > 0 {
-                    rows.append(ExerciseRecordRow(id: "repsAtWeight", label: "Most reps at " + NumberText.kg(common) + " kg", value: String(most), date: mostDate))
+                    rows.append(ExerciseRecordRow(
+                        id: "repsAtWeight", label: String(format: "Most reps at %@", formatter.textWithUnit(kg: common)), value: String(most), date: mostDate
+                    ))
                 }
             }
             if let top = bestSession({ $0.volumeKg }) {
-                rows.append(ExerciseRecordRow(id: "bestVolume", label: "Best session volume", value: NumberText.thousands(top.value) + " kg", date: top.date))
+                rows.append(ExerciseRecordRow(id: "bestVolume", label: "Best session volume", value: formatter.volumeWithUnit(kg: top.value), date: top.date))
             }
         case .repsOnly:
             if let top = StrengthData.topSet(in: sessions, by: { $0.reps }) {
@@ -493,7 +507,8 @@ private extension StrengthData {
         tracking: TrackingKind,
         sessions: [SessionItem],
         bestE1RM: Double,
-        bestDate: Date?
+        bestDate: Date?,
+        formatter: WeightFormatter
     ) -> [ExerciseRecordRow] {
         guard !bodyWeights.isEmpty else { return [] }
         switch tracking {
@@ -505,7 +520,7 @@ private extension StrengthData {
             return [ExerciseRecordRow(
                 id: "relativeStrength",
                 label: "Relative strength",
-                value: BodyWeightRules.multipleText(bestE1RM / weight) + " bodyweight",
+                value: String(format: "%@ bodyweight", BodyWeightRules.multipleText(bestE1RM / weight, locale: formatter.locale)),
                 date: bestDate
             )]
         case .repsOnly:
@@ -521,7 +536,7 @@ private extension StrengthData {
             return [ExerciseRecordRow(
                 id: "bodyweightLoad",
                 label: "Best session load (est.)",
-                value: NumberText.thousands(best.load) + " kg",
+                value: formatter.volumeWithUnit(kg: best.load),
                 date: best.date
             )]
         case .duration:
@@ -569,15 +584,24 @@ public final class StrengthDataModel: WorkoutDataProviding {
     let persistence: FileStrengthPersistence?
     var cache: (list: [Exercise], byID: [String: Exercise])?
     private var unsavedFiles: PersistTargets = []
+    /// The locale whose region picks the weight unit of preferences that are created (a first launch, a reset); nil means kilograms.
+    let deviceLocale: Locale?
+    /// True once `preferences.json` exists (written, or found at load). Until then the next save of anything writes it, so the
+    /// unit picked from the region at the first launch is kept even if the region changes later. Loading writes nothing.
+    private var preferencesStored = false
 
     /// Loads `persistence` (when given); with `seedDemoData` an empty store is filled with the demo data for `now` and shows the
     /// demo previous results (`StrengthData.usesDemoPreviousResults`). The app seeds only in previews and UI tests.
     ///
     /// Demo data is only written to a data directory that has no data files at all and no load issues: files that exist but
     /// could not be read are never seeded over.
-    public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false, now: Date = Date()) {
+    ///
+    /// Without a saved `preferences.json` the preferences are the defaults of a new install, with the weight unit that `deviceLocale`
+    /// calls for (the app passes `Locale.current`; nil, the default of tests and previews, means kilograms).
+    public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false, now: Date = Date(), deviceLocale: Locale? = nil) {
         self.persistence = persistence
-        self.data = StrengthData()
+        self.deviceLocale = deviceLocale
+        self.data = StrengthData(preferences: StrengthDataModel.newInstallPreferences(deviceLocale))
         loadFromDisk()
         let mayWrite = persistence.map { !$0.hasDataFiles && persistenceIssues.isEmpty } ?? true
         if seedDemoData, mayWrite, data.seedDemoDataIfEmpty(now: now) {
@@ -635,9 +659,10 @@ public final class StrengthDataModel: WorkoutDataProviding {
         return .success(())
     }
 
-    /// The history of one exercise as shown on its detail screen.
-    public func history(for exerciseID: String, now: Date) -> ExerciseHistory {
-        data.history(for: exerciseID, now: now)
+    /// The history of one exercise as shown on its detail screen, with its texts in the unit of the preferences and the separators of
+    /// `locale` (default: en_US).
+    public func history(for exerciseID: String, now: Date, locale: Locale = DisplayFormat.metric.locale) -> ExerciseHistory {
+        data.history(for: exerciseID, now: now, format: DisplayFormat(unit: data.preferences.weightUnit, locale: locale))
     }
 
     /// Stores a body weight (kg, rounded to 0.1) and saves the weigh-ins. nil, and nothing saved, when `kg` is not a plausible body weight.
@@ -666,6 +691,18 @@ public final class StrengthDataModel: WorkoutDataProviding {
         guard data.deleteBodyWeight(id: id) else { return false }
         persist(templates: false, history: false, customExercises: false, personalBests: false, bodyWeights: true)
         return true
+    }
+
+    /// The user's workout preferences.
+    public var preferences: StrengthPreferences { data.preferences }
+
+    /// Replaces the workout preferences and saves them. `.failure` when the file could not be written (the preferences change in
+    /// memory anyway). The counts are kept in range by `StrengthPreferences` itself.
+    @discardableResult
+    public func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error> {
+        guard data.preferences != preferences || !preferencesStored else { return .success(()) }
+        data.preferences = preferences
+        return commit(preferences: true)
     }
 
     /// Replaces the weigh-in reminder preferences and saves them.
@@ -706,6 +743,9 @@ public final class StrengthDataModel: WorkoutDataProviding {
         let bestsFileExisted = persistence.hasPersonalBestsFile
         let historyWasIncomplete = data.historyIsIncomplete
         let wasDemo = data.usesDemoPreviousResults
+        // A file that exists but cannot be read counts as stored: it is left alone until the user saves new preferences (the
+        // original is copied first, see `FileStrengthPersistence.write`).
+        preferencesStored = persistence.hasPreferencesFile
         data = StrengthData(
             templates: persistence.loadTemplates(),
             history: persistence.loadHistory(),
@@ -713,6 +753,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
             personalBests: persistence.loadPersonalBests(),
             bodyWeights: persistence.loadBodyWeights(),
             weighIn: persistence.loadWeighInPreferences(),
+            preferences: persistence.loadPreferences() ?? StrengthDataModel.newInstallPreferences(deviceLocale),
             historyIsIncomplete: historyWasIncomplete,
             usesDemoPreviousResults: wasDemo
         )
@@ -740,6 +781,11 @@ public final class StrengthDataModel: WorkoutDataProviding {
         refreshTemplateExercises()
     }
 
+    /// The preferences of a new install: the defaults with the unit that `deviceLocale` calls for (kilograms without a locale).
+    private static func newInstallPreferences(_ deviceLocale: Locale?) -> StrengthPreferences {
+        deviceLocale.map { StrengthPreferences(locale: $0) } ?? StrengthPreferences()
+    }
+
     func overlayCache() -> (list: [Exercise], byID: [String: Exercise]) {
         if let cache { return cache }
         let list = data.exercises()
@@ -758,6 +804,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         static let personalBests = PersistTargets(rawValue: 8)
         static let bodyWeights = PersistTargets(rawValue: 16)
         static let weighIn = PersistTargets(rawValue: 32)
+        static let preferences = PersistTargets(rawValue: 64)
     }
 
     /// A file that `persist` could not write, and why.
@@ -777,7 +824,8 @@ public final class StrengthDataModel: WorkoutDataProviding {
         customExercises: Bool,
         personalBests: Bool,
         bodyWeights: Bool = false,
-        weighIn: Bool = false
+        weighIn: Bool = false,
+        preferences: Bool = false
     ) -> [PersistFailure] {
         guard let persistence else {
             lastPersistenceError = nil
@@ -790,6 +838,8 @@ public final class StrengthDataModel: WorkoutDataProviding {
         if personalBests { pending.insert(.personalBests) }
         if bodyWeights { pending.insert(.bodyWeights) }
         if weighIn { pending.insert(.weighIn) }
+        // The first save of anything also writes the preferences that were created at the first launch.
+        if preferences || !preferencesStored { pending.insert(.preferences) }
         unsavedFiles = []
 
         var failures: [PersistFailure] = []
@@ -808,6 +858,10 @@ public final class StrengthDataModel: WorkoutDataProviding {
         attempt(.templates) { try persistence.saveTemplates(data.templates) }
         attempt(.bodyWeights) { try persistence.saveBodyWeights(data.bodyWeights) }
         attempt(.weighIn) { try persistence.saveWeighInPreferences(data.weighIn) }
+        attempt(.preferences) {
+            try persistence.savePreferences(data.preferences)
+            preferencesStored = true
+        }
         lastPersistenceError = failures.first?.error
         return failures
     }
@@ -822,6 +876,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         personalBests: Bool = false,
         bodyWeights: Bool = false,
         weighIn: Bool = false,
+        preferences: Bool = false,
         exercises: Bool = false
     ) -> Result<Void, Error> {
         if exercises || history || personalBests { cache = nil }
@@ -832,13 +887,15 @@ public final class StrengthDataModel: WorkoutDataProviding {
         if personalBests { requested.insert(.personalBests) }
         if bodyWeights { requested.insert(.bodyWeights) }
         if weighIn { requested.insert(.weighIn) }
+        if preferences { requested.insert(.preferences) }
         let failures = persist(
             templates: templates,
             history: history,
             customExercises: customExercises,
             personalBests: personalBests,
             bodyWeights: bodyWeights,
-            weighIn: weighIn
+            weighIn: weighIn,
+            preferences: preferences
         )
         if let failure = failures.first(where: { requested.contains($0.target) }) { return .failure(failure.error) }
         return .success(())
@@ -857,10 +914,11 @@ public final class StrengthDataModel: WorkoutDataProviding {
         do {
             try persistence.deleteAll()
             unsavedFiles = []
+            preferencesStored = false
             lastPersistenceError = nil
             return .success(())
         } catch {
-            unsavedFiles = [.templates, .history, .customExercises, .personalBests, .bodyWeights, .weighIn]
+            unsavedFiles = [.templates, .history, .customExercises, .personalBests, .bodyWeights, .weighIn, .preferences]
             lastPersistenceError = error
             return .failure(error)
         }

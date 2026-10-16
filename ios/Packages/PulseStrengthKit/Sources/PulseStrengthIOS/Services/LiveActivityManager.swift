@@ -38,7 +38,7 @@ final class LiveActivityManager: WorkoutSideEffect {
 
     func workoutStarted(_ state: WorkoutState) {
         let now = Date()
-        let snapshot = SnapshotBuilder.make(from: state, now: now)
+        let snapshot = SnapshotBuilder.make(from: state, now: now, locale: .current)
         lastQueuedSnapshot = snapshot
         lastQueuedAt = now
         let content = Self.makeContent(state: state, snapshot: snapshot)
@@ -55,7 +55,7 @@ final class LiveActivityManager: WorkoutSideEffect {
         if case .updateHeartRate = action, isInsideHeartRateInterval(now) {
             return
         }
-        let snapshot = SnapshotBuilder.make(from: new, now: now)
+        let snapshot = SnapshotBuilder.make(from: new, now: now, locale: .current)
         if let previous = lastQueuedSnapshot, Self.showsSameContent(previous, snapshot) {
             return
         }
@@ -73,7 +73,7 @@ final class LiveActivityManager: WorkoutSideEffect {
     func workoutEnded(_ state: WorkoutState, completed: CompletedWorkout?) {
         lastQueuedSnapshot = nil
         lastQueuedAt = nil
-        let finalSnapshot = Self.fittingActivity(SnapshotBuilder.make(from: state, now: Date()))
+        let finalSnapshot = Self.fittingActivity(SnapshotBuilder.make(from: state, now: Date(), locale: .current))
         let finalContent = ActivityContent(state: finalSnapshot, staleDate: nil)
         enqueue { [weak self] in
             guard let self = self else { return }

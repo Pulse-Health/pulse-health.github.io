@@ -104,14 +104,15 @@ public final class FileStrengthPersistence: @unchecked Sendable {
     /// The data files, by name. Backups (`*.corrupt-*.json`) and `schema.json` are not data files.
     static let dataFileNames = [
         FileName.activeWorkout, FileName.templates, FileName.history, FileName.customExercises,
-        FileName.personalBests, FileName.bodyWeights, FileName.weighInPreferences, FileName.acknowledgedCommands,
+        FileName.personalBests, FileName.bodyWeights, FileName.weighInPreferences, FileName.preferences,
+        FileName.acknowledgedCommands,
     ]
 
     /// The files whose content is the user's data: a save of one of them first makes sure the original of a damaged file is copied.
     /// The workout in progress and the acknowledged command ids are transient and exempt.
     static let protectedFileNames = [
         FileName.templates, FileName.history, FileName.customExercises,
-        FileName.personalBests, FileName.bodyWeights, FileName.weighInPreferences,
+        FileName.personalBests, FileName.bodyWeights, FileName.weighInPreferences, FileName.preferences,
     ]
 
     /// At most this many `.corrupt-` copies are kept per file.
@@ -125,6 +126,7 @@ public final class FileStrengthPersistence: @unchecked Sendable {
         static let personalBests = "personal-bests.json"
         static let bodyWeights = "body-weights.json"
         static let weighInPreferences = "weigh-in-preferences.json"
+        static let preferences = "preferences.json"
         static let acknowledgedCommands = "acknowledged-commands.json"
         static let schema = "schema.json"
     }
@@ -236,6 +238,13 @@ public final class FileStrengthPersistence: @unchecked Sendable {
         return FileManager.default.fileExists(atPath: url(FileName.personalBests).path)
     }
 
+    /// True when `preferences.json` exists (readable or not).
+    public var hasPreferencesFile: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return FileManager.default.fileExists(atPath: url(FileName.preferences).path)
+    }
+
     // MARK: Active workout
 
     /// The workout in progress, or nil when there is none or the file is unreadable (an unreadable file is an issue).
@@ -321,6 +330,22 @@ public final class FileStrengthPersistence: @unchecked Sendable {
     /// Replaces the weigh-in reminder preferences.
     public func saveWeighInPreferences(_ preferences: WeighInPreferences) throws {
         try write(preferences, to: FileName.weighInPreferences)
+    }
+
+    // MARK: Preferences
+
+    /// The user's workout preferences, or nil when there is no file or it is unreadable (an unreadable file is an issue). Fields that
+    /// the file lacks read as their defaults, so a file written by another version loads.
+    public func loadPreferences() -> StrengthPreferences? {
+        loadValue(FileName.preferences, empty: nil as StrengthPreferences?) { data in
+            guard let preferences = try? StrengthJSON.makeDecoder().decode(StrengthPreferences.self, from: data) else { return nil }
+            return (preferences, 0)
+        }
+    }
+
+    /// Replaces the user's workout preferences.
+    public func savePreferences(_ preferences: StrengthPreferences) throws {
+        try write(preferences, to: FileName.preferences)
     }
 
     // MARK: File access
@@ -411,7 +436,7 @@ public final class FileStrengthPersistence: @unchecked Sendable {
     // MARK: Reset
 
     /// Removes every data file: the workout in progress, the templates, the history, the custom exercises, the personal bests, the
-    /// weigh-ins, the reminder preferences and the remembered command ids. `schema.json` stays, and so do the copies of damaged
+    /// weigh-ins, the reminder preferences, the workout preferences and the remembered command ids. `schema.json` stays, and so do the copies of damaged
     /// files (`<name>.corrupt-<timestamp>.json`) and the pre-migration folders.
     ///
     /// Refused like a write (`PersistenceError.newerSchema` / `.migrationFailed`), and also when the original of a damaged file

@@ -40,6 +40,7 @@ public struct WorkoutSnapshot: Codable, Hashable, Sendable {
     /// "Set 4 of 5" or "Warm-up 1 of 2" style label for the target set.
     public var setLabel: String
     public var tracking: TrackingKind
+    /// The target weight in the snapshot's unit without the symbol ("82.5", "135"), "BW" or "–".
     public var weightText: String
     public var repsText: String
     /// "reps" or "sec".
@@ -55,12 +56,15 @@ public struct WorkoutSnapshot: Codable, Hashable, Sendable {
     public var restFrozenRemaining: Int?
 
     public var heartRate: Int?
+    /// The logged volume in the snapshot's unit without the symbol ("1,980").
     public var volumeText: String
     public var loggedSets: Int
     public var totalSets: Int
-    /// "Set 4 · 82.5 kg × 6"
+    /// "Set 4 · 82.5 kg × 6" (or "135 lb × 6")
     public var nextSetText: String
     public var nextExerciseName: String?
+    /// The unit of `weightText`, `volumeText` and `nextSetText` (`weightUnit.symbol` is the text to put after the numbers).
+    public var weightUnit: WeightUnit
 
     public init(
         workoutID: UUID,
@@ -90,7 +94,8 @@ public struct WorkoutSnapshot: Codable, Hashable, Sendable {
         loggedSets: Int,
         totalSets: Int,
         nextSetText: String,
-        nextExerciseName: String? = nil
+        nextExerciseName: String? = nil,
+        weightUnit: WeightUnit = .kg
     ) {
         self.workoutID = workoutID
         self.revision = revision
@@ -120,6 +125,42 @@ public struct WorkoutSnapshot: Codable, Hashable, Sendable {
         self.totalSets = totalSets
         self.nextSetText = nextSetText
         self.nextExerciseName = nextExerciseName
+        self.weightUnit = weightUnit
+    }
+
+    // `weightUnit` came later: a snapshot written before it (a Live Activity that was started by an older build and is still
+    // running) is in kilograms. A unit this version does not know reads the same way. Writing is synthesized.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        workoutID = try container.decode(UUID.self, forKey: .workoutID)
+        revision = try container.decode(Int.self, forKey: .revision)
+        workoutName = try container.decode(String.self, forKey: .workoutName)
+        activeStart = try container.decode(Date.self, forKey: .activeStart)
+        isPaused = try container.decode(Bool.self, forKey: .isPaused)
+        elapsedWhenPaused = try container.decode(Int.self, forKey: .elapsedWhenPaused)
+        phase = try container.decode(SnapshotPhase.self, forKey: .phase)
+        exerciseName = try container.decode(String.self, forKey: .exerciseName)
+        exerciseIndex = try container.decode(Int.self, forKey: .exerciseIndex)
+        exerciseCount = try container.decode(Int.self, forKey: .exerciseCount)
+        targetExerciseID = try container.decodeIfPresent(UUID.self, forKey: .targetExerciseID)
+        targetSetID = try container.decodeIfPresent(UUID.self, forKey: .targetSetID)
+        setLabel = try container.decode(String.self, forKey: .setLabel)
+        tracking = try container.decode(TrackingKind.self, forKey: .tracking)
+        weightText = try container.decode(String.self, forKey: .weightText)
+        repsText = try container.decode(String.self, forKey: .repsText)
+        repsUnit = try container.decode(String.self, forKey: .repsUnit)
+        showsWeight = try container.decode(Bool.self, forKey: .showsWeight)
+        restStartedAt = try container.decodeIfPresent(Date.self, forKey: .restStartedAt)
+        restEndsAt = try container.decodeIfPresent(Date.self, forKey: .restEndsAt)
+        restTotalSeconds = try container.decode(Int.self, forKey: .restTotalSeconds)
+        restFrozenRemaining = try container.decodeIfPresent(Int.self, forKey: .restFrozenRemaining)
+        heartRate = try container.decodeIfPresent(Int.self, forKey: .heartRate)
+        volumeText = try container.decode(String.self, forKey: .volumeText)
+        loggedSets = try container.decode(Int.self, forKey: .loggedSets)
+        totalSets = try container.decode(Int.self, forKey: .totalSets)
+        nextSetText = try container.decode(String.self, forKey: .nextSetText)
+        nextExerciseName = try container.decodeIfPresent(String.self, forKey: .nextExerciseName)
+        weightUnit = (try? container.decodeIfPresent(WeightUnit.self, forKey: .weightUnit)) ?? .kg
     }
 }
 

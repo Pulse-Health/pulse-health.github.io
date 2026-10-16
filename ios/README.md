@@ -205,7 +205,9 @@ after the first run.
 
 1. All workout logic is a pure reducer in Core: `WorkoutState` + `WorkoutAction` -> `WorkoutReducer.reduce(_:_:now:)`.
 2. `WorkoutController` owns the state, persists it and notifies side effects. The phone is the `authority`, the Watch a `mirror`.
-3. `WorkoutPresenter` turns state into a display-ready `ActiveWorkoutPresentation`; views only render it and dispatch actions.
+3. `WorkoutPresenter` turns state into a display-ready `ActiveWorkoutPresentation`; views only render it and dispatch actions. Weights are stored in
+   kilograms; the text is written in the workout's unit (kg or lb, `WorkoutSettings.weightUnit`, chosen in `StrengthPreferences`) with the decimal and
+   grouping separators of the device's locale (`WeightFormatter`, `ARCHITECTURE.md` 3.6).
 4. `SnapshotBuilder` produces the compact `WorkoutSnapshot` that drives the Live Activity and the Watch.
 5. Platform services are `WorkoutSideEffect`s: Live Activity manager, rest notification, HealthKit writer, Watch bridge (iOS);
    WatchConnectivity client and `HKWorkoutSession` (watchOS). `PulseServices` registers the iOS set.

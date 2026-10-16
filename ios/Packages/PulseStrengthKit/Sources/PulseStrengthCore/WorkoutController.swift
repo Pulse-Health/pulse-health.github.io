@@ -27,6 +27,13 @@ public final class WorkoutController: ObservableObject {
         set { engine.recovery = newValue }
     }
 
+    /// The locale whose decimal and grouping separators the texts of `presentation(now:)` and `snapshot(now:)` use. The default is
+    /// en_US ("82.5", "1,980"); the iPhone and Watch environments set `Locale.current`. The unit comes from the workout.
+    public var displayLocale: Locale {
+        get { engine.displayLocale }
+        set { engine.displayLocale = newValue }
+    }
+
     private let engine: WorkoutEngine
 
     /// Creates a controller on top of `store`; `persistence` holds the active workout (authority only), `clock` is injectable for tests.
@@ -62,7 +69,8 @@ public final class WorkoutController: ObservableObject {
         store.refreshPersistenceIssues()
     }
 
-    /// Starts a workout from `template`, or an empty one named `name ?? "Workout"`; ignored while a workout is in progress.
+    /// Starts a workout from `template`, or an empty one named `name ?? "Workout"`; ignored while a workout is in progress. The
+    /// workout's settings (rest timer, weight unit) are the store's current preferences.
     public func startWorkout(template: WorkoutTemplate?, name: String? = nil) {
         engine.start(template: template, name: name)
     }
@@ -135,12 +143,27 @@ public final class WorkoutController: ObservableObject {
         engine.lastEndNoticeSentAt
     }
 
-    /// The active-workout screen model for `now`; nil without a workout.
+    /// Saves new preferences in the store and, when a workout is in progress whose unit differs from the new one, sends
+    /// `.setWeightUnit` so the screen, the Watch and the Live Activity switch units at once. The other settings of a running workout
+    /// are not touched (its own rest timer toggles stay as they are). `.failure` when the preferences could not be written; they
+    /// change in memory anyway.
+    @discardableResult
+    public func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error> {
+        let result = store.updatePreferences(preferences)
+        if let state, state.settings.weightUnit != store.preferences.weightUnit {
+            send(.setWeightUnit(store.preferences.weightUnit))
+        }
+        return result
+    }
+
+    /// The active-workout screen model for `now`; nil without a workout. Its weights are in the workout's unit, written with
+    /// `displayLocale`.
     public func presentation(now: Date) -> ActiveWorkoutPresentation? {
         engine.presentation(now: now)
     }
 
-    /// The Live Activity / Watch snapshot for `now`; nil without a workout.
+    /// The Live Activity / Watch snapshot for `now`; nil without a workout. Its weights are in the workout's unit, written with
+    /// `displayLocale`.
     public func snapshot(now: Date) -> WorkoutSnapshot? {
         engine.snapshot(now: now)
     }
@@ -191,6 +214,14 @@ private final class StoreDataAdapter: WorkoutDataProviding {
 
     func recoveryProvider(now: Date) -> RecoveryProvider {
         store.recoveryProvider(now: now)
+    }
+
+    var preferences: StrengthPreferences {
+        store.preferences
+    }
+
+    func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error> {
+        store.updatePreferences(preferences)
     }
 }
 

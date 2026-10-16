@@ -43,13 +43,15 @@ ios/
 
 * iOS 17+, watchOS 10+, Swift 5.9 language mode (`swift-tools-version: 5.9`), SwiftUI, no third-party dependencies.
 * `PulseStrengthCore` imports Foundation only (plus `Combine` inside `#if canImport(Combine)`). It must build
-  and pass its tests on Linux with `swift test`. No `NumberFormatter`/`DateFormatter` with locale dependence:
-  number text is formatted by hand ("." decimal, "," thousands) so output is identical everywhere.
+  and pass its tests on Linux with `swift test`. No `NumberFormatter`/`DateFormatter`: number text is formatted by hand so output is
+  identical everywhere. `NumberText` is locale independent ("." decimal, "," thousands); weights are written by `WeightFormatter` (section 3.6),
+  by hand too, with the separators of an explicit `Locale`.
 * Every file of the Apple-only targets is wrapped in `#if os(iOS)` or `#if os(watchOS)` (whole file contents),
   so the package builds to empty modules on Linux.
 * Code must be real, complete and compile-ready against the iOS 17 / watchOS 10 SDKs. No `TODO`, no
   `fatalError("not implemented")`, no placeholder views. If an API is uncertain, use the documented, widely used form.
-* Weights are kilograms. `LoggedSet.reps` holds seconds for duration exercises.
+* Weights are STORED in kilograms (`weightKg` everywhere); pounds are a display and entry concern only (section 3.6). `LoggedSet.reps` holds seconds
+  for duration exercises.
 
 ## 3. Core contract (`PulseStrengthCore`)
 
@@ -75,12 +77,19 @@ public enum ExerciseLibrary {
 public enum Estimated1RM {
     public static func epley(weightKg: Double, reps: Int) -> Double   // kg * (1 + reps/30); 0 if kg <= 0 or reps <= 0
 }
-public struct PlatePlan: Equatable, Sendable { public var perSide: [Double]; public var leftoverKg: Double }
-public enum PlateCalculator {
-    public static let availablePlates: [Double]                       // [25, 20, 15, 10, 5, 2.5, 1.25]
-    public static func plan(totalKg: Double, barKg: Double) -> PlatePlan?   // nil when totalKg < barKg; greedy; leftover rounded to 0.01
+public struct PlatePlan: Equatable, Sendable {                        // values in `unit`
+    public var perSide: [Double]; public var leftover: Double; public var unit: WeightUnit
+    public init(perSide: [Double], leftover: Double, unit: WeightUnit); public init(perSide: [Double], leftoverKg: Double)   // the latter is a kg plan
+    public var leftoverKg: Double { get set }                         // kg view of `leftover` (rounded to 0.01 kg for a plan in pounds)
 }
-public enum NumberText {
+public enum PlateCalculator {
+    public static let availablePlates: [Double]                       // kg: [25, 20, 15, 10, 5, 2.5, 1.25]
+    public static let availablePlatesLb: [Double]                     // lb: [45, 35, 25, 10, 5, 2.5]
+    public static func plates(in unit: WeightUnit) -> [Double]
+    public static func plan(totalKg: Double, barKg: Double) -> PlatePlan?   // nil when totalKg < barKg; greedy; leftover rounded to 0.01
+    public static func plan(total: Double, bar: Double, unit: WeightUnit) -> PlatePlan?   // the same in the display unit (total and bar in `unit`)
+}
+public enum NumberText {                                    // locale independent, unchanged: new code writes weights with WeightFormatter (3.6)
     public static func kg(_ value: Double) -> String        // 82.5 -> "82.5", 80 -> "80", 82.50001 -> "82.5" (round to 2 decimals, trim zeros)
     public static func thousands(_ value: Double) -> String // 1980.4 -> "1,980" (rounded, "," grouping)
     public static func clock(seconds: Int) -> String        // 72 -> "1:12", 3723 -> "1:02:03"
@@ -91,7 +100,10 @@ Library data and media keys come from `Active.dc.html` (`IMG`/`L`): the 25 media
 bench, incline, ohp, lateral, pushdown, crossover, pullup, pulldown, brow, squat, deadlift, curl, pushup,
 legpress, rdl, plank, hipthrust, crow, facepull, dbcurl, skull, legcurl, legext, calf, cablecrunch.
 Keep ids, names, muscles, secondary text, equipment, tracking, defaults and cues exactly as in the design. `barKg` is 10 for "skull",
-else 20. The library carries NO results of the user: `previousBestE1RM` is 0 and `previousSets` is empty for every built-in exercise. The design's
+else 20. `Exercise.weightStep(in:)` is the stepper increment of a unit (kg: `weightStepKg`; lb: 5 for barbell, machine, cable and dumbbell, 2.5 for
+bodyweight and other) and `Exercise.barWeight(in:)` the empty bar for the plate calculator (kg: `barKg`; lb: the next multiple of 5 above it,
+up to half a pound of tolerance: 20 kg is 45 lb, 15 kg 35 lb, 10 kg 25 lb). `Exercise.custom(...)` takes `restSeconds` (default 90, see
+`StrengthPreferences.defaultRestSeconds`). The library carries NO results of the user: `previousBestE1RM` is 0 and `previousSets` is empty for every built-in exercise. The design's
 invented previous results (bench best 99 kg, 25 exercises with last sets) live in `DemoPreviousResults` (`SampleData.swift`) and in
 `ExerciseLibrary.demoBuiltIn`, for previews, UI tests and the tests of the demo data (see "No invented data" in section 3.4).
 
@@ -111,8 +123,8 @@ public enum WorkoutReducer {
     public static func reduce(_ state: inout WorkoutState, _ action: WorkoutAction, now: Date)
 }
 public enum WorkoutFactory {
-    public static func makeEmpty(name: String, now: Date, id: UUID = UUID()) -> WorkoutState
-    public static func makeWorkout(from template: WorkoutTemplate, now: Date, id: UUID = UUID()) -> WorkoutState
+    public static func makeEmpty(name: String, now: Date, id: UUID = UUID(), preferences: StrengthPreferences = StrengthPreferences()) -> WorkoutState
+    public static func makeWorkout(from template: WorkoutTemplate, now: Date, id: UUID = UUID(), preferences: StrengthPreferences = StrengthPreferences()) -> WorkoutState
     public static func updatedTemplate(_ template: WorkoutTemplate, from state: WorkoutState) -> WorkoutTemplate
     public static func template(from state: WorkoutState, name: String) -> WorkoutTemplate   // "save as template"
 }
@@ -134,8 +146,10 @@ Reducer rules (ported from `Active.dc.html`; `S` = state):
    `logNextSet` first moves `currentIndex` to the exercise of `WorkoutTargets.nextPending`, then logs that set.
 3. `setWeight` clamps to 0...`maximumWeightKg` (1,000,000 kg; the keypad's six characters stay below it) and rounds to 0.01; NaN and
    +infinity are ignored (not representable). `setReps` clamps to 0...999; neither changes `isDone`.
-   `nudgeNextSet(weightSteps:repsSteps:)` edits the `nextPending` set: weight += steps * `exercise.weightStepKg`
-   (>= 0, only for weight-tracking exercises), reps += steps * `exercise.repsStep` (clamped 0...999).
+   `nudgeNextSet(weightSteps:repsSteps:)` edits the `nextPending` set: the weight AS SHOWN (`settings.weightUnit.displayValue`) += steps *
+   `exercise.weightStep(in: settings.weightUnit)`, converted back to kilograms and stored like `setWeight` (>= 0, only for weight-tracking
+   exercises), so a step up and a step down return to the same displayed weight; in kilograms this is `weightStepKg` as always. Reps += steps *
+   `exercise.repsStep` (clamped 0...999).
 4. `setSetType`, `setRIR(rir)` (clamp 0...4, nil clears), `toggleLastSetRIR(v)` (applies to `lastLogged`; same value clears),
    `setNote`.
 5. `addSet`: copies weight/reps of the last set (type normal, not done, no rir); with no sets uses the exercise defaults.
@@ -161,11 +175,12 @@ Reducer rules (ported from `Active.dc.html`; `S` = state):
 10. `pause`: if running `pausedAt = now`; an active rest gets `frozenRemaining = max(0, endsAt - now)`.
     `resume`: `pausedTotal += now - pausedAt`, `pausedAt = nil`, and a frozen rest gets `endsAt = now + frozen`.
 11. `goTo`, `nextExercise`, `previousExercise` clamp. `setUsedWatch`, `rename`, `setAutoStartRest`,
-    `setAlertWhenRestEnds` set the field. `updateHeartRate(bpm)` sets `heartRate` and, for a non-nil bpm in 30...240,
+    `setAlertWhenRestEnds` set the field; `setWeightUnit(unit)` sets `settings.weightUnit` (display and entry only: no stored weight changes). `updateHeartRate(bpm)` sets `heartRate` and, for a non-nil bpm in 30...240,
     adds it to `heartRateSum` / `heartRateCount`; it is the ONE action that does NOT bump `revision` (samples arrive every few seconds).
     Controllers and effects must not persist, broadcast or update the Live Activity for it more than once per 10 seconds.
 
-Factory: `makeWorkout(from:)` creates entries with new ids, `templateEntryID` = entry id, sets from `plannedSets`
+Factory: `makeEmpty` / `makeWorkout` start with `WorkoutSettings(autoStartRest:alertWhenRestEnds:weightUnit:)` taken from `preferences` (the defaults: rest timer on, kilograms).
+`makeWorkout(from:)` creates entries with new ids, `templateEntryID` = entry id, sets from `plannedSets`
 (new `LoggedSet` ids, not done), `templateBaseline` = the entry ids in order, `templateID`, `name`, `startedAt = now`.
 `updatedTemplate` rebuilds `entries` from the current exercises (kept entries keep their id, new exercises get new
 entry ids, planned sets = the current sets' type/weight/reps), keeps `id`, `name`, `lastPerformed`.
@@ -174,39 +189,43 @@ entry ids, planned sets = the current sets' type/weight/reps), keeps `id`, `name
 
 ```swift
 public enum WorkoutPresenter {
-    public static func present(_ state: WorkoutState, now: Date, recovery: RecoveryProvider) -> ActiveWorkoutPresentation
+    public static func present(_ state: WorkoutState, now: Date, recovery: RecoveryProvider, locale: Locale = DisplayFormat.metric.locale) -> ActiveWorkoutPresentation
 }
 public extension TemplateDiff { static func compute(for state: WorkoutState) -> TemplateDiff }
 public enum SummaryBuilder { public static func build(from state: WorkoutState, finishedAt: Date) -> CompletedWorkout }
-public enum SnapshotBuilder { public static func make(from state: WorkoutState, now: Date) -> WorkoutSnapshot }
+public enum SnapshotBuilder { public static func make(from state: WorkoutState, now: Date, locale: Locale = DisplayFormat.metric.locale) -> WorkoutSnapshot }
 ```
+
+Every weight in these texts is written by a `WeightFormatter(unit: state.settings.weightUnit, locale: locale)` (section 3.6): the examples below are kilograms in en_US;
+the same state in pounds reads "181.9 lb" and in de_DE "82,5 kg". `WorkoutSnapshot.weightUnit` (`decodeIfPresent`, default `.kg`, so a Live Activity
+started by an older build still decodes) tells the Live Activity and the Watch which symbol goes after `weightText` / `volumeText`.
 
 Presenter rules (port of `renderVals` in `Active.dc.html`):
 
 * Totals: logged sets, all sets, volume = sum of `weightKg * reps` over logged sets that are not warm-up and belong to
   weight-tracking exercises; completed exercises = exercises with >= 1 set and all done.
 * Header: `clockText` = `NumberText.clock(elapsedSeconds)`; paused -> "Paused · " + clock. `volumeText` = thousands, `setsText` =
-  "<logged> of <total>", `heartRateText` = bpm or "–". One `Segment` per exercise (fraction = done/total sets, `isCurrent`).
+  "<logged> of <total>", `heartRateText` = bpm or "–"; `volumeText` is `WeightFormatter.volume` (a whole number of the unit, grouped by the locale, no symbol). One `Segment` per exercise (fraction = done/total sets, `isCurrent`).
 * Navigator is nil when empty; `position` is 1-based.
 * Card for the current exercise: recovery percent from the provider, level good >= 80, fair >= 60, else low; `supersetLabel`
-  "Superset <letter>"; `restText` via `NumberText.rest`; column titles: weightReps -> "kg"/"Reps", repsOnly -> "Added"/"Reps",
+  "Superset <letter>"; `restText` via `NumberText.rest`; column titles: weightReps -> the unit symbol ("kg" or "lb")/"Reps", repsOnly -> "Added"/"Reps",
   duration -> ""/"Sec".
 * Rows: `number` = "W"/"D"/"F" or the running number of normal sets; `previousText` from `exercise.previousSets[min(i, count-1)]`
-  ("80 × 6", "8 reps", "45 s", "–" when none); `weightText` = `NumberText.kg` / "BW" / "–"; `weightEditable` only for weightReps;
+  ("80 × 6", "8 reps", "45 s", "–" when none); `weightText` = `WeightFormatter.text` / "BW" / "–"; `weightEditable` only for weightReps;
   `isNext` = the first pending set of the card. Personal record: a logged, non-warm-up set of a weight-tracking exercise whose
   Epley e1RM exceeds the running baseline + 0.05, where the baseline starts at `previousBestE1RM` and rises with each logged
-  set that beats it; no PR when `previousBestE1RM == 0`. `estimated1RM` = rounded e1RM for such sets, as a whole number that clamps at
+  set that beats it; no PR when `previousBestE1RM == 0`. `estimated1RM` = rounded e1RM for such sets, as a whole number of the workout's unit that clamps at
   1,000,000,000 (the presenter never traps on a state the reducer did not produce); an estimate that is not finite counts as 0. `rirText` = "RIR n" / "RIR 4+" only
-  on logged sets. `accessibilityLabel` is a full sentence ("Set 3, working set, 82.5 kilograms, 6 reps, logged").
+  on logged sets. `accessibilityLabel` is a full sentence ("Set 3, working set, 82.5 kilograms, 6 reps, logged"; "135 pounds" in pounds).
 * Dock exists iff a rest exists and there is a current exercise. `remainingSeconds` = ceil of the remaining time (frozen while
   paused); finished when 0 (`remainingText` "Go", `fraction` 1); `nextSetText` = "Next · Set 4 · 82.5 kg × 6" (warm-up:
   "Next · Warm-up · 50 kg × 8"; repsOnly "8 reps", duration "45 s") or "All sets logged". `showsRIR` iff `lastLogged` resolves to a
   logged non-warm-up set; `rirSelection` its rir.
 * `coachTip` (card): only while no rest runs, for weight-tracking exercises with `previousBestE1RM > 0` and at least one pending
   non-warm-up set. Baseline = the running best e1RM (previous best, raised by sets already logged today). Take the LAST pending
-  normal set (else the last pending non-warm-up set), find the lowest weight (a multiple of `weightStepKg`, rounded up) whose Epley e1RM with
-  that set's reps exceeds the baseline by more than 0.05. The set's current weight is irrelevant (it may already equal the target).
-  Text: "85 kg × 6 on your last set would beat your best estimated 1RM of 99 kg." (bench: pending 85 × 6 with previous best 99 gives exactly this).
+  normal set (else the last pending non-warm-up set), find the lowest weight (a multiple of `weightStep(in: unit)` of the workout's unit, rounded up) whose Epley e1RM with
+  that set's reps exceeds the baseline by more than 0.05, evaluated for the kilograms a set would store (rounded to 0.01 kg), so entering the named weight really beats it. The set's current weight is irrelevant (it may already equal the target).
+  Text: "85 kg × 6 on your last set would beat your best estimated 1RM of 99 kg." ("190 lb × 5 ... of 220 lb." in pounds; bench: pending 85 × 6 with previous best 99 gives exactly this).
 * `undoText` = undo title while `now <= expiresAt`, else nil. `finishCheck`: `loggedSets`, `unloggedSets`, `canFinish = logged > 0`,
   title "Nothing logged yet" / "Finish workout?", message ("Log at least one set to save this workout." /
   "<n> set(s) is/are not logged yet and will be left out." / "All sets are logged. Nice work."), `templateDiff`, `diffMessage`
@@ -266,13 +285,14 @@ public final class FileStrengthPersistence: @unchecked Sendable {
     public var loadIssues: [PersistenceIssue] { get }                                 // see "Persistence integrity"
     public func clearLoadIssues()
     public func rescanSchema()
-    public var hasDataFiles: Bool { get };  public var hasPersonalBestsFile: Bool { get }
+    public var hasDataFiles: Bool { get };  public var hasPersonalBestsFile: Bool { get };  public var hasPreferencesFile: Bool { get }
     public func loadActiveWorkout() -> WorkoutState?
     public func saveActiveWorkout(_ state: WorkoutState?) throws                    // nil deletes the file
     public func loadTemplates() -> [WorkoutTemplate];      public func saveTemplates(_ v: [WorkoutTemplate]) throws
     public func loadHistory() -> [CompletedWorkout];       public func saveHistory(_ v: [CompletedWorkout]) throws   // newest first
     public func loadCustomExercises() -> [Exercise];       public func saveCustomExercises(_ v: [Exercise]) throws
     public func loadPersonalBests() -> [String: PersonalBest]; public func savePersonalBests(_ v: [String: PersonalBest]) throws
+    public func loadPreferences() -> StrengthPreferences?;  public func savePreferences(_ v: StrengthPreferences) throws    // preferences.json (section 3.6); nil when missing or unreadable
     public func loadAcknowledgedCommands() -> [UUID];      public func saveAcknowledgedCommands(_ v: [UUID]) throws   // acknowledged-commands.json, the last 256 ids, oldest first
 }
 ```
@@ -289,8 +309,8 @@ JSON (ISO-8601 dates, sorted keys), atomic writes per file, a missing file reads
 * **No silent loss.** When a file cannot be decoded completely (a list or dictionary element that fails to decode, or a file that fails as a whole), the load (1) copies the
   original bytes to `<name>.corrupt-<yyyyMMdd-HHmmss>.json` (UTC; a copy with identical bytes is reused, a collision moves the second on; at most 3 copies per file, the oldest
   deleted), (2) keeps every element that did decode, (3) records a `PersistenceIssue(fileName:, kind:, backupFileName:)` with kind `.unreadableFile` or `.skippedElements(n)`.
-  The damaged file itself stays untouched until the next legitimate save of that file. This covers all eight files (active workout, templates, history, custom exercises,
-  personal bests, body weights, weigh-in preferences, acknowledged commands). `loadIssues` holds one issue per file, ordered by name; a clean load of a file clears its entry.
+  The damaged file itself stays untouched until the next legitimate save of that file. This covers all nine files (active workout, templates, history, custom exercises,
+  personal bests, body weights, weigh-in preferences, preferences, acknowledged commands). `loadIssues` holds one issue per file, ordered by name; a clean load of a file clears its entry.
   A file that exists but cannot be read at all (not a regular file) is an issue without a backup. A save of a user-data file (not the active workout or the acknowledged
   commands) whose issue has no backup first tries to copy the original again; when that fails the save throws `PersistenceError.originalNotPreserved(fileName:)` and nothing is
   replaced, until the copy works or `acknowledgePersistenceIssues()` clears the issues.
@@ -304,7 +324,7 @@ JSON (ISO-8601 dates, sorted keys), atomic writes per file, a missing file reads
   `StrengthData.historyIsIncomplete` is set (kept across reloads, cleared by `acknowledgePersistenceIssues()`) and `recomputePersonalBests()` only raises the bests meanwhile. Template copies of built-in exercises take
   over the current library (`StrengthData.refreshTemplateExercises()`, in memory; remembered previous results are not library data and stay).
 * **Writes.** Each file is written atomically; a save touching several files is not transactional. `StrengthDataModel.persist` writes only the files a change touched, in the order
-  history, custom exercises, personal bests, templates, body weights, preferences (the sets exist only in the history; the bests can be recomputed), attempts every file even
+  history, custom exercises, personal bests, templates, body weights, weigh-in preferences, workout preferences (the sets exist only in the history; the bests can be recomputed; `preferences.json` is also written with the first save of anything while it does not exist yet, see 3.6), attempts every file even
   when one fails, sets `lastPersistenceError` to the first error and writes a file whose earlier write failed again with the next save. `record` writes the templates only when
   a template changed and the bests only when a best changed. The `Result` of a call reports only the files that call asked to write (`record`: the history file); the error of a
   file left over from an earlier save reaches `lastPersistenceError` only.
@@ -319,7 +339,8 @@ public final class StrengthStore: ObservableObject {
     @Published public private(set) var personalBests: [String: PersonalBest]
     @Published public private(set) var lastPersistenceError: Error?        // the first error of the last save that failed; nil when it worked
     @Published public private(set) var persistenceIssues: [PersistenceIssue]   // files that were damaged at load, until acknowledged
-    public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false)
+    @Published public private(set) var preferences: StrengthPreferences     // the user's workout preferences (section 3.6)
+    public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false, deviceLocale: Locale? = nil)   // deviceLocale picks the unit of a first launch; nil = kg
     /// builtIn + custom, with `previousBestE1RM` / `previousSets` overlaid from personal bests and history (none without history, except in a demo store).
     public var exercises: [Exercise] { get }
     public func exercise(id: String) -> Exercise?
@@ -346,7 +367,8 @@ public final class StrengthStore: ObservableObject {
     public func readinessPercent(now: Date = Date()) -> Int?                         // mean of the six percents; nil without a workout in the last 21 days
     public func recoveryProvider(now: Date = Date()) -> RecoveryProvider
     public func acknowledgePersistenceIssues();  public func refreshPersistenceIssues()
-    public func history(for exerciseID: String, now: Date) -> ExerciseHistory
+    public func history(for exerciseID: String, now: Date, locale: Locale = DisplayFormat.metric.locale) -> ExerciseHistory   // its texts in `preferences.weightUnit`
+    public func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error>   // saves preferences.json (section 3.6)
     public func reload()
 }
 public enum WorkoutRole { case authority, mirror }          // phone = authority, Watch = mirror
@@ -356,11 +378,13 @@ public final class WorkoutController: ObservableObject {
     public let store: StrengthStore
     public let role: WorkoutRole
     public var recovery: RecoveryProvider                            // by default the estimate from the store's history (RecoveryEstimator); assigning replaces it
+    public var displayLocale: Locale                                 // separators of presentation(now:) / snapshot(now:); default en_US, the iPhone and Watch environments set Locale.current
     public init(store: StrengthStore, persistence: FileStrengthPersistence?, role: WorkoutRole = .authority,
                 recovery: RecoveryProvider? = nil, clock: @escaping @Sendable () -> Date = { Date() })   // nil = estimated; previews and tests pass DemoRecovery.provider
     public func addEffect(_ effect: WorkoutSideEffect)
     public func restoreFromDisk()                                    // on launch: reload the active workout and notify effects
-    public func startWorkout(template: WorkoutTemplate?, name: String? = nil)   // nil template = empty workout named `name ?? "Workout"`
+    public func startWorkout(template: WorkoutTemplate?, name: String? = nil)   // nil template = empty workout named `name ?? "Workout"`; its settings come from store.preferences
+    @discardableResult public func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error>   // store + sends .setWeightUnit when a workout runs in another unit
     public func send(_ action: WorkoutAction, origin: ActionOrigin = .phone)    // reduce, persist (authority), notify effects
     public func receive(_ command: RemoteCommand)                    // authority: acknowledge the id, dedupe (SeenCommands), then send(action, origin: command.origin)
     public func receive(_ envelope: SyncEnvelope)                    // mirror: adopt per SyncReconciler.shouldAdopt, replay unacknowledged edits; nil state = ended
@@ -592,10 +616,81 @@ notifications, no prompts) and refreshed when the app becomes active. The notifi
 Settings: weight, history with swipe to delete, reminder switch / frequency / time, next reminder date), `BodyWeightEntrySheet`, and the "Time to update your weight" card at the top of the hub
 while the reminder is on and a weigh-in is due (the in-app half of the reminder, for users who refused notifications).
 
+### 3.6 `Units.swift`, `Preferences.swift` (area: units, number formatting and preferences)
+
+Storage never changes: every weight is kilograms (`weightKg`, `PlannedSet`, `CompletedSet`, `PersonalBest`, `BodyWeightEntry.kg`). A user can SEE and TYPE weights in pounds; the
+conversion happens at the edge. Foundation only, tested on Linux (`UnitsTests.swift`, `UnitsPresentationTests.swift`, `PreferencesTests.swift`).
+
+```swift
+public enum WeightUnit: String, Codable, CaseIterable, Hashable, Sendable, Identifiable {     // case kg, lb
+    public static let poundsPerKilogram = 2.2046226218
+    public var symbol: String { get }                                  // "kg" / "lb"
+    public static func defaultFor(locale: Locale) -> WeightUnit        // lb for a US measurement system and for the regions US, LR, MM; else kg
+    public func fromKg(_ kg: Double) -> Double;  public func toKg(_ value: Double) -> Double      // unrounded
+    public func displayValue(kg: Double) -> Double                     // kg to 0.01, lb to 0.1 (ties away from zero); non-finite gives 0
+}
+public struct DisplayFormat: Equatable, Sendable {                    // unit + the locale whose separators are used
+    public var unit: WeightUnit; public var locale: Locale
+    public static let metric: DisplayFormat                            // kg, en_US: the default of every API that takes a locale
+    public static func device(unit: WeightUnit) -> DisplayFormat       // Locale.current
+    public var formatter: WeightFormatter { get }
+}
+public struct WeightFormatter: Equatable, Sendable {                  // every function takes KILOGRAMS unless it says otherwise
+    public init(unit: WeightUnit, locale: Locale);  public init(_ format: DisplayFormat)
+    public func text(kg: Double) -> String                             // "82.5" / "82,5"; "135" for 61.23 kg in lb
+    public func textWithUnit(kg: Double) -> String                     // "82.5 kg", "135 lb"
+    public func number(_ value: Double) -> String                      // a value already in the unit (a plate, a step): "2.5", "1,25"
+    public func volume(kg: Double) -> String;  public func volumeWithUnit(kg: Double) -> String   // whole number grouped by the locale: "1,980" / "1.980"
+    public func signedText(kg: Double) -> String                       // added / assisted load: "+10", "\u{2212}20" (U+2212), "BW" when it shows as 0
+    public func accessibilityText(kg: Double) -> String                // "82.5 kilograms", "1 kilogram", "135 pounds"
+    public static func parse(_ text: String, unit: WeightUnit, locale: Locale, allowsNegative: Bool = false) -> Double?   // -> KILOGRAMS
+}
+```
+* **Hand-written, identical everywhere.** No `NumberFormatter`: digits are always 0-9, the decimal and grouping separator come from `Locale.decimalSeparator` / `groupingSeparator`
+  (en_US "." and ",", de_DE "," and ".", fr_FR "," and U+202F). A weight is never grouped ("1250.5"); a volume is, from four digits. `NumberText` (the older locale independent
+  helpers) is unchanged and shares the rounding code; the English kilogram formatter equals it.
+* **Round trip.** A weight typed in pounds is stored as kilograms rounded to 0.01 kg (at most 0.011 lb off) and shown rounded to 0.1 lb, so 135 lb comes back as "135" (tested for every
+  tenth of a pound up to 1,000 lb). The reducer's steppers work on the displayed value (rule 3), so +N and -N steps always come back.
+* **`parse`.** "," and "." are both decimal marks whatever the locale, and so are the locale's own separators (the Arabic U+066B and U+066C), so what `text(kg:)` writes reads back; a trailing unit of the given unit ("kg", "kgs", "lb", "lbs", any case) is dropped, other letters give nil;
+  grouping ("1,250.5", "1.250,5", "1 250") is understood, and a single mark followed by exactly three digits after one to three leading digits is grouping only when it is the
+  locale's own grouping character ("1,250" is 1250 in en_US and 1.25 in de_DE); "+" is ignored, a minus ("-" or U+2212) gives nil unless `allowsNegative`; the magnitude clamps to
+  `WorkoutReducer.maximumWeightKg`; empty text, exponents, "inf", "nan" and malformed groups give nil. The result is the exact conversion; storing rounds it. A body weight typed in
+  pounds is `WeightFormatter.parse` followed by `BodyWeightRules.normalised`.
+* **The unit of a workout** is `WorkoutSettings.weightUnit` (custom `Codable`: `decodeIfPresent`, an absent or unknown value reads `.kg`, so old states, saved workouts and old Watch
+  payloads decode). It travels with the state to the Watch, and `WorkoutSnapshot.weightUnit` carries it to the Live Activity. `WorkoutAction.setWeightUnit(unit)` changes it mid-workout
+  (revision + 1; nothing stored changes). An older build ignores the new key; it never receives the new action (the phone sends states, not actions, to the Watch).
+* **Where texts are built.** `WorkoutPresenter`, `SnapshotBuilder`, the exercise history (`StrengthData.history(for:now:format:)`, `StrengthStore.history(for:now:locale:)` with the unit
+  of the preferences) and the plate calculator use the formatter; `WorkoutController.displayLocale` (default en_US; `StrengthAppEnvironment` and `WatchEnvironment` set
+  `Locale.current`) is the locale of `presentation(now:)` and `snapshot(now:)`. `LiveActivityManager` and `RestNotificationScheduler` build their snapshots with `locale: .current`.
+  The numbers stay kilograms (`Totals.volumeKg`, `ExerciseHistory.bestE1RM`, ...); only text and the whole-number `SetRow.estimated1RM` are in the unit.
+
+**Preferences** (`StrengthPreferences`, `preferences.json`; Codable, Equatable, Sendable). Every field is optional in the file (`decodeIfPresent`) and falls back to its default; an unknown
+`weightUnit` or `askToUpdateTemplate` value reads as the default, extra keys are ignored; a field of the wrong type makes the file unreadable (backup + `PersistenceIssue`, like every file).
+
+| field | default | notes |
+|---|---|---|
+| `weightUnit` | kg (`init(locale:)`: `WeightUnit.defaultFor(locale:)`) | chosen from the region ONCE, when the preferences are first created, then stored |
+| `autoStartRest`, `alertWhenRestEnds` | true | the `WorkoutSettings` of every new workout |
+| `soundWhenRestEnds`, `hapticsEnabled`, `keepScreenAwake`, `saveWorkoutsToHealth`, `estimateCalories` | true | read by the UI and the services |
+| `weeklyGoalSessions` | 4 | clamped to 1...14 by the property itself |
+| `askToUpdateTemplate` | `.whenChanged` | `TemplateUpdatePrompt`: `.whenChanged`, `.structureOnly`, `.never` (consumed by the finish flow) |
+| `defaultRestSeconds` | 90 | clamped to 0...`maximumRestSeconds`; the rest of NEW custom exercises (`Exercise.custom(restSeconds:)`). Every other exercise has its own rest default |
+
+* `StrengthData.preferences`, `StrengthDataModel.preferences` / `updatePreferences(_:)`, `StrengthStore.preferences` (`@Published`) / `updatePreferences(_:)` (a `Result`: `.failure` when the file could not be
+  written, the change stays in memory). `preferences.json` is a data file and a protected one (a damaged file is copied before it is replaced). `ResetScope.preferences` puts every
+  preference (and the weigh-in reminder) back to the defaults of a new install; `.all` removes the file.
+* **First creation.** Without a file the preferences are the defaults of a new install with the unit of `deviceLocale` (`StrengthStore` / `StrengthDataModel` `init(deviceLocale:)`; the app passes
+  `Locale.current`, tests and previews pass nothing and get kilograms, so no test depends on the machine's region). Loading writes nothing; the first save of anything (and any
+  `updatePreferences`) writes the file, so the unit the region picked is kept if the region changes later. A damaged file is left alone until the user saves new preferences.
+* **Workouts.** `WorkoutEngine.start` passes the store's current preferences to `WorkoutFactory`, so the rest timer choices and the unit apply to every new workout
+  (`WorkoutDataProviding.preferences`, default `StrengthPreferences()`). A rest timer toggle the user makes DURING a workout (`.setAutoStartRest`, `.setAlertWhenRestEnds`, from the phone, the Watch or the Live
+  Activity) is saved back to the preferences by the authority, so the next workout starts the same way; a mirror never writes. `WorkoutController.updatePreferences(_:)` saves preferences
+  and, when a workout is running in another unit, sends `.setWeightUnit` (the screen, the Watch and the Live Activity switch at once); a running workout keeps its own rest toggles.
+
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
-  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 840 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 864 (the controller and
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 1083 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 1124 (the controller and
   store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
   phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
   40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice. `SyncHardeningTests.swift` holds one

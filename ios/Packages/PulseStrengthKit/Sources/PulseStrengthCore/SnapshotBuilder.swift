@@ -3,7 +3,14 @@ import Foundation
 /// Builds the small `WorkoutSnapshot` shown by the Live Activity, the Dynamic Island and the Apple Watch.
 public enum SnapshotBuilder {
     /// The snapshot of `state` at `now`; its target is the next pending set (`WorkoutTargets.nextPending`).
-    public static func make(from state: WorkoutState, now: Date) -> WorkoutSnapshot {
+    ///
+    /// Weights are written in the unit of `state.settings.weightUnit` with the separators of `locale` (default: en_US).
+    public static func make(
+        from state: WorkoutState,
+        now: Date,
+        locale: Locale = DisplayFormat.metric.locale
+    ) -> WorkoutSnapshot {
+        let formatter = WeightFormatter(unit: state.settings.weightUnit, locale: locale)
         let target = WorkoutTargets.nextPending(in: state)
         let totals = PresenterSupport.totals(of: state)
 
@@ -30,8 +37,8 @@ public enum SnapshotBuilder {
         if let shown, let target, let targetSet {
             let position = "Set \(target.setIndex + 1) of \(shown.sets.count)"
             setLabel = targetSet.type == .warmup ? "Warm-up · " + position : position
-            nextSetText = nextText(targetSet, position: target.setIndex + 1, exercise: shown.exercise)
-            weightText = PresenterSupport.weightText(targetSet, exercise: shown.exercise)
+            nextSetText = nextText(targetSet, position: target.setIndex + 1, exercise: shown.exercise, formatter: formatter)
+            weightText = PresenterSupport.weightText(targetSet, exercise: shown.exercise, formatter: formatter)
             repsText = String(targetSet.reps)
         } else {
             setLabel = "All sets logged"
@@ -65,18 +72,19 @@ public enum SnapshotBuilder {
             restTotalSeconds: rest?.totalSeconds ?? 0,
             restFrozenRemaining: state.isPaused ? remaining : nil,
             heartRate: state.heartRate,
-            volumeText: NumberText.thousands(totals.volumeKg),
+            volumeText: formatter.volume(kg: totals.volumeKg),
             loggedSets: totals.loggedSets,
             totalSets: totals.totalSets,
             nextSetText: nextSetText,
-            nextExerciseName: nextExerciseName(in: state, after: shownIndex)
+            nextExerciseName: nextExerciseName(in: state, after: shownIndex),
+            weightUnit: formatter.unit
         )
     }
 
-    /// "Set 4 · 82.5 kg × 6", "Warm-up · 50 kg × 8", "Set 1 · 12 reps" or "Set 1 · 45 s".
-    private static func nextText(_ set: LoggedSet, position: Int, exercise: Exercise) -> String {
+    /// "Set 4 · 82.5 kg × 6", "Warm-up · 110 lb × 8", "Set 1 · 12 reps" or "Set 1 · 45 s".
+    private static func nextText(_ set: LoggedSet, position: Int, exercise: Exercise, formatter: WeightFormatter) -> String {
         let label = set.type == .warmup ? "Warm-up" : "Set \(position)"
-        return label + " · " + PresenterSupport.workText(set, exercise: exercise)
+        return label + " · " + PresenterSupport.workText(set, exercise: exercise, formatter: formatter)
     }
 
     /// The first exercise after `index` that still has pending sets.

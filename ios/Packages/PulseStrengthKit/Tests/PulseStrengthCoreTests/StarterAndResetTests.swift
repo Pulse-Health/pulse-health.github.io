@@ -555,6 +555,7 @@ final class DeleteAllTests: XCTestCase {
         try persistence.savePersonalBests([:])
         try persistence.saveBodyWeights([])
         try persistence.saveWeighInPreferences(WeighInPreferences())
+        try persistence.savePreferences(StrengthPreferences())
         try persistence.saveActiveWorkout(WorkoutFactory.makeWorkout(from: StarterTemplates.all[0], now: SvcSyncFix.epoch))
         try persistence.saveAcknowledgedCommands([UUID()])
         XCTAssertEqual(files(in: directory), Set(FileStrengthPersistence.dataFileNames + ["schema.json"]))
@@ -576,6 +577,7 @@ final class DeleteAllTests: XCTestCase {
         try persistence.savePersonalBests([:])
         try persistence.saveBodyWeights([])
         try persistence.saveWeighInPreferences(WeighInPreferences())
+        try persistence.savePreferences(StrengthPreferences())
         try persistence.saveActiveWorkout(WorkoutFactory.makeWorkout(from: StarterTemplates.all[0], now: SvcSyncFix.epoch))
         try persistence.saveAcknowledgedCommands([UUID()])
 

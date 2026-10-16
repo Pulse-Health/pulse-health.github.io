@@ -737,7 +737,7 @@ final class EngineSyncTests: XCTestCase {
         func pickExercise() -> WorkoutExercise? { exercises.isEmpty ? nil : exercises[random.int(exercises.count)] }
         func pickSet(_ exercise: WorkoutExercise) -> LoggedSet? { exercise.sets.isEmpty ? nil : exercise.sets[random.int(exercise.sets.count)] }
         let unknown = SvcSyncFix.uuid(9_999)
-        switch random.int(34) {
+        switch random.int(35) {
         case 0, 1, 2, 3: return .logNextSet
         case 4, 5:
             guard let e = pickExercise(), let s = pickSet(e) else { return .logNextSet }
@@ -796,6 +796,7 @@ final class EngineSyncTests: XCTestCase {
         case 29, 30: return .updateHeartRate(random.int(5) == 0 ? nil : random.int(in: 60...190))
         case 31: return .setAutoStartRest(random.int(2) == 0)
         case 32: return .setUsedWatch(random.int(2) == 0)
+        case 33: return .setWeightUnit(random.int(2) == 0 ? .kg : .lb)
         default: return .rename("Workout \(random.int(50))")
         }
     }

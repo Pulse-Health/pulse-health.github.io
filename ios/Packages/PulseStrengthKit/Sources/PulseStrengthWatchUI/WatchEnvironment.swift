@@ -170,6 +170,7 @@ public final class WatchEnvironment: ObservableObject {
     public init() {
         let store = StrengthStore(persistence: nil)
         let controller = WorkoutController(store: store, persistence: nil, role: .mirror)
+        controller.displayLocale = .current
         let session = WatchWorkoutSession()
         let connectivity = WatchConnectivityClient(controller: controller)
 

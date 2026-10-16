@@ -65,7 +65,7 @@ public struct ResetScope: OptionSet, Sendable {
     /// The weigh-ins, and the Health exchange is switched off (`syncWithHealth`): the copies in Apple Health are not touched, and with
     /// the exchange on the next read from Health would bring every weigh-in straight back.
     public static let bodyWeights = ResetScope(rawValue: 8)
-    /// The user's preferences: back to their defaults (today the weigh-in reminder).
+    /// The user's preferences: back to their defaults (the weigh-in reminder and the workout preferences: unit, rest timer, goal, ...).
     public static let preferences = ResetScope(rawValue: 16)
     /// Everything above.
     public static let all: ResetScope = [.templates, .history, .customExercises, .bodyWeights, .preferences]
@@ -75,7 +75,10 @@ public extension StrengthData {
     /// Erases the parts named by `scope`. Clearing the history also clears the personal bests, the `lastPerformed` date of every
     /// template, the incomplete-history mark (there is nothing left to protect) and the demo previous results. Clearing the weigh-ins
     /// also turns the Health exchange off, so they are not read back from Health.
-    mutating func resetData(_ scope: ResetScope) {
+    ///
+    /// Clearing the preferences restores the defaults of a new install: the weight unit is the one `deviceLocale` calls for
+    /// (kilograms without a locale), everything else as in `StrengthPreferences()`.
+    mutating func resetData(_ scope: ResetScope, deviceLocale: Locale? = nil) {
         if scope.contains(.templates) { templates = [] }
         if scope.contains(.history) {
             history = []
@@ -89,12 +92,13 @@ public extension StrengthData {
             bodyWeights = []
             weighIn.syncWithHealth = false
         }
-        if scope.contains(.preferences) { resetPreferences() }
+        if scope.contains(.preferences) { resetPreferences(deviceLocale: deviceLocale) }
     }
 
     /// Puts every stored user preference back to its default. New preference fields are reset here.
-    private mutating func resetPreferences() {
+    private mutating func resetPreferences(deviceLocale: Locale?) {
         weighIn = WeighInPreferences()
+        preferences = deviceLocale.map { StrengthPreferences(locale: $0) } ?? StrengthPreferences()
     }
 }
 
@@ -122,14 +126,15 @@ public extension StrengthDataModel {
     /// Erases the parts of the data that `scope` names and saves it (see `StrengthData.resetData`). Safe while no workout is
     /// running; the screen must not offer it during one.
     ///
-    /// The files of the erased parts are written empty (the preferences file too when the weigh-ins go, because it holds the Health switch). When `scope` is `.all`, every data file is removed instead
+    /// The files of the erased parts are written empty (the weigh-in reminder file too when the weigh-ins go, because it holds the
+    /// Health switch; the preferences file holds the defaults again). When `scope` is `.all`, every data file is removed instead
     /// (`FileStrengthPersistence.deleteAll()`), which also takes the saved active workout and the remembered Watch command ids with
     /// it. The result is `.failure` when a file could not be written or removed; the data stays erased in memory.
     @discardableResult
     func resetData(_ scope: ResetScope) -> Result<Void, Error> {
         guard !scope.isEmpty else { return .success(()) }
         let templatesBefore = data.templates
-        data.resetData(scope)
+        data.resetData(scope, deviceLocale: deviceLocale)
         cache = nil
         if scope.isSuperset(of: .all) { return removeAllFiles() }
         return commit(
@@ -139,6 +144,7 @@ public extension StrengthDataModel {
             personalBests: scope.contains(.history),
             bodyWeights: scope.contains(.bodyWeights),
             weighIn: scope.contains(.preferences) || scope.contains(.bodyWeights),
+            preferences: scope.contains(.preferences),
             exercises: true
         )
     }

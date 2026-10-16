@@ -66,8 +66,9 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// so `seedDemoData` is false.
     public static func live(seedDemoData: Bool = false) -> StrengthAppEnvironment {
         let persistence = makeLivePersistence()
-        let store = StrengthStore(persistence: persistence, seedDemoData: seedDemoData)
+        let store = StrengthStore(persistence: persistence, seedDemoData: seedDemoData, deviceLocale: Locale.current)
         let controller = WorkoutController(store: store, persistence: persistence, role: .authority)
+        controller.displayLocale = .current
         let services = PulseServices(controller: controller)
         let environment = StrengthAppEnvironment(
             persistence: persistence,

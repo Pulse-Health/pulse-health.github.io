@@ -166,19 +166,43 @@ public struct Exercise: Identifiable, Codable, Hashable, Sendable {
         }
     }
 
+    /// Increment of the - / + steppers in `unit`: `weightStepKg` in kilograms; in pounds 5 for barbell, machine, cable and
+    /// dumbbell (the next pair of plates or dumbbells) and 2.5 for bodyweight and other exercises.
+    public func weightStep(in unit: WeightUnit) -> Double {
+        switch unit {
+        case .kg:
+            return weightStepKg
+        case .lb:
+            switch equipment {
+            case .barbell, .cable, .machine, .dumbbell: return 5
+            case .bodyweight, .other: return 2.5
+            }
+        }
+    }
+
+    /// The empty bar for the plate calculator in `unit`: `barKg` in kilograms; in pounds the next multiple of 5 above it, so a 20 kg
+    /// bar is 45 lb, a 15 kg bar 35 lb and a 10 kg bar 25 lb. (Up to half a pound above a multiple still counts as that multiple: 25 kg is 55 lb.)
+    public func barWeight(in unit: WeightUnit) -> Double {
+        guard unit == .lb else { return barKg }
+        guard barKg.isFinite, barKg > 0 else { return 0 }
+        return max(0, ((unit.fromKg(barKg) - 0.5) / 5).rounded(.up) * 5)
+    }
+
     /// Reps stepper increment; durations move in 5 s steps.
     public var repsStep: Int { tracking == .duration ? 5 : 1 }
 
     public var tracksWeight: Bool { tracking == .weightReps }
     public var supportsPlates: Bool { equipment == .barbell && tracking == .weightReps }
 
-    /// A user-created exercise with sensible defaults (3 sets, 90 s rest).
+    /// A user-created exercise with sensible defaults (3 sets, `restSeconds` rest: 90 s unless the user's default rest differs, see
+    /// `StrengthPreferences.defaultRestSeconds`).
     public static func custom(
         name: String,
         muscle: MuscleGroup,
         equipment: Equipment,
         tracking: TrackingKind,
-        id: String = "custom-" + UUID().uuidString.lowercased()
+        id: String = "custom-" + UUID().uuidString.lowercased(),
+        restSeconds: Int = StrengthPreferences.standardRestSeconds
     ) -> Exercise {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return Exercise(
@@ -195,7 +219,7 @@ public struct Exercise: Identifiable, Codable, Hashable, Sendable {
                 sets: 3,
                 weightKg: tracking == .weightReps ? 20 : 0,
                 reps: tracking == .duration ? 45 : 10,
-                restSeconds: 90
+                restSeconds: max(0, min(restSeconds, WorkoutReducer.maximumRestSeconds))
             ),
             cues: ["Your own exercise. Add a note to remember how you like to perform it."],
             barKg: 20,

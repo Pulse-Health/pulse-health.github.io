@@ -145,7 +145,7 @@ enum RedFix {
             .moveExerciseBy(exerciseID: e, delta: 1), .replaceExercise(exerciseID: e, with: plank),
             .toggleSuperset(exerciseID: e), .setRest(exerciseID: e, seconds: 30),
             .adjustRest(seconds: 15), .skipRest, .setAutoStartRest(false), .setAlertWhenRestEnds(false),
-            .pause, .resume, .undo, .updateHeartRate(120), .setUsedWatch(true), .rename("Renamed"),
+            .pause, .resume, .undo, .updateHeartRate(120), .setUsedWatch(true), .rename("Renamed"), .setWeightUnit(.lb),
         ]
     }
 }

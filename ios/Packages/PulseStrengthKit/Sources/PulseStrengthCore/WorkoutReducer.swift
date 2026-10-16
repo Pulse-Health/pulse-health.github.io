@@ -24,6 +24,18 @@ public enum WorkoutReducer {
     }
 }
 
+// MARK: - Weight storage
+
+extension WorkoutReducer {
+    /// Weight clamped to 0...`maximumWeightKg` and rounded to 0.01 kg, the way a set stores it; nil (ignored) for NaN and +infinity.
+    static func roundedWeight(_ kg: Double) -> Double? {
+        guard !kg.isNaN else { return nil }
+        let lowerBounded = max(0, kg)
+        guard lowerBounded.isFinite else { return nil }
+        return (min(lowerBounded, maximumWeightKg) * 100).rounded(.toNearestOrAwayFromZero) / 100
+    }
+}
+
 // MARK: - Dispatch
 
 private extension WorkoutReducer {
@@ -106,6 +118,8 @@ private extension WorkoutReducer {
             s.settings.autoStartRest = isOn
         case let .setAlertWhenRestEnds(isOn):
             s.settings.alertWhenRestEnds = isOn
+        case let .setWeightUnit(unit):
+            s.settings.weightUnit = unit
 
         case .pause:
             pause(&s, now: now)
@@ -146,14 +160,6 @@ private extension WorkoutReducer {
     static func clampRIR(_ value: Int) -> Int { max(0, min(value, 4)) }
 
     static func clampRest(_ seconds: Int) -> Int { max(0, min(seconds, maximumRestSeconds)) }
-
-    /// Weight clamped to 0...`maximumWeightKg` and rounded to 0.01 kg; nil (ignored) for NaN and +infinity.
-    static func roundedWeight(_ kg: Double) -> Double? {
-        guard !kg.isNaN else { return nil }
-        let lowerBounded = max(0, kg)
-        guard lowerBounded.isFinite else { return nil }
-        return (min(lowerBounded, maximumWeightKg) * 100).rounded(.toNearestOrAwayFromZero) / 100
-    }
 
     static func saturatingSum(_ a: Int, _ b: Int) -> Int {
         let (sum, overflow) = a.addingReportingOverflow(b)
@@ -230,9 +236,13 @@ private extension WorkoutReducer {
         let i = target.setIndex
         let exercise = s.exercises[k].exercise
         var set = s.exercises[k].sets[i]
-        if weightSteps != 0, exercise.tracksWeight {
+        if weightSteps != 0, exercise.tracksWeight, set.weightKg.isFinite {
+            // The steps are taken in the unit the user sees, from the weight as shown, so that a step up and a step down always
+            // return to the same displayed weight (the stored kilograms are rounded to 0.01 kg each time).
+            let unit = s.settings.weightUnit
             let steps = Double(max(-1000, min(1000, weightSteps)))
-            set.weightKg = roundedWeight(set.weightKg + steps * exercise.weightStepKg) ?? set.weightKg
+            let shown = unit.displayValue(kg: set.weightKg) + steps * exercise.weightStep(in: unit)
+            set.weightKg = roundedWeight(unit.toKg(shown)) ?? set.weightKg
         }
         if repsSteps != 0 {
             let steps = max(-1000, min(1000, repsSteps))

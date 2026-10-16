@@ -5,20 +5,25 @@ import Foundation
 /// Turns a `WorkoutState` into the display-ready `ActiveWorkoutPresentation` (port of `renderVals` in the design's Active.dc.html).
 public enum WorkoutPresenter {
     /// Builds the presentation of `state` at `now`; `recovery` supplies the muscle recovery percentages (0...100).
+    ///
+    /// Weights are written in the unit of `state.settings.weightUnit` with the separators of `locale` (default: en_US, so a caller
+    /// that passes nothing gets "82.5").
     public static func present(
         _ state: WorkoutState,
         now: Date,
-        recovery: RecoveryProvider
+        recovery: RecoveryProvider,
+        locale: Locale = DisplayFormat.metric.locale
     ) -> ActiveWorkoutPresentation {
         let totals = PresenterSupport.totals(of: state)
         let currentIndex = state.clampedIndex
         let diff = TemplateDiff.compute(for: state)
+        let formatter = WeightFormatter(unit: state.settings.weightUnit, locale: locale)
 
         return ActiveWorkoutPresentation(
-            header: makeHeader(state, now: now, totals: totals, currentIndex: currentIndex),
+            header: makeHeader(state, now: now, totals: totals, currentIndex: currentIndex, formatter: formatter),
             navigator: makeNavigator(state, currentIndex: currentIndex),
-            card: state.currentExercise.map { makeCard($0, state: state, recovery: recovery) },
-            dock: makeDock(state, now: now),
+            card: state.currentExercise.map { makeCard($0, state: state, recovery: recovery, formatter: formatter) },
+            dock: makeDock(state, now: now, formatter: formatter),
             undoText: makeUndoText(state, now: now),
             isEmpty: state.exercises.isEmpty,
             totals: totals,
@@ -34,7 +39,8 @@ private extension WorkoutPresenter {
         _ state: WorkoutState,
         now: Date,
         totals: ActiveWorkoutPresentation.Totals,
-        currentIndex: Int
+        currentIndex: Int,
+        formatter: WeightFormatter
     ) -> ActiveWorkoutPresentation.Header {
         var clock = NumberText.clock(seconds: state.elapsedSeconds(now: now))
         if state.isPaused { clock = "Paused · " + clock }
@@ -51,7 +57,7 @@ private extension WorkoutPresenter {
             title: state.name,
             clockText: clock,
             isPaused: state.isPaused,
-            volumeText: NumberText.thousands(totals.volumeKg),
+            volumeText: formatter.volume(kg: totals.volumeKg),
             setsText: "\(totals.loggedSets) of \(totals.totalSets)",
             heartRateText: bpm.map { String($0) } ?? "–",
             hasHeartRate: bpm != nil,
@@ -81,7 +87,8 @@ private extension WorkoutPresenter {
     static func makeCard(
         _ entry: WorkoutExercise,
         state: WorkoutState,
-        recovery: RecoveryProvider
+        recovery: RecoveryProvider,
+        formatter: WeightFormatter
     ) -> ActiveWorkoutPresentation.Card {
         let exercise = entry.exercise
         let percent = max(0, min(100, recovery(exercise.muscle)))
@@ -90,7 +97,7 @@ private extension WorkoutPresenter {
 
         let weightTitle: String
         switch exercise.tracking {
-        case .weightReps: weightTitle = "kg"
+        case .weightReps: weightTitle = formatter.unit.symbol
         case .repsOnly: weightTitle = "Added"
         case .duration: weightTitle = ""
         }
@@ -107,14 +114,15 @@ private extension WorkoutPresenter {
             note: entry.note,
             weightColumnTitle: weightTitle,
             repsColumnTitle: exercise.tracking == .duration ? "Sec" : "Reps",
-            coachTip: state.rest == nil ? PresenterSupport.coachTip(for: entry, baseline: analysis.baseline) : nil,
-            rows: makeRows(entry, analysis: analysis.sets)
+            coachTip: state.rest == nil ? PresenterSupport.coachTip(for: entry, baseline: analysis.baseline, formatter: formatter) : nil,
+            rows: makeRows(entry, analysis: analysis.sets, formatter: formatter)
         )
     }
 
     static func makeRows(
         _ entry: WorkoutExercise,
-        analysis: [PresenterSupport.SetAnalysis]
+        analysis: [PresenterSupport.SetAnalysis],
+        formatter: WeightFormatter
     ) -> [ActiveWorkoutPresentation.SetRow] {
         let exercise = entry.exercise
         var workingNumber = 0
@@ -140,17 +148,17 @@ private extension WorkoutPresenter {
                 id: set.id,
                 number: number,
                 type: set.type,
-                previousText: PresenterSupport.previousText(exercise, setIndex: index),
-                weightText: PresenterSupport.weightText(set, exercise: exercise),
+                previousText: PresenterSupport.previousText(exercise, setIndex: index, formatter: formatter),
+                weightText: PresenterSupport.weightText(set, exercise: exercise, formatter: formatter),
                 repsText: String(set.reps),
                 weightEditable: exercise.tracksWeight,
                 isDone: set.isDone,
                 isNext: isNext,
                 isPersonalRecord: info.isRecord,
-                estimated1RM: info.isRecord ? PresenterSupport.wholeKilograms(info.e1RM) : nil,
+                estimated1RM: info.isRecord ? PresenterSupport.wholeNumber(kg: info.e1RM, unit: formatter.unit) : nil,
                 rir: set.rir,
                 rirText: set.isDone ? set.rir.map(PresenterSupport.rirText) : nil,
-                accessibilityLabel: PresenterSupport.accessibilityLabel(setIndex: index, set: set, exercise: exercise)
+                accessibilityLabel: PresenterSupport.accessibilityLabel(setIndex: index, set: set, exercise: exercise, formatter: formatter)
             ))
         }
         return rows
@@ -160,7 +168,7 @@ private extension WorkoutPresenter {
 // MARK: - Rest dock
 
 private extension WorkoutPresenter {
-    static func makeDock(_ state: WorkoutState, now: Date) -> ActiveWorkoutPresentation.Dock? {
+    static func makeDock(_ state: WorkoutState, now: Date, formatter: WeightFormatter) -> ActiveWorkoutPresentation.Dock? {
         guard let rest = state.rest, let entry = state.currentExercise,
               let remaining = PresenterSupport.restRemainingSeconds(state, now: now) else { return nil }
 
@@ -183,7 +191,7 @@ private extension WorkoutPresenter {
             totalSeconds: total,
             fraction: fraction,
             remainingText: finished ? "Go" : NumberText.rest(seconds: remaining),
-            nextSetText: nextSetText(entry),
+            nextSetText: nextSetText(entry, formatter: formatter),
             showsRIR: showsRIR,
             rirSelection: showsRIR ? lastSet?.rir : nil,
             isPaused: state.isPaused
@@ -198,7 +206,7 @@ private extension WorkoutPresenter {
     }
 
     /// "Next · Set 2 · 82.5 kg × 6" for the first pending set of the card, or "All sets logged".
-    static func nextSetText(_ entry: WorkoutExercise) -> String {
+    static func nextSetText(_ entry: WorkoutExercise, formatter: WeightFormatter) -> String {
         var workingNumber = 0
         for set in entry.sets {
             var number = ""
@@ -212,7 +220,7 @@ private extension WorkoutPresenter {
             }
             if set.isDone { continue }
             let label = set.type == .warmup ? "Warm-up" : "Set " + number
-            return "Next · " + label + " · " + PresenterSupport.workText(set, exercise: entry.exercise)
+            return "Next · " + label + " · " + PresenterSupport.workText(set, exercise: entry.exercise, formatter: formatter)
         }
         return "All sets logged"
     }
@@ -298,13 +306,14 @@ enum PresenterSupport {
         return volume
     }
 
-    /// Largest whole-kilogram value shown for an estimate; anything above (only possible for a state the reducer did not produce) clamps.
-    private static let wholeKilogramLimit = 1_000_000_000.0
+    /// Largest whole number shown for an estimate; anything above (only possible for a state the reducer did not produce) clamps.
+    private static let wholeNumberLimit = 1_000_000_000.0
 
-    /// A kilogram value rounded to a whole number for display, never trapping: non-finite gives 0, huge values clamp.
-    static func wholeKilograms(_ value: Double) -> Int {
+    /// A weight in kilograms as a whole number of `unit` for display, never trapping: non-finite gives 0, huge values clamp.
+    static func wholeNumber(kg: Double, unit: WeightUnit) -> Int {
+        let value = unit.fromKg(kg)
         guard value.isFinite else { return 0 }
-        return Int(max(-wholeKilogramLimit, min(value.rounded(), wholeKilogramLimit)))
+        return Int(max(-wholeNumberLimit, min(value.rounded(), wholeNumberLimit)))
     }
 
     // MARK: Personal records
@@ -335,41 +344,45 @@ enum PresenterSupport {
 
     // MARK: Coach tip
 
-    /// "85 kg × 6 on your last set would beat your best estimated 1RM of 99 kg." or nil.
-    static func coachTip(for entry: WorkoutExercise, baseline: Double) -> String? {
+    /// "85 kg × 6 on your last set would beat your best estimated 1RM of 99 kg." or nil; in the unit of `formatter`.
+    static func coachTip(for entry: WorkoutExercise, baseline: Double, formatter: WeightFormatter) -> String? {
         let exercise = entry.exercise
         guard exercise.tracksWeight, exercise.previousBestE1RM > 0 else { return nil }
         let pending = entry.sets.filter { !$0.isDone && $0.type != .warmup }
         guard let target = pending.last(where: { $0.type == .normal }) ?? pending.last else { return nil }
         guard target.reps > 0, let weight = lowestBeatingWeight(
-            baseline: baseline, reps: target.reps, step: exercise.weightStepKg
+            baseline: baseline, reps: target.reps, step: exercise.weightStep(in: formatter.unit), unit: formatter.unit
         ) else { return nil }
-        return NumberText.kg(weight) + " kg × \(target.reps) on your last set would beat your best estimated 1RM of "
-            + NumberText.thousands(baseline) + " kg."
+        return String(
+            format: "%@ × %ld on your last set would beat your best estimated 1RM of %@.",
+            formatter.textWithUnit(kg: weight), target.reps, formatter.volumeWithUnit(kg: baseline)
+        )
     }
 
-    /// The lowest multiple of `step` whose Epley estimate with `reps` exceeds `baseline` by more than the record margin.
-    static func lowestBeatingWeight(baseline: Double, reps: Int, step: Double) -> Double? {
+    /// The lowest multiple of `step` (in `unit`) whose Epley estimate with `reps` exceeds `baseline` (kilograms) by more than the
+    /// record margin, as the kilograms a set stores for it (rounded to 0.01 kg like the reducer does, so that entering the weight
+    /// the tip names really beats the record).
+    static func lowestBeatingWeight(baseline: Double, reps: Int, step: Double, unit: WeightUnit) -> Double? {
         guard baseline.isFinite, baseline > 0, reps > 0, step > 0, step.isFinite else { return nil }
         let threshold = baseline + recordMargin
-        func beats(_ weight: Double) -> Bool { Estimated1RM.epley(weightKg: weight, reps: reps) > threshold }
+        func storedKg(_ multiples: Double) -> Double { WorkoutReducer.roundedWeight(unit.toKg(multiples * step)) ?? 0 }
+        func beats(_ multiples: Double) -> Bool { Estimated1RM.epley(weightKg: storedKg(multiples), reps: reps) > threshold }
 
-        let minimum = threshold / (1 + Double(reps) / 30)
+        let minimum = unit.fromKg(threshold / (1 + Double(reps) / 30))
         var multiples = (minimum / step).rounded(.up)
         guard multiples.isFinite, multiples < 1e9 else { return nil }
         multiples = max(1, multiples)
         // Correct a possible off-by-one from floating point rounding in either direction.
         var guardCount = 0
-        while multiples > 1, beats((multiples - 1) * step), guardCount < 8 {
+        while multiples > 1, beats(multiples - 1), guardCount < 8 {
             multiples -= 1
             guardCount += 1
         }
-        while !beats(multiples * step), guardCount < 16 {
+        while !beats(multiples), guardCount < 16 {
             multiples += 1
             guardCount += 1
         }
-        let weight = multiples * step
-        return beats(weight) ? weight : nil
+        return beats(multiples) ? storedKg(multiples) : nil
     }
 
     // MARK: Rest
@@ -397,36 +410,36 @@ enum PresenterSupport {
     }
 
     /// "82.5" for weight-tracking exercises, "BW" for reps-only, "–" for durations.
-    static func weightText(_ set: LoggedSet, exercise: Exercise) -> String {
+    static func weightText(_ set: LoggedSet, exercise: Exercise, formatter: WeightFormatter) -> String {
         switch exercise.tracking {
-        case .weightReps: return NumberText.kg(set.weightKg)
+        case .weightReps: return formatter.text(kg: set.weightKg)
         case .repsOnly: return "BW"
         case .duration: return "–"
         }
     }
 
     /// "82.5 kg × 6", "8 reps" or "45 s": what a set asks for.
-    static func workText(_ set: LoggedSet, exercise: Exercise) -> String {
+    static func workText(_ set: LoggedSet, exercise: Exercise, formatter: WeightFormatter) -> String {
         switch exercise.tracking {
-        case .weightReps: return NumberText.kg(set.weightKg) + " kg × \(set.reps)"
+        case .weightReps: return String(format: "%@ × %ld", formatter.textWithUnit(kg: set.weightKg), set.reps)
         case .repsOnly: return "\(set.reps) reps"
         case .duration: return "\(set.reps) s"
         }
     }
 
     /// Text for the PREVIOUS column: "80 × 6", "8 reps", "45 s" or "–" without history.
-    static func previousText(_ exercise: Exercise, setIndex: Int) -> String {
+    static func previousText(_ exercise: Exercise, setIndex: Int, formatter: WeightFormatter) -> String {
         guard !exercise.previousSets.isEmpty else { return "–" }
         let previous = exercise.previousSets[min(max(0, setIndex), exercise.previousSets.count - 1)]
         switch exercise.tracking {
-        case .weightReps: return NumberText.kg(previous.weightKg) + " × \(previous.reps)"
+        case .weightReps: return formatter.text(kg: previous.weightKg) + " × \(previous.reps)"
         case .repsOnly: return "\(previous.reps) reps"
         case .duration: return "\(previous.reps) s"
         }
     }
 
     /// "Set 3, working set, 82.5 kilograms, 6 reps, logged".
-    static func accessibilityLabel(setIndex: Int, set: LoggedSet, exercise: Exercise) -> String {
+    static func accessibilityLabel(setIndex: Int, set: LoggedSet, exercise: Exercise, formatter: WeightFormatter) -> String {
         let typeName: String
         switch set.type {
         case .normal: typeName = "working set"
@@ -437,8 +450,7 @@ enum PresenterSupport {
         var parts = ["Set \(setIndex + 1)", typeName]
         switch exercise.tracking {
         case .weightReps:
-            let kg = NumberText.kg(set.weightKg)
-            parts.append(kg + (kg == "1" ? " kilogram" : " kilograms"))
+            parts.append(formatter.accessibilityText(kg: set.weightKg))
             parts.append("\(set.reps)" + (set.reps == 1 ? " rep" : " reps"))
         case .repsOnly:
             parts.append("bodyweight")

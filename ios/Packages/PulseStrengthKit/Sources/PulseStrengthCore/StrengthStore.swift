@@ -23,6 +23,8 @@ public final class StrengthStore: ObservableObject {
     @Published public private(set) var bodyWeights: [BodyWeightEntry] = []
     /// How often the app asks the user to update their weight.
     @Published public private(set) var weighIn = WeighInPreferences()
+    /// The user's workout preferences (unit, rest timer, goal, ...). New workouts start with them.
+    @Published public private(set) var preferences = StrengthPreferences()
     /// The error of the last save that failed (a write that was refused or could not be made); nil when the last save worked. The
     /// change that was being saved stays in memory.
     @Published public private(set) var lastPersistenceError: Error?
@@ -39,8 +41,11 @@ public final class StrengthStore: ObservableObject {
 
     /// Loads the saved data from `persistence` (nil keeps everything in memory). `seedDemoData` fills an empty store with demo data and
     /// shows the invented demo previous results; only previews and tests pass true.
-    public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false) {
-        model = StrengthDataModel(persistence: persistence, seedDemoData: seedDemoData)
+    ///
+    /// `deviceLocale` picks the weight unit of the preferences of a first launch (`WeightUnit.defaultFor(locale:)`); the app passes
+    /// `Locale.current`. The default, nil, means kilograms, so previews and tests do not depend on the machine's region.
+    public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false, deviceLocale: Locale? = nil) {
+        model = StrengthDataModel(persistence: persistence, seedDemoData: seedDemoData, deviceLocale: deviceLocale)
         publish()
     }
 
@@ -227,9 +232,10 @@ public final class StrengthStore: ObservableObject {
         publish()
     }
 
-    /// The sessions, trend, records and 30-day totals of one exercise, relative to `now`.
-    public func history(for exerciseID: String, now: Date) -> ExerciseHistory {
-        model.history(for: exerciseID, now: now)
+    /// The sessions, trend, records and 30-day totals of one exercise, relative to `now`, with its texts in the unit of the
+    /// preferences and the separators of `locale` (default: en_US).
+    public func history(for exerciseID: String, now: Date, locale: Locale = DisplayFormat.metric.locale) -> ExerciseHistory {
+        model.history(for: exerciseID, now: now, locale: locale)
     }
 
     /// The newest weigh-in.
@@ -273,6 +279,15 @@ public final class StrengthStore: ObservableObject {
         publish()
     }
 
+    /// Replaces the workout preferences and saves them; `.failure` when the file could not be written (they change in memory anyway).
+    /// A workout in progress keeps its own settings: use `WorkoutController.updatePreferences(_:)` to bring the unit to it.
+    @discardableResult
+    public func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error> {
+        let result = model.updatePreferences(preferences)
+        publish()
+        return result
+    }
+
     /// Re-reads everything from disk.
     public func reload() {
         model.reload()
@@ -288,6 +303,7 @@ public final class StrengthStore: ObservableObject {
         if personalBests != data.personalBests { personalBests = data.personalBests }
         if bodyWeights != data.bodyWeights { bodyWeights = data.bodyWeights }
         if weighIn != data.weighIn { weighIn = data.weighIn }
+        if preferences != data.preferences { preferences = data.preferences }
         if persistenceIssues != model.persistenceIssues { persistenceIssues = model.persistenceIssues }
         if !Self.isSame(lastPersistenceError, model.lastPersistenceError) { lastPersistenceError = model.lastPersistenceError }
     }

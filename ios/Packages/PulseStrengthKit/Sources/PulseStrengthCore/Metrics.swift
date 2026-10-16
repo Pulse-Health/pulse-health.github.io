@@ -14,16 +14,32 @@ public enum Estimated1RM {
 // MARK: - Plate calculator
 
 /// The plates to load on each side of the bar, heaviest first, and the weight that cannot be matched.
+///
+/// The values are in `unit`: kilograms for a plan from `plan(totalKg:barKg:)`, the display unit for one from `plan(total:bar:unit:)`.
 public struct PlatePlan: Equatable, Sendable {
-    /// Plates for one side of the bar, heaviest first, in kilograms.
+    /// Plates for one side of the bar, heaviest first, in `unit`.
     public var perSide: [Double]
-    /// Weight per side that the available plates cannot make up, rounded to 0.01 kg.
-    public var leftoverKg: Double
+    /// Weight per side that the available plates cannot make up, in `unit`, rounded to 0.01.
+    public var leftover: Double
+    /// The unit of `perSide` and `leftover`.
+    public var unit: WeightUnit
 
-    /// Creates a plate plan from the plates of one side and the unmatched weight per side.
-    public init(perSide: [Double], leftoverKg: Double) {
+    /// Creates a plan in `unit` from the plates of one side and the unmatched weight per side.
+    public init(perSide: [Double], leftover: Double, unit: WeightUnit) {
         self.perSide = perSide
-        self.leftoverKg = leftoverKg
+        self.leftover = leftover
+        self.unit = unit
+    }
+
+    /// Creates a plan in kilograms from the plates of one side and the unmatched weight per side.
+    public init(perSide: [Double], leftoverKg: Double) {
+        self.init(perSide: perSide, leftover: leftoverKg, unit: .kg)
+    }
+
+    /// `leftover` in kilograms (for a plan in pounds: converted and rounded to 0.01 kg); setting it sets `leftover` in `unit`.
+    public var leftoverKg: Double {
+        get { unit == .kg ? leftover : (unit.toKg(leftover) * 100).rounded() / 100 }
+        set { leftover = unit.fromKg(newValue) }
     }
 }
 
@@ -32,25 +48,40 @@ public enum PlateCalculator {
     /// The plate sizes in kilograms that are on offer, heaviest first.
     public static let availablePlates: [Double] = [25, 20, 15, 10, 5, 2.5, 1.25]
 
-    /// Heaviest total weight the calculator plans for; anything above is treated as invalid input.
+    /// The plate sizes in pounds that are on offer, heaviest first.
+    public static let availablePlatesLb: [Double] = [45, 35, 25, 10, 5, 2.5]
+
+    /// The plate sizes of `unit`, heaviest first.
+    public static func plates(in unit: WeightUnit) -> [Double] {
+        unit == .kg ? availablePlates : availablePlatesLb
+    }
+
+    /// Heaviest total weight the calculator plans for (in kilograms); anything above is treated as invalid input.
     private static let maximumTotalKg = 100_000.0
 
     /// Greedy plate plan for one side of the bar, or nil when `totalKg` is below `barKg` (or an input is invalid).
     ///
     /// The leftover is the per-side weight the plates cannot make up (rounded to 0.01 kg), for example 0.5 kg for 21 kg on a 20 kg bar.
     public static func plan(totalKg: Double, barKg: Double) -> PlatePlan? {
-        guard totalKg.isFinite, barKg.isFinite, barKg >= 0, totalKg <= maximumTotalKg else { return nil }
-        var remaining = (totalKg - barKg) / 2
+        plan(total: totalKg, bar: barKg, unit: .kg)
+    }
+
+    /// `plan(totalKg:barKg:)` in the display unit: `total` and `bar` are in `unit` and so is the result (plates of
+    /// `plates(in:)`, a leftover rounded to 0.01). Pass the weight as it is shown (`WeightFormatter.displayValue(kg:)`) and the bar of
+    /// `Exercise.barWeight(in:)`, so that 135 lb on a 45 lb bar is 45 lb per side and nothing is left over.
+    public static func plan(total: Double, bar: Double, unit: WeightUnit) -> PlatePlan? {
+        guard total.isFinite, bar.isFinite, bar >= 0, unit.toKg(total) <= maximumTotalKg else { return nil }
+        var remaining = (total - bar) / 2
         if remaining < -0.001 { return nil }
         var plates: [Double] = []
-        for plate in availablePlates {
+        for plate in Self.plates(in: unit) {
             while remaining + 0.0001 >= plate {
                 plates.append(plate)
                 remaining -= plate
             }
         }
         let leftover = remaining > 0 ? remaining : 0
-        return PlatePlan(perSide: plates, leftoverKg: (leftover * 100).rounded() / 100)
+        return PlatePlan(perSide: plates, leftover: (leftover * 100).rounded() / 100, unit: unit)
     }
 }
 
@@ -65,35 +96,14 @@ public enum NumberText {
     ///
     /// Ties round away from zero, a result of zero never carries a sign, and a non-finite value gives "0".
     public static func kg(_ value: Double) -> String {
-        guard let hundredths = roundedInteger(value * 100) else { return "0" }
-        if hundredths == 0 { return "0" }
-        let magnitude = hundredths < 0 ? -hundredths : hundredths
-        let whole = magnitude / 100
-        let fraction = magnitude % 100
-        var text = hundredths < 0 ? "-" : ""
-        text += String(whole)
-        if fraction % 10 == 0 {
-            if fraction != 0 { text += "." + String(fraction / 10) }
-        } else if fraction < 10 {
-            text += ".0" + String(fraction)
-        } else {
-            text += "." + String(fraction)
-        }
-        return text
+        decimal(value, fractionDigits: 2, separator: ".")
     }
 
     /// A value rounded to a whole number with "," grouping: 1980.4 gives "1,980" and 1979.5 gives "1,980".
     ///
     /// Ties round away from zero, a result of zero never carries a sign, and a non-finite value gives "0".
     public static func thousands(_ value: Double) -> String {
-        guard let rounded = roundedInteger(value), rounded != 0 else { return "0" }
-        let digits = Array(String(rounded < 0 ? -rounded : rounded))
-        var text = rounded < 0 ? "-" : ""
-        for (index, digit) in digits.enumerated() {
-            if index > 0, (digits.count - index) % 3 == 0 { text.append(",") }
-            text.append(digit)
-        }
-        return text
+        grouped(value, separator: ",")
     }
 
     /// An elapsed time as "m:ss", or "h:mm:ss" from one hour on: 72 gives "1:12" and 3723 gives "1:02:03".
@@ -114,6 +124,35 @@ public enum NumberText {
     public static func rest(seconds: Int) -> String {
         if seconds <= 0 { return "Off" }
         return String(seconds / 60) + ":" + twoDigits(seconds % 60)
+    }
+
+    /// `value` rounded half away from zero to `fractionDigits` (1 or 2) decimals, trailing zeros dropped, `separator` as the decimal mark.
+    /// A result of zero never carries a sign and a non-finite value gives "0".
+    static func decimal(_ value: Double, fractionDigits: Int, separator: String) -> String {
+        let scale = fractionDigits == 1 ? 10 : 100
+        guard let scaled = roundedInteger(value * Double(scale)) else { return "0" }
+        if scaled == 0 { return "0" }
+        let magnitude = scaled < 0 ? -scaled : scaled
+        var text = scaled < 0 ? "-" : ""
+        text += String(magnitude / scale)
+        var fraction = String(magnitude % scale)
+        fraction = String(repeating: "0", count: fractionDigits - fraction.count) + fraction
+        while fraction.hasSuffix("0") { fraction.removeLast() }
+        if !fraction.isEmpty { text += separator + fraction }
+        return text
+    }
+
+    /// `value` rounded half away from zero to a whole number with `separator` between the groups of three digits.
+    /// A result of zero never carries a sign and a non-finite value gives "0".
+    static func grouped(_ value: Double, separator: String) -> String {
+        guard let rounded = roundedInteger(value), rounded != 0 else { return "0" }
+        let digits = Array(String(rounded < 0 ? -rounded : rounded))
+        var text = rounded < 0 ? "-" : ""
+        for (index, digit) in digits.enumerated() {
+            if index > 0, (digits.count - index) % 3 == 0 { text += separator }
+            text.append(digit)
+        }
+        return text
     }
 
     /// Rounds half away from zero; nil for NaN or infinity, clamped to +/- `integerLimit` beyond that.

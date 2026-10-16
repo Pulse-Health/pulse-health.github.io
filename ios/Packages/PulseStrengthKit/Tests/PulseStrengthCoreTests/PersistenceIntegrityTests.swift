@@ -596,7 +596,7 @@ final class PersistenceIntegrityTests: XCTestCase {
             try write("[]", name, in: directory)
             XCTAssertTrue(persistence.hasDataFiles, name)
         }
-        XCTAssertEqual(FileStrengthPersistence.dataFileNames.count, 8)
+        XCTAssertEqual(FileStrengthPersistence.dataFileNames.count, 9)
     }
 
     func testHasPersonalBestsFile() throws {
@@ -662,7 +662,7 @@ final class StoreIntegrityTests: XCTestCase {
             // A readable file of every kind, none of which holds templates or history.
             switch name {
             case "active-workout.json": try persistence.saveActiveWorkout(SvcSyncFix.richState())
-            case "personal-bests.json", "weigh-in-preferences.json": try write("{}", name, in: directory)
+            case "personal-bests.json", "weigh-in-preferences.json", "preferences.json": try write("{}", name, in: directory)
             default: try write("[]", name, in: directory)
             }
             XCTAssertTrue(persistence.loadIssues.isEmpty, name)

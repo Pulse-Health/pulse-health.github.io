@@ -93,7 +93,7 @@ enum SvcSyncFix {
             .moveExerciseBy(exerciseID: exerciseID, delta: -1), .replaceExercise(exerciseID: exerciseID, with: bench),
             .toggleSuperset(exerciseID: exerciseID), .setRest(exerciseID: exerciseID, seconds: 90), .adjustRest(seconds: -15),
             .skipRest, .setAutoStartRest(false), .setAlertWhenRestEnds(true), .pause, .resume, .undo,
-            .updateHeartRate(120), .updateHeartRate(nil), .setUsedWatch(true), .rename("Leg day"),
+            .updateHeartRate(120), .updateHeartRate(nil), .setUsedWatch(true), .rename("Leg day"), .setWeightUnit(.lb), .setWeightUnit(.kg),
         ]
     }
 }

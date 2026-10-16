@@ -25,15 +25,33 @@ public struct RestState: Codable, Hashable, Sendable {
     }
 }
 
+/// The choices a workout runs with. They start from the user's `StrengthPreferences` and travel with the state to the Watch and the
+/// Live Activity.
 public struct WorkoutSettings: Codable, Hashable, Sendable {
     /// Start the rest timer when a set is logged.
     public var autoStartRest: Bool
     /// Haptic / sound / notification when rest ends.
     public var alertWhenRestEnds: Bool
+    /// The unit weights are shown and typed in. Display and entry only: every weight in the state stays in kilograms.
+    public var weightUnit: WeightUnit
 
-    public init(autoStartRest: Bool = true, alertWhenRestEnds: Bool = true) {
+    public init(autoStartRest: Bool = true, alertWhenRestEnds: Bool = true, weightUnit: WeightUnit = .kg) {
         self.autoStartRest = autoStartRest
         self.alertWhenRestEnds = alertWhenRestEnds
+        self.weightUnit = weightUnit
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case autoStartRest, alertWhenRestEnds, weightUnit
+    }
+
+    // `weightUnit` came later: a state written before it (an older phone, an older Watch, a saved workout) is in kilograms. A unit
+    // this version does not know reads the same way.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.autoStartRest = try container.decode(Bool.self, forKey: .autoStartRest)
+        self.alertWhenRestEnds = try container.decode(Bool.self, forKey: .alertWhenRestEnds)
+        self.weightUnit = (try? container.decodeIfPresent(WeightUnit.self, forKey: .weightUnit)) ?? .kg
     }
 }
 

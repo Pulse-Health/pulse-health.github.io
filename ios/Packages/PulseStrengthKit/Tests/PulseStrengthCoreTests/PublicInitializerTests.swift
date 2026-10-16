@@ -87,7 +87,7 @@ final class PublicInitializerTests: XCTestCase {
             restEndsAt: snapshot.restEndsAt, restTotalSeconds: snapshot.restTotalSeconds,
             restFrozenRemaining: snapshot.restFrozenRemaining, heartRate: snapshot.heartRate, volumeText: snapshot.volumeText,
             loggedSets: snapshot.loggedSets, totalSets: snapshot.totalSets, nextSetText: snapshot.nextSetText,
-            nextExerciseName: snapshot.nextExerciseName
+            nextExerciseName: snapshot.nextExerciseName, weightUnit: snapshot.weightUnit
         )
     }
 
@@ -136,7 +136,9 @@ final class PublicInitializerTests: XCTestCase {
             return state
         }()
         let empty = WorkoutFactory.makeEmpty(name: "Free workout", now: SvcSyncFix.epoch, id: SvcSyncFix.uuid(2))
-        return [fresh, resting, pending, paused, allLogged, empty]
+        var inPounds = resting
+        inPounds.settings.weightUnit = .lb
+        return [fresh, resting, pending, paused, allLogged, empty, inPounds]
     }
 
     // MARK: Tests
@@ -222,6 +224,7 @@ final class PublicInitializerTests: XCTestCase {
         XCTAssertNil(snapshot.restFrozenRemaining)
         XCTAssertNil(snapshot.heartRate)
         XCTAssertNil(snapshot.nextExerciseName)
+        XCTAssertEqual(snapshot.weightUnit, .kg)
     }
 
     func testExerciseHistoriesRebuildThroughThePublicInitializers() {

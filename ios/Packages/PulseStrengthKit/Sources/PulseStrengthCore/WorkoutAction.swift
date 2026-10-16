@@ -12,7 +12,7 @@ public enum WorkoutAction: Codable, Hashable, Sendable {
     case logNextSet
     case setWeight(exerciseID: UUID, setID: UUID, kg: Double)
     case setReps(exerciseID: UUID, setID: UUID, reps: Int)
-    /// Adjusts the next pending set: weight by `weightSteps` x Exercise.weightStepKg and
+    /// Adjusts the next pending set: weight by `weightSteps` x `Exercise.weightStep(in:)` (in the workout's unit) and
     /// reps by `repsSteps` x Exercise.repsStep. Used by the Watch and the Live Activity.
     case nudgeNextSet(weightSteps: Int, repsSteps: Int)
     case setSetType(exerciseID: UUID, setID: UUID, type: SetType)
@@ -45,6 +45,10 @@ public enum WorkoutAction: Codable, Hashable, Sendable {
     case skipRest
     case setAutoStartRest(Bool)
     case setAlertWhenRestEnds(Bool)
+
+    // MARK: Display
+    /// The unit weights are shown and typed in (the Watch and the Live Activity follow it). Stored weights stay in kilograms.
+    case setWeightUnit(WeightUnit)
 
     // MARK: Lifecycle
     case pause

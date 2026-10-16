@@ -79,7 +79,7 @@ struct RedActionGenerator {
             lastKind = 43
             return .undo
         }
-        let kind = rng.int(0...47)
+        let kind = rng.int(0...48)
         lastKind = kind
         let count = s.exercises.count
         switch kind {
@@ -147,6 +147,8 @@ struct RedActionGenerator {
             return .updateHeartRate(rng.pick([nil, -1, 0, 29, 30, 95, 128, 180, 240, 241, 400]))
         case 46:
             return .setUsedWatch(rng.chance(50))
+        case 48:
+            return .setWeightUnit(rng.pick(WeightUnit.allCases))
         default:
             return .rename(rng.pick(["", "Push", "Upper A · Push"]))
         }
@@ -284,7 +286,7 @@ final class WorkoutFuzzTests: XCTestCase {
             _ = generator.next(for: state)
             seen.insert(generator.lastKind)
         }
-        XCTAssertEqual(seen, Set(0...47))
+        XCTAssertEqual(seen, Set(0...48))
     }
 
     func testLCGIsDeterministicAndStaysInRange() {
@@ -392,6 +394,9 @@ final class WorkoutFuzzTests: XCTestCase {
                 XCTAssertNil(s.pausedAt, context)
                 XCTAssertEqual(s.rest?.endsAt, now.addingTimeInterval(max(0, frozen)), "resume thaw \(context)")
             }
+        case let .setWeightUnit(unit):
+            XCTAssertEqual(s.settings.weightUnit, unit, "unit not set \(context)")
+            XCTAssertEqual(s.exercises, b.exercises, "a unit change touched the exercises (weights stay in kilograms) \(context)")
         case .undo:
             XCTAssertNil(s.undo, "undo keeps its entry \(context)")
             if let entry = b.undo, now > entry.expiresAt {
