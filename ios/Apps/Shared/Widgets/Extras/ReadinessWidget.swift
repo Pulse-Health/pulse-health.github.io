@@ -101,10 +101,18 @@ struct ReadinessView: View {
     }
 }
 
-/// The score ring; `score` nil draws the empty track with a dash.
+/// The score ring; `score` nil draws the empty track with a dash. It is drawn here rather than with `RingGauge` because only the arc may be
+/// accented: with the track in the accent group too, the arc would not stand out from it in tinted mode.
 private struct ReadinessRing: View {
     let score: Int?
     let label: String
+
+    private static let lineWidth: CGFloat = 10
+
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
 
     /// Recovery colours: good from 67, fair from 34, low below.
     private var color: Color {
@@ -114,7 +122,16 @@ private struct ReadinessRing: View {
     }
 
     var body: some View {
-        RingGauge(progress: Double(score ?? 0) / 100, lineWidth: 10, color: color) {
+        ZStack {
+            Circle()
+                .stroke(palette.track, lineWidth: Self.lineWidth)
+            if let score, score > 0 {
+                Circle()
+                    .trim(from: 0, to: CGFloat(min(score, 100)) / 100)
+                    .stroke(color, style: StrokeStyle(lineWidth: Self.lineWidth, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .widgetAccentable()
+            }
             VStack(spacing: 0) {
                 Text(score.map { String($0) } ?? "\u{2013}")
                     .font(WidgetTheme.number(24))
@@ -131,7 +148,7 @@ private struct ReadinessRing: View {
             }
             .padding(.horizontal, 8)
         }
-        .widgetAccentable()
+        .padding(Self.lineWidth / 2)
         .frame(width: 100, height: 100)
     }
 }

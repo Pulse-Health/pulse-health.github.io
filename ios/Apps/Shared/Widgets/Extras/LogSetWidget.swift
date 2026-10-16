@@ -210,10 +210,10 @@ private struct LogSetStepper: View {
     let decrementLabel: String
     let incrementLabel: String
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
     @Environment(\.colorScheme) private var colorScheme
 
-    /// The round buttons sit on the grey capsule: white on the light one, a lighter grey on the dark one.
-    private var buttonFill: Color { colorScheme == .dark ? WidgetTheme.track : WidgetTheme.card }
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -238,7 +238,7 @@ private struct LogSetStepper: View {
         .padding(.horizontal, 2)
         .frame(maxWidth: .infinity)
         .frame(height: 48)
-        .background(WidgetTheme.muted, in: Capsule())
+        .background(palette.surface, in: Capsule())
     }
 
     /// A 40 pt round button inside a 44 x 48 pt touch area.
@@ -248,7 +248,7 @@ private struct LogSetStepper: View {
                 .font(.system(size: 16, weight: .bold))
                 .foregroundStyle(WidgetTheme.ink)
                 .frame(width: 40, height: 40)
-                .background(buttonFill, in: Circle())
+                .background(palette.raised, in: Circle())
                 .frame(width: 44, height: 48)
                 .contentShape(Rectangle())
         }
@@ -286,12 +286,18 @@ private struct LogSetDots: View {
     let done: Int
     let total: Int
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
+
     var body: some View {
         HStack(spacing: 4) {
             ForEach(0..<min(total, 8), id: \.self) { index in
                 Capsule()
                     .fill(color(for: index))
                     .frame(width: 18, height: 6)
+                    .widgetAccentable(index < done)
             }
         }
         .accessibilityHidden(true)
@@ -299,7 +305,7 @@ private struct LogSetDots: View {
 
     private func color(for index: Int) -> Color {
         if index < done { return WidgetTheme.progress }
-        return index == done ? WidgetTheme.trackStrong : WidgetTheme.track
+        return index == done ? palette.step : palette.track
     }
 }
 
@@ -310,6 +316,10 @@ private struct LogSetRestCard: View {
     let active: WorkoutSnapshot
     let countdown: ClosedRange<Date>?
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
     private var frozenSeconds: Int { max(0, active.restFrozenRemaining ?? 0) }
 
     private var frozenFraction: Double {
@@ -373,8 +383,9 @@ private struct LogSetRestCard: View {
             }
             .progressViewStyle(.linear)
             .tint(WidgetTheme.progress)
+            .widgetAccentable()
         } else {
-            BarMeter(fraction: frozenFraction, height: 6)
+            ExtrasProgressBar(fraction: frozenFraction, height: 6)
         }
     }
 
@@ -406,7 +417,7 @@ private struct LogSetRestCard: View {
                     .foregroundStyle(WidgetTheme.ink)
                     .frame(maxWidth: .infinity)
                     .frame(height: 44)
-                    .background(WidgetTheme.muted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(palette.surface, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Add 15 seconds")
@@ -516,7 +527,7 @@ private struct LogSetIdleCard: View {
             .accessibilityElement(children: .combine)
             Spacer(minLength: 0)
             Link(destination: destination.url) {
-                PillLabel(title: "Start workout", systemImage: "play.fill", height: 44)
+                ExtrasPill(title: "Start workout", systemImage: "play.fill", height: 44)
             }
         }
     }

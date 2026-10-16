@@ -4,8 +4,9 @@
 // groups of the app), each region shaded by the sets of its group this week (`bodyMap.levels`, `WidgetTheme.heat`), and the builder's
 // `bodyMap.message` on the right.
 //
-// Colour is never the only carrier: a region without sets is also drawn with a dashed outline, the legend names the set ranges, and the
-// accessibility label lists every group with its range.
+// Colour is never the only carrier: a region without sets is also drawn with a dashed outline, the legend names the set ranges, the
+// accessibility label lists every group with its range, and in the system's tinted mode (which ignores colour and keeps only alpha) the
+// levels are alpha steps of one colour, the two strongest in the accent group.
 
 #if os(iOS)
 import SwiftUI
@@ -153,11 +154,17 @@ private struct BodyMapLegend: View {
 private struct BodyMapSwatch: View {
     let level: Int
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
+
     var body: some View {
         RoundedRectangle(cornerRadius: 2.5, style: .continuous)
-            .fill(BodyMapGeometry.fill(level: level))
+            .fill(palette.heat(level))
             .overlay(BodyMapOutline(cornerRadius: 2.5, isShown: level == 0))
             .frame(width: 9, height: 9)
+            .widgetAccentable(level >= 2)
     }
 }
 
@@ -205,11 +212,15 @@ private struct BodyMapRegionView: View {
     let level: Int
     let scale: CGFloat
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
     private var isMuscle: Bool { region.muscle != nil }
 
     var body: some View {
         RoundedRectangle(cornerRadius: region.radius * scale, style: .continuous)
-            .fill(BodyMapGeometry.fill(level: isMuscle ? level : 0))
+            .fill(isMuscle ? palette.heat(level) : palette.track)
             .overlay(BodyMapOutline(cornerRadius: region.radius * scale, isShown: isMuscle && level == 0))
             .frame(width: region.rect.width * scale, height: region.rect.height * scale)
             .offset(x: region.rect.minX * scale, y: region.rect.minY * scale)
@@ -287,11 +298,6 @@ private enum BodyMapGeometry {
         let byHeight = size.height / figureSize.height
         let byWidth = size.width * 0.45 / pairWidth
         return max(0.1, min(byHeight, byWidth))
-    }
-
-    /// The canvas shows regions without sets in the track grey: `WidgetTheme.heat(0)` is almost white and would vanish on the card.
-    static func fill(level: Int) -> Color {
-        level <= 0 ? WidgetTheme.track : WidgetTheme.heat(level)
     }
 
     static func spokenRange(level: Int) -> String {

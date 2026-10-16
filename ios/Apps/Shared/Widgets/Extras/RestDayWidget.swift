@@ -105,7 +105,7 @@ struct RestDayView: View {
             }
             Spacer(minLength: 4)
             Link(destination: destination.url) {
-                PillLabel(title: "Start", systemImage: nil, fill: pillFill, foreground: pillText, height: 36)
+                ExtrasPill(title: "Start", systemImage: nil, fill: pillFill, foreground: pillText, height: 36)
             }
         }
     }

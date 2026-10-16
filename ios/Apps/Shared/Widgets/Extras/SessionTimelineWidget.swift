@@ -3,7 +3,8 @@
 // WI-11 Session timeline (systemMedium). How the time of the last workout was spent: one bar of `lastSession.timeline` with a block for
 // every stretch of lifting, rest and long rest (over three minutes), a legend, and "51 min · 38% under tension · 1 long break". Long rests
 // are striped as well as yellow, so the three kinds differ without colour. Workouts from before the app stamped set times have no
-// timeline: the widget then says that times are recorded from the next workout.
+// timeline: the widget then says that times are recorded from the next workout. Tinted mode keeps only alpha, so there the kinds differ by
+// alpha and stripes instead of colour.
 
 #if os(iOS)
 import SwiftUI
@@ -119,13 +120,7 @@ struct SessionTimelineView: View {
     private var empty: some View {
         VStack(alignment: .leading, spacing: 10) {
             header(name: session?.name)
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(WidgetTheme.muted)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .strokeBorder(WidgetTheme.trackStrong, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
-                )
-                .frame(height: 26)
+            SessionTimelineEmptyBar()
                 .accessibilityHidden(true)
             Text("Set times are recorded from your next workout")
                 .font(WidgetTheme.text(13))
@@ -205,16 +200,26 @@ private struct SessionTimelineLegend: View {
     }
 }
 
-/// A block of the bar and the swatch of the legend: green for lifting, grey for rest, yellow with stripes for a long rest.
+/// A block of the bar and the swatch of the legend: green for lifting, grey for rest, yellow with stripes for a long rest. In tinted mode
+/// lifting is the accented block, rest a faint one, and a long rest a fainter one with strong stripes.
 private struct SessionTimelineBlock: View {
     let kind: TimelineKind
+
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
 
     private var fill: Color {
         switch kind {
         case .lifting: return WidgetTheme.green
-        case .rest: return WidgetTheme.track
-        case .longRest: return WidgetTheme.recovering
+        case .rest: return palette.track
+        case .longRest: return palette.isTinted ? WidgetTheme.ink.opacity(0.3) : WidgetTheme.recovering
         }
+    }
+
+    private var stripeColor: Color {
+        palette.isTinted ? WidgetTheme.ink.opacity(0.9) : WidgetTheme.card.opacity(0.7)
     }
 
     var body: some View {
@@ -222,14 +227,33 @@ private struct SessionTimelineBlock: View {
             .fill(fill)
             .overlay(stripes)
             .clipped()
+            .widgetAccentable(kind == .lifting)
     }
 
     @ViewBuilder
     private var stripes: some View {
         if kind == .longRest {
             SessionTimelineStripes()
-                .stroke(WidgetTheme.card.opacity(0.7), lineWidth: 1.5)
+                .stroke(stripeColor, lineWidth: 1.5)
         }
+    }
+}
+
+/// The bar of a session without set times: an empty, dashed track.
+private struct SessionTimelineEmptyBar: View {
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 8, style: .continuous)
+            .fill(palette.surface)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(palette.step, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            )
+            .frame(height: 26)
     }
 }
 

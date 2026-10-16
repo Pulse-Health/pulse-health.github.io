@@ -104,15 +104,21 @@ private struct YearInIronBars: View {
     let values: [Double]
     let highlighted: Int?
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
+
     var body: some View {
         GeometryReader { proxy in
             let peak = values.max() ?? 0
             HStack(alignment: .bottom, spacing: 3) {
                 ForEach(values.indices, id: \.self) { index in
                     RoundedRectangle(cornerRadius: 2, style: .continuous)
-                        .fill(values[index] > 0 ? WidgetTheme.green : WidgetTheme.track)
+                        .fill(values[index] > 0 ? WidgetTheme.green : palette.track)
                         .opacity(index == highlighted || values[index] <= 0 ? 1 : 0.5)
                         .frame(height: height(of: values[index], peak: peak, available: proxy.size.height))
+                        .widgetAccentable(index == highlighted)
                 }
             }
             .frame(width: proxy.size.width, height: proxy.size.height, alignment: .bottom)

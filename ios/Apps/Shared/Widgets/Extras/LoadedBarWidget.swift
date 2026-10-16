@@ -2,7 +2,8 @@
 //
 // WI-05 Loaded bar (systemSmall). Today's heaviest barbell set (`loadedBar`) drawn as one side of the bar: the plates from the centre
 // outwards, each as tall as its weight suggests and coloured like competition plates, then the total and `LoadedBar.summary`. The drawing
-// scales down to fit when many plates are loaded. A tap opens the plate calculator.
+// scales down to fit when many plates are loaded. A tap opens the plate calculator. In tinted mode the plates are the accented part and
+// the bar stays in the primary group; the weights still differ by height and are named in the caption.
 
 #if os(iOS)
 import SwiftUI
@@ -137,6 +138,7 @@ private struct LoadedBarDrawing: View {
                             width: LoadedBarPlate.width(plates[index]) * unit,
                             height: LoadedBarPlate.height(plates[index]) * unit
                         )
+                        .widgetAccentable()
                 }
                 bar(width: Self.sleeveWidth * unit, unit: unit)
             }

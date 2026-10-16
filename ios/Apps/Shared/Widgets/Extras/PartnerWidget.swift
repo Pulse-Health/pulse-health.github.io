@@ -71,23 +71,13 @@ struct PartnerView: View {
     private func list(partnerLimit: Int, showsStatus: Bool) -> some View {
         let shown = Array(partners.prefix(partnerLimit))
         return VStack(alignment: .leading, spacing: 8) {
-            PartnerRow(
-                badge: "You",
-                badgeFill: WidgetTheme.green,
-                badgeText: WidgetTheme.onGreen,
-                completed: week.completed,
-                goal: week.goal,
-                barColor: WidgetTheme.progress
-            )
-            .widgetAccentable()
+            PartnerRow(badge: "You", isYou: true, completed: week.completed, goal: week.goal)
             ForEach(shown.indices, id: \.self) { index in
                 PartnerRow(
                     badge: Self.badge(for: shown[index]),
-                    badgeFill: WidgetTheme.blue,
-                    badgeText: Color.white,
+                    isYou: false,
                     completed: shown[index].completed,
-                    goal: shown[index].goal,
-                    barColor: WidgetTheme.blue
+                    goal: shown[index].goal
                 )
             }
             if showsStatus, let status = statusLine {
@@ -135,25 +125,37 @@ struct PartnerView: View {
     }
 }
 
-/// Avatar, progress bar and "3/4".
+/// Avatar, progress bar and "3/4". The person looking is green and in the accent group (tinted mode); partners are blue.
 private struct PartnerRow: View {
     let badge: String
-    let badgeFill: Color
-    let badgeText: Color
+    let isYou: Bool
     let completed: Int
     let goal: Int
-    let barColor: Color
+
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
 
     var body: some View {
         HStack(spacing: 10) {
             Text(badge)
                 .font(WidgetTheme.text(badge.count > 1 ? 12 : 14, .bold))
-                .foregroundStyle(badgeText)
+                .foregroundStyle(isYou ? WidgetTheme.onGreen : Color.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
                 .frame(width: 30, height: 30)
-                .background(badgeFill, in: Circle())
-            BarMeter(fraction: goal > 0 ? Double(completed) / Double(goal) : 0, color: barColor, height: 10)
+                .background {
+                    Circle()
+                        .fill(isYou ? WidgetTheme.green : palette.other)
+                        .widgetAccentable(isYou)
+                }
+            ExtrasProgressBar(
+                fraction: goal > 0 ? Double(completed) / Double(goal) : 0,
+                color: isYou ? WidgetTheme.progress : WidgetTheme.blue,
+                height: 10,
+                isAccented: isYou
+            )
             Text(verbatim: "\(completed)/\(goal)")
                 .font(WidgetTheme.number(14))
                 .foregroundStyle(WidgetTheme.ink)

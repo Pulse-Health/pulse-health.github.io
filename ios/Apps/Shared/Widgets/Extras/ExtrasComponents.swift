@@ -1,13 +1,119 @@
 // ExtrasComponents.swift
 //
-// Building blocks of the extra widgets (WI-01...WI-11): the upper-case eyebrow, the empty state, the always-dark card and two text helpers.
-// The shared primitives (WidgetTheme, RingGauge, BarMeter, PillLabel ...) stay in Widgets/Common. Nothing here is shared with the other
-// widget areas, so every name starts with "Extras".
+// Building blocks of the extra widgets (WI-01...WI-11): the fills that survive the system's tinted mode, an accent-aware progress bar and
+// pill, the upper-case eyebrow, the empty state, the always-dark card and two text helpers. The shared primitives (WidgetTheme, RingGauge,
+// BarMeter, PillLabel ...) stay in Widgets/Common. Nothing here is shared with the other widget areas, so every name starts with "Extras".
+//
+// Tinted mode: the system renders a widget in two groups, the accented views (`widgetAccentable`) in the tint and all others in one
+// primary colour, and it "ignores the view's color, rendering the new colors based on the view's alpha channel". Two consequences drive
+// this file: a label on a fill of the same alpha vanishes unless fill and label are in different groups, and fills that differ only in
+// colour (heat levels, kinds of rest) merge unless they also differ in alpha.
 
 #if os(iOS)
 import SwiftUI
 import WidgetKit
 import PulseStrengthCore
+
+// MARK: - Palette
+
+/// The fills the extra widgets draw behind and beside their content. In full colour they are the colours of `WidgetTheme`; in tinted mode
+/// each one is the ink colour at its own alpha step, which the system then renders in the primary colour (or the tint, for accented views).
+struct ExtrasPalette {
+    let isTinted: Bool
+    let isDark: Bool
+
+    init(renderingMode: WidgetRenderingMode, colorScheme: ColorScheme) {
+        isTinted = renderingMode == .accented
+        isDark = colorScheme == .dark
+    }
+
+    /// A stepper or button surface on the card.
+    var surface: Color { isTinted ? WidgetTheme.ink.opacity(0.14) : WidgetTheme.muted }
+
+    /// A round button on a `surface`: white on the light grey, a lighter grey on the dark one.
+    var raised: Color {
+        if isTinted { return WidgetTheme.ink.opacity(0.26) }
+        return isDark ? WidgetTheme.track : WidgetTheme.card
+    }
+
+    /// The empty part of a bar, ring or row of dots; the head of the silhouette.
+    var track: Color { isTinted ? WidgetTheme.ink.opacity(0.18) : WidgetTheme.track }
+
+    /// The one in between: the set that waits, a rest.
+    var step: Color { isTinted ? WidgetTheme.ink.opacity(0.5) : WidgetTheme.trackStrong }
+
+    /// The avatar of someone else: blue, or a soft fill that leaves the initials readable in tinted mode.
+    var other: Color { isTinted ? WidgetTheme.ink.opacity(0.3) : WidgetTheme.blue }
+
+    /// Body map shade of a level (0...3). The canvas draws an untrained region in the track grey: `WidgetTheme.heat(0)` is almost white and
+    /// would vanish on the card.
+    func heat(_ level: Int) -> Color {
+        let clamped = min(3, max(0, level))
+        if isTinted { return WidgetTheme.ink.opacity([0.18, 0.4, 0.7, 1][clamped]) }
+        return clamped == 0 ? WidgetTheme.track : WidgetTheme.heat(clamped)
+    }
+}
+
+// MARK: - Progress bar
+
+/// A horizontal bar: `fraction` of the width in `color` over a track. In tinted mode the fill is in the accent group (unless
+/// `isAccented` is false, for the bars of other people) and the track keeps its own alpha, so the two stay apart.
+struct ExtrasProgressBar: View {
+    var fraction: Double
+    var color: Color = WidgetTheme.progress
+    var height: CGFloat = 8
+    var isAccented: Bool = true
+
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(palette.track)
+                if fraction > 0 {
+                    Capsule()
+                        .fill(color)
+                        .frame(width: max(height, proxy.size.width * CGFloat(min(1, max(0, fraction)))))
+                        .widgetAccentable(isAccented)
+                }
+            }
+        }
+        .frame(height: height)
+    }
+}
+
+// MARK: - Pill
+
+/// A rounded "button-looking" label for places where the real control is the whole widget (`widgetURL`) or a `Link`. The fill is the
+/// accented layer and the label stays in the primary group, so the label is readable on it in tinted mode (`PillLabel` puts both in one).
+struct ExtrasPill: View {
+    var title: String
+    var systemImage: String?
+    var fill: Color = WidgetTheme.green
+    var foreground: Color = WidgetTheme.onGreen
+    var height: CGFloat = 36
+
+    var body: some View {
+        HStack(spacing: 6) {
+            if let systemImage {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .bold))
+            }
+            Text(title)
+                .font(WidgetTheme.text(15, .semibold))
+                .lineLimit(1)
+        }
+        .foregroundStyle(foreground)
+        .frame(maxWidth: .infinity)
+        .frame(height: height)
+        .background {
+            Capsule().fill(fill).widgetAccentable()
+        }
+    }
+}
 
 // MARK: - Text
 

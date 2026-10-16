@@ -78,8 +78,7 @@ struct StrengthRatioView: View {
                 .minimumScaleFactor(0.6)
             Spacer(minLength: 6)
             VStack(alignment: .leading, spacing: 4) {
-                BarMeter(fraction: fraction, color: WidgetTheme.green, height: 8)
-                    .widgetAccentable()
+                ExtrasProgressBar(fraction: fraction, color: WidgetTheme.green, height: 8)
                 Text(goalLine)
                     .font(WidgetTheme.text(12))
                     .foregroundStyle(WidgetTheme.inkSecondary)
