@@ -10,7 +10,7 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (1151 tests on Linux, 1153 on macOS).
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (1172 tests on Linux, 1174 on macOS).
 > The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow `strength-ios`
 > has compiled it with Xcode 16 and Xcode 26 (the iPhone app with its widget extension, the Watch app with its widget
 > extension), run a 30-step UI flow through the real iPhone app, rendered the Lock Screen, Dynamic Island, Watch screens and
@@ -384,7 +384,7 @@ State at the last commit of this branch; the numbers come from the `strength-ios
 
 **Verified**
 
-* **Core (`PulseStrengthCore`)**: 1151 unit tests on Linux (job `core-linux`, also with the Combine stand-in) and 1153 on macOS (jobs `apple` and `xcode26`) pass:
+* **Core (`PulseStrengthCore`)**: 1172 unit tests on Linux (job `core-linux`, also with the Combine stand-in) and 1174 on macOS (jobs `apple` and `xcode26`) pass:
   reducer, presenter, snapshot and summary builders, persistence, the phone <-> Watch sync protocol (acknowledgements, optimistic
   replay, delivery fuzzing with dropped, duplicated and reordered messages), exercise library and sample data.
 * **Compiles**: `xcodegen generate`, then `xcodebuild` of the iOS app (with the widget extension and the embedded Watch app) and of the
