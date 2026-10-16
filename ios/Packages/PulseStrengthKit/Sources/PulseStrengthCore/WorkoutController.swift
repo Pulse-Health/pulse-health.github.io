@@ -216,6 +216,10 @@ private final class StoreDataAdapter: WorkoutDataProviding {
         store.recoveryProvider(now: now)
     }
 
+    func recoveryHasData(now: Date) -> Bool {
+        store.readinessPercent(now: now) != nil
+    }
+
     var preferences: StrengthPreferences {
         store.preferences
     }

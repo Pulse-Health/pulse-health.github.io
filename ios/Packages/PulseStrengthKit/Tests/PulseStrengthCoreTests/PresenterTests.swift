@@ -201,6 +201,14 @@ final class PresenterGoldenTests: XCTestCase {
         XCTAssertEqual(segments.map { $0.isCurrent }, [true, false, false, false, false, false])
     }
 
+    func testTheCardCarriesWhetherTheRecoveryIsMeasured() throws {
+        let state = PresFix.freshUpperA()
+        XCTAssertTrue(try XCTUnwrap(WorkoutPresenter.present(state, now: PresFix.t0, recovery: DemoRecovery.provider).card).recoveryHasData)
+        let card = try XCTUnwrap(WorkoutPresenter.present(state, now: PresFix.t0, recovery: { _ in 100 }, recoveryHasData: false).card)
+        XCTAssertFalse(card.recoveryHasData)
+        XCTAssertEqual(card.recoveryPercent, 100)
+    }
+
     func testNavigator() {
         let nav = try! XCTUnwrap(view.navigator)
         XCTAssertEqual(nav.position, 1)

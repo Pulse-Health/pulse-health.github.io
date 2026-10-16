@@ -4,7 +4,9 @@ import Foundation
 
 /// Turns a `WorkoutState` into the display-ready `ActiveWorkoutPresentation` (port of `renderVals` in the design's Active.dc.html).
 public enum WorkoutPresenter {
-    /// Builds the presentation of `state` at `now`; `recovery` supplies the muscle recovery percentages (0...100).
+    /// Builds the presentation of `state` at `now`; `recovery` supplies the muscle recovery percentages (0...100). `recoveryHasData`
+    /// is false when they are only the default of a history without a recent workout (`RecoveryEstimate.hasData`); the card then says
+    /// so (`Card.recoveryHasData`).
     ///
     /// Weights are written in the unit of `state.settings.weightUnit` with the separators of `locale` (default: en_US, so a caller
     /// that passes nothing gets "82.5").
@@ -12,6 +14,7 @@ public enum WorkoutPresenter {
         _ state: WorkoutState,
         now: Date,
         recovery: RecoveryProvider,
+        recoveryHasData: Bool = true,
         locale: Locale = DisplayFormat.metric.locale
     ) -> ActiveWorkoutPresentation {
         let totals = PresenterSupport.totals(of: state)
@@ -22,7 +25,7 @@ public enum WorkoutPresenter {
         return ActiveWorkoutPresentation(
             header: makeHeader(state, now: now, totals: totals, currentIndex: currentIndex, formatter: formatter),
             navigator: makeNavigator(state, currentIndex: currentIndex),
-            card: state.currentExercise.map { makeCard($0, state: state, recovery: recovery, formatter: formatter) },
+            card: state.currentExercise.map { makeCard($0, state: state, recovery: recovery, recoveryHasData: recoveryHasData, formatter: formatter) },
             dock: makeDock(state, now: now, formatter: formatter),
             undoText: makeUndoText(state, now: now),
             isEmpty: state.exercises.isEmpty,
@@ -88,6 +91,7 @@ private extension WorkoutPresenter {
         _ entry: WorkoutExercise,
         state: WorkoutState,
         recovery: RecoveryProvider,
+        recoveryHasData: Bool,
         formatter: WeightFormatter
     ) -> ActiveWorkoutPresentation.Card {
         let exercise = entry.exercise
@@ -108,6 +112,7 @@ private extension WorkoutPresenter {
             exercise: exercise,
             recoveryPercent: percent,
             recoveryLevel: level,
+            recoveryHasData: recoveryHasData,
             supersetLabel: group.map { "Superset " + $0 },
             restSeconds: entry.restSeconds,
             restText: NumberText.rest(seconds: entry.restSeconds),

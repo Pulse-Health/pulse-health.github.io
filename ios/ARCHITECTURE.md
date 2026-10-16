@@ -189,7 +189,7 @@ entry ids, planned sets = the current sets' type/weight/reps), keeps `id`, `name
 
 ```swift
 public enum WorkoutPresenter {
-    public static func present(_ state: WorkoutState, now: Date, recovery: RecoveryProvider, locale: Locale = DisplayFormat.metric.locale) -> ActiveWorkoutPresentation
+    public static func present(_ state: WorkoutState, now: Date, recovery: RecoveryProvider, recoveryHasData: Bool = true, locale: Locale = DisplayFormat.metric.locale) -> ActiveWorkoutPresentation
 }
 public extension TemplateDiff { static func compute(for state: WorkoutState) -> TemplateDiff }
 public enum SummaryBuilder { public static func build(from state: WorkoutState, finishedAt: Date) -> CompletedWorkout }
@@ -207,7 +207,7 @@ Presenter rules (port of `renderVals` in `Active.dc.html`):
 * Header: `clockText` = `NumberText.clock(elapsedSeconds)`; paused -> "Paused · " + clock. `volumeText` = thousands, `setsText` =
   "<logged> of <total>", `heartRateText` = bpm or "–"; `volumeText` is `WeightFormatter.volume` (a whole number of the unit, grouped by the locale, no symbol). One `Segment` per exercise (fraction = done/total sets, `isCurrent`).
 * Navigator is nil when empty; `position` is 1-based.
-* Card for the current exercise: recovery percent from the provider, level good >= 80, fair >= 60, else low; `supersetLabel`
+* Card for the current exercise: recovery percent from the provider (`recoveryHasData` false = only the default, hide the line), level good >= 80, fair >= 60, else low; `supersetLabel`
   "Superset <letter>"; `restText` via `NumberText.rest`; column titles: weightReps -> the unit symbol ("kg" or "lb")/"Reps", repsOnly -> "Added"/"Reps",
   duration -> ""/"Sec".
 * Rows: `number` = "W"/"D"/"F" or the running number of normal sets; `previousText` from `exercise.previousSets[min(i, count-1)]`
@@ -360,7 +360,7 @@ public final class StrengthStore: ObservableObject {
     public func deleteCustomExercise(id: String) -> Result<Int, Error>               // success = number of templates that lost an entry
     public func updateCustomExercise(_ exercise: Exercise) -> Result<Void, Error>
     public var hasSampleData: Bool { get }                                           // sample templates / workouts of an older build's demo data are stored
-    public func removeSampleData() -> Result<SampleDataRemoval, Error>               // deletes exactly SampleData.templateIDs / workoutIDs, recomputes the bests
+    public func removeSampleData() -> Result<SampleDataRemoval, Error>               // deletes exactly SampleData.templateIDs / workoutIDs and the sample bests, recomputes the bests
     public func addStarterTemplates() -> Result<Int, Error>                          // Push / Pull / Legs; success = how many were added (0 when all exist)
     public func resetData(_ scope: ResetScope) -> Result<Void, Error>                // .templates .history .customExercises .bodyWeights .preferences .all
     public func recoveryEstimates(now: Date = Date()) -> [MuscleGroup: RecoveryEstimate]   // percent + hasData per muscle group
@@ -521,9 +521,11 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
 * `WorkoutEngine.restore()` refreshes the exercises of the restored workout like `start(template:)` does (previous best and last sets from the store) and saves the file again when that changed
   something, so a workout that an older build saved does not keep the invented previous results or record baseline.
 * Older builds seeded the sample items into real files. `StrengthData.hasSampleData` (also on the model and the store) is true while a template or workout with an id of `SampleData.templateIDs` /
-  `workoutIDs` is stored. `removeSampleData()` deletes exactly those (also when the user edited a sample template; finished workouts started from one stay, with their template id), then runs
-  `recomputePersonalBests()` so the sample records go too (while `historyIsIncomplete` the bests are only raised), and returns `SampleDataRemoval(templates:workouts:)`. The model saves the templates
-  when any went, and the history and bests when a workout went; nothing is written when nothing was there.
+  `workoutIDs` is stored, or (only while `historyIsIncomplete`, when stored bests are kept) while a stored personal best is one the demo seeding wrote: same estimate, weight and reps as
+  `SampleData.personalBests(now:)` and the sample's distance in time from one shared seeding day (to the second), at least two of them. `removeSampleData()` deletes exactly the sample templates and
+  workouts (also when the user edited a sample template; finished workouts started from one stay, with their template id) and those sample bests, then runs `recomputePersonalBests()` so the sample
+  records of a readable history go too (while `historyIsIncomplete` the other bests are only raised), and returns `SampleDataRemoval(templates:workouts:personalBests:)`. The model saves the templates
+  when any went, the history when a workout went and the bests when they changed; nothing is written when nothing was there.
 * `StarterTemplates.all` is Push, Pull and Legs (5-6 library exercises each; sets, reps, weight and rest are `Exercise.defaults`; no `lastPerformed`, no previous results). Their ids are fixed
   (`57A2<group>-0000-4000-8000-...`, never equal to a sample id), so `addStarterTemplates()` (data, model, store) appends only those whose id is not stored and returns how many it added.
   The weights are starting values.
@@ -532,8 +534,9 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
   after `now` counts as just finished); a group's percent is the MINIMUM over those workouts, times 100, rounded, and 100 when no workout in the window trained it. `hasData` is true when a workout
   finished at most 21 days before `now`; without one every group reads 100 and `hasData` is false (screens must then hide the readiness ring, the recovery grid and the coach sentence instead of showing
   100 %). `readinessPercent` is the mean of the six percents, rounded, nil without data. `StrengthStore.recoveryEstimates(now:)`, `readinessPercent(now:)` and `recoveryProvider(now:)` expose it.
-  `WorkoutDataProviding.recoveryProvider(now:)` lets the engine use it: unless a provider was passed to `WorkoutEngine` / `WorkoutController` (or assigned to `recovery`) the engine estimates from the
-  store's history at the time of each call. `DemoRecovery.provider` stays for previews, `StrengthAppEnvironment.preview` and tests.
+  `WorkoutDataProviding.recoveryProvider(now:)` lets the engine use it (`recoveryHasData(now:)` says whether the estimate has data; default true for a provider that does not estimate): unless a provider was passed to `WorkoutEngine` / `WorkoutController` (or assigned to `recovery`) the engine estimates from the
+  store's history at the time of each call, and `ActiveWorkoutPresentation.Card.recoveryHasData` is false while that history has no recent workout (an injected provider counts as data), so the card
+  leaves its recovery line out instead of showing the default 100 %. `DemoRecovery.provider` stays for previews, `StrengthAppEnvironment.preview` and tests.
 * `StrengthStore.resetData(_ scope: ResetScope)` (an `OptionSet`: `.templates`, `.history`, `.customExercises`, `.bodyWeights`, `.preferences`, `.all`) erases and saves: `.history` also clears the personal
   bests, the `lastPerformed` of every template, `historyIsIncomplete` and the demo flag; `.customExercises` leaves the copies inside templates and the names inside finished workouts; `.bodyWeights` does
   not touch Apple Health and switches `weighIn.syncWithHealth` off (otherwise the next read from Health would import the weigh-ins again; the preferences file is saved too); `.preferences` puts every stored preference back to its default (today the weigh-in reminder; new preference fields are reset in the private `resetPreferences()` of `StrengthData+Reset.swift`). The files of

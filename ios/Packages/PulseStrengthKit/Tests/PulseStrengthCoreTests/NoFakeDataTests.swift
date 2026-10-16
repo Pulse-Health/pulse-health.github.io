@@ -419,9 +419,119 @@ final class SampleDataRemovalTests: XCTestCase {
 
     func testWhileTheHistoryIsIncompleteTheBestsAreOnlyRaised() {
         var data = seededData()
+        data.personalBests["deadlift"] = PersonalBest(exerciseID: "deadlift", estimated1RM: 160, weightKg: 140, reps: 4, date: F.daysAgo(40))
         data.historyIsIncomplete = true
         _ = data.removeSampleData()
-        XCTAssertNotNil(data.personalBests["bench"], "a best that the readable history does not explain is kept")
+        XCTAssertEqual(data.personalBests["deadlift"]?.estimated1RM, 160, "a best that the readable history does not explain is kept")
+    }
+
+    // MARK: Sample personal bests
+
+    /// An older install whose `history.json` could not be read: the bests the demo seeding wrote are still stored.
+    private func damagedSeededData(bests: [String: PersonalBest]? = nil) -> StrengthData {
+        StrengthData(
+            templates: SampleData.templates(now: now),
+            personalBests: bests ?? SampleData.personalBests(now: now),
+            historyIsIncomplete: true,
+            usesDemoPreviousResults: false
+        )
+    }
+
+    func testTheSampleBestsOfAnInstallWithADamagedHistoryGoWithTheSampleData() throws {
+        var data = damagedSeededData()
+        let sampleCount = SampleData.personalBests(now: now).count
+        XCTAssertGreaterThan(sampleCount, 2)
+        XCTAssertEqual(try XCTUnwrap(data.exercise(id: "bench")).previousBestE1RM, 99.1667, accuracy: 0.001, "the invented best shows before")
+
+        let removal = data.removeSampleData()
+        XCTAssertEqual(removal, SampleDataRemoval(templates: 3, workouts: 0, personalBests: sampleCount))
+        XCTAssertEqual(data.personalBests, [:])
+        XCTAssertEqual(try XCTUnwrap(data.exercise(id: "bench")).previousBestE1RM, 0)
+        XCTAssertFalse(data.hasSampleData, "the offer ends only when nothing invented is left")
+        XCTAssertTrue(data.historyIsIncomplete, "the history is still damaged")
+    }
+
+    func testSampleBestsWithoutTheSampleTemplatesStillCountAsSampleData() {
+        var data = damagedSeededData()
+        data.templates = []
+        XCTAssertTrue(data.hasSampleData)
+        let removal = data.removeSampleData()
+        XCTAssertEqual(removal.templates, 0)
+        XCTAssertEqual(removal.personalBests, SampleData.personalBests(now: now).count)
+        XCTAssertFalse(removal.isEmpty)
+        XCTAssertFalse(data.hasSampleData)
+        XCTAssertTrue(data.removeSampleData().isEmpty)
+    }
+
+    func testARealBestOfTheSameLiftAmongTheSampleBestsStays() throws {
+        var bests = SampleData.personalBests(now: now)
+        let sampleBench = try XCTUnwrap(bests["bench"])
+        bests["bench"] = PersonalBest(
+            exerciseID: "bench", estimated1RM: sampleBench.estimated1RM, weightKg: sampleBench.weightKg, reps: sampleBench.reps,
+            date: F.daysAgo(100)
+        )
+        var data = damagedSeededData(bests: bests)
+        let removal = data.removeSampleData()
+        XCTAssertEqual(removal.personalBests, bests.count - 1)
+        XCTAssertEqual(Set(data.personalBests.keys), ["bench"], "same numbers, but not from the seeding day")
+        XCTAssertEqual(data.personalBests["bench"]?.date, F.daysAgo(100))
+    }
+
+    func testALoneBestThatEqualsASampleBestIsNeverTakenForOne() throws {
+        let sampleBench = try XCTUnwrap(SampleData.personalBests(now: now)["bench"])
+        var data = StrengthData(personalBests: ["bench": sampleBench], historyIsIncomplete: true)
+        XCTAssertFalse(data.hasSampleData)
+        XCTAssertTrue(data.removeSampleData().isEmpty)
+        XCTAssertEqual(data.personalBests, ["bench": sampleBench])
+    }
+
+    func testABestThatARealSetBeatSinceSeedingIsTheUsersAndStays() throws {
+        var bests = SampleData.personalBests(now: now)
+        bests["bench"] = PersonalBest(exerciseID: "bench", estimated1RM: 120, weightKg: 100, reps: 6, date: F.daysAgo(2))
+        var data = damagedSeededData(bests: bests)
+        _ = data.removeSampleData()
+        XCTAssertEqual(data.personalBests, ["bench": bests["bench"]!])
+    }
+
+    func testTheSampleBestsAreFoundWhenTheFilesDroppedTheFractionOfASecond() {
+        let seededAt = now.addingTimeInterval(0.7)
+        let stored = SampleData.personalBests(now: seededAt).mapValues { best -> PersonalBest in
+            var copy = best
+            copy.date = Date(timeIntervalSince1970: best.date.timeIntervalSince1970.rounded(.down))
+            return copy
+        }
+        var data = damagedSeededData(bests: stored)
+        XCTAssertTrue(data.hasSampleData)
+        XCTAssertEqual(data.removeSampleData().personalBests, stored.count)
+        XCTAssertEqual(data.personalBests, [:])
+    }
+
+    func testTheBestsThatTheReadableHistoryExplainsComeBackAfterTheRemoval() throws {
+        var data = damagedSeededData()
+        data.history = [userWorkout(1, days: 1, bench: F.work(40, 5))]
+        _ = data.removeSampleData()
+        XCTAssertEqual(Set(data.personalBests.keys), ["bench"])
+        XCTAssertEqual(try XCTUnwrap(data.personalBests["bench"]).estimated1RM, 40 * (1 + 5.0 / 30), accuracy: 1e-9)
+    }
+
+    func testTheModelDropsTheSampleBestsFromDiskWhileTheHistoryStaysDamaged() throws {
+        let directory = makeDirectory(self)
+        let persistence = FileStrengthPersistence(directory: directory)
+        try persistence.saveTemplates(SampleData.templates(now: now))
+        try persistence.savePersonalBests(SampleData.personalBests(now: now))
+        try Data("not json".utf8).write(to: directory.appendingPathComponent("history.json"))
+        try svcMain {
+            let model = StrengthDataModel(persistence: FileStrengthPersistence(directory: directory), now: now)
+            XCTAssertTrue(model.data.historyIsIncomplete)
+            XCTAssertTrue(model.hasSampleData)
+
+            let removal = try model.removeSampleData().get()
+            XCTAssertEqual(removal.templates, 3)
+            XCTAssertEqual(removal.personalBests, SampleData.personalBests(now: now).count)
+            XCTAssertEqual(persistence.loadPersonalBests(), [:])
+            XCTAssertEqual(persistence.loadTemplates(), [])
+            XCTAssertFalse(StrengthDataModel(persistence: FileStrengthPersistence(directory: directory), now: now).hasSampleData)
+        }
     }
 
     func testTheModelSavesWhatChangedAndReloadsClean() throws {

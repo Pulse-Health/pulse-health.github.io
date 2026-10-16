@@ -25,6 +25,8 @@ public protocol WorkoutDataProviding: AnyObject {
     func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error>
     /// The recovery of each muscle group at `now`, estimated from the finished workouts (see `RecoveryEstimator`).
     func recoveryProvider(now: Date) -> RecoveryProvider
+    /// False when the estimate at `now` is only the default 100 because the history has no recent workout (`RecoveryEstimate.hasData`).
+    func recoveryHasData(now: Date) -> Bool
     /// The user's preferences: a new workout starts with their rest timer choices and weight unit.
     var preferences: StrengthPreferences { get }
     /// Saves new preferences (the engine remembers a rest timer choice made during a workout this way). `.failure` when they could
@@ -34,6 +36,9 @@ public protocol WorkoutDataProviding: AnyObject {
 }
 
 public extension WorkoutDataProviding {
+    /// True, for a provider whose recovery numbers are not estimated from a history.
+    func recoveryHasData(now: Date) -> Bool { true }
+
     /// The default preferences, for a provider that has none.
     var preferences: StrengthPreferences { StrengthPreferences() }
 
@@ -522,7 +527,13 @@ public final class WorkoutEngine {
     /// `displayLocale`.
     public func presentation(now: Date) -> ActiveWorkoutPresentation? {
         state.map {
-            WorkoutPresenter.present($0, now: now, recovery: recoveryOverride ?? data.recoveryProvider(now: now), locale: displayLocale)
+            WorkoutPresenter.present(
+                $0,
+                now: now,
+                recovery: recoveryOverride ?? data.recoveryProvider(now: now),
+                recoveryHasData: recoveryOverride != nil || data.recoveryHasData(now: now),
+                locale: displayLocale
+            )
         }
     }
 

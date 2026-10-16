@@ -137,6 +137,9 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
         public var exercise: Exercise
         public var recoveryPercent: Int
         public var recoveryLevel: RecoveryLevel
+        /// False when `recoveryPercent` is only the default 100 of a history without a recent workout (`RecoveryEstimate.hasData`):
+        /// the screen then leaves the recovery line out instead of presenting it as a measurement.
+        public var recoveryHasData: Bool
         /// "Superset A" or nil.
         public var supersetLabel: String?
         public var restSeconds: Int
@@ -156,6 +159,7 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
             exercise: Exercise,
             recoveryPercent: Int,
             recoveryLevel: RecoveryLevel,
+            recoveryHasData: Bool = true,
             supersetLabel: String? = nil,
             restSeconds: Int,
             restText: String,
@@ -169,6 +173,7 @@ public struct ActiveWorkoutPresentation: Equatable, Sendable {
             self.exercise = exercise
             self.recoveryPercent = recoveryPercent
             self.recoveryLevel = recoveryLevel
+            self.recoveryHasData = recoveryHasData
             self.supersetLabel = supersetLabel
             self.restSeconds = restSeconds
             self.restText = restText

@@ -8,42 +8,79 @@ public struct SampleDataRemoval: Equatable, Sendable {
     public var templates: Int
     /// How many of the five sample workouts were deleted.
     public var workouts: Int
+    /// How many stored personal bests were the invented ones of the sample data (see `StrengthData.hasSampleData`) and were deleted.
+    public var personalBests: Int
 
-    public init(templates: Int, workouts: Int) {
+    public init(templates: Int, workouts: Int, personalBests: Int = 0) {
         self.templates = templates
         self.workouts = workouts
+        self.personalBests = personalBests
     }
 
     /// True when nothing was deleted.
-    public var isEmpty: Bool { templates == 0 && workouts == 0 }
+    public var isEmpty: Bool { templates == 0 && workouts == 0 && personalBests == 0 }
 }
 
 public extension StrengthData {
-    /// True when a sample template or a sample workout (`SampleData.templateIDs`, `SampleData.workoutIDs`) is stored. Builds that
-    /// seeded demo data into real files left them behind; the app offers to remove them while this is true.
+    /// True when a sample template, a sample workout (`SampleData.templateIDs`, `SampleData.workoutIDs`) or a sample personal best
+    /// (`sampleBestIDs`) is stored. Builds that seeded demo data into real files left them behind; the app offers to remove them
+    /// while this is true.
     var hasSampleData: Bool {
         let templateIDs = Set(SampleData.templateIDs)
         let workoutIDs = Set(SampleData.workoutIDs)
-        return templates.contains { templateIDs.contains($0.id) } || history.contains { workoutIDs.contains($0.id) }
+        return templates.contains { templateIDs.contains($0.id) }
+            || history.contains { workoutIDs.contains($0.id) }
+            || !sampleBestIDs.isEmpty
     }
 
-    /// Deletes exactly the sample templates and the sample workouts (found by their fixed ids; a sample template that the user
-    /// edited is deleted too) and recomputes the personal bests from what is left, so the sample records go with them. Everything
-    /// else stays: the user's templates, workouts, exercises and weigh-ins, and the finished workouts that were started from a sample
-    /// template. The demo previous results are switched off.
+    /// Deletes exactly the sample templates, the sample workouts (found by their fixed ids; a sample template that the user
+    /// edited is deleted too) and the sample personal bests, and recomputes the personal bests from what is left, so the sample
+    /// records go with them. Everything else stays: the user's templates, workouts, exercises and weigh-ins, and the finished
+    /// workouts that were started from a sample template. The demo previous results are switched off.
     ///
-    /// While `historyIsIncomplete` the stored bests are kept and only raised (see `recomputePersonalBests()`).
+    /// While `historyIsIncomplete` the other stored bests are kept and only raised (see `recomputePersonalBests()`).
     mutating func removeSampleData() -> SampleDataRemoval {
         let templateIDs = Set(SampleData.templateIDs)
         let workoutIDs = Set(SampleData.workoutIDs)
         let templateCount = templates.filter { templateIDs.contains($0.id) }.count
         let workoutCount = history.filter { workoutIDs.contains($0.id) }.count
+        let bestIDs = sampleBestIDs
         templates.removeAll { templateIDs.contains($0.id) }
         history.removeAll { workoutIDs.contains($0.id) }
-        if workoutCount > 0 { recomputePersonalBests() }
+        for id in bestIDs { personalBests[id] = nil }
+        if workoutCount > 0 || !bestIDs.isEmpty { recomputePersonalBests() }
         usesDemoPreviousResults = false
-        return SampleDataRemoval(templates: templateCount, workouts: workoutCount)
+        return SampleDataRemoval(templates: templateCount, workouts: workoutCount, personalBests: bestIDs.count)
     }
+
+    /// The exercise ids whose stored personal best is one that the demo seeding wrote (`SampleData.personalBests(now:)`); empty
+    /// unless `historyIsIncomplete`. With a complete history `recomputePersonalBests()` replaces every best anyway, but with a
+    /// damaged one the stored bests are kept (they may come from a workout that could not be read), so the invented ones need to
+    /// be recognised.
+    ///
+    /// The estimate, weight and reps must equal the sample best's, and the dates must keep the sample's distances from the day that
+    /// was "today" when it was seeded: every stored best that fits shares that one seeding time (to the second, files drop the
+    /// fraction). At least two must agree on it, so a real best that happens to be the same lift is never taken for a sample.
+    /// A sample best that a real set has beaten since is the user's and stays.
+    private var sampleBestIDs: [String] {
+        guard historyIsIncomplete else { return [] }
+        let matches = SampleBests.reference.sorted { $0.key < $1.key }.compactMap { id, sample -> (id: String, shift: TimeInterval)? in
+            guard let stored = personalBests[id],
+                  abs(stored.estimated1RM - sample.estimated1RM) < 1e-6,
+                  abs(stored.weightKg - sample.weightKg) < 1e-6,
+                  stored.reps == sample.reps
+            else { return nil }
+            return (id, stored.date.timeIntervalSince(sample.date))
+        }
+        let groups = matches.map { anchor in matches.filter { abs($0.shift - anchor.shift) <= 1 } }
+        guard let seeded = groups.max(by: { $0.count < $1.count }), seeded.count >= 2 else { return [] }
+        return seeded.map(\.id)
+    }
+}
+
+/// The sample personal bests at a fixed "today", to compare the stored ones with.
+private enum SampleBests {
+    static let reference = SampleData.personalBests(now: Date(timeIntervalSinceReferenceDate: 0))
 }
 
 // MARK: - Reset
@@ -108,7 +145,7 @@ public extension StrengthDataModel {
     /// True when sample templates or sample workouts are stored (see `StrengthData.hasSampleData`).
     var hasSampleData: Bool { data.hasSampleData }
 
-    /// Deletes the sample templates and sample workouts, recomputes the personal bests and saves what changed; the success value says
+    /// Deletes the sample templates, workouts and personal bests, recomputes the personal bests and saves what changed; the success value says
     /// what was deleted (see `StrengthData.removeSampleData`). Nothing is written when there was nothing to delete.
     @discardableResult
     func removeSampleData() -> Result<SampleDataRemoval, Error> {

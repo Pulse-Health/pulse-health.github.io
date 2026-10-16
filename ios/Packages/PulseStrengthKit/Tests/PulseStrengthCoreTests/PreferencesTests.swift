@@ -596,6 +596,7 @@ final class PreferencesWorkoutTests: XCTestCase {
         try svcMain {
             let bare = Bare()
             XCTAssertEqual(bare.preferences, StrengthPreferences())
+            XCTAssertTrue(bare.recoveryHasData(now: epoch), "a provider that says nothing about its data has data")
             try bare.updatePreferences(changedPreferences()).get()
             XCTAssertEqual(bare.preferences, StrengthPreferences(), "it keeps none")
             let engine = WorkoutEngine(role: .authority, persistence: nil, data: bare, clock: { epoch })

@@ -25,6 +25,12 @@ private enum R {
 }
 
 final class RecoveryEstimatorTests: XCTestCase {
+    func testHasDataNeedsAWorkoutInTheLastThreeWeeks() {
+        XCTAssertFalse(RecoveryEstimator.hasData(history: [], now: R.now))
+        XCTAssertTrue(RecoveryEstimator.hasData(history: [R.workout(1, hoursAgo: 21 * 24, [(.chest, 1)])], now: R.now))
+        XCTAssertFalse(RecoveryEstimator.hasData(history: [R.workout(1, hoursAgo: 21 * 24 + 1, [(.chest, 1)])], now: R.now))
+    }
+
     private func assertPercents(
         _ history: [CompletedWorkout], _ expected: [MuscleGroup: Int], file: StaticString = #filePath, line: UInt = #line
     ) {
@@ -217,6 +223,36 @@ final class DefaultRecoveryTests: XCTestCase {
         }
     }
 
+    func testTheCardSaysWhenTheRecoveryIsOnlyTheDefault() {
+        svcMain {
+            let clock = SvcClock()
+            let model = StrengthDataModel(persistence: nil)
+            model.saveTemplate(StarterTemplates.all[0])
+            let engine = WorkoutEngine(role: .authority, persistence: nil, data: model, clock: clock.reader)
+            engine.start(template: model.data.templates[0])
+            XCTAssertEqual(engine.presentation(now: clock.now)?.card?.recoveryPercent, 100)
+            XCTAssertEqual(engine.presentation(now: clock.now)?.card?.recoveryHasData, false, "no history: 100 is not a measurement")
+
+            model.record(R.workout(1, hoursAgo: 10, [(.chest, 3)]), updateTemplate: nil)
+            XCTAssertEqual(engine.presentation(now: clock.now)?.card?.recoveryHasData, true)
+
+            let later = clock.now.addingTimeInterval(22 * R.day)
+            XCTAssertEqual(engine.presentation(now: later)?.card?.recoveryPercent, 100)
+            XCTAssertEqual(engine.presentation(now: later)?.card?.recoveryHasData, false, "the last workout is older than 21 days")
+            XCTAssertTrue(model.recoveryHasData(now: clock.now))
+            XCTAssertFalse(model.recoveryHasData(now: later))
+        }
+    }
+
+    func testAnInjectedProviderIsTakenForRealData() {
+        svcMain {
+            let clock = SvcClock()
+            let engine = WorkoutEngine(role: .authority, persistence: nil, data: StrengthDataModel(persistence: nil), recovery: { _ in 100 }, clock: clock.reader)
+            engine.start(template: StarterTemplates.all[0])
+            XCTAssertEqual(engine.presentation(now: clock.now)?.card?.recoveryHasData, true, "the Pulse app's own model needs no history here")
+        }
+    }
+
     func testAProviderThatWasSetReplacesTheEstimateAndStays() {
         svcMain {
             let clock = SvcClock()
@@ -248,6 +284,18 @@ final class DefaultRecoveryTests: XCTestCase {
 
             controller.recovery = DemoRecovery.provider
             XCTAssertEqual(controller.recovery(.chest), 88)
+        }
+    }
+
+    func testTheControllerCardFollowsTheHistory() {
+        svcMain {
+            let store = StrengthStore(persistence: nil)
+            let clock = SvcClock()
+            let controller = WorkoutController(store: store, persistence: nil, clock: clock.reader)
+            controller.startWorkout(template: StarterTemplates.all[0])
+            XCTAssertEqual(controller.presentation(now: clock.now)?.card?.recoveryHasData, false)
+            store.record(R.workout(1, hoursAgo: 10, [(.chest, 3)]), updateTemplate: nil)
+            XCTAssertEqual(controller.presentation(now: clock.now)?.card?.recoveryHasData, true)
         }
     }
 

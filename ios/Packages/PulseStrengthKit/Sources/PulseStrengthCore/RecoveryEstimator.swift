@@ -38,11 +38,16 @@ public enum RecoveryEstimator {
     /// Working sets beyond this many do not lengthen the recovery.
     public static let setCap = 12
 
+    /// True when `history` has a workout that finished at most `dataWindowDays` days before `now`.
+    public static func hasData(history: [CompletedWorkout], now: Date) -> Bool {
+        let dataStart = now.addingTimeInterval(-Double(dataWindowDays) * 86_400)
+        return history.contains { $0.finishedAt >= dataStart }
+    }
+
     /// The estimate of every muscle group (all six are present) for `history` at `now`.
     public static func estimates(history: [CompletedWorkout], now: Date) -> [MuscleGroup: RecoveryEstimate] {
         let lookback = now.addingTimeInterval(-Double(lookbackDays) * 86_400)
-        let dataStart = now.addingTimeInterval(-Double(dataWindowDays) * 86_400)
-        let hasData = history.contains { $0.finishedAt >= dataStart }
+        let hasData = hasData(history: history, now: now)
 
         var fraction: [MuscleGroup: Double] = [:]
         for workout in history where workout.finishedAt >= lookback {
@@ -94,6 +99,11 @@ public extension StrengthData {
     func recoveryProvider(now: Date) -> RecoveryProvider {
         RecoveryEstimator.provider(history: history, now: now)
     }
+
+    /// False when the estimates at `now` are only the default 100 (no workout in the last 21 days).
+    func recoveryHasData(now: Date) -> Bool {
+        RecoveryEstimator.hasData(history: history, now: now)
+    }
 }
 
 public extension StrengthDataModel {
@@ -110,5 +120,10 @@ public extension StrengthDataModel {
     /// The recovery of each muscle group at `now` as a `RecoveryProvider`: the default of the active-workout screen.
     func recoveryProvider(now: Date) -> RecoveryProvider {
         data.recoveryProvider(now: now)
+    }
+
+    /// False when the estimates at `now` are only the default 100 (no workout in the last 21 days).
+    func recoveryHasData(now: Date) -> Bool {
+        data.recoveryHasData(now: now)
     }
 }
