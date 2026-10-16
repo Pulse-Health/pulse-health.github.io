@@ -52,6 +52,40 @@ class WidgetSnapshotGoldenTest {
             .isEmpty()
     }
 
+    /** `5EED<group>-0000-4000-8000-<index as 12 hex digits>`, the ids the Swift demo data uses. */
+    private fun fixedId(group: Int, index: Int): UUID =
+        UUID.fromString("5EED%04X-0000-4000-8000-%012X".format(group, index))
+
+    /** The input the Swift golden test describes (`WidgetSnapshotGoldenTests`): the Kotlin demo data has to be exactly this. */
+    @Test
+    fun testTheKotlinDemoDataIsTheFixtureOfTheSwiftGoldenTest() {
+        val data = StrengthData.demo(now)
+        assertThat(data.templates.map { it.id }).containsExactly(fixedId(1, 1), fixedId(1, 2), fixedId(1, 3)).inOrder()
+        assertThat(data.templates.map { it.name }).containsExactly("Upper A · Push", "Lower A · Quads", "Upper B · Pull").inOrder()
+        val entryNumbers = listOf((1..6).toList(), (11..15).toList(), (21..26).toList())
+        for ((index, template) in data.templates.withIndex()) {
+            assertThat(template.entries.map { it.id }).containsExactlyElementsIn(entryNumbers[index].map { fixedId(2, it) }).inOrder()
+        }
+
+        // Newest first: name, days before now, minutes, average heart rate.
+        val workouts = listOf(
+            listOf("Upper B · Pull", 3, 52, 124), listOf("Upper A · Push", 5, 49, 126), listOf("Lower A · Quads", 7, 61, 118),
+            listOf("Upper A · Push", 10, 56, 131), listOf("Upper A · Push", 15, 51, null),
+        )
+        assertThat(data.history).hasSize(5)
+        for ((index, expected) in workouts.withIndex()) {
+            val workout = data.history[index]
+            assertThat(workout.id).isEqualTo(fixedId(3, index + 1))
+            assertThat(workout.name).isEqualTo(expected[0])
+            assertThat(workout.finishedAt).isEqualTo(now.minusSeconds((expected[1] as Int) * 86_400L))
+            assertThat(workout.durationSeconds).isEqualTo((expected[2] as Int) * 60)
+            assertThat(workout.averageHeartRate).isEqualTo(expected[3])
+            assertThat(workout.exercises.map { it.id }).containsExactlyElementsIn(workout.exercises.indices.map { fixedId(4, (index + 1) * 100 + it + 1) }).inOrder()
+        }
+        assertThat(data.history[3].personalRecords.map { it.exerciseID }).containsExactly("bench")
+        assertThat(data.customExercises).isEmpty()
+    }
+
     @Test
     fun testTheGoldenFileHoldsNoWallClockValue() {
         val golden = WidgetJson.decodeSnapshot(goldenFile().readText())
