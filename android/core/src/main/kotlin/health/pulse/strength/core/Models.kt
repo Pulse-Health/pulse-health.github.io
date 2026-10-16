@@ -138,7 +138,7 @@ data class Exercise(
             tracking: TrackingKind,
             id: String = "custom-" + UUID.randomUUID().toString().lowercase(),
         ): Exercise {
-            val trimmed = name.trim()
+            val trimmed = name.trimmedFoundation()
             return Exercise(
                 id = id,
                 name = trimmed.ifEmpty { "Custom exercise" },
