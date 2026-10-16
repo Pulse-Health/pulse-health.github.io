@@ -54,7 +54,7 @@ class ExerciseDetailScreenshotTest {
 
     /** The end of the page (the page is taller than the window at the biggest font size). */
     private fun captureEnd(name: String) {
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Demo photos: Free Exercise DB (public domain)."))
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Demo photos from the Free Exercise DB."))
         rule.waitForIdle()
         assertThat(rule.capture(name).length()).isGreaterThan(1000)
     }

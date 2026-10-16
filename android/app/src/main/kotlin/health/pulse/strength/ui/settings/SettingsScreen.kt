@@ -61,6 +61,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import health.pulse.strength.StrengthAppEnvironment
 import health.pulse.strength.health.HealthConnectSupport
 import health.pulse.strength.ui.PrivacyLinks
+import health.pulse.strength.ui.components.ExerciseMediaStore
 import health.pulse.strength.ui.theme.PulseFont
 import health.pulse.strength.ui.theme.PulseMetrics
 import health.pulse.strength.ui.theme.PulseTheme
@@ -247,7 +248,7 @@ fun SettingsScreen(environment: StrengthAppEnvironment, onBack: () -> Unit, modi
 
             Section("About") {
                 InfoRow("Version", versionName(context))
-                InfoRow("Exercise photos", "Free Exercise DB (public domain)")
+                if (ExerciseMediaStore.isShipped(context)) InfoRow("Exercise photos", "Free Exercise DB (demo photos)")
                 ActionRow(title = "Contact", detail = PrivacyLinks.supportEmail, onClick = { sendEmail(context) })
                 Text(
                     "Built with Kotlin, Jetpack Compose and other open-source software under the Apache License 2.0.",

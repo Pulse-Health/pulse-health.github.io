@@ -70,7 +70,15 @@ object ExerciseMediaStore {
      * Whether this build ships any exercise photo. The release build does not unless it was built with `-Ppulse.includeExerciseMedia=true`
      * (the photos are placeholders of unknown licence, see android/README.md), so everything that mentions the photos asks this first.
      */
-    fun isShipped(context: Context): Boolean = enabled && runCatching { context.applicationContext.assets.list(folder)?.isNotEmpty() == true }.getOrDefault(false)
+    fun isShipped(context: Context): Boolean = enabled && assetsHoldPhotos(context)
+
+    /** The assets of a build do not change while it runs: the folder is listed once. */
+    @Volatile
+    private var assetsHoldPhotos: Boolean? = null
+
+    private fun assetsHoldPhotos(context: Context): Boolean = assetsHoldPhotos ?: runCatching {
+        context.applicationContext.assets.list(folder)?.isNotEmpty() == true
+    }.getOrDefault(false).also { assetsHoldPhotos = it }
 
     /** The frames of [mediaKey]; the second one is only decoded when [needsSecond] (a static tile never shows it). */
     fun frames(context: Context, mediaKey: String?, needsSecond: Boolean = true): ExerciseMediaFrames {

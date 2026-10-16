@@ -33,11 +33,13 @@ import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
 import health.pulse.strength.StrengthAppEnvironment
 import health.pulse.strength.ui.PrivacyLinks
+import health.pulse.strength.ui.components.ExerciseMediaStore
 import health.pulse.strength.ui.theme.DarkPulseColors
 import health.pulse.strength.ui.theme.LightPulseColors
 import health.pulse.strength.ui.theme.PulseColors
 import health.pulse.strength.ui.theme.PulseTheme
 import kotlin.math.pow
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,6 +64,23 @@ class SettingsScreenTest {
 
     private val app: Application get() = ApplicationProvider.getApplicationContext()
     private var backCount = 0
+
+    @After fun photosOn() { ExerciseMediaStore.enabled = true }
+
+    @Test
+    fun theExercisePhotoCreditIsThereWherePhotosAreShipped() {
+        show()
+        rule.onNode(hasText("Exercise photos") and hasText("Free Exercise DB (demo photos)")).assertIsDisplayed()
+    }
+
+    @Test
+    fun aBuildWithoutThePhotosHasNoPhotoCredit() {
+        ExerciseMediaStore.enabled = false
+        show()
+        rule.onNodeWithText("Version").assertIsDisplayed()
+        rule.onNodeWithText("Exercise photos").assertDoesNotExist()
+        rule.onNodeWithText("Free Exercise DB (demo photos)", substring = true).assertDoesNotExist()
+    }
 
     private fun show(dark: Boolean = false) {
         val environment = StrengthAppEnvironment.preview()
@@ -154,12 +173,12 @@ class SettingsScreenTest {
     fun aboutRowsStackAndKeepWordsWholeAtTwiceTheFontSize() {
         show()
         // One TalkBack stop per row ...
-        val row = rule.onNode(hasText("Exercise photos") and hasText("Free Exercise DB (public domain)"))
+        val row = rule.onNode(hasText("Exercise photos") and hasText("Free Exercise DB (demo photos)"))
         row.assertIsDisplayed()
         rule.onNode(hasText("Version")).assertIsDisplayed()
         // ... with the value under the label instead of squeezed beside it ...
         val label = rule.onNodeWithText("Exercise photos", useUnmergedTree = true)
-        val value = rule.onNodeWithText("Free Exercise DB (public domain)", useUnmergedTree = true)
+        val value = rule.onNodeWithText("Free Exercise DB (demo photos)", useUnmergedTree = true)
         assertThat(value.getUnclippedBoundsInRoot().left).isEqualTo(label.getUnclippedBoundsInRoot().left)
         assertThat(value.getUnclippedBoundsInRoot().top).isAtLeast(label.getUnclippedBoundsInRoot().bottom)
         // ... so no line of it breaks inside a word.
@@ -170,15 +189,15 @@ class SettingsScreenTest {
     @Config(qualifiers = "w320dp-h4000dp-xhdpi", fontScale = 1.49f)
     fun aboutRowsKeepWordsWholeJustBelowTheBigFontSizes() {
         show()
-        rule.onNode(hasText("Exercise photos") and hasText("Free Exercise DB (public domain)")).assertIsDisplayed()
-        assertNoLineBreaksInsideAWord(rule.onNodeWithText("Free Exercise DB (public domain)", useUnmergedTree = true))
+        rule.onNode(hasText("Exercise photos") and hasText("Free Exercise DB (demo photos)")).assertIsDisplayed()
+        assertNoLineBreaksInsideAWord(rule.onNodeWithText("Free Exercise DB (demo photos)", useUnmergedTree = true))
     }
 
     @Test
     fun aboutRowsKeepLabelAndValueOnOneLineAtNormalSize() {
         show()
         val label = rule.onNodeWithText("Exercise photos", useUnmergedTree = true).getUnclippedBoundsInRoot()
-        val value = rule.onNodeWithText("Free Exercise DB (public domain)", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        val value = rule.onNodeWithText("Free Exercise DB (demo photos)", useUnmergedTree = true).getUnclippedBoundsInRoot()
         assertThat(value.top).isEqualTo(label.top)
         assertThat(value.left).isGreaterThan(label.right)
         // The value ends at the card's inner right edge (411 dp window, 16 dp screen inset, 16 dp card padding).

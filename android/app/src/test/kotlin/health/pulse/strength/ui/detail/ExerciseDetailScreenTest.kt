@@ -28,10 +28,12 @@ import health.pulse.strength.core.Exercise
 import health.pulse.strength.core.MuscleGroup
 import health.pulse.strength.core.StrengthStore
 import health.pulse.strength.core.TrackingKind
+import health.pulse.strength.ui.components.ExerciseMediaStore
 import health.pulse.strength.ui.detail.ResultFixtures.library
 import health.pulse.strength.ui.detail.ResultFixtures.warmup
 import health.pulse.strength.ui.detail.ResultFixtures.work
 import java.time.Instant
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -52,6 +54,9 @@ class ExerciseDetailScreenTest {
 
     @Before fun pinZone() = ResultFixtures.pinTimeZone()
 
+    /** A test that turns the demo photos off (a release build) must not leak that into the next one. */
+    @After fun photosOn() { ExerciseMediaStore.enabled = true }
+
     private var backCount = 0
 
     private fun show(exercise: Exercise, store: StrengthStore, now: Instant = ResultFixtures.now) {
@@ -68,6 +73,20 @@ class ExerciseDetailScreenTest {
     // region Content
 
     @Test
+    fun aBuildWithoutThePhotosShowsNoFormDemoTileBadgeOrCredit() {
+        ExerciseMediaStore.enabled = false
+        showBench()
+        rule.onNodeWithText("Barbell bench press").assertIsDisplayed()
+        rule.onNodeWithText("Form demo", useUnmergedTree = true).assertDoesNotExist()
+        rule.onNodeWithContentDescription("No form demo for this exercise yet").assertDoesNotExist()
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("Form demo for Barbell bench press", substring = true)).assertDoesNotExist()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("How To"))
+        rule.onNodeWithText("Demo photos from the Free Exercise DB.").assertDoesNotExist()
+        // The rest of the page is untouched.
+        rule.onNodeWithText("Personal Records").assertExists()
+    }
+
+    @Test
     fun showsTitleSubtitleAndMedia() {
         showBench()
         rule.onNodeWithText("Barbell bench press").assertIsDisplayed()
@@ -76,7 +95,7 @@ class ExerciseDetailScreenTest {
         rule.onNodeWithText("Form demo", useUnmergedTree = true).assertIsDisplayed()
         rule.onNodeWithContentDescription("Form demo for Barbell bench press, alternating between the start and the end position")
             .assertIsDisplayed()
-        rule.onNodeWithText("Demo photos: Free Exercise DB (public domain).").assertIsDisplayed()
+        rule.onNodeWithText("Demo photos from the Free Exercise DB.").assertIsDisplayed()
     }
 
     @Test
@@ -210,7 +229,7 @@ class ExerciseDetailScreenTest {
         rule.onNodeWithText("Chest · Cable").assertIsDisplayed()
         rule.onNodeWithText("Form demo").assertDoesNotExist()
         rule.onNodeWithContentDescription("No form demo for this exercise yet").assertIsDisplayed()
-        rule.onNodeWithText("Demo photos: Free Exercise DB (public domain).").assertDoesNotExist()
+        rule.onNodeWithText("Demo photos from the Free Exercise DB.").assertDoesNotExist()
     }
 
     @Test
@@ -407,9 +426,9 @@ class ExerciseDetailScreenTest {
     @Config(qualifiers = "w411dp-h891dp-xxhdpi")
     fun scrollsToTheEndOfAShortWindow() {
         showBench()
-        rule.onNodeWithText("Demo photos: Free Exercise DB (public domain).").assertDoesNotExist()
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Demo photos: Free Exercise DB (public domain)."))
-        rule.onNodeWithText("Demo photos: Free Exercise DB (public domain).").assertIsDisplayed()
+        rule.onNodeWithText("Demo photos from the Free Exercise DB.").assertDoesNotExist()
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Demo photos from the Free Exercise DB."))
+        rule.onNodeWithText("Demo photos from the Free Exercise DB.").assertIsDisplayed()
     }
 
     @Test

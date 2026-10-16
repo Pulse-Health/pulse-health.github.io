@@ -504,11 +504,11 @@ private fun ExerciseDetailCueRow(number: Int, text: String) {
 
 // endregion
 
-/** "Demo photos: Free Exercise DB (public domain)." */
+/** The photo credit; only shown where the build ships the demo photos (the placeholders are not cleared media, see README.md). */
 @Composable
 internal fun ExerciseDetailAttribution(modifier: Modifier = Modifier) {
     Text(
-        "Demo photos: Free Exercise DB (public domain).",
+        "Demo photos from the Free Exercise DB.",
         style = PulseFont.text(11.sp),
         color = PulseTheme.colors.inkSecondary,
         modifier = modifier,

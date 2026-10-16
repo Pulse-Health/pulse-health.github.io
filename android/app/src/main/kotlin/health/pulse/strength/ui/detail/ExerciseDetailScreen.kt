@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -58,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import health.pulse.strength.core.Exercise
 import health.pulse.strength.core.ExerciseHistory
 import health.pulse.strength.core.StrengthStore
+import health.pulse.strength.ui.components.ExerciseMediaStore
 import health.pulse.strength.ui.components.ExerciseMediaView
 import health.pulse.strength.ui.components.rememberNow
 import health.pulse.strength.ui.theme.PulseFont
@@ -98,7 +100,9 @@ internal fun ExerciseDetailContent(
     val expandedSessions = rememberSaveable(saver = ExpandedSessionsSaver) { mutableStateOf(emptySet<String>()) }
     val progress = remember(history.e1RMSeries, range, now) { ExerciseDetailProgress(history.e1RMSeries, range, now) }
 
-    val hasMedia = !exercise.mediaKey.isNullOrEmpty()
+    // A build without the demo photos (the release) has no form demo to show: no tile, badge or photo credit.
+    val photosShipped = ExerciseMediaStore.isShipped(LocalContext.current)
+    val hasMedia = photosShipped && !exercise.mediaKey.isNullOrEmpty()
     val tiles = statTiles(exercise, history, progress, now)
     val sessions = history.sessions
     val visibleSessions = if (showsAllSessions) sessions else sessions.take(COLLAPSED_SESSION_COUNT)
@@ -119,8 +123,10 @@ internal fun ExerciseDetailContent(
                 item(key = "title", contentType = "title") {
                     ExerciseDetailTitle(exercise, Modifier.page(top = 0.dp))
                 }
-                item(key = "media", contentType = "media") {
-                    ExerciseDetailMedia(exercise, hasMedia, mediaMaxHeight, Modifier.page())
+                if (photosShipped) {
+                    item(key = "media", contentType = "media") {
+                        ExerciseDetailMedia(exercise, hasMedia, mediaMaxHeight, Modifier.page())
+                    }
                 }
                 item(key = "tiles", contentType = "tiles") {
                     ExerciseDetailStatTiles(tiles, Modifier.page())
