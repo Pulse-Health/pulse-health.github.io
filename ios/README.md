@@ -10,7 +10,7 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (793 tests, 812 with the Combine
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (860 tests, 905 with the Combine
 > stand-in). The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow
 > `strength-ios` has compiled it with Xcode 16 for the iOS and watchOS simulators, run a 30-step UI flow through the real
 > iPhone app, rendered the Lock Screen, Dynamic Island and Watch screens, and re-run the app in dark mode, at large text
@@ -36,7 +36,9 @@ ios/
       PulseStrengthCore/       Foundation only: models, reducer, presenter, controller, store, sync, exercise library
       PulseStrengthActivity/   iOS: ActivityAttributes + WorkoutCommandBus (linked by the app AND the widget extension)
       PulseStrengthIOS/        iOS: SwiftUI screens and sheets, Live Activity manager, notifications, HealthKit, Watch bridge
+        Onboarding/               the first-run flow: welcome, account sheet, setup steps, gate (see "Onboarding (first run)")
         Resources/ExerciseMedia/  25 exercises x 2 form-demo frames (JPEG)
+        Resources/Onboarding/     the hero clip (H.264, 1.4 MB, no audio) and its poster
       PulseStrengthWatchUI/    watchOS: SwiftUI screens, workout session, WatchConnectivity client
     Tests/PulseStrengthCoreTests/
   Apps/
@@ -45,7 +47,7 @@ ios/
     PulseStrengthWatch/      watchOS app: @main entry point, Info.plist, entitlements, assets
     Shared/Intents/          App Intents behind the Live Activity buttons (compiled into the app AND the extension)
     Shared/LiveActivity/     Lock Screen and Dynamic Island views (compiled into the extension)
-    PulseStrengthUITests/              UI test: walks the iPhone app in the simulator, one screenshot per step
+    PulseStrengthUITests/              UI tests: walk the iPhone app in the simulator, one screenshot per step (the long flow, the short tour, the onboarding tour)
     PulseStrengthLiveSnapshotTests/    test that draws the Lock Screen and Dynamic Island views into PNG files
     PulseStrengthWatchSnapshotTests/   test that draws the Watch pages into PNG files
 .github/workflows/strength-ios.yml   (at the repository root) CI: Linux core tests + macOS Xcode builds + screenshots
@@ -220,6 +222,50 @@ after the first run.
 9. Clock-driven UI uses `TimelineView`; the Live Activity uses `Text(timerInterval:)` and a stale date, because a widget cannot tick.
 10. Contracts, file by file: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
+## Onboarding (first run)
+
+A new install starts with the **Rebase** onboarding instead of the hub. It is the SwiftUI port of the clickable prototype in
+[`design/`](../design/README.md) (open that first to see what it should look like):
+
+**welcome** (three story-style highlights over the looping hero clip) -> **account sheet** (Sign up / Log in, Continue with Apple,
+email and password) -> **profile** (main goal, experience) -> **Apple Health** -> **AI Coaching** (explicit consent, off by default)
+-> **notifications** -> **done**. Someone who logs in to an existing account skips the setup steps.
+
+| Layer | Where | What |
+| --- | --- | --- |
+| Core (Linux-tested) | `OnboardingFlow.swift` | `OnboardingState` + `OnboardingAction` -> `OnboardingReducer.reduce`: the pure state machine |
+| | `OnboardingModel.swift` | `OnboardingModel`: the observable wrapper (form text, error flags, what the flow is waiting for, toast) and the calls to the services |
+| | `OnboardingServices.swift` | the `OnboardingServices` protocol (account calls, the two permission prompts) and `SimulatedOnboardingServices` |
+| | `OnboardingCopy*.swift`, `OnboardingSummary.swift` | every word in English and German (the plain strings are generated from `design/app.js`), the sentences with links, the summary chips |
+| | `OnboardingValidation.swift`, `HighlightPlayback.swift`, `OnboardingRecord.swift`, `OnboardingLaunchMode.swift` | form checks, the clock of the highlight bars, what is remembered afterwards, the launch arguments |
+| iOS | `Sources/PulseStrengthIOS/Onboarding/` | `OnboardingFlowView` (the whole flow), `OnboardingGate` (flow first, then the app), `PulseOnboardingServices`, and the screens |
+| App | `Apps/PulseStrength/PulseStrengthApp.swift` | wraps `PulseStrengthRootView` in the gate |
+
+* **Dark only, video-led.** The hero clip plays behind the welcome screen and the account sheet; behind the setup steps it is darkened and
+  rests. Reduce Motion, Low Power Mode, the pause button (top right) and a backgrounded app all stop it and show the poster.
+* **Permissions at their own step.** The Health sheet and the notification prompt appear when the user taps "Connect Apple Health" and
+  "Turn on notifications", not at launch. `PulseStrengthRootView(requestsPermissionsAtLaunch:)` is `false` for someone who went through the
+  setup steps; a user who only logged in is asked at launch as before.
+* **Consent.** AI Coaching is off unless the user taps "Turn on AI Coaching" (equal in size to "No thanks"). The answer, with the date, is
+  saved in `OnboardingRecord` (UserDefaults key `health.pulse.strength.onboardingRecord`) as the record of the consent; nothing else reads it yet.
+* **The account service is a stand-in.** `PulseOnboardingServices` accepts every email and password after a short pause. To connect an
+  identity provider (the privacy policy names Clerk), implement `OnboardingServices` for `authenticate`, `authenticateWithApple` and
+  `sendPasswordReset` (throw `OnboardingAuthError`), keep the two permission calls from `PulseOnboardingServices`, and hand it to
+  `OnboardingGate`. Sign in with Apple needs its capability on the app id and the provider enabled; the privacy policy (section 6)
+  lists email sign-in only, so update it or remove the button.
+
+| Launch argument | Effect |
+| --- | --- |
+| *(none)* | the flow runs until it has been completed once |
+| `-PulseSkipOnboarding` | never show it (an Xcode scheme argument for development) |
+| `-PulseShowOnboarding` | show it at every launch (the record of a completed onboarding is not read) |
+| `-PulseUITest` | the other UI tests: skips it, as above, unless `-PulseShowOnboarding` is also given; then nothing is asked of the system and the record is a throwaway |
+
+Tests: the reducer, the model (with scripted services), the form checks, the copy, the highlight clock, the record and the launch mode are in
+`Tests/PulseStrengthCoreTests/Onboarding*Tests.swift` and `HighlightPlaybackTests.swift`. `OnboardingTourTests` (in `StrengthTourTests.swift`) walks the screens in the
+simulator and writes `onboarding-<config>-NN-<name>.png`; the `visual` job runs it with the other UI tests and the `matrix` job runs it
+in dark mode, at large text, on an iPhone SE and on the oldest iOS 17 runtime.
+
 ## Placeholders to replace
 
 Everything below is a stand-in until the feature lives inside the Pulse app.
@@ -238,6 +284,10 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | Accent colour | green: `PulseTheme.green` (`#187A42` light, `#30D158` dark) tints the app's own controls; the system fallback tint `#1B8448` is `AccentColor.colorset` in both asset catalogs | `PulseTheme.swift`, `AccentColor.colorset` |
 | Demo data | demo templates, five invented workouts and personal bests, used by previews and the UI tests only | `StrengthAppEnvironment.preview(withActiveWorkout:)` seeds it; `StrengthAppEnvironment.live(seedDemoData:)` defaults to `false`, so the running app starts empty |
 | Muscle recovery | fixed demo percentages | `DemoRecovery.provider`, see below |
+| Product name in the onboarding | "Rebase" | `OnboardingBrand.name` (Core); the German and English texts, the legal sentences and the top bar all use it |
+| Legal pages | `https://pulse-health.github.io/` + `terms.html`, `privacy-policy.html`, `agb.html`, `datenschutz.html` | `OnboardingLegal` in `OnboardingCopy.swift`; the pages themselves still say "Pulse" |
+| Account service | accepts everything | `PulseOnboardingServices`, see "Onboarding (first run)" |
+| Hero clip | the runner loop | `Resources/Onboarding/onboarding-hero.mp4` and `-poster.jpg` (made by `design/tools/encode-hero.sh`) |
 
 ## Integrating with the Pulse app
 

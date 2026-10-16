@@ -60,7 +60,18 @@ public final class PulseServices {
     /// Asks for the notification permission (alert, sound; the time-sensitive level needs no extra option),
     /// then for the HealthKit permission. Safe to call repeatedly: the system only prompts once.
     public func requestPermissions() async {
+        _ = await requestNotificationPermission()
+        _ = await requestHealthPermission()
+    }
+
+    /// Asks for the notification permission only (the onboarding asks at its own step). Returns whether alerts are allowed.
+    public func requestNotificationPermission() async -> Bool {
         await restNotifications.requestAuthorization()
+    }
+
+    /// Asks for the HealthKit permission only (the onboarding asks at its own step). Returns true when Health is available and
+    /// sharing workouts was not denied.
+    public func requestHealthPermission() async -> Bool {
         await healthWriter.requestAuthorization()
     }
 

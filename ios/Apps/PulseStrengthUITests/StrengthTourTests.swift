@@ -782,3 +782,416 @@ final class StrengthTour: UIDriver {
         }
     }
 }
+
+// MARK: - Onboarding tour
+
+/// Walks the first-run flow once, the way a new user would: the welcome screen and its highlights, the account sheet (its checks, both
+/// tabs), "Continue with Apple" (the UI-test services accept it at once), profile, Apple Health (with a Back and forth), AI Coaching,
+/// notifications, the last screen, and the hub behind it.
+///
+/// The app is launched with '-PulseUITest -PulseShowOnboarding' (see OnboardingLaunchMode): the other UI tests start at the hub, this
+/// one asks for the flow. No system dialog appears (no live services) and no text is typed (it needs the software keyboard; the
+/// checks of the form are in the unit tests of the model). Files: onboarding-<config>-NN-<name>.png and onboarding-<config>-flow-log.txt
+/// in the directory of SCREENSHOT_DIR, like the tour. Run by `visual` (all UI tests) and by `matrix` (dark, large text, iPhone SE, iOS 17).
+final class OnboardingTourTests: XCTestCase {
+
+    @MainActor
+    func testOnboardingTour() {
+        continueAfterFailure = true
+        let config = tourConfigName()
+        let output = FlowOutput(suite: "onboarding-" + config, testCase: self)
+        let tour = OnboardingTour(app: XCUIApplication(), output: output)
+        tour.run(config: config)
+    }
+}
+
+@MainActor
+final class OnboardingTour: UIDriver {
+
+    /// The name of the configuration ('default', 'dark', 'xxl', 'se', 'ios17').
+    private var config = "default"
+
+    /// The 'xxl' configuration sets accessibility text sizes: the welcome screen, the sheet and the setup steps scroll there, and
+    /// things that sit side by side at the default size sit one below the other.
+    private var isLargeText: Bool {
+        config == "xxl"
+    }
+
+    func run(config: String) {
+        self.config = config
+        launchArguments = ["-PulseUITest", "-PulseShowOnboarding", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        output.log("Onboarding tour '" + config + "', iOS " + ProcessInfo.processInfo.operatingSystemVersionString)
+        output.log("TOUR_CONFIG=" + (ProcessInfo.processInfo.environment["TOUR_CONFIG"] ?? "(not set)"))
+        relaunch()
+
+        welcomeStep()
+        highlightsStep()
+        motionStep()
+        accountSheetStep()
+        checksStep()
+        logInTabStep()
+        appleStep()
+        profileStep()
+        healthStep()
+        backStep()
+        coachStep()
+        notifyStep()
+        doneStep()
+        hubStep()
+
+        output.log(
+            "SUMMARY: " + String(okSteps) + " steps OK, " + String(failedSteps) + " FAILED, " + String(skippedSteps)
+                + " skipped, " + String(output.screenshotCount) + " screenshots, " + String(failureCount) + " recorded failures"
+        )
+        output.attachLog()
+    }
+
+    // MARK: Welcome
+
+    private func welcomeStep() {
+        step("Welcome screen", checkApp: false) {
+            if waitFor(.button("onboarding.start"), timeout: 40) == nil {
+                fail("The welcome screen did not appear within 40 s: no 'onboarding.start' button")
+                shot("welcome-missing")
+                return
+            }
+            for identifier in ["onboarding.login", "onboarding.highlight.1", "onboarding.highlight.2", "onboarding.highlight.3", "onboarding.motion"] {
+                if !exists(.button(identifier)) {
+                    fail("Missing on the welcome screen: the button '" + identifier + "'")
+                }
+            }
+            checkPreviewCards()
+            shot("welcome", settle: 2.5)
+        }
+    }
+
+    /// Phones shorter than 760 pt (the iPhone SE) drop the preview cards of the welcome screen and the subtitles of the goals, and so does
+    /// a screen with accessibility text sizes (the cards). The cards are left out of the view tree then, so they are not found.
+    private var expectsCompactLayout: Bool {
+        app.frame.height < 760
+    }
+
+    private func checkPreviewCards() {
+        let hasCards = exists(.text("Today · Recommended"))
+        if (expectsCompactLayout || isLargeText) && hasCards {
+            fail("The welcome screen shows its preview cards although the screen is short or the text is large (" + String(Int(app.frame.height)) + " pt tall)")
+        }
+        if !expectsCompactLayout && !isLargeText && !hasCards {
+            fail("The welcome screen has no preview cards on a tall screen")
+        }
+    }
+
+    private func highlightsStep() {
+        step("The three highlights") {
+            let highlights: [(button: String, title: String, name: String)] = [
+                ("onboarding.highlight.2", "Every set, on your wrist.", "welcome-2-rest"),
+                ("onboarding.highlight.3", "Progress, made visible.", "welcome-3-record"),
+                ("onboarding.highlight.1", "Train with intent.", "welcome-1-plan"),
+            ]
+            for highlight in highlights {
+                if !tap(.button(highlight.button)) {
+                    continue
+                }
+                // The titles of all three highlights are in the tree at all times (the ones that are not shown are only hidden from
+                // VoiceOver), so what proves that the bar did its job is that it is the selected one.
+                if !waitUntilSelected(.button(highlight.button), timeout: 5) {
+                    fail("After tapping '" + highlight.button + "' that bar did not become the selected one")
+                }
+                if !exists(.text(highlight.title)) {
+                    fail("The title '" + highlight.title + "' of the highlight is missing")
+                }
+                shot(highlight.name, settle: 1.4)
+            }
+        }
+    }
+
+    private func motionStep() {
+        step("Pause and play the background video") {
+            if !tap(.button("onboarding.motion")) {
+                return
+            }
+            if waitFor(.button("Play background video"), timeout: 3) == nil {
+                fail("After tapping the pause button its label did not become 'Play background video'")
+            }
+            tap(.button("onboarding.motion"), required: false)
+            if waitFor(.button("Pause background video"), timeout: 3) == nil {
+                fail("After tapping the play button its label did not become 'Pause background video'")
+            }
+        }
+    }
+
+    // MARK: Account sheet
+
+    private func accountSheetStep() {
+        step("Account sheet opens on the sign-up tab") {
+            // At accessibility text sizes the welcome screen scrolls and the button is below the fold.
+            if !tap(.button("onboarding.start"), scrollUp: true) {
+                return
+            }
+            if waitFor(.button("onboarding.submit"), timeout: 10) == nil {
+                fail("The account sheet did not open: no 'onboarding.submit' button within 10 s")
+                shot("signup-missing")
+                return
+            }
+            pause(1.2)
+            checkSheetHeight()
+            if !exists(.text("Create your account")) {
+                fail("The sheet does not show the sign-up title 'Create your account'")
+            }
+            for identifier in ["onboarding.apple", "onboarding.close", "onboarding.tab.signup", "onboarding.tab.login"] {
+                if !exists(.button(identifier)) {
+                    fail("Missing in the account sheet: the button '" + identifier + "'")
+                }
+            }
+            shot("signup-sheet", settle: 1.2)
+        }
+    }
+
+    /// The sheet opens as tall as its form: the button that sends it is on the screen without scrolling or pulling the sheet up.
+    /// (At accessibility text sizes the form is taller than any sheet; there it is only written to the log.)
+    private func checkSheetHeight() {
+        guard let submit = find(.button("onboarding.submit")) else {
+            return
+        }
+        let frame = submit.frame
+        let screenHeight = app.frame.height
+        note("sheet: the send button is at y " + String(Int(frame.minY)) + " to " + String(Int(frame.maxY)) + " of " + String(Int(screenHeight)))
+        // The sheet follows the measured height of its form. A sheet that never got it is as tall as its minimum, which is enough at the
+        // default text size, so the position of the button cannot tell: the probe (an invisible element in a UI-test launch) can.
+        if let probe = find(.element("onboarding.sheet.measured")) {
+            note("sheet: the measured height of the form is " + probe.label + " pt")
+            if (Int(probe.label) ?? 0) <= 0 {
+                fail("The account sheet never received the measured height of its form (the probe reads '" + probe.label + "')")
+            }
+        } else {
+            note("sheet: no measurement probe in the tree")
+        }
+        if !isLargeText && frame.maxY > screenHeight - 4 {
+            fail("The account sheet opens too short: its send button ends at y " + String(Int(frame.maxY)) + " of " + String(Int(screenHeight)) + ", below the visible part")
+        }
+    }
+
+    private func checkKeyboardDoesNotHideTheEmailField() {
+        let keyboard = app.keyboards.firstMatch
+        guard keyboard.waitForExistence(timeout: 5) else {
+            note("no software keyboard appeared (a hardware keyboard is connected?): the check of the field is skipped")
+            return
+        }
+        pause(0.8)
+        shot("signup-keyboard", settle: 0.3)
+        guard let email = find(.field("onboarding.email")) else {
+            fail("The email field is not in the tree while the keyboard is up")
+            return
+        }
+        let fieldBottom = email.frame.maxY
+        let keyboardTop = keyboard.frame.minY
+        note("keyboard: the email field ends at y " + String(Int(fieldBottom)) + ", the keyboard starts at y " + String(Int(keyboardTop)))
+        if fieldBottom > keyboardTop {
+            fail("The keyboard hides the email field (the field ends at y " + String(Int(fieldBottom)) + ", the keyboard starts at y " + String(Int(keyboardTop)) + ")")
+        }
+    }
+
+    private func checksStep() {
+        step("Sending an empty form shows the errors") {
+            if !tap(.button("onboarding.submit")) {
+                return
+            }
+            if waitFor(.text("Enter a valid email address."), timeout: 5) == nil {
+                fail("No email error appeared after sending an empty form")
+            }
+            if !exists(.text("Use at least 8 characters.")) {
+                fail("The password rule is not shown")
+            }
+            // The error moved the focus to the email field, which opens the keyboard: the field must stay above it.
+            checkKeyboardDoesNotHideTheEmailField()
+            // Then close the keyboard (its Done button), so that it does not cover what the next steps tap.
+            // On iOS 18 XCTest finds no point to tap on this toolbar button (its text is a child with the same frame).
+            tap(.button("onboarding.keyboardDone"), timeout: 3, required: false, coordinateFallback: true)
+            pause(0.6)
+            shot("signup-errors", settle: 0.6)
+        }
+    }
+
+    private func logInTabStep() {
+        step("Log-in tab, and back") {
+            if !tap(.button("onboarding.tab.login")) {
+                return
+            }
+            if waitFor(.text("Welcome back"), timeout: 5) == nil {
+                fail("The log-in tab does not show 'Welcome back'")
+            }
+            if !exists(.button("onboarding.forgot")) {
+                fail("The log-in tab has no 'Forgot password?' button")
+            }
+            if exists(.text("Enter a valid email address.")) {
+                fail("The email error of the sign-up tab is still showing after switching to the log-in tab")
+            }
+            shot("login-tab", settle: 1.0)
+            tap(.button("onboarding.tab.signup"), required: false)
+            if waitFor(.text("Create your account"), timeout: 5) == nil {
+                fail("Switching back to the sign-up tab did not show 'Create your account'")
+            }
+        }
+    }
+
+    // MARK: Setup
+
+    private func appleStep() {
+        step("Continue with Apple leads to the profile") {
+            if !tap(.button("onboarding.apple")) {
+                return
+            }
+            if waitFor(.text("What are you training for?"), timeout: 15) == nil {
+                fail("The profile step did not appear within 15 s of tapping 'Continue with Apple'")
+                shot("profile-missing")
+                return
+            }
+            if let next = waitFor(.button("onboarding.profile.continue"), timeout: 5), next.isEnabled {
+                fail("'Continue' is enabled although no goal and no experience level were chosen")
+            }
+            shot("profile-empty", settle: 1.2)
+        }
+    }
+
+    private func profileStep() {
+        step("Profile: main goal and experience") {
+            let hasSubtitles = exists(.text("Plan, log and progress your lifts"))
+            if expectsCompactLayout && hasSubtitles {
+                fail("The goals show their subtitles on a short screen (" + String(Int(app.frame.height)) + " pt tall): the compact layout is not on")
+            }
+            if !expectsCompactLayout && !hasSubtitles {
+                fail("The goals have no subtitles on a tall screen")
+            }
+            tap(.button("onboarding.goal.strength"))
+            tap(.button("onboarding.level.intermediate"))
+            pause(0.5)
+            if let next = find(.button("onboarding.profile.continue")), !next.isEnabled {
+                fail("'Continue' is still disabled after choosing a goal and an experience level")
+            }
+            shot("profile-chosen", settle: 0.8)
+            tap(.button("onboarding.profile.continue"))
+        }
+    }
+
+    private func healthStep() {
+        step("Apple Health step") {
+            if waitFor(.button("onboarding.health.connect"), timeout: 10) == nil {
+                fail("The Apple Health step did not appear within 10 s")
+                shot("health-missing")
+                return
+            }
+            if !exists(.button("onboarding.health.later")) {
+                fail("The Apple Health step has no 'Not now' button")
+            }
+            shot("health", settle: 1.2)
+        }
+    }
+
+    private func backStep() {
+        step("Back keeps the answers") {
+            // XCTest finds no point to tap on this button (its icon is a child with the same frame): tap it by coordinate.
+            if !tap(.button("onboarding.back"), coordinateFallback: true) {
+                return
+            }
+            if waitFor(.text("What are you training for?"), timeout: 8) == nil {
+                fail("Back did not return to the profile step")
+                return
+            }
+            if waitFor(.element("Setup progress, step 1 of 4"), timeout: 5) == nil {
+                fail("After Back the setup progress does not say 'step 1 of 4'")
+            }
+            if let next = waitFor(.button("onboarding.profile.continue"), timeout: 5), !next.isEnabled {
+                fail("The goal and the experience level were forgotten after Back")
+            }
+            tap(.button("onboarding.profile.continue"), required: false)
+            if waitFor(.button("onboarding.health.connect"), timeout: 8) == nil {
+                fail("Continue after Back did not lead to the Apple Health step again")
+                return
+            }
+            tap(.button("onboarding.health.connect"))
+        }
+    }
+
+    private func coachStep() {
+        step("AI Coaching: both answers are equally easy") {
+            guard let accept = waitFor(.button("onboarding.coach.on"), timeout: 10) else {
+                fail("The AI Coaching step did not appear within 10 s")
+                shot("coach-missing")
+                return
+            }
+            guard let decline = find(.button("onboarding.coach.off")) else {
+                fail("The AI Coaching step has no 'No thanks' button")
+                return
+            }
+            let acceptFrame = accept.frame
+            let declineFrame = decline.frame
+            // The widths are always equal. The heights are too, except at accessibility text sizes, where a longer label wraps.
+            let widthsDiffer = abs(acceptFrame.width - declineFrame.width) > 1
+            let heightsDiffer = !isLargeText && abs(acceptFrame.height - declineFrame.height) > 1
+            if widthsDiffer || heightsDiffer {
+                fail("'Turn on AI Coaching' and 'No thanks' differ in size: " + String(describing: acceptFrame.size) + " and " + String(describing: declineFrame.size))
+            }
+            shot("coach", settle: 1.2)
+            tap(.button("onboarding.coach.off"))
+        }
+    }
+
+    private func notifyStep() {
+        step("Notifications step") {
+            if waitFor(.button("onboarding.notify.later"), timeout: 10) == nil {
+                fail("The notifications step did not appear within 10 s")
+                shot("notify-missing")
+                return
+            }
+            shot("notify", settle: 1.6)
+            tap(.button("onboarding.notify.later"))
+        }
+    }
+
+    private func doneStep() {
+        step("Last screen sums up the answers") {
+            if waitFor(.button("onboarding.finish"), timeout: 10) == nil {
+                fail("The last screen did not appear within 10 s")
+                shot("done-missing")
+                return
+            }
+            // The answers of this walk. (The goal and the level are left out: the hidden profile screen has buttons with the same
+            // labels, so they would be found whatever the last screen shows.)
+            for chip in ["Apple Health connected", "AI Coaching off", "Notifications: later"] {
+                if !exists(.element(chip)) {
+                    fail("The summary has no '" + chip + "' chip")
+                }
+            }
+            shot("done", settle: 2.0)
+            tap(.button("onboarding.finish"), scrollUp: true)
+        }
+    }
+
+    /// Waits until the target is selected (the 'Selected' accessibility trait: the bar of the highlight on screen).
+    private func waitUntilSelected(_ target: Target, timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while true {
+            if let element = find(target), element.isSelected {
+                return true
+            }
+            if Date() >= deadline {
+                return false
+            }
+            pause(0.3)
+        }
+    }
+
+    private func hubStep() {
+        step("The hub is behind the onboarding") {
+            if waitFor(.button("Start Workout"), timeout: 20) == nil {
+                fail("The hub did not appear within 20 s of 'Start training'")
+                shot("hub-missing")
+                return
+            }
+            if !waitUntilGone(.button("onboarding.finish"), timeout: 8) {
+                fail("The onboarding is still on screen 8 s after 'Start training'")
+            }
+            shot("hub", settle: 1.0)
+        }
+    }
+}
