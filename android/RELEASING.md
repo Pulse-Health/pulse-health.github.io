@@ -56,7 +56,7 @@ Create the app (App, free, "Health & Fitness"), then work through *Dashboard > S
 
 1. **Store listing.** Text lives in `store/metadata/android/{en-US,de-DE}/` (title ≤ 30, short ≤ 80, full ≤ 4000 characters; the files
    were checked against these limits), graphics in `store/graphics/` (icon 512×512, feature graphic 1024×500) and phone screenshots in
-   `store/graphics/phone-screenshots/` (rendered from the real UI by `StoreScreenshotsTest`, see section 6). Paste them in the Console,
+   `store/graphics/phone-screenshots/` (rendered from the real screens by `StoreScreenshotsTest`, see section 6). Paste them in the Console,
    or upload them with `fastlane supply --metadata_path store/metadata` if you use fastlane. Release notes: `store/whatsnew/`.
 2. **Privacy policy URL**: `https://pulse-health.github.io/strength-privacy.html` (German: `.../strength-datenschutz.html`).
 3. **App access**: "All functionality is available without special access" (there is no login).
@@ -119,8 +119,18 @@ older one (Android 8-12), in light and dark mode:
 
 ## 6. Store screenshots
 
-`./gradlew :app:testDebugUnitTest --tests '*StoreScreenshotsTest*'` renders the phone screenshots from the real UI with demo data into
-`app/build/screens/store/`; copy the ones you like to `store/graphics/phone-screenshots/` (Play wants 2-8, 16:9 to 9:16, 320-3840 px).
+Six phone screenshots (1080 × 2160: Strength hub, recovery and history, active workout in light and dark, workout summary, exercise
+progress) are committed in `store/graphics/phone-screenshots/`. They are rendered from the real screens with the demo data
+(`StrengthAppEnvironment`'s sample templates and history, a frozen date in January 2026, the Free Exercise DB form photos), not
+captured on a device. To refresh them after a UI change:
+
+```sh
+cd android && ./gradlew :app:testDebugUnitTest --tests '*StoreScreenshotsTest*'
+cp app/build/screens/store/*.png store/graphics/phone-screenshots/
+```
+
+Play wants 2-8 phone screenshots, each 320-3840 px with an aspect ratio of at most 2:1; these are exactly 1:2. Replace them with
+real-device screenshots if you prefer; the Console accepts either.
 
 ## 7. After release
 
