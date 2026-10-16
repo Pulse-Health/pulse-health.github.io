@@ -57,6 +57,10 @@ private func deliverIfReachable(_ payload: [String: Any], over session: WCSessio
 ///   reachable.
 /// * It tracks the phone's reachability and asks the phone for the current state whenever the session activates or the
 ///   phone becomes reachable.
+/// * The widget snapshot for the Watch widgets travels in the same dictionaries under its own key (`"w"`). The client hands every
+///   inbound dictionary, and the last application context whenever it is re-read, to `WatchWidgetSnapshotReceiver`, which saves the
+///   snapshot for the widgets and reloads them. The same receiver applies what the widgets' buttons left in the Watch's command inbox
+///   (`activate()` starts it; asking the phone for its state drains the inbox as well).
 ///
 /// Create it with the Watch's mirror controller, register it with `controller.addEffect(_:)` and call `activate()`.
 @MainActor
@@ -91,11 +95,17 @@ public final class WatchConnectivityClient: NSObject, WCSessionDelegate, Workout
 
     /// Sets the delegate and activates the session (no-op where WatchConnectivity is not supported).
     public func activate() {
+        if let controller {
+            WatchWidgetSnapshotReceiver.shared.start(controller: controller, requestState: { [weak self] in
+                self?.requestState()
+            })
+        }
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         session.delegate = self
         session.activate()
         if session.activationState == .activated {
+            WatchWidgetSnapshotReceiver.shared.handle(payload: session.receivedApplicationContext)
             activationFinished(isActivated: true, context: decodeSyncMessage(session.receivedApplicationContext))
         }
     }
@@ -103,10 +113,14 @@ public final class WatchConnectivityClient: NSObject, WCSessionDelegate, Workout
     // MARK: State requests
 
     /// Re-reads the phone's last pushed state and, while the phone is reachable, asks it to send the current state again.
+    /// The app delegate calls it each time the app becomes active, which is also when the requests the Watch widgets left in the
+    /// command inbox are applied.
     public func requestState() {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
         guard session.activationState == .activated else { return }
+        WatchWidgetSnapshotReceiver.shared.handle(payload: session.receivedApplicationContext)
+        WatchWidgetSnapshotReceiver.shared.drainCommands()
         if let message = decodeSyncMessage(session.receivedApplicationContext) {
             handle(message)
         }
@@ -258,6 +272,9 @@ public final class WatchConnectivityClient: NSObject, WCSessionDelegate, Workout
         error: Error?
     ) {
         let isActivated = activationState == .activated
+        if isActivated {
+            WatchWidgetSnapshotReceiver.shared.handle(payload: session.receivedApplicationContext)
+        }
         let context: SyncMessage? = isActivated ? decodeSyncMessage(session.receivedApplicationContext) : nil
         Task { @MainActor [weak self] in
             self?.activationFinished(isActivated: isActivated, context: context)
@@ -295,6 +312,8 @@ public final class WatchConnectivityClient: NSObject, WCSessionDelegate, Workout
     /// Decodes on the delegate queue (the payload dictionary is not Sendable), then continues on the main actor
     /// with the decoded, Sendable message.
     nonisolated private func handleInbound(_ payload: [String: Any]) {
+        // The widget snapshot rides along with (or without) a state envelope: save it first, whatever else the payload holds.
+        WatchWidgetSnapshotReceiver.shared.handle(payload: payload)
         guard let message = decodeSyncMessage(payload) else { return }
         Task { @MainActor [weak self] in
             self?.handle(message)

@@ -76,6 +76,42 @@ final class PublicInitializerTests: XCTestCase {
         )
     }
 
+    private func rebuilt(_ moment: PRMoment) -> PRMoment {
+        PRMoment(
+            exerciseName: moment.exerciseName, weightText: moment.weightText, repsText: moment.repsText,
+            estimated1RM: moment.estimated1RM, deltaKg: moment.deltaKg, expiresAt: moment.expiresAt
+        )
+    }
+
+    private func rebuilt(_ member: SupersetMember) -> SupersetMember {
+        SupersetMember(tag: member.tag, name: member.name, detail: member.detail, isDone: member.isDone, isCurrent: member.isCurrent)
+    }
+
+    private func rebuilt(_ superset: SupersetBrief) -> SupersetBrief {
+        SupersetBrief(label: superset.label, round: superset.round, rounds: superset.rounds, members: superset.members.map(rebuilt))
+    }
+
+    private func rebuilt(_ plates: PlateBrief) -> PlateBrief {
+        PlateBrief(
+            totalKg: plates.totalKg, barKg: plates.barKg, perSide: plates.perSide, leftoverKg: plates.leftoverKg, summary: plates.summary
+        )
+    }
+
+    private func rebuilt(_ tip: CoachTipBrief) -> CoachTipBrief {
+        CoachTipBrief(
+            title: tip.title, subtitle: tip.subtitle, text: tip.text, suggestedWeightKg: tip.suggestedWeightKg,
+            suggestedWeightText: tip.suggestedWeightText, keepWeightText: tip.keepWeightText, targetSetID: tip.targetSetID,
+            targetExerciseID: tip.targetExerciseID
+        )
+    }
+
+    private func rebuilt(_ finish: FinishBrief) -> FinishBrief {
+        FinishBrief(
+            workoutName: finish.workoutName, durationMinutes: finish.durationMinutes, sets: finish.sets, volumeText: finish.volumeText,
+            personalRecordCount: finish.personalRecordCount, savedToHealth: finish.savedToHealth
+        )
+    }
+
     private func rebuilt(_ snapshot: WorkoutSnapshot) -> WorkoutSnapshot {
         WorkoutSnapshot(
             workoutID: snapshot.workoutID, revision: snapshot.revision, workoutName: snapshot.workoutName,
@@ -87,7 +123,9 @@ final class PublicInitializerTests: XCTestCase {
             restEndsAt: snapshot.restEndsAt, restTotalSeconds: snapshot.restTotalSeconds,
             restFrozenRemaining: snapshot.restFrozenRemaining, heartRate: snapshot.heartRate, volumeText: snapshot.volumeText,
             loggedSets: snapshot.loggedSets, totalSets: snapshot.totalSets, nextSetText: snapshot.nextSetText,
-            nextExerciseName: snapshot.nextExerciseName
+            nextExerciseName: snapshot.nextExerciseName, exerciseDoneSets: snapshot.exerciseDoneSets,
+            exerciseSetCount: snapshot.exerciseSetCount, moment: snapshot.moment.map(rebuilt), superset: snapshot.superset.map(rebuilt),
+            plates: snapshot.plates.map(rebuilt), coachTip: snapshot.coachTip.map(rebuilt), finish: snapshot.finish.map(rebuilt)
         )
     }
 
@@ -109,7 +147,8 @@ final class PublicInitializerTests: XCTestCase {
 
     // MARK: States
 
-    /// Workouts that exercise every optional: nothing logged, a rest running, paused, a personal record, an undo entry, empty.
+    /// Workouts that exercise every optional: nothing logged, a rest running, paused, a personal record, an undo entry, empty, and the
+    /// two ends of a superset round (the second member next, the rest running with an easy set to build on).
     private func states() -> [WorkoutState] {
         let template = SampleData.templates()[0]
         let fresh = WorkoutFactory.makeWorkout(from: template, now: SvcSyncFix.epoch, id: SvcSyncFix.uuid(1))
@@ -136,7 +175,16 @@ final class PublicInitializerTests: XCTestCase {
             return state
         }()
         let empty = WorkoutFactory.makeEmpty(name: "Free workout", now: SvcSyncFix.epoch, id: SvcSyncFix.uuid(2))
-        return [fresh, resting, pending, paused, allLogged, empty]
+
+        // The lateral raise and the pushdown are a superset (A): after the first one the second is next without a rest; after the
+        // second the rest runs, and an easy set (3 reps in reserve) makes the coach tip.
+        var midRound = fresh
+        midRound.currentIndex = 3
+        WorkoutReducer.reduce(&midRound, .logNextSet, now: SvcSyncFix.at(500))
+        var tipped = midRound
+        WorkoutReducer.reduce(&tipped, .logNextSet, now: SvcSyncFix.at(510))
+        WorkoutReducer.reduce(&tipped, .toggleLastSetRIR(3), now: SvcSyncFix.at(511))
+        return [fresh, resting, pending, paused, allLogged, empty, midRound, tipped]
     }
 
     // MARK: Tests
@@ -198,14 +246,33 @@ final class PublicInitializerTests: XCTestCase {
 
     func testEverySnapshotRebuildsThroughThePublicInitializer() {
         var phases = Set<SnapshotPhase>()
+        var briefs = Set<String>()
         for state in states() {
             for offset in [0.0, 150, 1_000] {
                 let snapshot = SnapshotBuilder.make(from: state, now: SvcSyncFix.at(offset))
                 XCTAssertEqual(rebuilt(snapshot), snapshot, "\(state.name) at +\(offset) s")
                 phases.insert(snapshot.phase)
+                if snapshot.superset != nil { briefs.insert("superset") }
+                if snapshot.plates != nil { briefs.insert("plates") }
+                if snapshot.coachTip != nil { briefs.insert("coachTip") }
             }
         }
         XCTAssertEqual(phases, [.logging, .resting, .restOver, .complete])
+        XCTAssertEqual(briefs, ["superset", "plates", "coachTip"], "the states reach every brief the builder fills")
+    }
+
+    func testTheMomentAndTheFinishCardRebuildThroughThePublicInitializers() {
+        // The builder leaves these two to the app: every field gets a value of its own, so a swapped argument shows.
+        var snapshot = SnapshotBuilder.make(from: states()[0], now: SvcSyncFix.at(5))
+        snapshot.moment = PRMoment(
+            exerciseName: "Barbell bench press", weightText: "85", repsText: "5", estimated1RM: 99, deltaKg: 4, expiresAt: SvcSyncFix.at(9)
+        )
+        snapshot.finish = FinishBrief(
+            workoutName: "Upper A · Push", durationMinutes: 46, sets: 21, volumeText: "9.1", personalRecordCount: 2, savedToHealth: true
+        )
+        XCTAssertEqual(rebuilt(snapshot), snapshot)
+        XCTAssertEqual(rebuilt(snapshot).moment?.deltaKg, 4)
+        XCTAssertEqual(rebuilt(snapshot).finish?.sets, 21)
     }
 
     func testOptionalSnapshotFieldsDefaultToNil() {
@@ -222,6 +289,13 @@ final class PublicInitializerTests: XCTestCase {
         XCTAssertNil(snapshot.restFrozenRemaining)
         XCTAssertNil(snapshot.heartRate)
         XCTAssertNil(snapshot.nextExerciseName)
+        XCTAssertNil(snapshot.exerciseDoneSets)
+        XCTAssertNil(snapshot.exerciseSetCount)
+        XCTAssertNil(snapshot.moment)
+        XCTAssertNil(snapshot.superset)
+        XCTAssertNil(snapshot.plates)
+        XCTAssertNil(snapshot.coachTip)
+        XCTAssertNil(snapshot.finish)
     }
 
     func testExerciseHistoriesRebuildThroughThePublicInitializers() {

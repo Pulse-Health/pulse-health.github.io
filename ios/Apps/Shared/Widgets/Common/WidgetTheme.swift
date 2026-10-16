@@ -6,6 +6,7 @@
 
 #if os(iOS) || os(watchOS)
 import SwiftUI
+import WidgetKit
 #if os(iOS)
 import UIKit
 #endif

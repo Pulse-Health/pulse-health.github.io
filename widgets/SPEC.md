@@ -212,14 +212,41 @@ crossed (so 23:50 yesterday is 1 day ago); a date in the future counts as 0. A w
 
 ### Live moments (`SnapshotBuilder`, inside `WorkoutSnapshot`)
 
-* API the app uses (implemented in `Widgets/SnapshotBuilder+Moments.swift`): `SnapshotBuilder.prMoment(from: old, to: new, now:, lifetime: 4) -> PRMoment?` (non-nil when the change logged a
-  personal-record set, by the presenter's rule) and `SnapshotBuilder.finishBrief(from: completed, savedToHealth:) -> FinishBrief`.
-* `exerciseDoneSets` / `exerciseSetCount`: of the shown exercise. `superset`: when the shown exercise has a group: `label`, `round` = (done sets of the first member) + 1
-  capped at `rounds` = set count of the first member, members tagged `A1`, `A2` ..., `detail` = "<weight text> × <reps>" of each member's next pending set (or its last
-  set when finished), `isDone` = that member's set of this round is logged, `isCurrent` = it is the shown one. `plates`: the target set belongs to a barbell weight
-  exercise -> `PlateCalculator.plan`. `moment` and `finish` are set by the app, not the builder. `coachTip`: resting, the last logged set (`lastLogged`) is a
-  non-warm-up weight set with `rir >= 3` and a pending set of the same exercise exists -> `suggestedWeightKg` = that pending set's weight + `weightStepKg`, texts
-  "82.5 kg" / "Keep 80", `subtitle` "<rir> reps in reserve on set <n>".
+The Swift implementation is the reference (`Widgets/SnapshotBuilder+Moments.swift`, `LiveMomentsTests.swift`); Kotlin ports its tests. `moment` and `finish` are set by the app,
+never by `SnapshotBuilder.make`.
+
+* API the app uses: `SnapshotBuilder.prMoment(from: old, to: new, now:, lifetime: 4) -> PRMoment?` and `SnapshotBuilder.finishBrief(from: completed, savedToHealth:) -> FinishBrief`.
+* **prMoment**: fires for a set that is a record in `new` and was not one in `old` (matched by set id, so editing a logged set into a record and undoing then re-logging one fire
+  too); nil for a different workout id; with several new records the one with the highest estimate. `weightText` / `repsText` carry no unit (like the snapshot's own fields),
+  `estimated1RM` is in whole kg, `deltaKg` = difference of the whole-kg estimates against the running best the set beat, at least 1 (never "+0 kg"). A non-finite or negative
+  lifetime counts as the default 4 s.
+* **finishBrief**: the duration is rounded half up like `lastSession`; `volumeText` is in tonnes with a trailing zero dropped ("9.1", "9").
+* `exerciseDoneSets` / `exerciseSetCount`: of the shown exercise.
+* **superset**: nil for a group of one or an empty group name. `label`; `rounds` = set count of the first member (members without sets are left out and count as done);
+  `round` = rounds finished by the least advanced member + 1, capped at `rounds` (so it is 2 of 3 while A2 of round 2 is due); members tagged `A1`, `A2` ...; `detail` =
+  "<weight text> × <reps>" of each member's next pending set (its last set when finished; a duration exercise reads "45 s"); `isDone` = that member's set of this round is
+  logged; `isCurrent` = it is the shown one.
+* **plates**: the target set belongs to a barbell weight exercise -> `PlateCalculator.plan` with the exercise's own bar; nil when no plate is needed (bare bar, below the bar,
+  less than the smallest plate per side). Clients show nothing for nil.
+* **coachTip**: only while `phase == resting` (not rest over). It applies to the first pending non-warm-up set of the exercise just logged (in a superset that is the member just
+  logged, which is why it carries its own `targetSetID` / `targetExerciseID`) when the last logged set is a non-warm-up weight set with `rir >= 3` and the pending weight is above 0.
+  `suggestedWeightKg` = that pending set's weight + `weightStepKg`, rounded to 0.01. Texts: `subtitle` "3 reps in reserve on set 3" ("4+" for RIR 4 and above), `text` "Try 85 kg on
+  set 4.", `suggestedWeightText` "85 kg", `keepWeightText` "Keep 82.5". Set numbers count all sets, like `setLabel`.
+
+### Readings of section 2 fixed by the Swift implementation (Kotlin follows them)
+
+* **overload**: the formulas are (weight, reps) pairs: target = (last weight + `weightStepKg`) for `plannedReps` when `lastReps >= plannedReps`, else (last weight) for
+  `min(lastReps + 1, plannedReps)`. With a rep range (`PlannedSet.repsMax`) the success test uses the top of the range and after adding weight the reps restart at the bottom.
+  A reps-only or duration entry's `summary` uses the top of the range.
+* **lifts**: `prIndex` is the first occurrence of the best and nil when that is the first of the (at most 6) points. "Last 90 days" means `finishedAt >= now - 90 × 86 400 s`.
+  A session is a workout with at least one set of the exercise with an estimate above 0; the same exercise twice in a workout is one session.
+* **tomorrow.plannedMinuteOfDay**: the median of an even count is the mean of the two middle start times; rounded to 5 minutes with halves up; 24:00 wraps to 0.
+* **bodyMap.message**: when no template trains the untouched group the message is only "X untouched.".
+* **lastSession.timeline**: instants are whole seconds; sets without `loggedAt` are ignored and do not count towards the two-set minimum; ties keep workout order; a set
+  logged before the start gives a zero gap.
+* **block**: the name is "Block N" (N = `n / 4 + 1`); `n` is never below 0; `sessionsDone` counts every workout dated on or after the block start.
+* Future-dated workouts count in `week.completed` when their day is in this week, and in `year`; `lastWorkoutAt` is the newest overall with `daysSinceLastWorkout` 0.
+* An unknown time zone id is written as "UTC".
 
 ### New persisted fields (additive, optional; old files still decode)
 

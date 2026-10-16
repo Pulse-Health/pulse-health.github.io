@@ -17,8 +17,9 @@
 // None of the four intents is meant to be run by a person: each only makes sense as a button of the running
 // Live Activity (Log set even takes raw UUID strings). They therefore set `static var isDiscoverable: Bool { false }`
 // (AppIntent, iOS 17.0+): Siri, Spotlight and the Shortcuts app do not list them, while the app and widgets (the
-// Live Activity and Dynamic Island buttons) can still run them. There is no AppShortcutsProvider, which would need
-// the property to be true.
+// Live Activity and Dynamic Island buttons) can still run them. The App Shortcuts (PulseShortcuts.swift) are built on the
+// discoverable intents of ControlIntents.swift instead; `AdjustRestIntent(seconds: 30)` is also the action of the
+// "+30 s rest" control.
 
 #if os(iOS)
 import AppIntents
