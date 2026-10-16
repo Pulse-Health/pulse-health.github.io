@@ -679,3 +679,302 @@ final class StrengthTour: UIDriver {
         }
     }
 }
+
+// MARK: - Onboarding tour
+
+/// Walks the first-run flow once, the way a new user would: the welcome screen and its highlights, the account sheet (its checks, both
+/// tabs), "Continue with Apple" (the UI-test services accept it at once), profile, Apple Health (with a Back and forth), AI Coaching,
+/// notifications, the last screen, and the hub behind it.
+///
+/// The app is launched with '-PulseUITest -PulseShowOnboarding' (see OnboardingLaunchMode): the other UI tests start at the hub, this
+/// one asks for the flow. No system dialog appears (no live services) and no text is typed (it needs the software keyboard; the
+/// checks of the form are in the unit tests of the model). Files: onboarding-<config>-NN-<name>.png and onboarding-<config>-flow-log.txt
+/// in the directory of SCREENSHOT_DIR, like the tour. Run by `visual` (all UI tests) and by `matrix` (dark, large text, iPhone SE, iOS 17).
+final class OnboardingTourTests: XCTestCase {
+
+    @MainActor
+    func testOnboardingTour() {
+        continueAfterFailure = true
+        let config = tourConfigName()
+        let output = FlowOutput(suite: "onboarding-" + config, testCase: self)
+        let tour = OnboardingTour(app: XCUIApplication(), output: output)
+        tour.run(config: config)
+    }
+}
+
+@MainActor
+final class OnboardingTour: UIDriver {
+
+    func run(config: String) {
+        launchArguments = ["-PulseUITest", "-PulseShowOnboarding", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        output.log("Onboarding tour '" + config + "', iOS " + ProcessInfo.processInfo.operatingSystemVersionString)
+        output.log("TOUR_CONFIG=" + (ProcessInfo.processInfo.environment["TOUR_CONFIG"] ?? "(not set)"))
+        relaunch()
+
+        welcomeStep()
+        highlightsStep()
+        motionStep()
+        accountSheetStep()
+        checksStep()
+        logInTabStep()
+        appleStep()
+        profileStep()
+        healthStep()
+        backStep()
+        coachStep()
+        notifyStep()
+        doneStep()
+        hubStep()
+
+        output.log(
+            "SUMMARY: " + String(okSteps) + " steps OK, " + String(failedSteps) + " FAILED, " + String(skippedSteps)
+                + " skipped, " + String(output.screenshotCount) + " screenshots, " + String(failureCount) + " recorded failures"
+        )
+        output.attachLog()
+    }
+
+    // MARK: Welcome
+
+    private func welcomeStep() {
+        step("Welcome screen", checkApp: false) {
+            if waitFor(.button("onboarding.start"), timeout: 40) == nil {
+                fail("The welcome screen did not appear within 40 s: no 'onboarding.start' button")
+                shot("welcome-missing")
+                return
+            }
+            for identifier in ["onboarding.login", "onboarding.highlight.1", "onboarding.highlight.2", "onboarding.highlight.3", "onboarding.motion"] {
+                if !exists(.button(identifier)) {
+                    fail("Missing on the welcome screen: the button '" + identifier + "'")
+                }
+            }
+            shot("welcome", settle: 2.5)
+        }
+    }
+
+    private func highlightsStep() {
+        step("The three highlights") {
+            let highlights: [(button: String, title: String, name: String)] = [
+                ("onboarding.highlight.2", "Every set, on your wrist.", "welcome-2-rest"),
+                ("onboarding.highlight.3", "Progress, made visible.", "welcome-3-record"),
+                ("onboarding.highlight.1", "Train with intent.", "welcome-1-plan"),
+            ]
+            for highlight in highlights {
+                if !tap(.button(highlight.button)) {
+                    continue
+                }
+                if waitFor(.text(highlight.title), timeout: 5) == nil {
+                    fail("After tapping '" + highlight.button + "' the title '" + highlight.title + "' did not appear")
+                }
+                shot(highlight.name, settle: 1.4)
+            }
+        }
+    }
+
+    private func motionStep() {
+        step("Pause and play the background video") {
+            if !tap(.button("onboarding.motion")) {
+                return
+            }
+            if waitFor(.button("Play background video"), timeout: 3) == nil {
+                fail("After tapping the pause button its label did not become 'Play background video'")
+            }
+            tap(.button("onboarding.motion"), required: false)
+            if waitFor(.button("Pause background video"), timeout: 3) == nil {
+                fail("After tapping the play button its label did not become 'Pause background video'")
+            }
+        }
+    }
+
+    // MARK: Account sheet
+
+    private func accountSheetStep() {
+        step("Account sheet opens on the sign-up tab") {
+            if !tap(.button("onboarding.start")) {
+                return
+            }
+            if waitFor(.button("onboarding.submit"), timeout: 10) == nil {
+                fail("The account sheet did not open: no 'onboarding.submit' button within 10 s")
+                shot("signup-missing")
+                return
+            }
+            if !exists(.text("Create your account")) {
+                fail("The sheet does not show the sign-up title 'Create your account'")
+            }
+            for identifier in ["onboarding.apple", "onboarding.close", "onboarding.tab.signup", "onboarding.tab.login"] {
+                if !exists(.button(identifier)) {
+                    fail("Missing in the account sheet: the button '" + identifier + "'")
+                }
+            }
+            shot("signup-sheet", settle: 1.2)
+        }
+    }
+
+    private func checksStep() {
+        step("Sending an empty form shows the errors") {
+            if !tap(.button("onboarding.submit")) {
+                return
+            }
+            if waitFor(.text("Enter a valid email address."), timeout: 5) == nil {
+                fail("No email error appeared after sending an empty form")
+            }
+            if !exists(.text("Use at least 8 characters.")) {
+                fail("The password rule is not shown")
+            }
+            dismissKeyboard()
+            shot("signup-errors", settle: 1.0)
+        }
+    }
+
+    private func logInTabStep() {
+        step("Log-in tab, and back") {
+            if !tap(.button("onboarding.tab.login")) {
+                return
+            }
+            if waitFor(.text("Welcome back"), timeout: 5) == nil {
+                fail("The log-in tab does not show 'Welcome back'")
+            }
+            if !exists(.button("onboarding.forgot")) {
+                fail("The log-in tab has no 'Forgot password?' button")
+            }
+            if exists(.text("Enter a valid email address.")) {
+                fail("The email error of the sign-up tab is still showing after switching to the log-in tab")
+            }
+            shot("login-tab", settle: 1.0)
+            tap(.button("onboarding.tab.signup"), required: false)
+            if waitFor(.text("Create your account"), timeout: 5) == nil {
+                fail("Switching back to the sign-up tab did not show 'Create your account'")
+            }
+        }
+    }
+
+    // MARK: Setup
+
+    private func appleStep() {
+        step("Continue with Apple leads to the profile") {
+            if !tap(.button("onboarding.apple")) {
+                return
+            }
+            if waitFor(.text("What are you training for?"), timeout: 15) == nil {
+                fail("The profile step did not appear within 15 s of tapping 'Continue with Apple'")
+                shot("profile-missing")
+                return
+            }
+            if let next = waitFor(.button("onboarding.profile.continue"), timeout: 5), next.isEnabled {
+                fail("'Continue' is enabled although no goal and no experience level were chosen")
+            }
+            shot("profile-empty", settle: 1.2)
+        }
+    }
+
+    private func profileStep() {
+        step("Profile: main goal and experience") {
+            tap(.button("onboarding.goal.strength"))
+            tap(.button("onboarding.level.intermediate"))
+            pause(0.5)
+            if let next = find(.button("onboarding.profile.continue")), !next.isEnabled {
+                fail("'Continue' is still disabled after choosing a goal and an experience level")
+            }
+            shot("profile-chosen", settle: 0.8)
+            tap(.button("onboarding.profile.continue"))
+        }
+    }
+
+    private func healthStep() {
+        step("Apple Health step") {
+            if waitFor(.button("onboarding.health.connect"), timeout: 10) == nil {
+                fail("The Apple Health step did not appear within 10 s")
+                shot("health-missing")
+                return
+            }
+            if !exists(.button("onboarding.health.later")) {
+                fail("The Apple Health step has no 'Not now' button")
+            }
+            shot("health", settle: 1.2)
+        }
+    }
+
+    private func backStep() {
+        step("Back keeps the answers") {
+            if !tap(.button("onboarding.back")) {
+                return
+            }
+            if waitFor(.text("What are you training for?"), timeout: 8) == nil {
+                fail("Back did not return to the profile step")
+                return
+            }
+            if let next = waitFor(.button("onboarding.profile.continue"), timeout: 5), !next.isEnabled {
+                fail("The goal and the experience level were forgotten after Back")
+            }
+            tap(.button("onboarding.profile.continue"), required: false)
+            if waitFor(.button("onboarding.health.connect"), timeout: 8) == nil {
+                fail("Continue after Back did not lead to the Apple Health step again")
+                return
+            }
+            tap(.button("onboarding.health.connect"))
+        }
+    }
+
+    private func coachStep() {
+        step("AI Coaching: both answers are equally easy") {
+            guard let accept = waitFor(.button("onboarding.coach.on"), timeout: 10) else {
+                fail("The AI Coaching step did not appear within 10 s")
+                shot("coach-missing")
+                return
+            }
+            guard let decline = find(.button("onboarding.coach.off")) else {
+                fail("The AI Coaching step has no 'No thanks' button")
+                return
+            }
+            let acceptFrame = accept.frame
+            let declineFrame = decline.frame
+            if abs(acceptFrame.width - declineFrame.width) > 1 || abs(acceptFrame.height - declineFrame.height) > 1 {
+                fail("'Turn on AI Coaching' and 'No thanks' differ in size: " + String(describing: acceptFrame.size) + " and " + String(describing: declineFrame.size))
+            }
+            shot("coach", settle: 1.2)
+            tap(.button("onboarding.coach.off"))
+        }
+    }
+
+    private func notifyStep() {
+        step("Notifications step") {
+            if waitFor(.button("onboarding.notify.later"), timeout: 10) == nil {
+                fail("The notifications step did not appear within 10 s")
+                shot("notify-missing")
+                return
+            }
+            shot("notify", settle: 1.6)
+            tap(.button("onboarding.notify.later"))
+        }
+    }
+
+    private func doneStep() {
+        step("Last screen sums up the answers") {
+            if waitFor(.button("onboarding.finish"), timeout: 10) == nil {
+                fail("The last screen did not appear within 10 s")
+                shot("done-missing")
+                return
+            }
+            for chip in ["Build strength", "Intermediate", "AI Coaching off"] {
+                if !exists(.element(chip)) {
+                    fail("The summary has no '" + chip + "' chip")
+                }
+            }
+            shot("done", settle: 2.0)
+            tap(.button("onboarding.finish"))
+        }
+    }
+
+    private func hubStep() {
+        step("The hub is behind the onboarding") {
+            if waitFor(.button("Start Workout"), timeout: 20) == nil {
+                fail("The hub did not appear within 20 s of 'Start training'")
+                shot("hub-missing")
+                return
+            }
+            if exists(.button("onboarding.finish")) {
+                fail("The onboarding is still on screen")
+            }
+            shot("hub", settle: 1.0)
+        }
+    }
+}

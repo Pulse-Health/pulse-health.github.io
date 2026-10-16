@@ -4,7 +4,7 @@
 
 A clickable prototype of the new first-run experience, built around the looping runner video:
 **welcome → sign up / log in → profile → Apple Health → AI Coaching → notifications → done**.
-It is a design reference for the SwiftUI app, not app code. Nothing is sent or stored; the forms are not connected to anything.
+It is the design reference for the SwiftUI onboarding in `ios/` ([ported](#the-swiftui-port)). Nothing is sent or stored; the forms are not connected to anything.
 
 ## Open it
 
@@ -76,14 +76,30 @@ Only in this prototype (not in `PulseTheme`): `--hero-inset` 24 pt, the on-video
 
 Motion rules: a pause button is always on screen; "reduce motion" shows the poster and stops auto-advance; a hidden tab pauses everything. The panel's "Preview reduced motion" switch simulates the system setting.
 
-## For the SwiftUI port
+## The SwiftUI port
 
-- **Video:** `AVPlayerLooper` + `AVPlayerLayer` (`.resizeAspectFill`), muted, `.ambient` audio session. Show the poster `Image` when `accessibilityReduceMotion` or Low Power Mode is on.
-- **Look:** `PulseTheme` / `PulseFont.number` as they are; force `.preferredColorScheme(.dark)` for this flow. Glass: `.glassEffect()` on iOS 26, `.ultraThinMaterial` below (the app targets iOS 17).
-- **Sheet:** `.sheet` with `.presentationDetents`, `.presentationCornerRadius(26)`, `.presentationBackground(.ultraThinMaterial)`.
-- **Buttons:** the hub's pattern (`PulsePlainButtonStyle`, 50 pt minimum, continuous 12 pt corners). Sizes with `PulseScaled`, so Dynamic Type works.
-- **Sign in with Apple:** `SignInWithAppleButton`, or Clerk's Apple provider (see open items).
-- **Selection feedback:** `.sensoryFeedback(.selection, …)` on the goal and experience pickers.
+The flow is implemented in `ios/Packages/PulseStrengthKit` (see [`ios/README.md`](../ios/README.md#onboarding-first-run)); this page stays the visual reference.
+`app.js` is also the source of the Swift copy: `OnboardingCopyTables.swift` is generated from its `STRINGS`, so change a word here first.
+
+| Prototype | SwiftUI |
+|---|---|
+| `STRINGS` (EN / DE) | `OnboardingCopy*.swift` (Core): one exhaustive `switch` per language |
+| `go()` / `state` | `OnboardingReducer` + `OnboardingModel` (Core, unit-tested on Linux) |
+| video + poster + `.media__grade` + `.media__veil` | `OnboardingBackdrop`: `AVPlayerLooper` in an `AVPlayerLayer`, two gradients, a material veil |
+| pager, slides, previews | `OnboardingWelcomeView` + `HighlightPlayback` (the clock) + `OnboardingProofCards` |
+| sheet | a system `.sheet` (`OnboardingAuthSheet`) with a measured first detent, 26 pt radius, material background |
+| profile / health / coach / notify / done | `OnboardingSetupScreens`, `OnboardingDoneView`, on `OnboardingSetupLayout` |
+| `--*` tokens | `OnboardingTheme` (the dark values of `PulseTheme` as fixed colours) |
+
+Where it differs on purpose:
+
+- **Sheet.** A system sheet instead of the hand-drawn one, so the keyboard, the drag to close and VoiceOver's escape work as everywhere in iOS.
+- **No film grain, no iOS 26 glass.** The grain only hides banding in the browser; the app targets iOS 17, so the glass is `.ultraThinMaterial` plus a light edge.
+- **Permissions are real.** "Connect Apple Health" and "Turn on notifications" show the system prompts; the answer in the system sheet is what the summary chip says.
+- **Errors the prototype never had.** Wrong password, an existing account and no connection have their own messages (`OnboardingCopy.authMessage(for:)`).
+- **Log in ends the flow** instead of toasting "Logged in" and restarting; the setup steps are only for new accounts.
+- **Audio session untouched.** The clip has no audio track, so it cannot interrupt music; no `AVAudioSession` category is set.
+- **Sign in with Apple** goes through the account service (`authenticateWithApple`). The button looks like Apple's but is not `SignInWithAppleButton` yet: that needs the capability and the provider (open item 3).
 
 ## Decisions and open items
 
