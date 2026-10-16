@@ -124,7 +124,10 @@ struct RestWidget: Widget {
 
 struct RestWidgetView: View {
     let entry: WatchEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var environmentFamily
+    /// Set by the snapshot tests: `widgetFamily` is read-only in the environment, so a renderer cannot choose the layout through it.
+    var familyOverride: WidgetFamily?
+    private var family: WidgetFamily { familyOverride ?? environmentFamily }
     @Environment(\.watchWidgetStaticNow) private var staticNow
 
     private var face: WatchRestFace { WatchRestFace(entry) }

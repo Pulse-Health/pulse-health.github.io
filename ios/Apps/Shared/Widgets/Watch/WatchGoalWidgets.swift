@@ -26,7 +26,10 @@ struct WeeklyGoalWatchWidget: Widget {
 
 struct WeeklyGoalWatchView: View {
     let entry: WatchEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var environmentFamily
+    /// Set by the snapshot tests: `widgetFamily` is read-only in the environment, so a renderer cannot choose the layout through it.
+    var familyOverride: WidgetFamily?
+    private var family: WidgetFamily { familyOverride ?? environmentFamily }
 
     private var week: WeekSummary { entry.snapshot.week }
     private var goal: Int { max(1, week.goal) }
@@ -109,7 +112,10 @@ struct DaysSinceWatchWidget: Widget {
 
 struct DaysSinceWatchView: View {
     let entry: WatchEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var environmentFamily
+    /// Set by the snapshot tests: `widgetFamily` is read-only in the environment, so a renderer cannot choose the layout through it.
+    var familyOverride: WidgetFamily?
+    private var family: WidgetFamily { familyOverride ?? environmentFamily }
 
     private var days: Int? { entry.snapshot.week.daysSinceLastWorkout }
 

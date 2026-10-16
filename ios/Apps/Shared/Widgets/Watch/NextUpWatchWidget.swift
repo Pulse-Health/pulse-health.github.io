@@ -28,7 +28,10 @@ struct NextUpWatchWidget: Widget {
 
 struct NextUpWatchView: View {
     let entry: WatchEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var environmentFamily
+    /// Set by the snapshot tests: `widgetFamily` is read-only in the environment, so a renderer cannot choose the layout through it.
+    var familyOverride: WidgetFamily?
+    private var family: WidgetFamily { familyOverride ?? environmentFamily }
 
     private var next: NextUpSummary? { entry.snapshot.nextUp }
 

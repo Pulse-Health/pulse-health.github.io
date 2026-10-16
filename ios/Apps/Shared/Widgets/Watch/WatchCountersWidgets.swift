@@ -27,7 +27,10 @@ struct StreakWatchWidget: Widget {
 
 struct StreakWatchView: View {
     let entry: WatchEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var environmentFamily
+    /// Set by the snapshot tests: `widgetFamily` is read-only in the environment, so a renderer cannot choose the layout through it.
+    var familyOverride: WidgetFamily?
+    private var family: WidgetFamily { familyOverride ?? environmentFamily }
 
     private var weeks: Int { max(0, entry.snapshot.week.streakWeeks) }
 
@@ -92,7 +95,10 @@ struct WeeklySetsWatchWidget: Widget {
 
 struct WeeklySetsWatchView: View {
     let entry: WatchEntry
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) private var environmentFamily
+    /// Set by the snapshot tests: `widgetFamily` is read-only in the environment, so a renderer cannot choose the layout through it.
+    var familyOverride: WidgetFamily?
+    private var family: WidgetFamily { familyOverride ?? environmentFamily }
 
     private var sets: WeeklySetsSummary { entry.snapshot.weeklySets }
 

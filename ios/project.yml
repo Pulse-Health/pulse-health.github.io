@@ -17,6 +17,10 @@
 #   PulseStrengthLiveSnapshotTests    iOS logic test without a host app: draws the Lock Screen / Dynamic Island views
 #                                     (scheme PulseStrengthLiveSnapshots)
 #   PulseStrengthWatchSnapshotTests   watchOS logic test without a host app: draws the Watch pages (scheme PulseStrengthWatchSnapshots)
+#   PulseStrengthWidgetSnapshotTests  iOS logic test without a host app: draws the Home Screen, StandBy, Lock Screen and extra widgets
+#                                     (scheme PulseStrengthWidgetSnapshots)
+#   PulseStrengthWatchWidgetSnapshotTests   watchOS logic test without a host app: draws the Apple Watch widgets
+#                                     (scheme PulseStrengthWatchWidgetSnapshots)
 #
 # Info.plist files and entitlements are the committed files under Apps/<target>/ (INFOPLIST_FILE and
 # CODE_SIGN_ENTITLEMENTS below); this spec does not use XcodeGen's `info:` / `entitlements:` generators, so there is
@@ -244,6 +248,52 @@ targets:
         ENABLE_TESTABILITY: "YES"
         SKIP_INSTALL: "YES"
 
+  # Snapshot test of the Home Screen, StandBy, Lock Screen and extra widgets (Apps/PulseStrengthWidgetSnapshotTests): a logic-test bundle
+  # WITHOUT a host app that compiles the widget views as its own sources, exactly like the widget extension does, and renders them with
+  # ImageRenderer into PNG files. The Live Activity fixtures give the running-workout states of the log-set widget.
+  PulseStrengthWidgetSnapshotTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Apps/PulseStrengthWidgetSnapshotTests
+      - path: Apps/PulseStrengthLiveSnapshotTests/LiveSnapshotFixtures.swift
+      - path: Apps/Shared/LiveActivity
+      - path: Apps/Shared/Intents
+        excludes:
+          - PulseShortcuts.swift
+      - path: Apps/Shared/Widgets
+        excludes:
+          - Watch/**
+    dependencies:
+      - package: PulseStrengthKit
+        product: PulseStrengthCore
+      - package: PulseStrengthKit
+        product: PulseStrengthActivity
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).widgetsnapshottests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: "YES"
+
+  # Snapshot test of the Apple Watch widgets (Apps/PulseStrengthWatchWidgetSnapshotTests): a watchOS logic-test bundle without a host app.
+  PulseStrengthWatchWidgetSnapshotTests:
+    type: bundle.unit-test
+    platform: watchOS
+    sources:
+      - path: Apps/PulseStrengthWatchWidgetSnapshotTests
+      - path: Apps/Shared/Widgets/Common
+      - path: Apps/Shared/Widgets/Watch
+    dependencies:
+      - package: PulseStrengthKit
+        product: PulseStrengthCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).watchwidgetsnapshottests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: "YES"
+
 schemes:
   # Builds everything: the app target depends on the widget extension and on the Watch app (built for the matching
   # watchOS SDK), so one `xcodebuild -scheme PulseStrength` compiles all three targets.
@@ -324,5 +374,31 @@ schemes:
       gatherCoverageData: false
       targets:
         - name: PulseStrengthWatchSnapshotTests
+          parallelizable: false
+          randomExecutionOrder: false
+
+  # Home Screen, StandBy, Lock Screen and extra widget snapshots; needs an iOS Simulator destination.
+  PulseStrengthWidgetSnapshots:
+    build:
+      targets:
+        PulseStrengthWidgetSnapshotTests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - name: PulseStrengthWidgetSnapshotTests
+          parallelizable: false
+          randomExecutionOrder: false
+
+  # Apple Watch widget snapshots; needs a watchOS Simulator destination.
+  PulseStrengthWatchWidgetSnapshots:
+    build:
+      targets:
+        PulseStrengthWatchWidgetSnapshotTests: [test]
+    test:
+      config: Debug
+      gatherCoverageData: false
+      targets:
+        - name: PulseStrengthWatchWidgetSnapshotTests
           parallelizable: false
           randomExecutionOrder: false
