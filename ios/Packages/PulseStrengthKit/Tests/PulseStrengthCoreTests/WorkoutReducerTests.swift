@@ -1436,6 +1436,7 @@ final class WorkoutReducerMiscTests: XCTestCase {
         expected.heartRate = 140
         expected.heartRateSum = 140
         expected.heartRateCount = 1
+        expected.heartRateSeries = [HeartRateSample(bpm: 140, at: RFix.at(50))]
         XCTAssertEqual(RFix.reduced(s, .updateHeartRate(140), at: 50), expected)
     }
 }

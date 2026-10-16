@@ -56,6 +56,10 @@ class StrengthAppEnvironment private constructor(
             return StrengthAppEnvironment(persistence, store, controller, services)
         }
 
+        /** An environment around ready-made parts, without platform services: for tests that need to control the store and the clock. */
+        internal fun forParts(persistence: FileStrengthPersistence, store: StrengthStore, controller: WorkoutController) =
+            StrengthAppEnvironment(persistence, store, controller, services = null)
+
         /** Temporary persistence with the sample data and no live services; optionally with a workout already running. */
         fun preview(withActiveWorkout: Boolean = false): StrengthAppEnvironment {
             val persistence = FileStrengthPersistence.temporary()

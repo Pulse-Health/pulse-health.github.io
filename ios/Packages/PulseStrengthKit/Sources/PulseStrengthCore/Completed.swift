@@ -7,12 +7,15 @@ public struct CompletedSet: Codable, Hashable, Sendable {
     public var weightKg: Double
     public var reps: Int
     public var rir: Int?
+    /// When the set was logged (`LoggedSet.doneAt`); nil for history saved before the time was recorded.
+    public var loggedAt: Date?
 
-    public init(type: SetType, weightKg: Double, reps: Int, rir: Int? = nil) {
+    public init(type: SetType, weightKg: Double, reps: Int, rir: Int? = nil, loggedAt: Date? = nil) {
         self.type = type
         self.weightKg = weightKg
         self.reps = reps
         self.rir = rir
+        self.loggedAt = loggedAt
     }
 }
 
@@ -100,6 +103,9 @@ public struct CompletedWorkout: Identifiable, Codable, Hashable, Sendable {
     public var exercises: [CompletedExercise]
     public var personalRecords: [PersonalRecord]
     public var muscleSets: [MuscleSets]
+    /// The heart-rate samples recorded during the workout, oldest first (`WorkoutState.heartRateSeries`); nil without any, and for
+    /// history saved before they were kept.
+    public var heartRateSeries: [HeartRateSample]?
 
     public init(
         id: UUID,
@@ -114,7 +120,8 @@ public struct CompletedWorkout: Identifiable, Codable, Hashable, Sendable {
         averageRIR: Double?,
         exercises: [CompletedExercise],
         personalRecords: [PersonalRecord],
-        muscleSets: [MuscleSets]
+        muscleSets: [MuscleSets],
+        heartRateSeries: [HeartRateSample]? = nil
     ) {
         self.id = id
         self.name = name
@@ -129,6 +136,7 @@ public struct CompletedWorkout: Identifiable, Codable, Hashable, Sendable {
         self.exercises = exercises
         self.personalRecords = personalRecords
         self.muscleSets = muscleSets
+        self.heartRateSeries = heartRateSeries
     }
 }
 
