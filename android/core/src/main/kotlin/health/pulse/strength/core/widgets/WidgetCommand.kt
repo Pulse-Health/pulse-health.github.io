@@ -59,3 +59,16 @@ object WearProtocol {
     /** Capability the phone app advertises (res/values/wear.xml `android_wear_capabilities`). */
     const val PHONE_CAPABILITY = "pulse_strength_phone"
 }
+
+/** The `pulse-strength://` deep links (widgets/SPEC.md section 4) as strings; the app's `MainActivity` handles them. */
+object DeepLinks {
+    const val SCHEME = "pulse-strength"
+    const val workout = "pulse-strength://workout"
+    const val startNext = "pulse-strength://start-next"
+    const val hub = "pulse-strength://hub"
+    const val plates = "pulse-strength://plates"
+
+    fun start(templateId: String) = "pulse-strength://start?template=$templateId"
+    fun startEmpty(name: String) = "pulse-strength://start-empty?name=" + java.net.URLEncoder.encode(name, "UTF-8").replace("+", "%20")
+    fun exercise(exerciseId: String) = "pulse-strength://exercise/$exerciseId"
+}

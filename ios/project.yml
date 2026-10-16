@@ -101,6 +101,12 @@ targets:
       - path: Apps/PulseStrengthWidgets
       - path: Apps/Shared/Intents
       - path: Apps/Shared/LiveActivity
+      # Home Screen, Lock Screen, StandBy and extra widgets (widgets/SPEC.md) and their shared helpers.
+      - path: Apps/Shared/Widgets
+        excludes:
+          - Watch/**
+      - path: Apps/Shared/Controls
+        optional: true
     dependencies:
       - package: PulseStrengthKit
         product: PulseStrengthCore

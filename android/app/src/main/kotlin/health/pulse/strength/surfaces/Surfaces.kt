@@ -3,6 +3,7 @@ package health.pulse.strength.surfaces
 import android.content.Context
 import health.pulse.strength.controls.Controls
 import health.pulse.strength.live.LiveUpdates
+import health.pulse.strength.wear.PhoneWearSync
 import health.pulse.strength.widgets.extras.ExtrasWidgets
 import health.pulse.strength.widgets.home.HomeWidgets
 import health.pulse.strength.widgets.lock.LockWidgets
@@ -20,5 +21,6 @@ object Surfaces {
         ExtrasWidgets.refresh(context)
         Controls.refresh(context)
         LiveUpdates.refresh(context)
+        PhoneWearSync.refresh(context)
     }
 }

@@ -6,6 +6,8 @@
     <!-- ==== strings-host:end ==== -->
 
     <!-- ==== strings-glance-home:begin ==== -->
+    <string name="widget_weekly_goal_label">Weekly goal</string>
+    <string name="widget_weekly_goal_description">Workouts finished this week against your goal.</string>
     <!-- ==== strings-glance-home:end ==== -->
 
     <!-- ==== strings-glance-extras:begin ==== -->

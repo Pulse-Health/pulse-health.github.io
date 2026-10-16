@@ -1,10 +1,11 @@
 package health.pulse.strength.widgets.home
 
 import android.content.Context
+import androidx.glance.appwidget.updateAll
 
-/** Owner: glance-home. Refreshes every surface of this group after the snapshot changed (see Surfaces). */
+/** Owner: glance-home. Refreshes every Home Screen widget after the snapshot changed (see Surfaces). */
 object HomeWidgets {
     suspend fun refresh(context: Context) {
-        // Replaced by the owner.
+        WeeklyGoalWidget().updateAll(context)
     }
 }

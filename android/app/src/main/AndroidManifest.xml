@@ -27,10 +27,28 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- pulse-strength:// deep links of the widgets, tiles and notifications (widgets/SPEC.md section 4) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pulse-strength" />
+            </intent-filter>
         </activity>
         <!-- ==== host:end ==== -->
 
         <!-- ==== glance-home:begin ==== -->
+        <receiver
+            android:name=".widgets.home.WeeklyGoalReceiver"
+            android:exported="true"
+            android:label="@string/widget_weekly_goal_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weekly_goal_widget_info" />
+        </receiver>
         <!-- ==== glance-home:end ==== -->
 
         <!-- ==== glance-extras:begin ==== -->
