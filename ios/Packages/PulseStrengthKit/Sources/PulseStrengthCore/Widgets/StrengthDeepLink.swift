@@ -17,6 +17,8 @@ public enum StrengthDeepLink: Equatable, Sendable {
     case hub
     /// Open the running workout on the plate calculator.
     case plates
+    /// Open the body weight entry (the weigh-in reminder notification).
+    case weight
 
     public init?(url: URL) {
         guard url.scheme?.lowercased() == StrengthConfig.urlScheme, let host = url.host?.lowercased() else { return nil }
@@ -27,6 +29,7 @@ public enum StrengthDeepLink: Equatable, Sendable {
         case "start-next": self = .startNext
         case "hub": self = .hub
         case "plates": self = .plates
+        case "weight": self = .weight
         case "start":
             guard let text = value("template"), let id = UUID(uuidString: text) else { return nil }
             self = .start(templateID: id)
@@ -50,6 +53,7 @@ public enum StrengthDeepLink: Equatable, Sendable {
         case .startNext: components.host = "start-next"
         case .hub: components.host = "hub"
         case .plates: components.host = "plates"
+        case .weight: components.host = "weight"
         case .start(let id):
             components.host = "start"
             components.queryItems = [URLQueryItem(name: "template", value: id.uuidString.lowercased())]

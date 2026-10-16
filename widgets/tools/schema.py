@@ -72,6 +72,9 @@ STRUCTS = [
         ("estimatedMinutes", "Int", "0", ""),
         ("lastPerformedAt", "Date?", "nil", ""),
         ("daysSince", "Int?", "nil", ""),
+        ("planName", "String?", "nil", "Name of the active training plan when the template is its next workout."),
+        ("planPosition", "Int?", "nil", "1-based position of the template in the active plan's rotation."),
+        ("planCount", "Int?", "nil", "Number of workouts in the active plan's rotation."),
         ("exercises", "[PlannedExerciseBrief]", "[]", "Every template entry in order."),
     ]),
     ("TemplateSummary", "A saved template, for launchers.", [

@@ -85,6 +85,9 @@ const val WIDGET_SNAPSHOT_PREVIEW_JSON: String = """
     "estimatedMinutes": 55,
     "lastPerformedAt": "2026-10-12T09:30:00Z",
     "daysSince": 5,
+    "planName": "Upper / Lower",
+    "planPosition": 1,
+    "planCount": 3,
     "exercises": [
       {
         "exerciseID": "bench",

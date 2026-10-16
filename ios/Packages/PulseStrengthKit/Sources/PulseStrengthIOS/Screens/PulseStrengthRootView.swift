@@ -10,7 +10,8 @@ import PulseStrengthCore
 /// * Starting a workout (`controller.startWorkout(template:)`) or resuming one presents the active workout.
 /// * Minimising hides the cover; the bar then offers "Resume".
 /// * Finishing hides the cover and, once it is gone, presents the summary (discarding presents nothing).
-/// * `pulse-strength://workout` (the Live Activity's `widgetURL`) opens the active workout when one exists.
+/// * `pulse-strength://` links (`StrengthDeepLink`: the Live Activity's `widgetURL`, widgets, controls) open the running workout, start a
+///   workout or show the hub; links that arrive through the widget command inbox take the same path.
 @MainActor
 public struct PulseStrengthRootView: View {
     @ObservedObject private var environment: StrengthAppEnvironment
@@ -55,6 +56,9 @@ public struct PulseStrengthRootView: View {
         .fullScreenCover(item: $summary) { (workout: CompletedWorkout) in
             summaryCover(workout)
         }
+        .sheet(isPresented: $environment.showsWeightEntry) {
+            BodyWeightEntrySheet(store: environment.store)
+        }
         .environment(\.watchStatus, environment.watchStatus)
         .tint(PulseTheme.green)
         // The whole app follows the user's text size up to accessibility3 (its screens scroll); the dense screens
@@ -63,8 +67,28 @@ public struct PulseStrengthRootView: View {
         .onOpenURL { (url: URL) in
             handleURL(url)
         }
+        .onChange(of: environment.pendingDeepLink) { _, link in
+            guard let link else { return }
+            environment.pendingDeepLink = nil
+            handle(link)
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                environment.sceneBecameActive()
+            }
+        }
         .task {
             await requestPermissions()
+        }
+        .task {
+            // The launch itself: `onChange` below only sees the changes after it.
+            environment.refreshOnActive()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            // A delivered reminder leaves the list of future ones, the clock or time zone may have changed, and Health may have new weights.
+            if phase == .active {
+                environment.refreshOnActive()
+            }
         }
     }
 
@@ -188,9 +212,33 @@ public struct PulseStrengthRootView: View {
     }
 
     private func handleURL(_ url: URL) {
-        guard url.scheme?.lowercased() == StrengthConfig.urlScheme.lowercased() else { return }
-        guard url.host?.lowercased() == StrengthConfig.workoutURL.host?.lowercased() else { return }
-        presentActiveWorkout()
+        guard let link = StrengthDeepLink(url: url) else { return }
+        handle(link)
+    }
+
+    /// Opens what a widget, control, Live Activity, the Action button or a reminder asked for (widgets/SPEC.md section 4). Starting a workout
+    /// while one runs only shows the running one: the hub offers to resume instead of replacing it.
+    private func handle(_ link: StrengthDeepLink) {
+        switch link {
+        case .workout, .plates:
+            presentActiveWorkout()
+        case .weight:
+            environment.requestWeightEntry()
+        case .startNext:
+            startWorkout(environment.store.nextTemplate)
+        case .start(let templateID):
+            guard let template = environment.store.templates.first(where: { $0.id == templateID }) else { return }
+            startWorkout(template)
+        case .startEmpty(let name):
+            if controller.state == nil {
+                controller.startWorkout(template: nil, name: name)
+                playStartHaptic()
+            }
+            presentActiveWorkout()
+        case .exercise, .hub:
+            // Both land on the hub: the exercise detail is reached from there. A running workout stays minimised.
+            showsActiveWorkout = false
+        }
     }
 
     private func requestPermissions() async {

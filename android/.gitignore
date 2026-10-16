@@ -1,14 +1,18 @@
 # Gradle / Android Studio
 .gradle/
 build/
-local.properties
 .idea/
 *.iml
-.kotlin/
+local.properties
 captures/
-*.apk
-*.aab
-# Keystores and secrets never belong in this repository
+.cxx/
+
+# Signing material must never be committed (see android/README.md, "Release signing")
+keystore.properties
 *.jks
 *.keystore
-keystore.properties
+*.p12
+play-service-account*.json
+
+# Kotlin compiler session files
+.kotlin/
