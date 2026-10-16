@@ -28,4 +28,24 @@ final class WidgetIntegrationHelperTests: XCTestCase {
         XCTAssertEqual(StrengthDataMigration.copyMissingFiles(from: folder, to: temporaryDirectory()), 0)
         XCTAssertEqual(StrengthDataMigration.copyMissingFiles(from: folder, to: folder), 0)
     }
+
+    /// Fails when `FileStrengthPersistence` starts writing a file that the migration to the App Group container would leave behind.
+    func testMigrationKnowsEveryFileThePersistenceWrites() throws {
+        let directory = temporaryDirectory()
+        let persistence = FileStrengthPersistence(directory: directory)
+        try persistence.saveActiveWorkout(WorkoutFactory.makeEmpty(name: "Workout", now: Date()))
+        try persistence.saveTemplates(SampleData.templates())
+        try persistence.saveHistory(SampleData.history(now: Date()))
+        try persistence.saveCustomExercises([])
+        try persistence.savePersonalBests([:])
+        try persistence.saveAcknowledgedCommands([UUID()])
+        try persistence.saveBodyWeights([])
+        try persistence.saveWeighInPreferences(WeighInPreferences())
+        try persistence.savePlans([])
+        let written = try FileManager.default.contentsOfDirectory(atPath: directory.path).filter { $0.hasSuffix(".json") }
+        for name in written {
+            XCTAssertTrue(StrengthDataMigration.fileNames.contains(name), "\(name) is written by FileStrengthPersistence but not migrated")
+        }
+        XCTAssertGreaterThanOrEqual(written.count, 8)
+    }
 }

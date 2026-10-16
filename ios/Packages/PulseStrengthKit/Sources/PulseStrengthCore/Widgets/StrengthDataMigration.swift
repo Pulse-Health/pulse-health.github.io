@@ -7,8 +7,8 @@ import Foundation
 public enum StrengthDataMigration {
     /// The files `FileStrengthPersistence` writes.
     public static let fileNames = [
-        "active-workout.json", "templates.json", "history.json", "custom-exercises.json",
-        "personal-bests.json", "acknowledged-commands.json", "settings.json",
+        "active-workout.json", "templates.json", "history.json", "custom-exercises.json", "personal-bests.json",
+        "plans.json", "body-weights.json", "weigh-in-preferences.json", "acknowledged-commands.json", "settings.json",
     ]
 
     /// Copies every data file that exists in `legacy` but not yet in `target`; an existing file in `target` is never replaced and
