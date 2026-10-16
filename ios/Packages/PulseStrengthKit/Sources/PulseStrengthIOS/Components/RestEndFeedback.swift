@@ -6,7 +6,7 @@ import PulseStrengthCore
 /// The foreground cue for the end of a rest: a success haptic and a VoiceOver announcement.
 ///
 /// The system notification at the rest end is suppressed while the app is in the foreground
-/// (`RestNotificationDelegate`), so this is what tells the user, wherever the rest dock is not the thing on screen:
+/// (`StrengthNotificationDelegate`), so this is what tells the user, wherever the rest dock is not the thing on screen:
 /// `ActiveWorkoutView` calls it while the workout screen is open, and `PulseStrengthRootView` calls it while the
 /// workout is minimised and the in-progress bar is showing. The two are never on screen together, so it fires once.
 @MainActor
