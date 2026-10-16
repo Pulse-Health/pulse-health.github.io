@@ -265,6 +265,9 @@ enum PresenterSupport {
         var e1RM: Double
         /// A logged set that beat the running baseline by more than `recordMargin` (never without history).
         var isRecord: Bool
+        /// The running baseline the set was measured against: the previous best raised by the logged sets before it. For a record
+        /// this is the estimate it beat (the live record moment shows the difference).
+        var baselineBefore: Double
     }
 
     // MARK: Totals
@@ -327,8 +330,9 @@ enum PresenterSupport {
             // A weight so large that the estimate overflows (a state not produced by the reducer) is not a usable estimate.
             if !e1RM.isFinite { e1RM = 0 }
             let isRecord = set.isDone && hasHistory && e1RM > baseline + recordMargin
+            let before = baseline
             if set.isDone && e1RM > baseline { baseline = e1RM }
-            result.append(SetAnalysis(e1RM: e1RM, isRecord: isRecord))
+            result.append(SetAnalysis(e1RM: e1RM, isRecord: isRecord, baselineBefore: before))
         }
         return (result, baseline)
     }
