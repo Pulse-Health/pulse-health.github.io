@@ -102,7 +102,10 @@ final class CoachPlannerTests: XCTestCase {
         XCTAssertEqual(line(.hold, [.returningAfterBreak])?.detail, "It has been a while since your last session.")
         XCTAssertEqual(line(.hold, [.repsFellAtSameLoad])?.detail, "Reps have been dropping at this weight.")
         XCTAssertEqual(line(.hold, [.moderateEffort])?.detail, "Move up once sets feel easier (RIR 2 or more).")
-        XCTAssertNil(line(.hold, [.stepExceedsCap])?.detail)
+        XCTAssertEqual(line(.hold, [.stepExceedsCap])?.detail, "The next step up is a big jump, so choose your own weight or keep adding reps.")
+        XCTAssertEqual(line(.hold, [.lighterWeekDue, .reduceExceedsCap])?.detail, "A lighter week is due, but the smallest step down is a big change, so choose your own weight.")
+        XCTAssertEqual(line(.hold, [.reduceExceedsCap])?.detail, "The smallest step down is a big change, so choose your own weight.")
+        XCTAssertNil(line(.hold, [.suspectSetExcluded])?.detail)
         XCTAssertEqual(line(.noEffortData, [], weight: nil, reps: nil)?.headline, "Log RIR on your sets")
         XCTAssertNil(line(.insufficientData, [.tooFewSessions], weight: nil, reps: nil))
     }

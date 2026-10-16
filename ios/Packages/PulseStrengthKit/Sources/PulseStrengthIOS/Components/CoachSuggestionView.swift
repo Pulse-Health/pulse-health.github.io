@@ -7,17 +7,22 @@ import PulseStrengthCore
 /// sets to it. Styled like `CoachTipView`; shown before the first set of the exercise is logged.
 ///
 /// Without something to apply (the "Log RIR" hint) there is no button.
+///
+/// `isCompact` drops the reason line (it stays available to VoiceOver as the hint) for the moments the card is short of room: a rest
+/// is running, the text is large, or the exercise has many sets. The hub card always shows the reason.
 struct CoachSuggestionView: View {
     let line: CoachLine
     let canApply: Bool
+    let isCompact: Bool
     let onApply: () -> Void
 
     /// The 13 pt text and the 13 pt button label grow with Dynamic Type like the coach tip.
     @PulseScaled(13, relativeTo: .footnote) private var textSize: CGFloat
 
-    init(line: CoachLine, canApply: Bool, onApply: @escaping () -> Void) {
+    init(line: CoachLine, canApply: Bool, isCompact: Bool = false, onApply: @escaping () -> Void) {
         self.line = line
         self.canApply = canApply
+        self.isCompact = isCompact
         self.onApply = onApply
     }
 
@@ -30,7 +35,8 @@ struct CoachSuggestionView: View {
             }
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        // The button brings its own vertical room (see `applyButton`), so the row does not grow by the full padding twice.
+        .padding(.vertical, canApply ? 2 : 8)
         .background(
             PulseTheme.coachTipFill,
             in: RoundedRectangle(cornerRadius: PulseTheme.rowRadius, style: .continuous)
@@ -44,14 +50,16 @@ struct CoachSuggestionView: View {
                 .font(.system(size: textSize))
                 .foregroundStyle(PulseTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
-            if let detail = line.detail {
+            if let detail = line.detail, !isCompact {
+                // Ink at 75 % rather than the secondary grey: the grey is 4.2:1 on this tinted fill in dark mode.
                 Text(verbatim: detail)
                     .font(.system(size: textSize - 1))
-                    .foregroundStyle(PulseTheme.inkSecondary)
+                    .foregroundStyle(PulseTheme.ink.opacity(0.75))
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .combine)
+        .accessibilityHint(isCompact ? (line.detail ?? "") : "")
     }
 
     private var applyButton: some View {
@@ -62,9 +70,12 @@ struct CoachSuggestionView: View {
                 .padding(.horizontal, 14)
                 .padding(.vertical, 7)
                 .background(PulseTheme.green, in: Capsule())
+                // Transparent room above and below the capsule: the tap target is about 44 pt tall, the capsule stays as it was.
+                .padding(.vertical, 6)
+                .contentShape(Rectangle())
         }
         .buttonStyle(PulsePlainButtonStyle())
-        .accessibilityLabel("Apply suggested weight and reps")
+        .accessibilityLabel("Apply " + line.headline)
         .accessibilityIdentifier("coach-apply")
     }
 }

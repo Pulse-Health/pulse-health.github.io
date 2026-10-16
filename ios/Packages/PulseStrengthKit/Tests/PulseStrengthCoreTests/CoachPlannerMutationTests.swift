@@ -6,12 +6,13 @@ import XCTest
 /// a swapped priority, a moved boundary) did not break in `CoachPlannerTests`, `HubNoteTests` or the presenter tests.
 ///
 /// Mutants that cannot be killed because they do not change behaviour (and are therefore not tested):
-/// * `CoachPlanner`: dropping the `!set.isDone` filter, because a suggestion is only built when no set is done yet.
+/// * `CoachPlanner`: dropping the `!set.isDone` filter, because a suggestion is only built when no set is done yet, and dropping the
+///   `tracksWeight` guard, because the engine already answers `insufficientData` (no line) for every other tracking kind.
 /// * `HubNoteBuilder`: dropping the 0...100 clamp of the recovery value (the comparison `< 60` gives the same answer), and
 ///   `planned.reps >= 0` or `previousBestE1RM >= 0` (`TargetWeight` refuses reps 0 and a baseline 0 anyway).
-/// * `TargetWeight`: dropping `step.isFinite` (an infinite step never beats anything), starting from the floor instead of the
-///   ceiling or dropping the downward correction (the correction loops find the same weight), dropping the final check or the
-///   `max(1, ...)` clamp (neither can be reached with a baseline above 0).
+/// * `TargetWeight`: dropping `step.isFinite` (an infinite step never beats anything), dropping the downward correction loop (the
+///   upward loop and the start from the ceiling already find the lowest weight), dropping the final check or the `max(1, ...)` clamp
+///   (neither can be reached with a baseline above 0).
 final class CoachPlannerMutationTests: XCTestCase {
     private let now = CoachFix.now
 

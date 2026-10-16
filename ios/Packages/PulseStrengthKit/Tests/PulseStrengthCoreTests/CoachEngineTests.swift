@@ -310,13 +310,18 @@ final class CoachEngineGoldenTests: XCTestCase {
     func testALighterWeekAfterSixIncreasesInARow() {
         // Newest first: 72.5, 70, 67.5, 65, 62.5, 60, 57.5 -> six consecutive increases.
         let loads: [Double] = [72.5, 70, 67.5, 65, 62.5, 60, 57.5]
-        let sessions = loads.enumerated().map { index, load in
-            CoachFix.session(3 + index * 7, CoachFix.sets(load, [6, 6, 6], rir: [3, 3, 3]))
+        func week(rir: Int) -> [ExerciseSession] {
+            loads.enumerated().map { index, load in
+                CoachFix.session(3 + index * 7, CoachFix.sets(load, [6, 6, 6], rir: [rir, rir, rir]))
+            }
         }
-        check(CoachFix.recommend(bench, sessions), .reduce, weight: 70, reps: 6, reasons: [.lighterWeekDue])
+        // Working hard (RIR 2): back off.
+        check(CoachFix.recommend(bench, week(rir: 2)), .reduce, weight: 70, reps: 6, reasons: [.lighterWeekDue])
         // Five increases are not enough; the weight just changed, so it is a plain hold.
-        let five = CoachFix.recommend(bench, Array(sessions.dropLast()))
+        let five = CoachFix.recommend(bench, Array(week(rir: 2).dropLast()))
         check(five, .hold, weight: 72.5, reps: 6, reasons: [.awaitingSecondCleanSession])
+        // A beginner who adds weight every session with reps to spare (RIR 3) is not tired: no lighter week.
+        check(CoachFix.recommend(bench, week(rir: 3)), .hold, weight: 72.5, reps: 6, reasons: [.awaitingSecondCleanSession])
     }
 
     // MARK: Data errors

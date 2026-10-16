@@ -41,10 +41,11 @@ final class CoachEngineMutationTests: XCTestCase {
         CoachFix.session(daysAgo, CoachFix.sets(kg, reps, rir: rir))
     }
 
-    /// Seven weekly sessions with a higher weight each time, newest first: 72.5, 70, 67.5 ... 57.5 kg (six increases in a row).
-    private func risingSessions(firstDaysAgo: Int = 3) -> [ExerciseSession] {
+    /// Seven weekly sessions with a higher weight each time, newest first: 72.5, 70, 67.5 ... 57.5 kg (six increases in a row),
+    /// at 2 reps in reserve: hard enough that a lighter week makes sense (at 3 or more the lifter is not tired).
+    private func risingSessions(firstDaysAgo: Int = 3, rir: Int = 2) -> [ExerciseSession] {
         let loads: [Double] = [72.5, 70, 67.5, 65, 62.5, 60, 57.5]
-        return loads.enumerated().map { straight(firstDaysAgo + $0.offset * 7, $0.element) }
+        return loads.enumerated().map { straight(firstDaysAgo + $0.offset * 7, $0.element, rir: rir) }
     }
 
     /// A session whose only reliable set is `kg` x 10 reps (10 reps is the most the suspect-set reference accepts), so its
@@ -107,7 +108,7 @@ final class CoachEngineMutationTests: XCTestCase {
         let heavy = CoachFix.recommend(deadlift, [straight(3, 250, reps: 5), straight(10, 250, reps: 5)])
         check(heavy, .progress, weight: 252.5, reps: 5)
 
-        // 2000 kg and 1000 reps are the last believable values; one step beyond is a data error.
+        // 2000 kg and 999 reps (the most a set can hold) are the last believable values; one step beyond is a data error.
         let atLimit = CoachFix.recommend(bench, [straight(3, 2_000, reps: 1), straight(10, 2_000, reps: 1)])
         XCTAssertEqual(atLimit.sessionsUsed, 2)
         XCTAssertEqual(atLimit.verdict, .progress)
@@ -115,11 +116,18 @@ final class CoachEngineMutationTests: XCTestCase {
         check(overWeight, .insufficientData, reasons: [.tooFewSessions])
         XCTAssertEqual(overWeight.sessionsUsed, 0)
 
-        let manyReps = CoachFix.recommend(bench, [straight(3, 80, reps: 1_000), straight(10, 80, reps: 1_000)])
+        let manyReps = CoachFix.recommend(bench, [straight(3, 80, reps: 999), straight(10, 80, reps: 999)])
         XCTAssertEqual(manyReps.sessionsUsed, 2)
-        let tooManyReps = CoachFix.recommend(bench, [straight(3, 80, reps: 1_001), straight(10, 80, reps: 1_001)])
+        let tooManyReps = CoachFix.recommend(bench, [straight(3, 80, reps: 1_000), straight(10, 80, reps: 1_000)])
         check(tooManyReps, .insufficientData, reasons: [.tooFewSessions])
         XCTAssertEqual(tooManyReps.sessionsUsed, 0)
+
+        // Half a kilogram is the lightest believable working weight (it would otherwise print as "0 kg" or be a typo for 5 or 50).
+        let lightest = CoachFix.recommend(lateral, [straight(3, 0.5), straight(10, 0.5)])
+        XCTAssertEqual(lightest.sessionsUsed, 2)
+        let tooLight = CoachFix.recommend(lateral, [straight(3, 0.49), straight(10, 0.49)])
+        check(tooLight, .insufficientData, reasons: [.tooFewSessions])
+        XCTAssertEqual(tooLight.sessionsUsed, 0)
     }
 
     func testASessionOfOnlyZeroWeightOrZeroRepSetsDoesNotCount() {
@@ -197,7 +205,7 @@ final class CoachEngineMutationTests: XCTestCase {
     func testWeightsATenthOfAKiloApartAreDifferentWeights() {
         // Seven sessions that rise by 0.1 kg each are six increases in a row.
         let loads = (0..<7).map { 80.6 - Double($0) * 0.1 }
-        let sessions = loads.enumerated().map { straight(3 + $0.offset * 7, $0.element) }
+        let sessions = loads.enumerated().map { straight(3 + $0.offset * 7, $0.element, rir: 2) }
         check(CoachFix.recommend(bench, sessions), .reduce, weight: 78.1, reps: 6, reasons: [.lighterWeekDue])
         // And two sessions 0.1 kg apart are not "the same weight": wait for a second clean session at the new one.
         check(
@@ -206,11 +214,15 @@ final class CoachEngineMutationTests: XCTestCase {
         )
     }
 
-    func testTheSameWeightToleranceIsStrictlyBelowFiveGrams() {
-        // 0.01 and 0.005 kg differ by exactly 0.005 kg, which is not "closer than" the tolerance.
+    func testTheSameWeightToleranceIsFiveGrams() {
+        // 4 g apart is the same weight (two clean sessions progress); 6 g apart is a different one (wait for a second session).
         check(
-            CoachFix.recommend(bench, [straight(3, 0.01), straight(10, 0.005)]),
-            .hold, weight: 0.01, reps: 6, reasons: [.awaitingSecondCleanSession]
+            CoachFix.recommend(bench, [straight(3, 100.004), straight(10, 100)]),
+            .progress, weight: 102.5, reps: 6
+        )
+        check(
+            CoachFix.recommend(bench, [straight(3, 100.006), straight(10, 100)]),
+            .hold, weight: 100.006, reps: 6, reasons: [.awaitingSecondCleanSession]
         )
     }
 
@@ -297,7 +309,7 @@ final class CoachEngineMutationTests: XCTestCase {
     func testAReduceNeverTargetsZeroKilograms() {
         // With a cap that would allow taking everything off, the reduce still must not go to zero or below.
         var generous = CoachConfig()
-        generous.maximumReduceFraction = 5
+        generous.maximumReduceFraction = 1
         for kg in [2.0, 1.5] {
             let stall = [
                 straight(3, kg, reps: 5, rir: 0), straight(10, kg, reps: 6, rir: 0), straight(17, kg, reps: 7, rir: 0),
@@ -614,6 +626,8 @@ final class CoachEngineMutationTests: XCTestCase {
         let config = CoachConfig()
         XCTAssertEqual(config.minimumSessions, 2)
         XCTAssertEqual(config.progressMinimumRIR, 2.0)
+        XCTAssertEqual(config.comfortableSetShare, 2.0 / 3.0)
+        XCTAssertEqual(config.lighterWeekMaximumRIR, 3.0)
         XCTAssertEqual(config.effortCoverage, 2.0 / 3.0)
         XCTAssertEqual(config.holdMaximumRIR, 1.0)
         XCTAssertEqual(config.repsFallTolerance, 0.5)
@@ -656,26 +670,29 @@ final class CoachEngineMutationTests: XCTestCase {
         var meanReps: Double
         var coverage: Double
         var meanRIR: Double?
+        /// Share of the sets at the top weight with 2 or more reps in reserve (a set without a value does not count).
+        var comfortableShare: Double
 
         init(_ session: ExerciseSession) {
             let top = session.sets.map { $0.weightKg }.max() ?? 0
             let atTop = session.sets.filter { $0.weightKg >= top - 0.005 }
             var efforts: [Int] = []
             for set in atTop {
-                if let value = set.rir {
-                    efforts.append(min(4, max(0, value)))
-                } else if set.type == .failure {
+                if set.type == .failure {
                     efforts.append(0)
+                } else if let value = set.rir {
+                    efforts.append(min(4, max(0, value)))
                 }
             }
             load = top
             meanReps = Double(atTop.map { $0.reps }.reduce(0, +)) / Double(atTop.count)
             coverage = Double(efforts.count) / Double(atTop.count)
             meanRIR = efforts.isEmpty ? nil : Double(efforts.reduce(0, +)) / Double(efforts.count)
+            comfortableShare = Double(efforts.filter { $0 >= 2 }.count) / Double(atTop.count)
         }
 
         var hasEffortData: Bool { coverage >= 2.0 / 3.0 && meanRIR != nil }
-        var isComfortable: Bool { hasEffortData && (meanRIR ?? 0) >= 2.0 }
+        var isComfortable: Bool { hasEffortData && (meanRIR ?? 0) >= 2.0 && comfortableShare >= 2.0 / 3.0 - 1e-9 }
     }
 
     func testProgressAndReduceHappenExactlyWhenTheDocumentedConditionsHold() {
@@ -752,14 +769,15 @@ final class CoachEngineMutationTests: XCTestCase {
                 XCTAssertTrue(newest.hasEffortData && (newest.meanRIR ?? 9) <= 1.0, context)
             }
             if result.reasons.contains(.moderateEffort) {
-                XCTAssertTrue(newest.hasEffortData && (newest.meanRIR ?? 0) > 1.0 && (newest.meanRIR ?? 9) < 2.0, context)
+                // Above "near failure", but either the mean is under 2 or fewer than two thirds of the sets reach 2.
+                XCTAssertTrue(newest.hasEffortData && (newest.meanRIR ?? 0) > 1.0 && !newest.isComfortable, context)
             }
             if result.verdict == .noEffortData {
                 XCTAssertFalse(newest.hasEffortData, context)
             }
         }
         // The generator must reach every branch, otherwise the equivalences above prove little.
-        XCTAssertGreaterThan(seen[.progress, default: 0], 60, "\(seen)")
+        XCTAssertGreaterThan(seen[.progress, default: 0], 30, "\(seen)")
         XCTAssertGreaterThan(seen[.addRep, default: 0], 15, "\(seen)")
         XCTAssertGreaterThan(seen[.reduce, default: 0], 50, "\(seen)")
         XCTAssertGreaterThan(seen[.hold, default: 0], 100, "\(seen)")

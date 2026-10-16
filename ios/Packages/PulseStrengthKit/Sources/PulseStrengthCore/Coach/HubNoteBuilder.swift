@@ -4,18 +4,23 @@ import Foundation
 /// "Chest and shoulders are recovered. Aim for 85 kg × 6 on your last bench press set."
 ///
 /// The weight comes from `TargetWeight`, the same function the in-workout tip uses. The readiness sentence is only built when a
-/// `RecoveryProvider` is given: the standalone build's provider is demo data, so its caller passes nil.
+/// `RecoveryProvider` is given: the standalone build's provider is demo data, so its caller passes nil. The "Aim for" sentence is a
+/// record chase, so it follows `AudienceProfile` like the in-workout tip does: never for a known minor, never for a muscle the person
+/// asked to avoid, and the readiness sentence does not name an avoided muscle either. The caller leaves it out (`includeTarget:
+/// false`) when the "Next time" lines already tell the person what to lift.
 public enum HubNoteBuilder {
     public static func message(
         template: WorkoutTemplate,
         exercise: (String) -> Exercise?,
-        recovery: RecoveryProvider?
+        recovery: RecoveryProvider?,
+        audience: AudienceProfile = .unknown,
+        includeTarget: Bool = true
     ) -> String? {
         var sentences: [String] = []
-        if let recovery, let readiness = readinessSentence(template: template, recovery: recovery) {
+        if let recovery, let readiness = readinessSentence(template: template, recovery: recovery, audience: audience) {
             sentences.append(readiness)
         }
-        if let target = targetSentence(template: template, exercise: exercise) {
+        if includeTarget, let target = targetSentence(template: template, exercise: exercise, audience: audience) {
             sentences.append(target)
         }
         if sentences.isEmpty { return nil }
@@ -24,8 +29,8 @@ public enum HubNoteBuilder {
 
     // MARK: Sentences
 
-    private static func readinessSentence(template: WorkoutTemplate, recovery: RecoveryProvider) -> String? {
-        let lead = Array(musclesUsed(by: template).prefix(2))
+    private static func readinessSentence(template: WorkoutTemplate, recovery: RecoveryProvider, audience: AudienceProfile) -> String? {
+        let lead = Array(musclesUsed(by: template).filter { !audience.avoidMuscles.contains($0) }.prefix(2))
         if lead.isEmpty { return nil }
         let tired = lead.filter { max(0, min(100, recovery($0))) < 60 }
         if tired.isEmpty {
@@ -35,17 +40,25 @@ public enum HubNoteBuilder {
     }
 
     /// The first weight exercise with a history: the lightest weight on its last working set that beats the best estimated 1RM.
-    private static func targetSentence(template: WorkoutTemplate, exercise lookup: (String) -> Exercise?) -> String? {
+    ///
+    /// Sentences about absurd figures (more than 2,000 kg, or more reps than a set can hold) are not built: they can only come
+    /// from damaged data.
+    private static func targetSentence(
+        template: WorkoutTemplate, exercise lookup: (String) -> Exercise?, audience: AudienceProfile
+    ) -> String? {
         for entry in template.entries {
             let exercise = lookup(entry.exercise.id) ?? entry.exercise
+            guard audience.allowsPersonalRecordTip(for: exercise.muscle) else { continue }
             guard exercise.tracksWeight, exercise.previousBestE1RM > 0 else { continue }
             let normal = entry.plannedSets.last(where: { $0.type == .normal })
             let working = normal ?? entry.plannedSets.last(where: { $0.type != .warmup })
-            guard let planned = working, planned.reps > 0 else { continue }
+            guard let planned = working, planned.reps > 0, planned.reps <= 999 else { continue }
             guard let weight = TargetWeight.lowestBeating(
                 baseline: exercise.previousBestE1RM, reps: planned.reps, step: exercise.weightStepKg
-            ) else { continue }
-            return "Aim for \(NumberText.kg(weight)) kg × \(planned.reps) on your last \(shortName(exercise)) set."
+            ), weight <= 2_000 else { continue }
+            let name = shortName(exercise)
+            let subject = name.isEmpty ? "your last set" : "your last \(name) set"
+            return "Aim for \(NumberText.kg(weight)) kg × \(planned.reps) on \(subject)."
         }
         return nil
     }

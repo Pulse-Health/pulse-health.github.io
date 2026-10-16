@@ -189,13 +189,14 @@ public struct StrengthHubView: View {
     private func recommendedCard(now: Date) -> some View {
         if let template = recommendedTemplate {
             let runsThis = isRunning(template)
+            let lines = nextTimeItems(for: template, now: now)
             HubRecommendedCard(
                 template: template,
                 subtitle: recommendedSubtitle(template, now: now),
                 readiness: HubMuscles.readiness(controller.recovery),
                 chips: HubMuscles.chips(for: template, recovery: controller.recovery),
-                coach: hubNote(for: template),
-                nextTime: nextTimeItems(for: template, now: now),
+                coach: hubNote(for: template, nextTime: lines),
+                nextTime: lines,
                 primaryTitle: runsThis ? "Resume Workout" : "Start Workout",
                 onPrimary: {
                     primaryAction(template, runsThis: runsThis)
@@ -207,12 +208,15 @@ public struct StrengthHubView: View {
         }
     }
 
-    /// The coach note of the card. The readiness sentence is left out while the recovery numbers are the demo constants.
-    private func hubNote(for template: WorkoutTemplate) -> String? {
+    /// The coach note of the card. The readiness sentence is left out while the recovery numbers are the demo constants, and the
+    /// "Aim for" sentence while the "Next time" lines already name a weight (the two would disagree).
+    private func hubNote(for template: WorkoutTemplate, nextTime lines: [NextTimeItem]) -> String? {
         HubNoteBuilder.message(
             template: template,
             exercise: { store.exercise(id: $0) },
-            recovery: controller.isUsingDemoRecovery ? nil : controller.recovery
+            recovery: controller.isUsingDemoRecovery ? nil : controller.recovery,
+            audience: environment.audience,
+            includeTarget: !lines.contains { $0.recommendation.verdict.hasTarget }
         )
     }
 
@@ -739,6 +743,7 @@ private struct HubRecommendedCard: View {
             Text("Next time")
                 .pulseFont(12, .semibold, relativeTo: .footnote)
                 .foregroundStyle(PulseTheme.inkSecondary)
+                .accessibilityAddTraits(.isHeader)
             ForEach(nextTime) { item in
                 nextTimeRow(item)
             }

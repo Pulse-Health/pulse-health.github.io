@@ -17,6 +17,7 @@ struct ExerciseCardView: View {
 
     /// What the host knows about the person; the coach is more careful when it is unknown.
     @Environment(\.coachAudience) private var audience
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     /// Whether the note text field is shown (the pencil button toggles it, as in the design).
     @State private var isNoteOpen: Bool = false
@@ -29,6 +30,8 @@ struct ExerciseCardView: View {
     }
 
     var body: some View {
+        let entry = currentEntry
+        let suggestion = coachSuggestion(for: entry)
         VStack(spacing: 10) {
             header
             SetTableView(
@@ -41,8 +44,10 @@ struct ExerciseCardView: View {
             )
             controlsRow
             noteSection
-            suggestionSection
-            tipSection
+            suggestionSection(suggestion)
+            // The record tip says "85 kg × 6 would beat your best" while the coach may say "stay at 80" or "go lighter": it is shown
+            // only when the coach has no weight to name. It follows the audience and the muscles the person asked to avoid.
+            tipSection(for: entry, hiddenBy: suggestion)
         }
         .frame(maxWidth: .infinity)
         .padding(12)
@@ -239,32 +244,47 @@ struct ExerciseCardView: View {
     }
 
     @ViewBuilder
-    private var tipSection: some View {
-        if audience.showsPersonalRecordTips, let tip = card.coachTip {
+    private func tipSection(for entry: WorkoutExercise?, hiddenBy suggestion: WorkoutSuggestion?) -> some View {
+        let allowed = entry.map { audience.allowsPersonalRecordTip(for: $0.exercise.muscle) } ?? audience.showsPersonalRecordTips
+        if allowed, suggestion?.recommendation.verdict.hasTarget != true, let tip = card.coachTip {
             CoachTipView(text: tip)
         }
     }
 
     /// "Next time · 82.5 kg × 6" from the progression engine, before the first set of the exercise is logged.
     @ViewBuilder
-    private var suggestionSection: some View {
-        if let suggestion = currentSuggestion {
+    private func suggestionSection(_ suggestion: WorkoutSuggestion?) -> some View {
+        if let suggestion {
             CoachSuggestionView(
                 line: suggestion.line,
                 canApply: !suggestion.actions.isEmpty,
-                onApply: { apply(suggestion) }
+                isCompact: isCompactSuggestion,
+                onApply: { applyCurrentSuggestion() }
             )
         }
     }
 
-    private var currentSuggestion: WorkoutSuggestion? {
-        guard let entry = controller.state?.exercises.first(where: { $0.id == card.exerciseID }) else { return nil }
-        let now = Date()
+    /// The reason line is left out while a rest runs (the dock needs the room, as for the record tip), at large text sizes, and
+    /// for exercises with many sets, where the extra line would push the last set row out of the table.
+    private var isCompactSuggestion: Bool {
+        controller.state?.rest != nil || dynamicTypeSize >= .xLarge || card.rows.count > 4
+    }
+
+    private var currentEntry: WorkoutExercise? {
+        controller.state?.exercises.first(where: { $0.id == card.exerciseID })
+    }
+
+    /// The suggestion for the card's exercise, or nil. The cheap checks come first so that a card whose exercise already has a
+    /// logged set never reads the history. The date is the start of the workout, so the line does not change under the person's
+    /// finger when the last session crosses the break threshold in the middle of a workout.
+    private func coachSuggestion(for entry: WorkoutExercise?) -> WorkoutSuggestion? {
+        guard let entry, entry.exercise.tracksWeight, entry.doneCount == 0, let state = controller.state else { return nil }
         return CoachPlanner.suggestion(
             for: entry,
-            history: controller.store.history(for: entry.exercise.id, now: now),
+            history: controller.store.history(for: entry.exercise.id, now: state.startedAt),
+            workoutName: state.name,
             audience: audience,
-            now: now
+            now: state.startedAt
         )
     }
 
@@ -274,12 +294,18 @@ struct ExerciseCardView: View {
         SetRef(exerciseID: card.exerciseID, setID: row.id)
     }
 
-    /// "Apply": sets the pending working sets to the suggested weight and reps through the normal actions (undoable like any edit).
-    private func apply(_ suggestion: WorkoutSuggestion) {
+    /// "Apply": sets the top group of the pending working sets to the suggested weight and reps through the normal actions.
+    ///
+    /// The suggestion is worked out again at the moment of the tap, so a set that was logged since the card was drawn (from the
+    /// Watch, say) is never rewritten. It cannot be undone like a deleted set; the person edits the sets to go back. VoiceOver is
+    /// told what changed, because the suggestion row disappears under the focused button.
+    private func applyCurrentSuggestion() {
+        guard let current = coachSuggestion(for: currentEntry), !current.actions.isEmpty else { return }
         ExerciseCardHaptics.impact(.light)
-        for action in suggestion.actions {
+        for action in current.actions {
             controller.send(action)
         }
+        UIAccessibility.post(notification: .announcement, argument: "Applied " + current.line.headline)
     }
 
     /// Check circle: logs or un-logs the set with an impact haptic.

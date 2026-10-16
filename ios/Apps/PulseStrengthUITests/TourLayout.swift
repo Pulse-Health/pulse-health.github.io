@@ -109,6 +109,8 @@ enum TourRegions {
         TourSpec(name: "Add Set", targets: [.button("Add Set", .loose)], interactive: true),
         TourSpec(name: "Rest timer", targets: [.button("Rest timer")], interactive: true),
         TourSpec(name: "Exercise note", targets: [.button("Exercise note")], interactive: true),
+        TourSpec(name: "Next time", targets: [.element("Next time", .prefix)], interactive: false),
+        TourSpec(name: "Apply suggestion", targets: [.button("coach-apply")], interactive: true),
         TourSpec(name: "Coach tip", targets: [.element("Coach", .prefix)], interactive: false)
     ]
 

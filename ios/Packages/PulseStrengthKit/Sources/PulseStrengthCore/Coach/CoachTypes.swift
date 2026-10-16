@@ -46,6 +46,7 @@ public enum ReasonCode: String, Codable, CaseIterable, Sendable {
     case unsupportedTracking
     case suspectSetExcluded
     case audienceRestricted
+    case invalidConfiguration
 }
 
 // MARK: - Recommendation
@@ -113,11 +114,18 @@ public struct AudienceProfile: Equatable, Sendable {
     /// Minors and unknown audiences get a smaller largest weight jump.
     public var isRestricted: Bool { ageGroup != .adult }
 
-    /// Whether the in-workout "beat your best" tip is shown. Hidden for people known to be minors.
+    /// Whether the "beat your best" tip (in the workout) and the "Aim for" sentence (on the hub) are shown. Hidden for people known to
+    /// be minors.
     ///
     /// Deliberately not hidden for `.unknown`: that would silently remove an existing feature from every standalone install. Making
     /// it `isRestricted` instead is a one-line change once the product owner decides.
     public var showsPersonalRecordTips: Bool { ageGroup != .minor }
+
+    /// The "beat your best" tip for an exercise that works `muscle`: shown unless the person is a known minor or asked to avoid
+    /// loading that muscle.
+    public func allowsPersonalRecordTip(for muscle: MuscleGroup) -> Bool {
+        showsPersonalRecordTips && !avoidMuscles.contains(muscle)
+    }
 }
 
 // MARK: - Configuration
@@ -131,6 +139,9 @@ public struct CoachConfig: Equatable, Sendable {
     public var minimumSessions = 2
     /// Mean reps in reserve needed in each of the last two sessions to move up.
     public var progressMinimumRIR = 2.0
+    /// Share of the sets at the working weight that must also have at least `progressMinimumRIR` reps in reserve, in each of the
+    /// last two sessions, to move up. The mean alone would let two hard sets hide behind one very easy one.
+    public var comfortableSetShare = 2.0 / 3.0
     /// A session has effort data when at least this share of its sets at the working weight carry a reps-in-reserve value.
     public var effortCoverage = 2.0 / 3.0
     /// Mean reps in reserve at or below this holds the weight.
@@ -153,7 +164,10 @@ public struct CoachConfig: Equatable, Sendable {
     public var suspectRatio = 1.25
     /// This many consecutive sessions with a higher weight than the one before → suggest a lighter week. 0 turns it off.
     public var lighterWeekAfterIncreases = 6
-    /// Largest rep target ever suggested.
+    /// A lighter week is only suggested when the last session's mean reps in reserve is below this: someone adding weight every
+    /// session with reps to spare (a beginner) is not tired, so a streak of increases alone is no reason to back off.
+    public var lighterWeekMaximumRIR = 3.0
+    /// Largest rep target "add a rep" may reach. Past it the engine holds, and says that the next step up is a big jump.
     public var maximumTargetReps = 30
     /// Weight increment per equipment (kg). Falls back to the exercise's keypad step when an entry is missing.
     public var incrementsKg: [Equipment: Double] = [
@@ -161,6 +175,19 @@ public struct CoachConfig: Equatable, Sendable {
     ]
 
     public init() {}
+
+    /// False when a value that guards safety is not a usable number (NaN, infinite, or outside its range). The engine says nothing
+    /// for an invalid configuration instead of quietly dropping a cap: every comparison with NaN is false, so a NaN cap never stops
+    /// anything.
+    public var isValid: Bool {
+        let fractions = [maximumJumpFraction, maximumJumpFractionRestricted, reduceFraction, maximumReduceFraction]
+        guard fractions.allSatisfy({ $0.isFinite && $0 > 0 && $0 <= 1 }) else { return false }
+        guard effortCoverage.isFinite, effortCoverage > 0, effortCoverage <= 1 else { return false }
+        guard comfortableSetShare.isFinite, comfortableSetShare > 0, comfortableSetShare <= 1 else { return false }
+        guard suspectRatio.isFinite, suspectRatio > 1 else { return false }
+        let efforts = [progressMinimumRIR, holdMaximumRIR, lighterWeekMaximumRIR, repsFallTolerance]
+        return efforts.allSatisfy { $0.isFinite && $0 >= 0 }
+    }
 
     /// The weight increment for `exercise`, always positive.
     public func increment(for exercise: Exercise) -> Double {
