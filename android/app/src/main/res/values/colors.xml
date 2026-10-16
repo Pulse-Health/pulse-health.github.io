@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pulse_ground">#F2F2F7</color>
+    <color name="pulse_green">#1B8448</color>
+    <color name="ic_launcher_background">#1B8448</color>
+</resources>
