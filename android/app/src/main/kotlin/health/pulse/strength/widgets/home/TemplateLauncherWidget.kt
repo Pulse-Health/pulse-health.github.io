@@ -51,8 +51,17 @@ internal data class LauncherRow(
     val description: String,
 )
 
-/** Which templates are listed, how many are left out, and whether the caption that explains the filled button fits. */
-internal data class LauncherPlan(val rows: List<LauncherRow>, val hidden: Int, val showCaption: Boolean, val message: String?)
+/**
+ * Which templates are listed, how many are left out, and whether the heading and the caption that explains the filled button fit.
+ * [message] stands in for the rows when there are no templates.
+ */
+internal data class LauncherPlan(
+    val rows: List<LauncherRow>,
+    val hidden: Int,
+    val showHeader: Boolean,
+    val showCaption: Boolean,
+    val message: String?,
+)
 
 internal object LauncherModel {
     const val EmptyWorkoutName = "Empty workout"
@@ -65,7 +74,8 @@ internal object LauncherModel {
     private const val ROW_DP = 56f
     private const val MORE_DP = 28f
     private const val CAPTION_DP = 18f
-    private const val CHROME_DP = 28f + 28f + ROW_DP // padding, heading, the always present "Empty workout" row
+    private const val HEADER_DP = 28f
+    private const val CHROME_DP = 28f + HEADER_DP + ROW_DP // padding, heading, the always present "Empty workout" row
     private const val MAX_TEMPLATES = 6
 
     /** The suggested template first, the others in store order. */
@@ -84,23 +94,34 @@ internal object LauncherModel {
         description = "Start ${template.name}" + if (template.isSuggested) ", next in your rotation" else "",
     )
 
+    /**
+     * The templates that fit [heightDp] after the padding and the "Empty workout" row. The heading goes first when it would leave room for
+     * fewer than two templates; at least one template is always listed. A "more" line counts the ones left out.
+     */
     fun plan(snapshot: WidgetSnapshot, heightDp: Float): LauncherPlan {
         val templates = ordered(snapshot.templates)
-        if (templates.isEmpty()) return LauncherPlan(emptyList(), 0, showCaption = false, message = NextUpModel.EmptyMessage)
-        val room = heightDp - CHROME_DP
-        var shown = HomeLayout.rowsThatFit(room, ROW_DP, max = MAX_TEMPLATES).coerceAtMost(templates.size)
-        if (shown < templates.size) {
-            shown = HomeLayout.rowsThatFit(room, ROW_DP, reserveDp = MORE_DP, max = MAX_TEMPLATES).coerceAtMost(templates.size)
+        if (templates.isEmpty()) {
+            return LauncherPlan(emptyList(), 0, showHeader = true, showCaption = false, message = NextUpModel.EmptyMessage)
         }
-        shown = shown.coerceAtLeast(1)
+        val header = fit(templates.size, heightDp - CHROME_DP) >= minOf(2, templates.size)
+        val room = heightDp - CHROME_DP + (if (header) 0f else HEADER_DP)
+        val shown = fit(templates.size, room).coerceAtLeast(1)
         val hidden = templates.size - shown
         val spare = room - shown * ROW_DP - (if (hidden > 0) MORE_DP else 0f)
         return LauncherPlan(
             rows = templates.take(shown).map(::row),
             hidden = hidden,
+            showHeader = header,
             showCaption = templates.any { it.isSuggested } && hidden == 0 && spare >= CAPTION_DP,
             message = null,
         )
+    }
+
+    /** How many of [total] templates fit [room] dp, leaving space for the "more" line when not all of them do. */
+    private fun fit(total: Int, room: Float): Int {
+        val all = HomeLayout.rowsThatFit(room, ROW_DP, max = MAX_TEMPLATES).coerceAtMost(total)
+        if (all >= total) return all
+        return HomeLayout.rowsThatFit(room, ROW_DP, reserveDp = MORE_DP, max = MAX_TEMPLATES).coerceAtMost(total)
     }
 
     /** The rows are buttons of their own with their own descriptions, so the card only names itself. */
@@ -112,7 +133,9 @@ internal fun TemplateLauncherContent(snapshot: WidgetSnapshot) {
     val plan = LauncherModel.plan(snapshot, LocalSize.current.height.value)
     WidgetCard(padding = 14.dp, description = LauncherModel.description(plan)) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
-            Label("Start a workout", 17.sp, GlanceTheme.colors.onSurface, FontWeight.Bold, GlanceModifier.padding(bottom = 4.dp))
+            if (plan.showHeader) {
+                Label("Start a workout", 17.sp, GlanceTheme.colors.onSurface, FontWeight.Bold, GlanceModifier.padding(bottom = 4.dp))
+            }
             plan.message?.let {
                 Label(it, 14.sp, GlanceTheme.colors.onSurfaceVariant, maxLines = 3, modifier = GlanceModifier.padding(bottom = 8.dp))
             }

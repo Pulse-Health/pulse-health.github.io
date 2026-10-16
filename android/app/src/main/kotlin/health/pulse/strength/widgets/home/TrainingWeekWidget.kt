@@ -123,8 +123,7 @@ internal object TrainingWeekModel {
             action = action,
             message = if (active == null && next == null) NextUpModel.EmptyMessage else null,
             description = "Training week: $progress workouts." +
-                (week.days.mapIndexedNotNull { index, day -> if (day.sessions > 0) HomeText.weekdayName(index) else null }
-                    .takeIf { it.isNotEmpty() }?.let { " Workouts on ${HomeText.list(it)}." } ?: "") +
+                (HomeText.trainedWeekdays(week.days).takeIf { it.isNotEmpty() }?.let { " Workouts on ${HomeText.list(it)}." } ?: "") +
                 (session?.let { " ${it.description}." } ?: "") +
                 (snapshot.latestPR?.let { " Latest record: ${it.exerciseName}, ${HomeText.kilograms(it.weightKg)} for ${it.reps} reps." } ?: ""),
         )

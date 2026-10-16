@@ -197,9 +197,11 @@ private fun CompactNextUp(card: NextUpCard, size: DpSize) {
 
 @Composable
 private fun WideNextUp(card: NextUpCard, size: DpSize) {
-    val leftWidth = ((size.width - 24.dp) * 0.4f).coerceIn(112.dp, 160.dp)
+    val leftWidth = ((size.width - 24.dp) * 0.38f).coerceIn(104.dp, 160.dp)
     val shown = NextUpModel.visibleRows(size.height.value - 16f, card.rows.size)
     val titleLines = if (size.height >= 170.dp) 2 else 1
+    // Title, button and the touch margin of the button take 103 dp: below 124 dp there is no room for the line under the title.
+    val roomForSummary = size.height >= 124.dp
     val roomForPlan = size.height >= 140.dp
     WidgetCard(padding = 12.dp, bottomPadding = if (card.button != null) 4.dp else 12.dp, description = card.wideDescription) {
         Row(modifier = GlanceModifier.fillMaxSize()) {
@@ -207,7 +209,7 @@ private fun WideNextUp(card: NextUpCard, size: DpSize) {
                 Eyebrow(card.eyebrow)
                 Spacer(GlanceModifier.height(2.dp))
                 Label(card.title, 17.sp, GlanceTheme.colors.onSurface, FontWeight.Bold, maxLines = titleLines)
-                card.wideSummary?.let { Label(it, 13.sp, GlanceTheme.colors.onSurfaceVariant) }
+                if (roomForSummary) card.wideSummary?.let { Label(it, 13.sp, GlanceTheme.colors.onSurfaceVariant) }
                 if (roomForPlan) card.planLine?.let { Label(it, 13.sp, GlanceTheme.colors.onSurfaceVariant) }
                 Spacer(GlanceModifier.defaultWeight())
                 card.button?.let { StartButton(it) }

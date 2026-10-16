@@ -87,7 +87,7 @@ internal object WeeklyGoalModel {
 
     /** "3 of 4 workouts this week, 6 week streak. Workouts on Monday, Tuesday and Wednesday." */
     fun description(week: WeekSummary): String {
-        val days = week.days.mapIndexedNotNull { index, day -> if (day.sessions > 0) HomeText.weekdayName(index) else null }
+        val days = HomeText.trainedWeekdays(week.days)
         return "${week.completed} of ${week.goal} workouts this week" +
             (if (week.streakWeeks > 0) ", ${week.streakWeeks} week streak" else "") + "." +
             (if (days.isEmpty()) "" else " Workouts on ${HomeText.list(days)}.")

@@ -1,5 +1,6 @@
 package health.pulse.strength.widgets.home
 
+import health.pulse.strength.core.widgets.DayCell
 import health.pulse.strength.core.widgets.WidgetSnapshot
 import java.time.DateTimeException
 import java.time.DayOfWeek
@@ -50,16 +51,8 @@ internal object HomeText {
         return (if (value > 0) "+" else "−") + kg(abs(value))
     }
 
-    /** "Never", "Today", "Yesterday", "5 days ago". */
-    fun daysAgo(days: Int?): String = when {
-        days == null -> "Never"
-        days <= 0 -> "Today"
-        days == 1 -> "Yesterday"
-        else -> "$days days ago"
-    }
-
-    /** "5d" ("–" for none). */
-    fun daysShort(days: Int?): String = if (days == null) "–" else "${maxOf(0, days)}d"
+    /** "5d". */
+    fun daysShort(days: Int): String = "${maxOf(0, days)}d"
 
     /** "~55 min". */
     fun minutes(minutes: Int): String = "~$minutes min"
@@ -93,6 +86,10 @@ internal object HomeText {
     /** Full English weekday for a Monday-first index 0...6. */
     fun weekdayName(mondayFirstIndex: Int): String =
         DayOfWeek.of(mondayFirstIndex.coerceIn(0, 6) + 1).getDisplayName(TextStyle.FULL, Locale.ENGLISH)
+
+    /** The names of the days of a Monday-first week on which a workout was finished: "Monday", "Tuesday". */
+    fun trainedWeekdays(days: List<DayCell>): List<String> =
+        days.mapIndexedNotNull { index, day -> if (day.sessions > 0) weekdayName(index) else null }
 }
 
 /** Calendar maths in the snapshot's time zone (widgets/SPEC.md section 2: "calendar days between" counts local midnights). */

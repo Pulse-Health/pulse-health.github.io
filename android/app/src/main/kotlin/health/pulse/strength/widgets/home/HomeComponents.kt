@@ -220,29 +220,6 @@ internal fun PillButton(
     }
 }
 
-/** A round button with a glyph; the circle is the [HomeLayout.TouchTarget] sized click target. */
-@Composable
-internal fun RoundIconButton(
-    @DrawableRes icon: Int,
-    description: String,
-    action: Action,
-    container: ColorProvider,
-    tint: ColorProvider,
-    iconSize: Dp = 14.dp,
-) {
-    Box(
-        modifier = GlanceModifier
-            .size(HomeLayout.TouchTarget)
-            .background(container)
-            .cornerRadius(HomeLayout.TouchTarget / 2)
-            .clickable(action)
-            .describe(description),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(icon, tint, iconSize)
-    }
-}
-
 /** A rounded square with a glyph (the icon tile of the dark card). */
 @Composable
 internal fun IconBadge(@DrawableRes icon: Int, container: ColorProvider, tint: ColorProvider, size: Dp = 30.dp, radius: Dp = 8.dp, iconSize: Dp = 17.dp) {

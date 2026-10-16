@@ -46,14 +46,17 @@ class HomeTextTest {
     }
 
     @Test
-    fun relativeDays() {
-        assertThat(HomeText.daysAgo(null)).isEqualTo("Never")
-        assertThat(HomeText.daysAgo(0)).isEqualTo("Today")
-        assertThat(HomeText.daysAgo(1)).isEqualTo("Yesterday")
-        assertThat(HomeText.daysAgo(5)).isEqualTo("5 days ago")
-        assertThat(HomeText.daysShort(null)).isEqualTo("–")
+    fun shortDayCounts() {
         assertThat(HomeText.daysShort(5)).isEqualTo("5d")
+        assertThat(HomeText.daysShort(0)).isEqualTo("0d")
         assertThat(HomeText.daysShort(-2)).isEqualTo("0d")
+    }
+
+    @Test
+    fun trainedWeekdaysAreNamedInWeekOrder() {
+        val week = HomeFixtures.preview.week
+        assertThat(HomeText.trainedWeekdays(week.days)).containsExactly("Monday", "Tuesday", "Wednesday").inOrder()
+        assertThat(HomeText.trainedWeekdays(HomeFixtures.empty.week.days)).isEmpty()
     }
 
     @Test

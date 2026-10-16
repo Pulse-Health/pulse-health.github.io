@@ -50,9 +50,11 @@ internal data class MonthGrid(val title: String, val sessions: Int, val weeks: L
 
 internal object MonthModel {
     val Weekdays = listOf("M", "T", "W", "T", "F", "S", "S")
-    private const val CHROME_DP = 28f + 28f + 14f + 22f + 6f
-    private const val MIN_CELL_DP = 20f
+    private const val CHROME_DP = 28f + 28f + 14f + 6f // padding, heading, weekday letters, slack
+    private const val LEGEND_DP = 22f
+    private const val MIN_CELL_DP = 16f
     private const val MAX_CELL_DP = 40f
+    private const val CENTRED_BELOW_DP = 24f
 
     /** Blank cells for the weekdays before the 1st (Monday first), then the days, padded to whole weeks. */
     fun grid(month: MonthSummary): MonthGrid {
@@ -74,15 +76,25 @@ internal object MonthModel {
         )
     }
 
+    /** The legend needs 22 dp; a short widget gives them to the grid. */
+    fun showLegend(heightDp: Float): Boolean = heightDp >= 200f
+
     /** The height of a week row: what is left of [heightDp] after the padding, the heading, the weekday letters and the legend. */
-    fun cellHeight(heightDp: Float, weeks: Int): Float =
-        ((heightDp - CHROME_DP) / weeks.coerceAtLeast(1)).coerceIn(MIN_CELL_DP, MAX_CELL_DP)
+    fun cellHeight(heightDp: Float, weeks: Int, legend: Boolean): Float =
+        ((heightDp - CHROME_DP - (if (legend) LEGEND_DP else 0f)) / weeks.coerceAtLeast(1)).coerceIn(MIN_CELL_DP, MAX_CELL_DP)
+
+    /** A small cell has no room for the number in its corner: it sits in the middle. */
+    fun centredNumbers(cellDp: Float): Boolean = cellDp < CENTRED_BELOW_DP
 }
 
 @Composable
 internal fun MonthHeatmapContent(snapshot: WidgetSnapshot) {
     val grid = MonthModel.grid(snapshot.month)
-    val cellHeight = MonthModel.cellHeight(LocalSize.current.height.value, grid.weeks.size).dp
+    val height = LocalSize.current.height.value
+    val legend = MonthModel.showLegend(height)
+    val cellDp = MonthModel.cellHeight(height, grid.weeks.size, legend)
+    val cellHeight = cellDp.dp
+    val centred = MonthModel.centredNumbers(cellDp)
     WidgetCard(padding = 14.dp, description = grid.description) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
             Row(modifier = GlanceModifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -98,38 +110,42 @@ internal fun MonthHeatmapContent(snapshot: WidgetSnapshot) {
             Column(modifier = GlanceModifier.fillMaxWidth()) {
                 grid.weeks.forEach { week ->
                     Row(modifier = GlanceModifier.fillMaxWidth().height(cellHeight)) {
-                        week.forEach { cell -> DayBox(cell, GlanceModifier.defaultWeight().fillMaxHeight()) }
+                        week.forEach { cell -> DayBox(cell, GlanceModifier.defaultWeight().fillMaxHeight(), centred) }
                     }
                 }
             }
-            Spacer(GlanceModifier.defaultWeight())
-            Legend()
+            if (legend) {
+                Spacer(GlanceModifier.defaultWeight())
+                Legend()
+            }
         }
     }
 }
 
 /** One square: transparent gap around it, the level colour inside, a ring for today. */
 @Composable
-private fun DayBox(cell: MonthCell, modifier: GlanceModifier) {
+private fun DayBox(cell: MonthCell, modifier: GlanceModifier, centred: Boolean) {
     Box(modifier = modifier.padding(2.dp)) {
         if (cell.day == null) return@Box
         if (cell.isToday) {
-            Box(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.onSurface).cornerRadius(8.dp).padding(2.dp)) {
-                DayFill(cell, 6.dp)
+            val ring = if (centred) 1.5.dp else 2.dp
+            Box(modifier = GlanceModifier.fillMaxSize().background(GlanceTheme.colors.onSurface).cornerRadius(8.dp).padding(ring)) {
+                DayFill(cell, 6.dp, centred)
             }
         } else {
-            DayFill(cell, 8.dp)
+            DayFill(cell, 8.dp, centred)
         }
     }
 }
 
 @Composable
-private fun DayFill(cell: MonthCell, radius: Dp) {
+private fun DayFill(cell: MonthCell, radius: Dp, centred: Boolean) {
     val day = cell.day ?: return
     val base = GlanceModifier.fillMaxSize()
     val shaped = if (cell.isFuture) base else base.background(HomeColors.heatFill(cell.level)).cornerRadius(radius)
     val ink = if (cell.isFuture) GlanceTheme.colors.onSurfaceVariant else HomeColors.heatInk(cell.level)
-    Box(modifier = shaped.padding(top = 2.dp, end = 4.dp), contentAlignment = Alignment.TopEnd) {
+    val placed = if (centred) shaped else shaped.padding(top = 2.dp, end = 4.dp)
+    Box(modifier = placed, contentAlignment = if (centred) Alignment.Center else Alignment.TopEnd) {
         Label(day.toString(), 10.sp, ink, if (cell.trained) FontWeight.Bold else FontWeight.Normal, align = TextAlign.End)
     }
 }

@@ -27,8 +27,12 @@ class WeeklyGoalModelTest {
     }
 
     @Test
-    fun theDescriptionNamesTheStreakOnlyWhenThereIsOne() {
-        assertThat(WeeklyGoalModel.description(3, 4, 6)).isEqualTo("3 of 4 workouts this week, 6 week streak")
-        assertThat(WeeklyGoalModel.description(3, 4, 0)).isEqualTo("3 of 4 workouts this week")
+    fun theDescriptionNamesTheStreakOnlyWhenThereIsOneAndTheDaysTrained() {
+        val week = HomeFixtures.preview.week
+        assertThat(WeeklyGoalModel.description(week))
+            .isEqualTo("3 of 4 workouts this week, 6 week streak. Workouts on Monday, Tuesday and Wednesday.")
+        assertThat(WeeklyGoalModel.description(week.copy(streakWeeks = 0)))
+            .isEqualTo("3 of 4 workouts this week. Workouts on Monday, Tuesday and Wednesday.")
+        assertThat(WeeklyGoalModel.description(HomeFixtures.empty.week)).isEqualTo("0 of 4 workouts this week.")
     }
 }

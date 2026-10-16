@@ -69,10 +69,20 @@ class MonthAndBlockModelsTest {
 
     @Test
     fun theWeekRowsShareTheHeightThatIsLeftWithinLimits() {
-        assertThat(MonthModel.cellHeight(320f, 5)).isEqualTo(40f)
-        assertThat(MonthModel.cellHeight(320f, 6)).isWithin(0.01f).of((320f - 98f) / 6f)
-        assertThat(MonthModel.cellHeight(180f, 6)).isEqualTo(20f)
-        assertThat(MonthModel.cellHeight(250f, 6)).isWithin(0.01f).of((250f - 98f) / 6f)
+        assertThat(MonthModel.cellHeight(320f, 5, legend = true)).isEqualTo(40f)
+        assertThat(MonthModel.cellHeight(320f, 6, legend = true)).isWithin(0.01f).of((320f - 98f) / 6f)
+        assertThat(MonthModel.cellHeight(250f, 6, legend = true)).isWithin(0.01f).of((250f - 98f) / 6f)
+        // Without the legend the grid gets its 22 dp.
+        assertThat(MonthModel.cellHeight(180f, 6, legend = false)).isWithin(0.01f).of((180f - 76f) / 6f)
+        assertThat(MonthModel.cellHeight(100f, 6, legend = false)).isEqualTo(16f)
+    }
+
+    @Test
+    fun aShortWidgetLeavesOutTheLegendAndSmallCellsCentreTheirNumber() {
+        assertThat(MonthModel.showLegend(199f)).isFalse()
+        assertThat(MonthModel.showLegend(200f)).isTrue()
+        assertThat(MonthModel.centredNumbers(17f)).isTrue()
+        assertThat(MonthModel.centredNumbers(24f)).isFalse()
     }
 
     @Test

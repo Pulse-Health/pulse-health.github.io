@@ -9,7 +9,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.AppWidgetId
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
@@ -56,8 +56,7 @@ class LiftTrendConfigActivityTest {
     }
 
     private fun storedLift(widgetId: Int): String? = runBlocking {
-        val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(widgetId)
-        getAppWidgetState(context, PreferencesGlanceStateDefinition, glanceId)[LiftTrendWidget.LiftKey]
+        getAppWidgetState(context, PreferencesGlanceStateDefinition, AppWidgetId(widgetId))[LiftTrendWidget.LiftKey]
     }
 
     @Test
@@ -93,10 +92,7 @@ class LiftTrendConfigActivityTest {
 
     @Test
     fun reconfiguringMarksTheLiftThatIsShownNow() {
-        runBlocking {
-            val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(44)
-            updateAppWidgetState(context, glanceId) { it[LiftTrendWidget.LiftKey] = "squat" }
-        }
+        runBlocking { updateAppWidgetState(context, AppWidgetId(44)) { it[LiftTrendWidget.LiftKey] = "squat" } }
         launch(widgetId = 44).use {
             compose.onNode(hasText("Back Squat") and hasContentDescription("Selected")).assertExists()
             compose.onNode(hasText("Bench Press") and hasContentDescription("Selected")).assertDoesNotExist()

@@ -3,13 +3,15 @@ package health.pulse.strength.widgets.home
 import android.content.Context
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.datastore.preferences.core.preferencesOf
 import androidx.glance.GlanceTheme
 import androidx.glance.appwidget.testing.unit.GlanceAppWidgetUnitTest
+import androidx.glance.appwidget.testing.unit.assertHasStartActivityClickAction
 import androidx.glance.appwidget.testing.unit.runGlanceAppWidgetUnitTest
 import androidx.glance.testing.GlanceNodeMatcher
 import androidx.glance.testing.unit.MappedNode
-import androidx.glance.testing.unit.assertHasStartActivityClickAction
 import androidx.glance.testing.unit.hasContentDescriptionEqualTo
+import androidx.glance.testing.unit.hasText
 import androidx.test.core.app.ApplicationProvider
 import health.pulse.strength.core.widgets.DeepLinks
 import health.pulse.strength.core.widgets.WidgetSnapshot
@@ -67,7 +69,7 @@ class GlanceTreeTest {
     @Test
     fun theCardsOpenTheAppOnTheLinkOfTheirSubject() {
         run("weekly-goal", 160, 160, preview) {
-            assertOpens("3 of 4 workouts this week, 6 week streak", DeepLinks.hub)
+            assertOpens("3 of 4 workouts this week, 6 week streak. Workouts on Monday, Tuesday and Wednesday.", DeepLinks.hub)
         }
         run("pr-spotlight", 160, 160, preview) {
             assertOpens(
@@ -83,7 +85,8 @@ class GlanceTreeTest {
         }
         run("lift-trend", 320, 150, preview) {
             assertOpens(
-                "Bench Press: estimated one-rep max 96 kilograms, down 3 kilograms since the last session, personal record 99 kilograms",
+                "Bench Press: estimated one-rep max 96 kilograms, down 3 kilograms since the last session, personal record 99 kilograms. " +
+                    "Last 3 sessions: 93, 99, 96 kilograms",
                 DeepLinks.exercise("bench"),
             )
         }
@@ -104,6 +107,27 @@ class GlanceTreeTest {
         val running = preview.copy(active = HomeFixtures.runningWorkout())
         run("next-up", 160, 160, running) { assertOpens("Resume Upper A · Push", DeepLinks.workout) }
         run("training-week", 320, 320, running) { assertOpens("Resume Upper A · Push", DeepLinks.workout) }
+    }
+
+    @Test
+    fun theLiftTrendWidgetReadsItsLiftFromTheStateOfItsWidgetId() {
+        val size = DpSize(320.dp, 150.dp)
+        runGlanceAppWidgetUnitTest {
+            setContext(context)
+            setAppWidgetSize(size)
+            setState(preferencesOf(LiftTrendWidget.LiftKey to "squat"))
+            provideComposable { GlanceTheme(colors = PulseColors.colors) { LiftTrendWidget().Content(preview) } }
+            onNode(hasText("Back Squat")).assertExists()
+            onNode(hasText("Bench Press")).assertDoesNotExist()
+        }
+        runGlanceAppWidgetUnitTest {
+            setContext(context)
+            setAppWidgetSize(size)
+            setState(preferencesOf())
+            provideComposable { GlanceTheme(colors = PulseColors.colors) { LiftTrendWidget().Content(preview) } }
+            // A widget whose lift was never chosen shows the first one.
+            onNode(hasText("Bench Press")).assertExists()
+        }
     }
 
     @Test

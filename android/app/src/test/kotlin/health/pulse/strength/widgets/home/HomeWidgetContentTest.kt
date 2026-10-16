@@ -53,6 +53,11 @@ class HomeWidgetContentTest {
         val rendered = render("next-up", 110, 110, preview)
         rendered.assertShows("NEXT UP", "Upper A · Push", "Start")
         rendered.assertHides("6 exercises · ~55 min")
+        // The same on the smallest 4x2: the button is the point of the widget, the line under the title is not.
+        val wide = render("next-up", 250, 110, preview)
+        wide.assertShows("NEXT UP", "Upper A · Push", "Start", "Bench Press")
+        wide.assertHides("Done 5 days ago", "Upper / Lower · workout 1 of 3")
+        assertThat(wide.descriptions).contains("Start Upper A · Push")
     }
 
     @Test
@@ -83,7 +88,7 @@ class HomeWidgetContentTest {
         val rendered = render("weekly-goal", 160, 160, preview)
         assertThat(rendered.texts).containsExactly("3/4", "this week", "M", "T", "W", "T", "F", "S", "S").inOrder()
         assertThat(rendered.descriptions).contains("3 of 4 workouts this week")
-        assertThat(rendered.descriptions).contains("3 of 4 workouts this week, 6 week streak")
+        assertThat(rendered.descriptions).contains("3 of 4 workouts this week, 6 week streak. Workouts on Monday, Tuesday and Wednesday.")
     }
 
     @Test
@@ -231,9 +236,12 @@ class HomeWidgetContentTest {
 
     @Test
     fun templateLauncherNamesTheTemplatesThatDoNotFit() = runTest {
+        // The heading gives way so that two templates fit; the third is counted.
         val rendered = render("template-launcher", 250, 250, preview)
-        rendered.assertShows("Upper A · Push", "Empty workout")
-        assertThat(rendered.texts.any { it.startsWith("+ ") && it.endsWith(" more in Pulse Strength") }).isTrue()
+        rendered.assertShows("Upper A · Push", "Lower A · Quads", "Empty workout", "+ 1 more in Pulse Strength")
+        rendered.assertHides("Start a workout", "Upper B · Pull")
+        val smallest = render("template-launcher", 250, 180, preview)
+        smallest.assertShows("Upper A · Push", "+ 2 more in Pulse Strength", "Empty workout")
     }
 
     @Test
@@ -252,6 +260,10 @@ class HomeWidgetContentTest {
         val none = render("month-heatmap", 320, 320, empty)
         none.assertShows("October", "0")
         assertThat(none.descriptions.first()).isEqualTo("October: 0 sessions. No training days yet.")
+        // A short widget gives the legend's room to the grid.
+        val short = render("month-heatmap", 250, 180, preview)
+        short.assertShows("October", "31")
+        short.assertHides("Volume", "more")
     }
 
     @Test

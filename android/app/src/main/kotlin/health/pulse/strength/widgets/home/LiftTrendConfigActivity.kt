@@ -30,7 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.glance.appwidget.GlanceAppWidgetManager
+import androidx.glance.appwidget.AppWidgetId
 import androidx.glance.appwidget.state.getAppWidgetState
 import androidx.glance.appwidget.state.updateAppWidgetState
 import androidx.glance.state.PreferencesGlanceStateDefinition
@@ -71,15 +71,13 @@ class LiftTrendConfigActivity : ComponentActivity() {
 
     private fun resultIntent() = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
 
-    private suspend fun storedChoice(): String? {
-        val glanceId = GlanceAppWidgetManager(this).getGlanceIdBy(appWidgetId)
-        return getAppWidgetState(this, PreferencesGlanceStateDefinition, glanceId)[LiftTrendWidget.LiftKey]
-    }
+    private suspend fun storedChoice(): String? =
+        getAppWidgetState(this, PreferencesGlanceStateDefinition, AppWidgetId(appWidgetId))[LiftTrendWidget.LiftKey]
 
     /** Stores [exerciseId] for this widget (nothing when there are no lifts yet), draws the widget once, and reports success to the launcher. */
     private fun finishWith(exerciseId: String?) {
         lifecycleScope.launch {
-            val glanceId = GlanceAppWidgetManager(this@LiftTrendConfigActivity).getGlanceIdBy(appWidgetId)
+            val glanceId = AppWidgetId(appWidgetId)
             if (exerciseId != null) {
                 updateAppWidgetState(this@LiftTrendConfigActivity, glanceId) { it[LiftTrendWidget.LiftKey] = exerciseId }
             }

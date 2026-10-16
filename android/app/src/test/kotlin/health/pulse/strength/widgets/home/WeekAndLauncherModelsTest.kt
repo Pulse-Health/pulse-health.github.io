@@ -75,8 +75,8 @@ class WeekAndLauncherModelsTest {
     @Test
     fun theWholeCardReadsAsOneSentenceForAScreenReader() {
         assertThat(TrainingWeekModel.card(preview).description).isEqualTo(
-            "Training week: 3 of 4 workouts. Last session: Upper B · Pull, Wed, 51 minutes, 18 sets, 8.4 t. " +
-                "Latest record: Bench Press, 85 kilograms for 5 reps.",
+            "Training week: 3 of 4 workouts. Workouts on Monday, Tuesday and Wednesday. " +
+                "Last session: Upper B · Pull, Wed, 51 minutes, 18 sets, 8.4 t. Latest record: Bench Press, 85 kilograms for 5 reps.",
         )
         assertThat(TrainingWeekModel.card(empty).description).isEqualTo("Training week: 0 of 4 workouts.")
     }
@@ -131,16 +131,24 @@ class WeekAndLauncherModelsTest {
         val plan = LauncherModel.plan(preview, 320f)
         assertThat(plan.rows.map { it.name }).containsExactly("Upper A · Push", "Lower A · Quads", "Upper B · Pull").inOrder()
         assertThat(plan.hidden).isEqualTo(0)
+        assertThat(plan.showHeader).isTrue()
         assertThat(plan.showCaption).isTrue()
         assertThat(plan.message).isNull()
     }
 
     @Test
-    fun theTemplatesThatDoNotFitAreCountedNotCutOffSilently() {
+    fun theHeadingGoesBeforeTemplatesDoAndTheOnesLeftOutAreCounted() {
+        // At 250 dp the heading would leave room for one template only: it gives way, two templates and a "+ 1 more" line fit.
         val plan = LauncherModel.plan(preview, 250f)
-        assertThat(plan.rows.map { it.name }).containsExactly("Upper A · Push")
-        assertThat(plan.hidden).isEqualTo(2)
+        assertThat(plan.rows.map { it.name }).containsExactly("Upper A · Push", "Lower A · Quads").inOrder()
+        assertThat(plan.hidden).isEqualTo(1)
+        assertThat(plan.showHeader).isFalse()
         assertThat(plan.showCaption).isFalse()
+        // At 180 dp (the smallest the widget can be resized to) the suggested template, the "more" line and the empty workout fit.
+        val smallest = LauncherModel.plan(preview, 180f)
+        assertThat(smallest.rows.map { it.name }).containsExactly("Upper A · Push")
+        assertThat(smallest.hidden).isEqualTo(2)
+        assertThat(smallest.showHeader).isFalse()
         // Never fewer than the suggested template, however short the widget.
         assertThat(LauncherModel.plan(preview, 100f).rows).hasSize(1)
     }
@@ -163,15 +171,14 @@ class WeekAndLauncherModelsTest {
         val plan = LauncherModel.plan(empty, 320f)
         assertThat(plan.rows).isEmpty()
         assertThat(plan.message).isEqualTo("Open Pulse Strength to create a workout")
+        assertThat(plan.showHeader).isTrue()
         assertThat(plan.showCaption).isFalse()
         assertThat(LauncherModel.description(plan)).isEqualTo("Start a workout. Open Pulse Strength to create a workout")
     }
 
     @Test
-    fun theWholeLauncherReadsAsOneSentence() {
-        assertThat(LauncherModel.description(LauncherModel.plan(preview, 320f))).isEqualTo(
-            "Start a workout. Start Upper A · Push, next in your rotation. Start Lower A · Quads. Start Upper B · Pull",
-        )
+    fun theCardOnlyNamesItselfBecauseTheRowsAreButtonsOfTheirOwn() {
+        assertThat(LauncherModel.description(LauncherModel.plan(preview, 320f))).isEqualTo("Start a workout")
     }
 
     @Test

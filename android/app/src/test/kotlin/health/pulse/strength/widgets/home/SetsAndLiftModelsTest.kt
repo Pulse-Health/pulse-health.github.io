@@ -85,7 +85,8 @@ class SetsAndLiftModelsTest {
         assertThat(card.firstLabel).isEqualTo("10d")
         assertThat(card.lastLabel).isEqualTo("today")
         assertThat(card.description).isEqualTo(
-            "Bench Press: estimated one-rep max 96 kilograms, down 3 kilograms since the last session, personal record 99 kilograms",
+            "Bench Press: estimated one-rep max 96 kilograms, down 3 kilograms since the last session, personal record 99 kilograms. " +
+                "Last 3 sessions: 93, 99, 96 kilograms",
         )
         assertThat(card.chartDescription).isEqualTo("Estimated one-rep max over the last 3 sessions: 93, 99, 96 kilograms")
     }

@@ -20,6 +20,10 @@ class NextUpModelTest {
         assertThat(card.rows).hasSize(6)
         assertThat(card.rows.first()).isEqualTo(NextUpRow("Bench Press", "3 × 85"))
         assertThat(card.description).isEqualTo("Next up: Upper A · Push, 6 exercises · ~55 min")
+        // The wide card previews the exercises, so a screen reader gets them too.
+        assertThat(card.wideDescription).startsWith(
+            "Next up: Upper A · Push, 6 exercises · ~55 min. Upper / Lower · workout 1 of 3. Exercises: Bench Press 3 × 85; Incline Dumbbell Press 3 × 28;",
+        )
     }
 
     @Test
