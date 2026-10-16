@@ -30,6 +30,16 @@ final class WidgetStoreTests: XCTestCase {
         XCTAssertTrue(try inbox.drain(now: now).isEmpty)
     }
 
+    func testInboxCarriesDeepLinks() throws {
+        let inbox = WidgetCommandInbox(directory: temporaryDirectory())
+        let id = UUID()
+        try inbox.append(PendingWidgetCommand(deepLink: .start(templateID: id)))
+        let drained = try inbox.drain()
+        XCTAssertEqual(drained.count, 1)
+        XCTAssertNil(drained[0].action)
+        XCTAssertEqual(drained[0].link, .start(templateID: id))
+    }
+
     func testInboxCapsItsSize() throws {
         let inbox = WidgetCommandInbox(directory: temporaryDirectory())
         let now = Date()

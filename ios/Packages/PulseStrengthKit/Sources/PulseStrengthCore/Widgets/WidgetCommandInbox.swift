@@ -1,17 +1,33 @@
 import Foundation
 
-/// A command a widget, control or Watch widget asked for from a process that does not own the workout.
+/// A request a widget, control or Watch widget left for the app: either a workout action to apply or a deep link to open (for example
+/// "start the next workout", which the app, not the extension, can do). Exactly one of `action` and `deepLink` is set.
 public struct PendingWidgetCommand: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
-    public var action: WorkoutAction
+    public var action: WorkoutAction?
+    /// The absolute string of a `StrengthDeepLink` url.
+    public var deepLink: String?
     public var origin: ActionOrigin
     public var issuedAt: Date
 
-    public init(id: UUID = UUID(), action: WorkoutAction, origin: ActionOrigin = .liveActivity, issuedAt: Date = Date()) {
+    public init(
+        id: UUID = UUID(),
+        action: WorkoutAction? = nil,
+        deepLink: StrengthDeepLink? = nil,
+        origin: ActionOrigin = .liveActivity,
+        issuedAt: Date = Date()
+    ) {
         self.id = id
         self.action = action
+        self.deepLink = deepLink?.url.absoluteString
         self.origin = origin
         self.issuedAt = issuedAt
+    }
+
+    /// The parsed deep link, nil when none was left or it does not parse.
+    public var link: StrengthDeepLink? {
+        guard let deepLink, let url = URL(string: deepLink) else { return nil }
+        return StrengthDeepLink(url: url)
     }
 }
 

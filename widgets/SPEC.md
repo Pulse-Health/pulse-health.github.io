@@ -209,6 +209,8 @@ crossed (so 23:50 yesterday is 1 day ago); a date in the future counts as 0. A w
 
 ### Live moments (`SnapshotBuilder`, inside `WorkoutSnapshot`)
 
+* API the app uses (implemented in `Widgets/SnapshotBuilder+Moments.swift`): `SnapshotBuilder.prMoment(from: old, to: new, now:, lifetime: 4) -> PRMoment?` (non-nil when the change logged a
+  personal-record set, by the presenter's rule) and `SnapshotBuilder.finishBrief(from: completed, savedToHealth:) -> FinishBrief`.
 * `exerciseDoneSets` / `exerciseSetCount`: of the shown exercise. `superset`: when the shown exercise has a group: `label`, `round` = (done sets of the first member) + 1
   capped at `rounds` = set count of the first member, members tagged `A1`, `A2` ..., `detail` = "<weight text> × <reps>" of each member's next pending set (or its last
   set when finished), `isDone` = that member's set of this round is logged, `isCurrent` = it is the shown one. `plates`: the target set belongs to a barbell weight
@@ -255,7 +257,9 @@ Both platforms route them to the same engine actions (iOS `WorkoutAction`, Andro
 `finish` is never implied).
 
 iOS: a command from a widget or control runs through `WorkoutCommandBus` when the app process executes the intent, otherwise (extension process) it is
-appended to the App Group command inbox (`pending-commands.json`) and the app drains it on a Darwin notification, at launch and when it becomes active.
+appended to the App Group command inbox (`pending-commands.json`) and the app drains it on a Darwin notification, at launch and when it becomes active
+(`WidgetIntentDispatch.send`). An intent that must open the app (start a workout, plate calculator) calls `WidgetIntentDispatch.openApp(link)` and has
+`openAppWhenRun = true`: the inbox then carries a deep link instead of an action, which the app handles like an opened URL.
 
 ## 6. Files and ownership (so parallel work merges cleanly)
 

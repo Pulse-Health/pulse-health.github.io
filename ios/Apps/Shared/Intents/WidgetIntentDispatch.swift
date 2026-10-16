@@ -24,9 +24,19 @@ enum WidgetIntentDispatch {
             await WorkoutCommandBus.shared.perform(action, origin: origin)
             return
         }
+        leave(PendingWidgetCommand(action: action, origin: origin))
+    }
+
+    /// Asks the app to open `link` (start the next workout, open the plate calculator ...). Used by intents with `openAppWhenRun = true`:
+    /// the app comes to the foreground, drains the inbox and handles the link as if it had been opened by URL.
+    static func openApp(_ link: StrengthDeepLink, origin: ActionOrigin = .liveActivity) {
+        leave(PendingWidgetCommand(deepLink: link, origin: origin))
+    }
+
+    private static func leave(_ command: PendingWidgetCommand) {
         guard let inbox = WidgetCommandInbox.shared() else { return }
         do {
-            try inbox.append(PendingWidgetCommand(action: action, origin: origin))
+            try inbox.append(command)
         } catch {
             return
         }
