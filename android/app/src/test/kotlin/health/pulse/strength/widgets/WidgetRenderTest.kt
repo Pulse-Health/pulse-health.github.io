@@ -56,7 +56,7 @@ import org.robolectric.annotation.Config
 
 /**
  * Composes every lock-screen and extras widget the way the launcher receives it (a `RemoteViews`), inflates it, draws it into
- * `build/widgets/<light|dark>/<widget>-<state>-<size>.png` and checks the rules that hold for all of them: something is drawn, every
+ * `build/screens/widgets-extras/<light|dark>/<widget>-<state>-<size>.png` and checks the rules that hold for all of them: something is drawn, every
  * image has a description of its own or inside the card it belongs to, and every tap target is at least 48 dp. Nothing has run on a launcher;
  * this is the closest the JVM gets.
  */
@@ -159,7 +159,7 @@ class WidgetRenderTest {
     }
 
     private fun save(bitmap: Bitmap, mode: String, name: String) {
-        val file = File("build/widgets/$mode/$name.png")
+        val file = File("build/screens/widgets-extras/$mode/$name.png")
         file.parentFile?.mkdirs()
         FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
