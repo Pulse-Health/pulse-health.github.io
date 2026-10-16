@@ -15,8 +15,10 @@ class StrengthStore(
     persistence: FileStrengthPersistence?,
     seedDemoData: Boolean = false,
     now: Instant = Instant.now(),
+    /** See [StrengthData.usesLibraryHistory]; a real install passes false. */
+    usesLibraryHistory: Boolean = true,
 ) {
-    private val model = StrengthDataModel(persistence, seedDemoData, now)
+    private val model = StrengthDataModel(persistence, seedDemoData, now, usesLibraryHistory)
     private val mutableData = MutableStateFlow(model.data)
 
     /** Everything remembered between workouts; emits when it changes. */

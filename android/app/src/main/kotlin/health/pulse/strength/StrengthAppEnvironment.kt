@@ -1,8 +1,8 @@
 package health.pulse.strength
 
 import android.content.Context
-import health.pulse.strength.core.DemoRecovery
 import health.pulse.strength.core.FileStrengthPersistence
+import health.pulse.strength.core.RecoveryModel
 import health.pulse.strength.core.RecoveryProvider
 import health.pulse.strength.core.StrengthStore
 import health.pulse.strength.core.WorkoutController
@@ -40,11 +40,15 @@ class StrengthAppEnvironment private constructor(
     }
 
     companion object {
-        /** Builds the environment of the running app and restores a workout that was running when the process last ended. */
-        fun live(context: Context, recovery: RecoveryProvider = DemoRecovery.provider): StrengthAppEnvironment {
+        /**
+         * Builds the environment of the running app. A real install starts empty: no demo templates or history, no invented "previous"
+         * results on the library exercises, and recovery percentages worked out from the user's own finished workouts.
+         */
+        fun live(context: Context, recovery: ((StrengthStore) -> RecoveryProvider)? = null): StrengthAppEnvironment {
             val persistence = FileStrengthPersistence(File(context.applicationContext.filesDir, "PulseStrength"))
-            val store = StrengthStore(persistence, seedDemoData = false)
-            val controller = WorkoutController(store, persistence, recovery)
+            val store = StrengthStore(persistence, seedDemoData = false, usesLibraryHistory = false)
+            val provider = recovery?.invoke(store) ?: RecoveryModel({ store.history }).provider
+            val controller = WorkoutController(store, persistence, provider)
             val services = PulseServices(context.applicationContext, controller)
             return StrengthAppEnvironment(persistence, store, controller, services)
         }

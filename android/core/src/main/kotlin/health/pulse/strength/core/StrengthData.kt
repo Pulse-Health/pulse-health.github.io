@@ -20,6 +20,12 @@ data class StrengthData(
     val customExercises: List<Exercise> = emptyList(),
     /** Best estimated 1RM per exercise id. */
     val personalBests: Map<String, PersonalBest> = emptyMap(),
+    /**
+     * Whether the built-in library's own "previous best" and "previous sets" (the design's demo values) are shown for exercises the
+     * user has no results for. A real install turns this off: it must not show numbers from someone else's training, nor flag a
+     * personal record against an invented best. Results from the user's own history are always used.
+     */
+    val usesLibraryHistory: Boolean = true,
 ) {
     /** True when there are neither templates nor finished workouts (the condition for seeding demo data). */
     val isEmpty: Boolean get() = templates.isEmpty() && history.isEmpty()
@@ -42,16 +48,20 @@ data class StrengthData(
 
     /** One exercise (built-in first, then custom) with the remembered results overlaid; null for an unknown id. */
     fun exercise(id: String): Exercise? {
-        val base = ExerciseLibrary.exercise(id) ?: customExercises.firstOrNull { it.id == id } ?: return null
+        val base = ExerciseLibrary.exercise(id)?.let { library(it) } ?: customExercises.firstOrNull { it.id == id } ?: return null
         return overlay(base, exerciseMemory(only = id))
     }
 
     /** [exercise] with the remembered best e1RM and last sets of the same exercise id applied (anything remembered wins). */
     fun overlay(exercise: Exercise): Exercise = overlay(exercise, exerciseMemory(only = exercise.id))
 
+    /** A built-in exercise as this data shows it before the user's own results are applied. */
+    private fun library(exercise: Exercise): Exercise =
+        if (usesLibraryHistory) exercise else exercise.copy(previousBestE1RM = 0.0, previousSets = emptyList())
+
     private fun allExercises(): List<Exercise> {
         val seen = ExerciseLibrary.builtIn.map { it.id }.toMutableSet()
-        val result = ExerciseLibrary.builtIn.toMutableList()
+        val result = ExerciseLibrary.builtIn.mapTo(mutableListOf()) { library(it) }
         for (custom in customExercises) {
             if (seen.add(custom.id)) result.add(custom)
         }

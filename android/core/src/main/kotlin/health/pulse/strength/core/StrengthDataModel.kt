@@ -29,9 +29,11 @@ class StrengthDataModel(
     private val persistence: FileStrengthPersistence?,
     seedDemoData: Boolean = false,
     now: Instant = Instant.now(),
+    /** See [StrengthData.usesLibraryHistory]; a real install passes false. */
+    private val usesLibraryHistory: Boolean = true,
 ) : WorkoutDataProviding {
     /** The current data. */
-    var data: StrengthData = StrengthData()
+    var data: StrengthData = StrengthData(usesLibraryHistory = usesLibraryHistory)
         private set
 
     /** The first error of the last save that failed; null when the last save wrote every file it was asked to write. */
@@ -109,6 +111,7 @@ class StrengthDataModel(
             history = persistence.loadHistory(),
             customExercises = persistence.loadCustomExercises(),
             personalBests = persistence.loadPersonalBests(),
+            usesLibraryHistory = usesLibraryHistory,
         )
         cache = null
     }
