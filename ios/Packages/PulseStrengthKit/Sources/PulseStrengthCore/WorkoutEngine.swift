@@ -670,10 +670,12 @@ public final class WorkoutEngine {
         }
     }
 
-    /// The template's exercise with the latest remembered best and last sets (everything else stays as the template has it).
+    /// The template's exercise brought up to date: a built-in exercise is the library's current one (name, cues, media, ...), any
+    /// exercise gets the latest remembered best and last sets. Nothing else of a custom exercise changes (the store refreshes the
+    /// template copies when the exercise is edited).
     private func refreshed(_ exercise: Exercise) -> Exercise {
         guard let latest = data.exercise(id: exercise.id) else { return exercise }
-        var result = exercise
+        var result = ExerciseLibrary.exercise(id: exercise.id) != nil ? latest : exercise
         result.previousBestE1RM = latest.previousBestE1RM
         result.previousSets = latest.previousSets
         return result

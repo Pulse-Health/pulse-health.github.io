@@ -22,7 +22,7 @@ public enum WorkoutFactory {
                 sets: entry.plannedSets.map { LoggedSet(type: $0.type, weightKg: $0.weightKg, reps: $0.reps) },
                 restSeconds: max(0, entry.restSeconds),
                 supersetGroup: group,
-                note: "",
+                note: entry.note,
                 templateEntryID: entry.id
             )
         }
@@ -71,7 +71,8 @@ public enum WorkoutFactory {
             exercise: workoutExercise.exercise,
             plannedSets: workoutExercise.sets.map { PlannedSet(type: $0.type, weightKg: $0.weightKg, reps: $0.reps) },
             restSeconds: workoutExercise.restSeconds,
-            supersetGroup: workoutExercise.supersetGroup
+            supersetGroup: workoutExercise.supersetGroup,
+            note: workoutExercise.note
         )
     }
 }

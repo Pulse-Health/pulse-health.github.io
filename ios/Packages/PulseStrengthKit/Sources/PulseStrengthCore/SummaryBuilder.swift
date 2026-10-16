@@ -48,7 +48,8 @@ public enum SummaryBuilder {
                 tracking: exercise.tracking,
                 sets: sets,
                 isPersonalRecord: isRecord,
-                bestE1RM: bestE1RM
+                bestE1RM: bestE1RM,
+                note: entry.note
             ))
 
             if isRecord, let bestIndex {

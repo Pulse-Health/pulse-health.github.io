@@ -2,6 +2,8 @@ import Foundation
 
 // MARK: - Vocabulary
 
+/// The muscle groups. The raw value is a storage key (it is written to the data files and must never change); the text shown to
+/// the user comes from `title`.
 public enum MuscleGroup: String, Codable, CaseIterable, Hashable, Sendable, Identifiable {
     case chest = "Chest"
     case back = "Back"
@@ -14,6 +16,8 @@ public enum MuscleGroup: String, Codable, CaseIterable, Hashable, Sendable, Iden
     public var title: String { rawValue }
 }
 
+/// The kinds of equipment. The raw value is a storage key (it is written to the data files and must never change); the text shown
+/// to the user comes from `title`.
 public enum Equipment: String, Codable, CaseIterable, Hashable, Sendable, Identifiable {
     case barbell = "Barbell"
     case dumbbell = "Dumbbell"
@@ -26,6 +30,8 @@ public enum Equipment: String, Codable, CaseIterable, Hashable, Sendable, Identi
     public var title: String { rawValue }
 }
 
+/// What an exercise records per set. The raw value is a storage key (it is written to the data files and must never change); the
+/// text shown to the user comes from `title`.
 public enum TrackingKind: String, Codable, CaseIterable, Hashable, Sendable {
     /// Weight (kg) x reps.
     case weightReps
@@ -43,6 +49,8 @@ public enum TrackingKind: String, Codable, CaseIterable, Hashable, Sendable {
     }
 }
 
+/// The kinds of set. The raw value is a storage key (it is written to the data files and must never change); the text shown to the
+/// user comes from `title`.
 public enum SetType: String, Codable, CaseIterable, Hashable, Sendable {
     case normal
     case warmup
@@ -280,19 +288,38 @@ public struct TemplateEntry: Identifiable, Codable, Hashable, Sendable {
     public var plannedSets: [PlannedSet]
     public var restSeconds: Int
     public var supersetGroup: String?
+    /// The exercise note a workout started from this template begins with (empty when none).
+    public var note: String
 
     public init(
         id: UUID = UUID(),
         exercise: Exercise,
         plannedSets: [PlannedSet],
         restSeconds: Int,
-        supersetGroup: String? = nil
+        supersetGroup: String? = nil,
+        note: String = ""
     ) {
         self.id = id
         self.exercise = exercise
         self.plannedSets = plannedSets
         self.restSeconds = restSeconds
         self.supersetGroup = supersetGroup
+        self.note = note
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, exercise, plannedSets, restSeconds, supersetGroup, note
+    }
+
+    // `note` came later: a template written before it reads with an empty note.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UUID.self, forKey: .id)
+        self.exercise = try container.decode(Exercise.self, forKey: .exercise)
+        self.plannedSets = try container.decode([PlannedSet].self, forKey: .plannedSets)
+        self.restSeconds = try container.decode(Int.self, forKey: .restSeconds)
+        self.supersetGroup = try container.decodeIfPresent(String.self, forKey: .supersetGroup)
+        self.note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
     }
 }
 

@@ -1123,7 +1123,9 @@ final class EngineLifecycleTests: XCTestCase {
             let rig = SvcRig(self, persistence: persistence)
             rig.engine.restore()
             XCTAssertNil(rig.engine.state)
-            rig.startUpperA()
+            // The directory holds a data file, so nothing is seeded over it: the template comes from the sample data directly.
+            XCTAssertEqual(persistence.loadIssues.map { $0.fileName }, ["active-workout.json"], "the damaged file was reported")
+            rig.engine.start(template: SampleData.templates()[0])
             XCTAssertNotNil(rig.diskState, "a fresh workout overwrites the damaged file")
         }
     }

@@ -10,7 +10,7 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (700 tests, 716 with the Combine
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (840 tests, 864 with the Combine
 > stand-in). The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow
 > `strength-ios` has compiled it with Xcode 16 for the iOS and watchOS simulators, run a 30-step UI flow through the real
 > iPhone app, rendered the Lock Screen, Dynamic Island and Watch screens, and re-run the app in dark mode, at large text
@@ -247,10 +247,14 @@ The seams are plain protocols and closures:
   app's own muscle-recovery model to `WorkoutController(store:persistence:role:recovery:clock:)`, or assign
   `controller.recovery` later. The default, `DemoRecovery.provider`, returns fixed demo numbers.
 * **Storage.** `FileStrengthPersistence` is a small final class with one load/save pair per file (active workout,
-  templates, history, custom exercises, personal bests). Point it at a directory of the Pulse app
+  templates, history, custom exercises, personal bests, body weights, weigh-in preferences, acknowledged commands). The data
+  directory is versioned (`schema.json`, with migrations), a file that cannot be read completely is copied to
+  `<name>.corrupt-<date>.json` before anything is rewritten, and a directory written by a newer app version is never
+  written (`StrengthStore.persistenceIssues`, `lastPersistenceError`). Point it at a directory of the Pulse app
   (`FileStrengthPersistence(directory:)`), or replace it, and `StrengthStore`, with a type backed by the Pulse database:
   the controller and the screens only use the store's published properties and `record`, `saveTemplate`,
-  `addCustomExercise`, `history(for:now:)`. There is no persistence protocol yet; introducing one is the first change to
+  `addCustomExercise`, the management calls (rename, duplicate, reorder and delete templates; edit and delete
+  finished workouts; edit and delete custom exercises) and `history(for:now:)`. There is no persistence protocol yet; introducing one is the first change to
   make if the storage engine changes.
 * **Side effects.** Implement `WorkoutSideEffect` (three `@MainActor` callbacks: `workoutStarted`, `workoutChanged`,
   `workoutEnded`) and register it with `controller.addEffect(_:)`: Pulse analytics, syncing finished workouts to the

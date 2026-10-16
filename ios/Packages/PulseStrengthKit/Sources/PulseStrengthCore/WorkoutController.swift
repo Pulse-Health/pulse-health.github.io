@@ -53,9 +53,11 @@ public final class WorkoutController: ObservableObject {
         engine.addEffect(effect)
     }
 
-    /// On launch: reloads the active workout from disk and tells the effects (authority only).
+    /// On launch: reloads the active workout from disk and tells the effects (authority only). A damaged active-workout file shows
+    /// up in the store's `persistenceIssues`.
     public func restoreFromDisk() {
         engine.restore()
+        store.refreshPersistenceIssues()
     }
 
     /// Starts a workout from `template`, or an empty one named `name ?? "Workout"`; ignored while a workout is in progress.

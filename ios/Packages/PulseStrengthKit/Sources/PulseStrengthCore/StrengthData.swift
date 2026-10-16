@@ -18,6 +18,9 @@ public struct StrengthData: Equatable, Sendable {
     public var bodyWeights: [BodyWeightEntry]
     /// How often the app asks the user to update their weight.
     public var weighIn: WeighInPreferences
+    /// True while `history` is known to lack workouts that could not be read from disk. The personal bests may then be the only
+    /// trace of those workouts, so `recomputePersonalBests()` only raises them and never lowers or drops one.
+    public var historyIsIncomplete: Bool
 
     /// Creates the data from its collections.
     public init(
@@ -26,7 +29,8 @@ public struct StrengthData: Equatable, Sendable {
         customExercises: [Exercise] = [],
         personalBests: [String: PersonalBest] = [:],
         bodyWeights: [BodyWeightEntry] = [],
-        weighIn: WeighInPreferences = WeighInPreferences()
+        weighIn: WeighInPreferences = WeighInPreferences(),
+        historyIsIncomplete: Bool = false
     ) {
         self.templates = templates
         self.history = history
@@ -34,6 +38,7 @@ public struct StrengthData: Equatable, Sendable {
         self.personalBests = personalBests
         self.bodyWeights = bodyWeights
         self.weighIn = weighIn
+        self.historyIsIncomplete = historyIsIncomplete
     }
 
     /// True when there are neither templates nor finished workouts (the condition for seeding demo data).
@@ -169,25 +174,23 @@ public extension StrengthData {
     /// Records a finished workout.
     ///
     /// * History: inserted newest first (a workout with the same id is replaced).
-    /// * Personal bests: raised for every exercise whose best estimated 1RM beats the stored one.
+    /// * Personal bests: raised for every exercise whose best estimated 1RM beats the stored one. The result is the same as
+    ///   `recomputePersonalBests()` over the new history; a workout that replaced an earlier one with the same id recomputes them,
+    ///   because the earlier version may have held a best the new one does not reach.
     /// * Templates: the workout's template gets `lastPerformed`; `updateTemplate` (when given) replaces the stored template with the same id
     ///   (or is added) and also gets `lastPerformed`.
     mutating func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) {
+        let replaced = history.contains { $0.id == completed.id }
         history.removeAll { $0.id == completed.id }
         let index = history.firstIndex { $0.finishedAt <= completed.finishedAt } ?? history.endIndex
         history.insert(completed, at: index)
 
-        for entry in completed.exercises {
-            let value = StrengthData.bestE1RM(of: entry)
-            guard value > 0, value > (personalBests[entry.exerciseID]?.estimated1RM ?? 0) else { continue }
-            let set = StrengthData.bestSet(in: entry.sets, tracking: entry.tracking)
-            personalBests[entry.exerciseID] = PersonalBest(
-                exerciseID: entry.exerciseID,
-                estimated1RM: value,
-                weightKg: set?.weightKg ?? 0,
-                reps: set?.reps ?? 0,
-                date: completed.finishedAt
-            )
+        if replaced {
+            recomputePersonalBests()
+        } else {
+            for entry in completed.exercises {
+                StrengthData.raiseBest(&personalBests, with: entry, at: completed.finishedAt)
+            }
         }
 
         if let id = completed.templateID, let position = templates.firstIndex(where: { $0.id == id }) {
@@ -197,6 +200,73 @@ public extension StrengthData {
             updated.lastPerformed = Self.later(updated.lastPerformed, completed.finishedAt)
             saveTemplate(updated)
         }
+    }
+
+    /// The personal bests as a pure function of the complete history: for every exercise the best estimated 1RM of any workout
+    /// (the e1RM recorded on the entry, or the best Epley estimate of its non-warm-up sets), with the set, reps and date that reached it.
+    /// The earliest workout wins a tie, and bests of exercises without history do not exist.
+    func recomputedPersonalBests() -> [String: PersonalBest] {
+        // Oldest first; workouts with the same finish time keep the order in which they were recorded (the newer one is listed first).
+        let ordered = history.enumerated().sorted { lhs, rhs in
+            lhs.element.finishedAt != rhs.element.finishedAt ? lhs.element.finishedAt < rhs.element.finishedAt : lhs.offset > rhs.offset
+        }
+        var bests: [String: PersonalBest] = [:]
+        for item in ordered {
+            for entry in item.element.exercises {
+                StrengthData.raiseBest(&bests, with: entry, at: item.element.finishedAt)
+            }
+        }
+        return bests
+    }
+
+    /// Replaces the personal bests with `recomputedPersonalBests()`: a best can go down when the workout that set it was changed or deleted.
+    ///
+    /// While `historyIsIncomplete` the stored bests are kept and only raised by the recomputed ones (a better value, or an exercise
+    /// that has none yet), because a best that the readable history does not explain may belong to a workout that could not be read.
+    mutating func recomputePersonalBests() {
+        let recomputed = recomputedPersonalBests()
+        guard historyIsIncomplete else {
+            personalBests = recomputed
+            return
+        }
+        for (id, candidate) in recomputed {
+            guard let current = personalBests[id] else {
+                personalBests[id] = candidate
+                continue
+            }
+            if candidate.estimated1RM > current.estimated1RM
+                || (candidate.estimated1RM == current.estimated1RM && candidate.date < current.date) {
+                personalBests[id] = candidate
+            }
+        }
+    }
+
+    /// The best estimated 1RM per exercise id among the workouts older than the one at `index` of the (newest first) history.
+    internal func bestE1RMs(inWorkoutsOlderThanIndex index: Int) -> [String: Double] {
+        var best: [String: Double] = [:]
+        for workout in history.dropFirst(index + 1) {
+            for entry in workout.exercises {
+                best[entry.exerciseID] = max(best[entry.exerciseID] ?? 0, StrengthData.bestE1RM(of: entry))
+            }
+        }
+        return best
+    }
+
+    /// Stores the best of `entry` (finished at `date`) when it beats the one in `bests`, or equals it at an earlier date.
+    fileprivate static func raiseBest(_ bests: inout [String: PersonalBest], with entry: CompletedExercise, at date: Date) {
+        let value = bestE1RM(of: entry)
+        guard value > 0, value.isFinite else { return }
+        if let current = bests[entry.exerciseID] {
+            guard value > current.estimated1RM || (value == current.estimated1RM && date < current.date) else { return }
+        }
+        let set = bestSet(in: entry.sets, tracking: entry.tracking)
+        bests[entry.exerciseID] = PersonalBest(
+            exerciseID: entry.exerciseID,
+            estimated1RM: value,
+            weightKg: set?.weightKg ?? 0,
+            reps: set?.reps ?? 0,
+            date: date
+        )
     }
 
     /// Fills an empty store (no templates, no history) with the demo templates, history and personal bests; true when it did.
@@ -471,22 +541,35 @@ private extension StrengthData {
 /// A `StrengthData` bound to a `FileStrengthPersistence`: loads on creation, saves what a change touched, caches the exercise overlay.
 ///
 /// `StrengthStore` wraps this class with Combine publishing; the class itself is platform neutral so it runs (and is tested) everywhere.
+///
+/// Every mutating call changes the data in memory first and then writes the files it touched (and only those). A write that fails
+/// keeps the in-memory change and is reported: through the returned `Result` and through `lastPersistenceError`. A file whose write
+/// failed is written again by the next save of anything. Writing several files is not transactional; the order is chosen so that a
+/// failure in the middle loses nothing: the history first (the only copy of the sets), then the custom exercises, the personal bests
+/// (derived from the history) and the templates.
 @MainActor
 public final class StrengthDataModel: WorkoutDataProviding {
     /// The current data.
-    public private(set) var data: StrengthData
+    public internal(set) var data: StrengthData
     /// The first error of the last save that failed; nil when the last save wrote every file it was asked to write.
     public private(set) var lastPersistenceError: Error?
+    /// The problems found while loading the files that the user has not acknowledged yet (see `PersistenceIssue`).
+    public private(set) var persistenceIssues: [PersistenceIssue] = []
 
-    private let persistence: FileStrengthPersistence?
-    private var cache: (list: [Exercise], byID: [String: Exercise])?
+    let persistence: FileStrengthPersistence?
+    var cache: (list: [Exercise], byID: [String: Exercise])?
+    private var unsavedFiles: PersistTargets = []
 
     /// Loads `persistence` (when given); with `seedDemoData` an empty store is filled with the demo data for `now`.
+    ///
+    /// Demo data is only written to a data directory that has no data files at all and no load issues: files that exist but
+    /// could not be read are never seeded over.
     public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false, now: Date = Date()) {
         self.persistence = persistence
         self.data = StrengthData()
         loadFromDisk()
-        if seedDemoData, data.seedDemoDataIfEmpty(now: now) {
+        let mayWrite = persistence.map { !$0.hasDataFiles && persistenceIssues.isEmpty } ?? true
+        if seedDemoData, mayWrite, data.seedDemoDataIfEmpty(now: now) {
             persist(templates: true, history: true, customExercises: false, personalBests: true)
         }
     }
@@ -500,34 +583,44 @@ public final class StrengthDataModel: WorkoutDataProviding {
     /// One template by id.
     public func template(id: UUID) -> WorkoutTemplate? { data.template(id: id) }
 
-    /// Adds a custom exercise and saves the custom exercises.
-    public func addCustomExercise(_ exercise: Exercise) {
+    /// Adds a custom exercise (or replaces the one with the same id) and saves the custom exercises. `.failure` when the id belongs
+    /// to a built-in exercise (nothing changes) or when the file could not be written (the exercise is added in memory).
+    @discardableResult
+    public func addCustomExercise(_ exercise: Exercise) -> Result<Void, Error> {
+        guard ExerciseLibrary.exercise(id: exercise.id) == nil else { return .failure(StrengthStoreError.reservedExerciseID) }
         let before = data.customExercises
         data.addCustomExercise(exercise)
-        guard data.customExercises != before else { return }
-        cache = nil
-        persist(templates: false, history: false, customExercises: true, personalBests: false)
+        guard data.customExercises != before else { return .success(()) }
+        return commit(customExercises: true, exercises: true)
     }
 
-    /// Adds or replaces a template and saves the templates.
-    public func saveTemplate(_ template: WorkoutTemplate) {
+    /// Adds or replaces a template and saves the templates. A template with a known id keeps its position, a new one is appended.
+    /// `.failure` when the file could not be written (the template is saved in memory).
+    @discardableResult
+    public func saveTemplate(_ template: WorkoutTemplate) -> Result<Void, Error> {
         data.saveTemplate(template)
-        persist(templates: true, history: false, customExercises: false, personalBests: false)
+        return commit(templates: true)
     }
 
     /// Records a finished workout (history, personal bests, template) and saves what changed.
     ///
     /// The data changes in memory in every case. The result is `.failure` when the workout could not be written to the history
-    /// file, which is the only place the workout's sets are kept; the other files are derived (the personal bests are re-read from
-    /// the history) or secondary (the template), so failing to write them is reported through `lastPersistenceError` only.
-    /// Every file is rewritten in full by its next save, so unsaved data is saved then.
+    /// file, which is the only place the workout's sets are kept; the other files are derived (the personal bests can be recomputed
+    /// from the history) or secondary (the template), so failing to write them is reported through `lastPersistenceError` only.
+    /// The templates and the personal bests are written only when the workout changed them.
     @discardableResult
     public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error> {
+        let templatesBefore = data.templates
+        let bestsBefore = data.personalBests
         data.record(completed, updateTemplate: updateTemplate)
         cache = nil
-        if let historyError = persist(templates: true, history: true, customExercises: false, personalBests: true) {
-            return .failure(historyError)
-        }
+        let failures = persist(
+            templates: data.templates != templatesBefore,
+            history: true,
+            customExercises: false,
+            personalBests: data.personalBests != bestsBefore
+        )
+        if let failure = failures.first(where: { $0.target == .history }) { return .failure(failure.error) }
         return .success(())
     }
 
@@ -577,20 +670,64 @@ public final class StrengthDataModel: WorkoutDataProviding {
         loadFromDisk()
     }
 
+    /// Forgets the load issues the user has seen (`persistenceIssues` becomes empty). The backups of damaged files stay on disk.
+    /// From then on the personal bests follow the history again, also after a history that had unreadable workouts.
+    public func acknowledgePersistenceIssues() {
+        persistence?.clearLoadIssues()
+        persistenceIssues = []
+        data.historyIsIncomplete = false
+    }
+
+    /// Takes over the issues the persistence found since the last call, such as those of the active-workout file that the
+    /// workout engine reads on its own. Issues the user has not acknowledged stay, also when a later read of the file was clean
+    /// (the file was rewritten since); a newer issue of the same file replaces the older one.
+    public func refreshPersistenceIssues() {
+        guard let persistence else { return }
+        var byFile: [String: PersistenceIssue] = [:]
+        for issue in persistenceIssues { byFile[issue.fileName] = issue }
+        for issue in persistence.loadIssues { byFile[issue.fileName] = issue }
+        persistenceIssues = byFile.values.sorted { $0.fileName < $1.fileName }
+    }
+
     private func loadFromDisk() {
         guard let persistence else { return }
+        persistence.rescanSchema()
+        let bestsFileExisted = persistence.hasPersonalBestsFile
+        let historyWasIncomplete = data.historyIsIncomplete
         data = StrengthData(
             templates: persistence.loadTemplates(),
             history: persistence.loadHistory(),
             customExercises: persistence.loadCustomExercises(),
             personalBests: persistence.loadPersonalBests(),
             bodyWeights: persistence.loadBodyWeights(),
-            weighIn: persistence.loadWeighInPreferences()
+            weighIn: persistence.loadWeighInPreferences(),
+            historyIsIncomplete: historyWasIncomplete
         )
         cache = nil
+        refreshPersistenceIssues()
+        repairDerivedData(bestsFileExisted: bestsFileExisted)
     }
 
-    private func overlayCache() -> (list: [Exercise], byID: [String: Exercise]) {
+    /// Fixes what is derived from the files just read: the personal bests are recomputed from the history when their file is
+    /// missing, or damaged while the history is whole (a damaged history keeps the bests as they were read: they may be the only
+    /// trace of a workout that could not be read); template copies of built-in exercises take over the current library.
+    ///
+    /// Only a missing bests file is written back. A damaged file stays as it is until the next legitimate save of it.
+    private func repairDerivedData(bestsFileExisted: Bool) {
+        let damaged = Set((persistence?.loadIssues ?? []).map { $0.fileName })
+        let bestsDamaged = damaged.contains(FileStrengthPersistence.FileName.personalBests)
+        let historyDamaged = damaged.contains(FileStrengthPersistence.FileName.history)
+        if historyDamaged { data.historyIsIncomplete = true }
+        if !data.history.isEmpty, !bestsFileExisted || (bestsDamaged && !historyDamaged) {
+            data.recomputePersonalBests()
+            if !bestsFileExisted, persistence?.canWrite == true {
+                persist(templates: false, history: false, customExercises: false, personalBests: true)
+            }
+        }
+        refreshTemplateExercises()
+    }
+
+    func overlayCache() -> (list: [Exercise], byID: [String: Exercise]) {
         if let cache { return cache }
         let list = data.exercises()
         var byID: [String: Exercise] = [:]
@@ -599,41 +736,87 @@ public final class StrengthDataModel: WorkoutDataProviding {
         return (list, byID)
     }
 
-    /// Writes the requested files, attempting every one even when an earlier one fails.
+    /// The files `persist` can write.
+    struct PersistTargets: OptionSet {
+        let rawValue: Int
+        static let templates = PersistTargets(rawValue: 1)
+        static let history = PersistTargets(rawValue: 2)
+        static let customExercises = PersistTargets(rawValue: 4)
+        static let personalBests = PersistTargets(rawValue: 8)
+        static let bodyWeights = PersistTargets(rawValue: 16)
+        static let weighIn = PersistTargets(rawValue: 32)
+    }
+
+    /// A file that `persist` could not write, and why.
+    struct PersistFailure {
+        let target: PersistTargets
+        let error: Error
+    }
+
+    /// Writes the files a change touched, then the files an earlier save could not write. Every file is attempted even when an
+    /// earlier one fails.
     ///
-    /// Sets `lastPersistenceError` to the first error (nil when every requested file was written) and returns the error of the
-    /// history file, nil when it was written or not requested.
+    /// Sets `lastPersistenceError` to the first error (nil when every file was written) and returns every failure, in write order.
     @discardableResult
-    private func persist(
+    func persist(
         templates: Bool,
         history: Bool,
         customExercises: Bool,
         personalBests: Bool,
         bodyWeights: Bool = false,
         weighIn: Bool = false
-    ) -> Error? {
+    ) -> [PersistFailure] {
         guard let persistence else {
             lastPersistenceError = nil
-            return nil
+            return []
         }
-        var firstError: Error?
-        var historyError: Error?
-        func attempt(_ write: () throws -> Void) -> Error? {
+        var pending = unsavedFiles
+        if templates { pending.insert(.templates) }
+        if history { pending.insert(.history) }
+        if customExercises { pending.insert(.customExercises) }
+        if personalBests { pending.insert(.personalBests) }
+        if bodyWeights { pending.insert(.bodyWeights) }
+        if weighIn { pending.insert(.weighIn) }
+        unsavedFiles = []
+
+        var failures: [PersistFailure] = []
+        func attempt(_ target: PersistTargets, _ write: () throws -> Void) {
+            guard pending.contains(target) else { return }
             do {
                 try write()
-                return nil
             } catch {
-                if firstError == nil { firstError = error }
-                return error
+                failures.append(PersistFailure(target: target, error: error))
+                unsavedFiles.insert(target)
             }
         }
-        if templates { _ = attempt { try persistence.saveTemplates(data.templates) } }
-        if history { historyError = attempt { try persistence.saveHistory(data.history) } }
-        if customExercises { _ = attempt { try persistence.saveCustomExercises(data.customExercises) } }
-        if personalBests { _ = attempt { try persistence.savePersonalBests(data.personalBests) } }
-        if bodyWeights { _ = attempt { try persistence.saveBodyWeights(data.bodyWeights) } }
-        if weighIn { _ = attempt { try persistence.saveWeighInPreferences(data.weighIn) } }
-        lastPersistenceError = firstError
-        return historyError
+        attempt(.history) { try persistence.saveHistory(data.history) }
+        attempt(.customExercises) { try persistence.saveCustomExercises(data.customExercises) }
+        attempt(.personalBests) { try persistence.savePersonalBests(data.personalBests) }
+        attempt(.templates) { try persistence.saveTemplates(data.templates) }
+        attempt(.bodyWeights) { try persistence.saveBodyWeights(data.bodyWeights) }
+        attempt(.weighIn) { try persistence.saveWeighInPreferences(data.weighIn) }
+        lastPersistenceError = failures.first?.error
+        return failures
+    }
+
+    /// Saves the files a management change touched and reports the outcome: `.failure` with the first error among the files this
+    /// change asked to write. A file that an earlier save left unwritten is retried too, but its error only reaches
+    /// `lastPersistenceError`, so the result says whether this change was saved. `exercises` drops the cached exercise overlay.
+    func commit(
+        templates: Bool = false,
+        history: Bool = false,
+        customExercises: Bool = false,
+        personalBests: Bool = false,
+        exercises: Bool = false
+    ) -> Result<Void, Error> {
+        if exercises || history || personalBests { cache = nil }
+        var requested: PersistTargets = []
+        if templates { requested.insert(.templates) }
+        if history { requested.insert(.history) }
+        if customExercises { requested.insert(.customExercises) }
+        if personalBests { requested.insert(.personalBests) }
+        let failures = persist(templates: templates, history: history, customExercises: customExercises, personalBests: personalBests)
+        if let failure = failures.first(where: { requested.contains($0.target) }) { return .failure(failure.error) }
+        return .success(())
     }
 }

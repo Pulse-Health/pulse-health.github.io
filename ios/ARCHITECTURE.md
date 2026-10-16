@@ -255,9 +255,16 @@ public protocol WorkoutSideEffect { /* workoutStarted, workoutChanged, workoutEn
 }
 
 public final class FileStrengthPersistence: @unchecked Sendable {
-    public init(directory: URL)
+    public init(directory: URL, migrations: [PersistenceMigration] = PersistenceMigration.shipped, clock: @escaping @Sendable () -> Date = { Date() })
     public static func appGroup(identifier: String) -> FileStrengthPersistence?     // Darwin only; nil elsewhere
     public static func temporary() -> FileStrengthPersistence                         // unique temp dir (tests, previews)
+    public let currentSchemaVersion: Int                                              // migrations.count + 1 (1 today)
+    public var schemaVersion: Int { get }                                             // of the directory: 1 without schema.json
+    public var canWrite: Bool { get }                                                 // false for a newer schema or a failed migration
+    public var loadIssues: [PersistenceIssue] { get }                                 // see "Persistence integrity"
+    public func clearLoadIssues()
+    public func rescanSchema()
+    public var hasDataFiles: Bool { get };  public var hasPersonalBestsFile: Bool { get }
     public func loadActiveWorkout() -> WorkoutState?
     public func saveActiveWorkout(_ state: WorkoutState?) throws                    // nil deletes the file
     public func loadTemplates() -> [WorkoutTemplate];      public func saveTemplates(_ v: [WorkoutTemplate]) throws
@@ -267,7 +274,37 @@ public final class FileStrengthPersistence: @unchecked Sendable {
     public func loadAcknowledgedCommands() -> [UUID];      public func saveAcknowledgedCommands(_ v: [UUID]) throws   // acknowledged-commands.json, the last 256 ids, oldest first
 }
 ```
-JSON (ISO-8601 dates, sorted keys), atomic writes, missing/corrupt file -> empty value (never crash).
+JSON (ISO-8601 dates, sorted keys), atomic writes per file, a missing file reads as an empty value, a damaged file never crashes and never loses data
+(next section).
+
+**Persistence integrity** (`Stores.swift`).
+* `schema.json` (`{"version": 1}`) holds the data format version. A directory without it is version 1 (every install so far); a fresh directory gets the file with its first
+  write, reads write nothing. `PersistenceMigration` is `(URL) throws -> Void` and upgrades version N to N + 1; the list is injectable (`PersistenceMigration.shipped` is empty:
+  version 1 is the current format). The migrations run once when the directory is first used (`rescanSchema()` runs the check again), under the persistence lock, each step
+  followed by `schema.json` with the new version, so a step that failed is retried alone. The data files are copied to `schema-v<N>-backup/` before the first step.
+  A directory with a NEWER version, or one whose migration failed, is read as far as it can be and never written: every save throws `PersistenceError.newerSchema` /
+  `.migrationFailed`, and `PersistenceIssue` kind `.newerSchema` / `.migrationFailed` is reported. A downgrade therefore cannot destroy data.
+* **No silent loss.** When a file cannot be decoded completely (a list or dictionary element that fails to decode, or a file that fails as a whole), the load (1) copies the
+  original bytes to `<name>.corrupt-<yyyyMMdd-HHmmss>.json` (UTC; a copy with identical bytes is reused, a collision moves the second on; at most 3 copies per file, the oldest
+  deleted), (2) keeps every element that did decode, (3) records a `PersistenceIssue(fileName:, kind:, backupFileName:)` with kind `.unreadableFile` or `.skippedElements(n)`.
+  The damaged file itself stays untouched until the next legitimate save of that file. This covers all eight files (active workout, templates, history, custom exercises,
+  personal bests, body weights, weigh-in preferences, acknowledged commands). `loadIssues` holds one issue per file, ordered by name; a clean load of a file clears its entry.
+  A file that exists but cannot be read at all (not a regular file) is an issue without a backup. A save of a user-data file (not the active workout or the acknowledged
+  commands) whose issue has no backup first tries to copy the original again; when that fails the save throws `PersistenceError.originalNotPreserved(fileName:)` and nothing is
+  replaced, until the copy works or `acknowledgePersistenceIssues()` clears the issues.
+* `StrengthDataModel` / `StrengthStore` expose `persistenceIssues` (kept until `acknowledgePersistenceIssues()`, also across a later clean reload) and
+  `refreshPersistenceIssues()` (picks up the active-workout / acknowledged-commands issues, which the engine reads on its own: `WorkoutController.restoreFromDisk()` calls it).
+* **Never seed over damage.** `seedDemoData` seeds only when the store has no templates and no history AND `persistence.hasDataFiles` is false AND there are no load issues
+  (files that exist and failed to decode are never seeded over). It is a preview / UI-test facility.
+* **Derived data at load.** `personal-bests.json` missing -> recomputed from the history (and written); damaged while the history is whole -> recomputed in memory (the file is
+  left for the next save); damaged together with the history -> kept as read (they may be the only trace of an unreadable workout). In that case
+  `StrengthData.historyIsIncomplete` is set (kept across reloads, cleared by `acknowledgePersistenceIssues()`) and `recomputePersonalBests()` only raises the bests meanwhile. Template copies of built-in exercises take
+  over the current library (`StrengthData.refreshTemplateExercises()`, in memory; remembered previous results are not library data and stay).
+* **Writes.** Each file is written atomically; a save touching several files is not transactional. `StrengthDataModel.persist` writes only the files a change touched, in the order
+  history, custom exercises, personal bests, templates, body weights, preferences (the sets exist only in the history; the bests can be recomputed), attempts every file even
+  when one fails, sets `lastPersistenceError` to the first error and writes a file whose earlier write failed again with the next save. `record` writes the templates only when
+  a template changed and the bests only when a best changed. The `Result` of a call reports only the files that call asked to write (`record`: the history file); the error of a
+  file left over from an earlier save reaches `lastPersistenceError` only.
 
 `#if canImport(Combine)` (Apple only), both `@MainActor final class ...: ObservableObject`:
 
@@ -277,14 +314,28 @@ public final class StrengthStore: ObservableObject {
     @Published public private(set) var history: [CompletedWorkout]          // newest first
     @Published public private(set) var customExercises: [Exercise]
     @Published public private(set) var personalBests: [String: PersonalBest]
+    @Published public private(set) var lastPersistenceError: Error?        // the first error of the last save that failed; nil when it worked
+    @Published public private(set) var persistenceIssues: [PersistenceIssue]   // files that were damaged at load, until acknowledged
     public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false)
     /// builtIn + custom, with `previousBestE1RM` / `previousSets` overlaid from personal bests and history.
     public var exercises: [Exercise] { get }
     public func exercise(id: String) -> Exercise?
-    public func addCustomExercise(_ exercise: Exercise)
-    public func saveTemplate(_ template: WorkoutTemplate)
-    @discardableResult
+    // Every mutating call below changes the store in memory first and returns `Result<_, Error>` (`@discardableResult`): `.failure` carries the write error
+    // (the change stays in memory, `lastPersistenceError` is set) or a `StrengthStoreError` (`.notFound`, `.invalidName`, `.reservedExerciseID`; nothing changed).
+    public func addCustomExercise(_ exercise: Exercise) -> Result<Void, Error>
+    public func saveTemplate(_ template: WorkoutTemplate) -> Result<Void, Error>      // an existing id keeps its position, a new one is appended
     public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error>   // history, bests, template.lastPerformed, persists
+    public func renameTemplate(id: UUID, to name: String) -> Result<Void, Error>
+    public func deleteTemplate(id: UUID) -> Result<Void, Error>
+    public func duplicateTemplate(id: UUID, name: String) -> Result<WorkoutTemplate, Error>   // right after the original; new ids, notes copied, lastPerformed nil
+    public func moveTemplates(fromOffsets: IndexSet, toOffset: Int) -> Result<Void, Error>    // SwiftUI onMove semantics
+    public func setTemplateOrder(_ ids: [UUID]) -> Result<Void, Error>
+    public func deleteWorkout(id: UUID) -> Result<Void, Error>                       // then recomputePersonalBests; the template gets its earlier lastPerformed back
+    public func updateWorkout(_ workout: CompletedWorkout) -> Result<Void, Error>    // see below
+    public func recomputePersonalBests() -> Result<Void, Error>
+    public func deleteCustomExercise(id: String) -> Result<Int, Error>               // success = number of templates that lost an entry
+    public func updateCustomExercise(_ exercise: Exercise) -> Result<Void, Error>
+    public func acknowledgePersistenceIssues();  public func refreshPersistenceIssues()
     public func history(for exerciseID: String, now: Date) -> ExerciseHistory
     public func reload()
 }
@@ -411,7 +462,7 @@ until its revision catches up or the Watch restarts; a jump from workout W1 to W
 ends the Health session of W1 itself, see 5.5).
 
 `record` always updates the store in memory; its result is `.failure(error)` when the workout could not be written to the history file (the
-only place its sets are kept: the personal bests are re-read from the history, so a failed write of the bests or the template is only
+only place its sets are kept: the personal bests can be recomputed from the history, so a failed write of the bests or the template is only
 reported through `StrengthDataModel.lastPersistenceError`). `finish` then still returns the completed workout and ends the workout, but it
 does NOT delete `active-workout.json`: that file stays the last saved copy of the sets and the engine's `lastPersistenceError` carries the
 error. The next launch restores the workout (`restoreFromDisk`); finishing it again records it by its id, so it is never saved twice. Starting
@@ -422,9 +473,28 @@ the same sets), "Lower A · Quads", "Upper B · Pull"; static func history(now: 
 used for `seedDemoData` and SwiftUI previews. Make the sample data consistent: today is the `now` argument; "Upper A · Push" was last done
 5 days ago (the Strength hub says so), bench sessions exist 5 days ago (W 50×8, W 70×5, 80×6, 80×6, 80×5), 10 days ago (…, 82.5×5, 85×5 = personal
 record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads" 7 days ago; personal best bench e1RM 99 (85 kg × 5, 10 days ago).
-`seedDemoData` also seeds templates and history only when the store is empty. The "Upper A · Push" template is the design's workout: bench
+`seedDemoData` also seeds templates and history only when the store is empty and the data directory holds no data files and no load issues (see "Persistence integrity"). The "Upper A · Push" template is the design's workout: bench
 (warm-up 50×8, warm-up 70×5, 82.5×6, 82.5×6, 85×6, rest 150), incline 3×28×10 (rest 90), ohp 3×45×8 (rest 120), lateral 3×8×15 and pushdown
 3×30×12 (both rest 60, superset A), crossover 3×15×12 (rest 60).
+
+**Managing what is stored** (`StrengthData+Management.swift`; pure functions on `StrengthData`, forwarded by `StrengthDataModel` and `StrengthStore`).
+* The order of `templates` (the array order of `templates.json`) is the user's order. `saveTemplate` keeps the position of a known id and appends a new one; `duplicateTemplate`
+  inserts the copy after the original; `moveTemplates` / `setTemplateOrder` reorder (unknown ids and offsets are ignored, unlisted templates keep their relative order).
+* `deleteWorkout(id:)` and `updateWorkout(_:)` end with `recomputePersonalBests()`. `updateWorkout` keeps the id, the dates, the duration, the heart rate and the template of the stored
+  workout and takes the name (blank keeps the old one) and the exercises (sets with weight, reps, RIR and type, notes, order) from its argument; an exercise without sets disappears.
+  Values are clamped (weight 0...1,000,000 kg rounded to 0.01, reps 0...10,800, RIR 0...4). Derived fields are rebuilt by `SummaryBuilder` itself (volume, logged sets, mean RIR, sets per
+  muscle, the best e1RM per exercise, `isPersonalRecord`, `personalRecords`), judged against the workouts older than this one in the history; later workouts keep the records they were
+  given. `deleteWorkout` gives the template the `lastPerformed` of the workout before it when the deleted one was the last.
+* Personal bests are a pure function of the complete history (`StrengthData.recomputedPersonalBests()`): per exercise the best estimated e1RM of any workout (the e1RM recorded on
+  the entry, else the best Epley estimate of its non-warm-up sets), the earliest workout winning a tie. `record` raises them incrementally and gives the same result (a workout that
+  replaces one with the same id recomputes them); a best can go down when the workout that set it is changed or deleted, except while `historyIsIncomplete` (see above).
+* `deleteCustomExercise(id:)` removes the exercise from the library and its entries from the templates (the result is the number of templates that changed); the history keeps the
+  names. `updateCustomExercise(_:)` replaces the library entry and the copies in the templates (the remembered previous results of a copy stay); the history keeps the old names.
+  `WorkoutEngine.start` gives the exercises of a started template the library's current version for built-in exercises (name, cues, media), plus the latest previous results for all.
+* Exercise notes: `CompletedExercise.note` and `TemplateEntry.note` (`decodeIfPresent`, default ""); `WorkoutFactory.makeWorkout` starts a workout with the template's notes,
+  `updatedTemplate` / `template(from:name:)` copy the workout's notes back, `SummaryBuilder` copies them into the finished workout.
+* The raw values of `MuscleGroup`, `Equipment`, `TrackingKind` and `SetType` are storage keys and never change; the text shown to the user comes from `title`
+  (`CodableEvolutionTests` pins them).
 
 ### 3.5 `BodyWeight.swift` (area: body weight and the weigh-in reminder)
 
@@ -452,7 +522,7 @@ public enum WeighInSchedule {                                            // pure
 ```
 * `StrengthData` gains `bodyWeights` (newest first) and `weighIn`; `StrengthDataModel` / `StrengthStore` gain `recordBodyWeight(kg:date:)` (nil and nothing saved for an implausible
   weight), `deleteBodyWeight(id:)`, `setWeighInPreferences(_:)`, `latestBodyWeight`, `isWeighInDue(now:)`. They are saved in `body-weights.json` and `weigh-in-preferences.json`
-  (an unreadable file reads as empty / the defaults). The demo seed does not touch them.
+  (an unreadable file reads as empty / the defaults, with the backup and issue of "Persistence integrity"). The demo seed does not touch them.
 * The reminder is **rolling**: it counts from the latest weigh-in (before the first one, from `enabledAt`) and is due one interval later at the chosen time of day, so logging a
   weight moves the next reminder out. Reminder dates are `due`, `due + 1 interval`, ... (each counted from `due`, so a month-end does not drift), only those after `now`, at most three.
   The clock time survives a daylight-saving change (calendar arithmetic).
@@ -485,7 +555,7 @@ while the reminder is on and a weigh-in is due (the in-app half of the reminder,
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
-  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 700 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 716 (the controller and
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 840 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 864 (the controller and
   store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
   phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
   40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice. `SyncHardeningTests.swift` holds one

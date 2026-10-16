@@ -23,6 +23,12 @@ public final class StrengthStore: ObservableObject {
     @Published public private(set) var bodyWeights: [BodyWeightEntry] = []
     /// How often the app asks the user to update their weight.
     @Published public private(set) var weighIn = WeighInPreferences()
+    /// The error of the last save that failed (a write that was refused or could not be made); nil when the last save worked. The
+    /// change that was being saved stays in memory.
+    @Published public private(set) var lastPersistenceError: Error?
+    /// Files that could not be read completely the last time the data was loaded, until the user acknowledges them. The readable
+    /// part was kept and a copy of every damaged file was made (see `PersistenceIssue`).
+    @Published public private(set) var persistenceIssues: [PersistenceIssue] = []
 
     /// Called after the user's weigh-in was stored (not for weights read from Apple Health). The Health layer saves it to Health.
     public var onBodyWeightSaved: ((BodyWeightEntry) -> Void)?
@@ -43,16 +49,23 @@ public final class StrengthStore: ObservableObject {
     /// One exercise (built-in or custom) with the previous results overlaid; nil for an unknown id.
     public func exercise(id: String) -> Exercise? { model.exercise(id: id) }
 
-    /// Adds a custom exercise and saves it.
-    public func addCustomExercise(_ exercise: Exercise) {
-        model.addCustomExercise(exercise)
+    /// Adds a custom exercise (or replaces the one with the same id) and saves it. `.failure` when the id belongs to a built-in
+    /// exercise, or when the file could not be written (the exercise is added in memory).
+    @discardableResult
+    public func addCustomExercise(_ exercise: Exercise) -> Result<Void, Error> {
+        let result = model.addCustomExercise(exercise)
         publish()
+        return result
     }
 
-    /// Adds a template, or replaces the one with the same id, and saves it.
-    public func saveTemplate(_ template: WorkoutTemplate) {
-        model.saveTemplate(template)
+    /// Adds a template, or replaces the one with the same id, and saves it. A replaced template keeps its position, a new one is
+    /// appended: the order of `templates` is the user's order. `.failure` when the file could not be written (the template is saved
+    /// in memory).
+    @discardableResult
+    public func saveTemplate(_ template: WorkoutTemplate) -> Result<Void, Error> {
+        let result = model.saveTemplate(template)
         publish()
+        return result
     }
 
     /// Records a finished workout: history (newest first), personal bests, the template's `lastPerformed`, and `updateTemplate` when given.
@@ -63,6 +76,103 @@ public final class StrengthStore: ObservableObject {
         let result = model.record(completed, updateTemplate: updateTemplate)
         publish()
         return result
+    }
+
+    // MARK: Managing what is stored
+
+    /// Renames a template (the name is trimmed; `.failure(StrengthStoreError.invalidName)` when it is empty) and saves it.
+    @discardableResult
+    public func renameTemplate(id: UUID, to name: String) -> Result<Void, Error> {
+        let result = model.renameTemplate(id: id, to: name)
+        publish()
+        return result
+    }
+
+    /// Deletes a template and saves the templates. Finished workouts keep their name.
+    @discardableResult
+    public func deleteTemplate(id: UUID) -> Result<Void, Error> {
+        let result = model.deleteTemplate(id: id)
+        publish()
+        return result
+    }
+
+    /// Adds a copy of a template right after the original (new ids, never performed) under `name`, saves it and returns the copy.
+    @discardableResult
+    public func duplicateTemplate(id: UUID, name: String) -> Result<WorkoutTemplate, Error> {
+        let result = model.duplicateTemplate(id: id, name: name)
+        publish()
+        return result
+    }
+
+    /// Moves templates in the list the way SwiftUI's `onMove` describes it, and saves the new order.
+    @discardableResult
+    public func moveTemplates(fromOffsets source: IndexSet, toOffset destination: Int) -> Result<Void, Error> {
+        let result = model.moveTemplates(fromOffsets: source, toOffset: destination)
+        publish()
+        return result
+    }
+
+    /// Orders the templates as `ids` lists them (unknown ids are ignored, unlisted templates follow in their old order) and saves it.
+    @discardableResult
+    public func setTemplateOrder(_ ids: [UUID]) -> Result<Void, Error> {
+        let result = model.setTemplateOrder(ids)
+        publish()
+        return result
+    }
+
+    /// Deletes a finished workout, recomputes the personal bests (a best that the workout set goes away with it) and saves.
+    @discardableResult
+    public func deleteWorkout(id: UUID) -> Result<Void, Error> {
+        let result = model.deleteWorkout(id: id)
+        publish()
+        return result
+    }
+
+    /// Saves an edited finished workout: name, sets (weight, reps, RIR, type), notes. Volume, logged sets, e1RMs, muscle sets and
+    /// the personal-record flags are recomputed, and so are the personal bests. See `StrengthData.updateWorkout` for what is kept.
+    @discardableResult
+    public func updateWorkout(_ workout: CompletedWorkout) -> Result<Void, Error> {
+        let result = model.updateWorkout(workout)
+        publish()
+        return result
+    }
+
+    /// Recomputes the personal bests from the whole history.
+    @discardableResult
+    public func recomputePersonalBests() -> Result<Void, Error> {
+        let result = model.recomputePersonalBests()
+        publish()
+        return result
+    }
+
+    /// Deletes a custom exercise and removes it from the templates that contain it; the success value is how many templates lost an
+    /// entry, so the screen can warn before it does so. Finished workouts keep the exercise's name.
+    @discardableResult
+    public func deleteCustomExercise(id: String) -> Result<Int, Error> {
+        let result = model.deleteCustomExercise(id: id)
+        publish()
+        return result
+    }
+
+    /// Replaces a custom exercise and refreshes its copies in the templates. Finished workouts keep the old name.
+    @discardableResult
+    public func updateCustomExercise(_ exercise: Exercise) -> Result<Void, Error> {
+        let result = model.updateCustomExercise(exercise)
+        publish()
+        return result
+    }
+
+    /// Forgets the load issues the user has seen. The copies of the damaged files stay on disk.
+    public func acknowledgePersistenceIssues() {
+        model.acknowledgePersistenceIssues()
+        publish()
+    }
+
+    /// Picks up the issues of files that are read outside the store, such as the active workout. `WorkoutController.restoreFromDisk()`
+    /// calls it after restoring.
+    public func refreshPersistenceIssues() {
+        model.refreshPersistenceIssues()
+        publish()
     }
 
     /// The sessions, trend, records and 30-day totals of one exercise, relative to `now`.
@@ -126,6 +236,16 @@ public final class StrengthStore: ObservableObject {
         if personalBests != data.personalBests { personalBests = data.personalBests }
         if bodyWeights != data.bodyWeights { bodyWeights = data.bodyWeights }
         if weighIn != data.weighIn { weighIn = data.weighIn }
+        if persistenceIssues != model.persistenceIssues { persistenceIssues = model.persistenceIssues }
+        if !Self.isSame(lastPersistenceError, model.lastPersistenceError) { lastPersistenceError = model.lastPersistenceError }
+    }
+
+    private static func isSame(_ lhs: Error?, _ rhs: Error?) -> Bool {
+        switch (lhs, rhs) {
+        case (nil, nil): return true
+        case let (lhs?, rhs?): return (lhs as NSError).isEqual(rhs as NSError)
+        default: return false
+        }
     }
 }
 

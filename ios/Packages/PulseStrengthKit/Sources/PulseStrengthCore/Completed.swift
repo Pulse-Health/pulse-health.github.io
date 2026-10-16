@@ -28,6 +28,8 @@ public struct CompletedExercise: Identifiable, Codable, Hashable, Sendable {
     public var isPersonalRecord: Bool
     /// Best estimated 1RM of the logged non-warm-up sets (0 when not applicable).
     public var bestE1RM: Double
+    /// The note typed for this exercise during the workout (empty when none).
+    public var note: String
 
     public init(
         id: UUID = UUID(),
@@ -38,7 +40,8 @@ public struct CompletedExercise: Identifiable, Codable, Hashable, Sendable {
         tracking: TrackingKind,
         sets: [CompletedSet],
         isPersonalRecord: Bool,
-        bestE1RM: Double
+        bestE1RM: Double,
+        note: String = ""
     ) {
         self.id = id
         self.exerciseID = exerciseID
@@ -49,6 +52,26 @@ public struct CompletedExercise: Identifiable, Codable, Hashable, Sendable {
         self.sets = sets
         self.isPersonalRecord = isPersonalRecord
         self.bestE1RM = bestE1RM
+        self.note = note
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, exerciseID, name, muscle, mediaKey, tracking, sets, isPersonalRecord, bestE1RM, note
+    }
+
+    // `note` came later: a file written before it reads with an empty note.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UUID.self, forKey: .id)
+        self.exerciseID = try container.decode(String.self, forKey: .exerciseID)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.muscle = try container.decode(MuscleGroup.self, forKey: .muscle)
+        self.mediaKey = try container.decodeIfPresent(String.self, forKey: .mediaKey)
+        self.tracking = try container.decode(TrackingKind.self, forKey: .tracking)
+        self.sets = try container.decode([CompletedSet].self, forKey: .sets)
+        self.isPersonalRecord = try container.decode(Bool.self, forKey: .isPersonalRecord)
+        self.bestE1RM = try container.decode(Double.self, forKey: .bestE1RM)
+        self.note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
     }
 }
 
