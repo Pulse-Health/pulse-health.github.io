@@ -64,12 +64,12 @@ struct BodyMapView: View {
         .accessibilityLabel(spokenSummary)
     }
 
-    /// "Body map for this week. Chest 10 or more sets, Back 5 to 9 sets ... Legs untouched. Lower A is next in line."
+    /// "Body map for this week. Chest, 10 or more sets. Back, 5 to 9 sets. ... Legs untouched. Lower A is next in line."
     private var spokenSummary: String {
         let groups = MuscleGroup.allCases.map { group in
-            group.title + " " + BodyMapGeometry.spokenRange(level: levels[group] ?? 0)
+            group.title + ", " + BodyMapGeometry.spokenRange(level: levels[group] ?? 0) + "."
         }
-        return "Body map for this week. " + groups.joined(separator: ", ") + ". " + message.spoken
+        return "Body map for this week. " + groups.joined(separator: " ") + " " + message.spoken
     }
 }
 

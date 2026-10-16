@@ -4,10 +4,11 @@
 // pill, the upper-case eyebrow, the empty state, the always-dark card and two text helpers. The shared primitives (WidgetTheme, RingGauge,
 // BarMeter, PillLabel ...) stay in Widgets/Common. Nothing here is shared with the other widget areas, so every name starts with "Extras".
 //
-// Tinted mode: the system renders a widget in two groups, the accented views (`widgetAccentable`) in the tint and all others in one
-// primary colour, and it "ignores the view's color, rendering the new colors based on the view's alpha channel". Two consequences drive
-// this file: a label on a fill of the same alpha vanishes unless fill and label are in different groups, and fills that differ only in
-// colour (heat levels, kinds of rest) merge unless they also differ in alpha.
+// Tinted mode: the system renders a widget in two groups, the accented views (`widgetAccentable`) and all others, and it "ignores the
+// view's color, rendering the new colors based on the view's alpha channel" (on iOS 26 both groups are simply white). Two consequences
+// drive this file: a label on a solid fill vanishes, because both are the same colour, and fills that differ only in colour (heat levels,
+// kinds of rest) merge. Only alpha tells things apart in every version, so in tinted mode fills are alpha steps of one colour, and
+// `widgetAccentable` is kept on the hero elements for the versions that tint the accent group.
 
 #if os(iOS)
 import SwiftUI
@@ -43,7 +44,14 @@ struct ExtrasPalette {
     var step: Color { isTinted ? WidgetTheme.ink.opacity(0.5) : WidgetTheme.trackStrong }
 
     /// The avatar of someone else: blue, or a soft fill that leaves the initials readable in tinted mode.
-    var other: Color { isTinted ? WidgetTheme.ink.opacity(0.3) : WidgetTheme.blue }
+    var other: Color { isTinted ? WidgetTheme.ink.opacity(0.16) : WidgetTheme.blue }
+
+    /// The fill of a button or badge behind its label: `color` in full colour, a translucent fill in tinted mode, where a solid one would
+    /// swallow the label.
+    func action(_ color: Color) -> Color { isTinted ? WidgetTheme.ink.opacity(0.32) : color }
+
+    /// The soft round badge behind an icon.
+    var badge: Color { isTinted ? WidgetTheme.ink.opacity(0.18) : WidgetTheme.greenTint }
 
     /// Body map shade of a level (0...3). The canvas draws an untrained region in the track grey: `WidgetTheme.heat(0)` is almost white and
     /// would vanish on the card.
@@ -56,8 +64,8 @@ struct ExtrasPalette {
 
 // MARK: - Progress bar
 
-/// A horizontal bar: `fraction` of the width in `color` over a track. In tinted mode the fill is in the accent group (unless
-/// `isAccented` is false, for the bars of other people) and the track keeps its own alpha, so the two stay apart.
+/// A horizontal bar: `fraction` of the width in `color` over a track. In tinted mode the track is a faint alpha step, so the solid fill
+/// stays apart from it; the fill is in the accent group unless `isAccented` is false (the bars of other people).
 struct ExtrasProgressBar: View {
     var fraction: Double
     var color: Color = WidgetTheme.progress
@@ -87,14 +95,19 @@ struct ExtrasProgressBar: View {
 
 // MARK: - Pill
 
-/// A rounded "button-looking" label for places where the real control is the whole widget (`widgetURL`) or a `Link`. The fill is the
-/// accented layer and the label stays in the primary group, so the label is readable on it in tinted mode (`PillLabel` puts both in one).
+/// A rounded "button-looking" label for places where the real control is the whole widget (`widgetURL`) or a `Link`. In tinted mode its
+/// fill turns translucent, so the label stays readable on it (`PillLabel` keeps a solid fill, which swallows the label there).
 struct ExtrasPill: View {
     var title: String
     var systemImage: String?
     var fill: Color = WidgetTheme.green
     var foreground: Color = WidgetTheme.onGreen
     var height: CGFloat = 36
+
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
 
     var body: some View {
         HStack(spacing: 6) {
@@ -110,7 +123,7 @@ struct ExtrasPill: View {
         .frame(maxWidth: .infinity)
         .frame(height: height)
         .background {
-            Capsule().fill(fill).widgetAccentable()
+            Capsule().fill(palette.action(fill)).widgetAccentable()
         }
     }
 }
@@ -170,6 +183,10 @@ struct ExtrasEmptyState: View {
     let message: String
     var arrangement: Arrangement = .stacked
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
     private var isBeside: Bool { arrangement == .beside }
 
     var body: some View {
@@ -184,7 +201,7 @@ struct ExtrasEmptyState: View {
             HStack(spacing: 14) {
                 icon
                     .frame(width: 52, height: 52)
-                    .background(WidgetTheme.greenTint, in: Circle())
+                    .background(palette.badge, in: Circle())
                 texts
             }
         } else {

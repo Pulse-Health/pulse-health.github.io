@@ -125,7 +125,7 @@ struct PartnerView: View {
     }
 }
 
-/// Avatar, progress bar and "3/4". The person looking is green and in the accent group (tinted mode); partners are blue.
+/// Avatar, progress bar and "3/4". The person looking is green and the accented row in tinted mode; partners are blue.
 private struct PartnerRow: View {
     let badge: String
     let isYou: Bool
@@ -147,7 +147,7 @@ private struct PartnerRow: View {
                 .frame(width: 30, height: 30)
                 .background {
                     Circle()
-                        .fill(isYou ? WidgetTheme.green : palette.other)
+                        .fill(isYou ? palette.action(WidgetTheme.green) : palette.other)
                         .widgetAccentable(isYou)
                 }
             ExtrasProgressBar(

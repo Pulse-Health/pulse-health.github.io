@@ -260,6 +260,11 @@ private struct LogSetStepper: View {
 private struct LogSetButton: View {
     let intent: LogSetIntent
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
+
     var body: some View {
         Button(intent: intent) {
             HStack(spacing: 6) {
@@ -273,7 +278,7 @@ private struct LogSetButton: View {
             .padding(.horizontal, 16)
             .frame(height: 44)
             .background {
-                Capsule().fill(WidgetTheme.green).widgetAccentable()
+                Capsule().fill(palette.action(WidgetTheme.green)).widgetAccentable()
             }
         }
         .buttonStyle(.plain)
@@ -430,7 +435,7 @@ private struct LogSetRestCard: View {
                     .frame(height: 44)
                     .background {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(WidgetTheme.green)
+                            .fill(palette.action(WidgetTheme.green))
                             .widgetAccentable()
                     }
             }
@@ -446,6 +451,10 @@ private struct LogSetRestCard: View {
 private struct LogSetCompleteCard: View {
     let active: WorkoutSnapshot
 
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
     private var hasNoSets: Bool { active.totalSets == 0 }
 
     private var title: String {
@@ -465,7 +474,7 @@ private struct LogSetCompleteCard: View {
                 .foregroundStyle(WidgetTheme.onGreen)
                 .frame(width: 48, height: 48)
                 .background {
-                    Circle().fill(WidgetTheme.green).widgetAccentable()
+                    Circle().fill(palette.action(WidgetTheme.green)).widgetAccentable()
                 }
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {

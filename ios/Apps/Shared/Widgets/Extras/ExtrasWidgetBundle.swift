@@ -2,7 +2,8 @@
 //
 // The "wilder idea" widgets (WI-01...WI-11, widgets/SPEC.md): body map, log from the Home Screen, gym partner, form cue, loaded bar,
 // rest-day swap, strength ratio, year in iron, readiness, plateau watch and session timeline. PulseStrengthWidgetsBundle composes this
-// bundle with the others.
+// bundle with the others through its `body`: a `WidgetBundle` is not itself a `Widget` (its `Body` is one), so a surrounding builder
+// block takes `ExtrasWidgetBundle().body`.
 //
 // The widgets are listed in three groups of at most five, because a widget builder block has a limited number of children.
 
