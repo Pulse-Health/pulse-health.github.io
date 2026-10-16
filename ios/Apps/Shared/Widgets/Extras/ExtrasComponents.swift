@@ -172,7 +172,7 @@ struct ExtrasEmptyState: View {
     enum Arrangement {
         /// The icon in a round badge beside the text (medium widgets).
         case beside
-        /// The icon above the text (small widgets).
+        /// The icon in front of the title and the sentence below it (small widgets, which leave only about 126 pt of height).
         case stacked
     }
 
@@ -185,7 +185,6 @@ struct ExtrasEmptyState: View {
     @Environment(\.colorScheme) private var colorScheme
 
     private var palette: ExtrasPalette { ExtrasPalette(renderingMode: renderingMode, colorScheme: colorScheme) }
-    private var isBeside: Bool { arrangement == .beside }
 
     var body: some View {
         content
@@ -195,42 +194,50 @@ struct ExtrasEmptyState: View {
 
     @ViewBuilder
     private var content: some View {
-        if isBeside {
+        switch arrangement {
+        case .beside:
             HStack(spacing: 14) {
-                icon
+                icon(size: 22)
                     .frame(width: 52, height: 52)
                     .background(palette.badge, in: Circle())
-                texts
+                VStack(alignment: .leading, spacing: 3) {
+                    titleText(size: 17)
+                    messageText(size: 13, lines: 3)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                icon
-                texts
+        case .stacked:
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    icon(size: 15)
+                    titleText(size: 15)
+                }
+                messageText(size: 12, lines: 4)
             }
         }
     }
 
-    private var icon: some View {
+    private func icon(size: CGFloat) -> some View {
         Image(systemName: systemImage)
-            .font(.system(size: 22, weight: .semibold))
+            .font(.system(size: size, weight: .semibold))
             .foregroundStyle(WidgetTheme.green)
             .widgetAccentable()
     }
 
-    private var texts: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(title)
-                .font(WidgetTheme.text(isBeside ? 17 : 15, .bold))
-                .foregroundStyle(WidgetTheme.ink)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
-            Text(message)
-                .font(WidgetTheme.text(isBeside ? 13 : 12))
-                .foregroundStyle(WidgetTheme.inkSecondary)
-                .lineLimit(isBeside ? 3 : 4)
-                .minimumScaleFactor(0.85)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+    private func titleText(size: CGFloat) -> some View {
+        Text(title)
+            .font(WidgetTheme.text(size, .bold))
+            .foregroundStyle(WidgetTheme.ink)
+            .lineLimit(2)
+            .minimumScaleFactor(0.8)
+    }
+
+    private func messageText(size: CGFloat, lines: Int) -> some View {
+        Text(message)
+            .font(WidgetTheme.text(size))
+            .foregroundStyle(WidgetTheme.inkSecondary)
+            .lineLimit(lines)
+            .minimumScaleFactor(0.85)
     }
 }
 

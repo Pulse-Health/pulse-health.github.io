@@ -121,7 +121,7 @@ private struct LogSetLoggingCard: View {
 
     var body: some View {
         ViewThatFits(in: .vertical) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
                 header
                 steppers
                 progress
@@ -317,7 +317,8 @@ private struct LogSetDots: View {
 
 // MARK: - Resting
 
-/// The countdown with the next set beside it, then "+15 s" and "Skip rest". A shorter variant keeps both buttons on the smallest widget.
+/// The countdown with the next set beside it, then "+15 s" and "Skip rest". A shorter variant (no captions, a smaller clock) keeps both
+/// buttons on the smallest widget.
 private struct LogSetRestCard: View {
     let active: WorkoutSnapshot
     let countdown: ClosedRange<Date>?
@@ -348,10 +349,10 @@ private struct LogSetRestCard: View {
     }
 
     private func layout(compact: Bool) -> some View {
-        VStack(alignment: .leading, spacing: compact ? 8 : 10) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .center, spacing: 14) {
                 clock(compact: compact)
-                upNext
+                upNext(compact: compact)
             }
             controls
         }
@@ -396,14 +397,16 @@ private struct LogSetRestCard: View {
     }
 
     /// The set that waits after the rest.
-    private var upNext: some View {
+    private func upNext(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            ExtrasEyebrow(title: "Up next")
+            if !compact {
+                ExtrasEyebrow(title: "Up next")
+            }
             Text(active.exerciseName)
                 .font(WidgetTheme.text(17, .semibold))
                 .foregroundStyle(WidgetTheme.ink)
-                .lineLimit(2)
-                .minimumScaleFactor(0.8)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
             Text(active.nextSetText)
                 .font(WidgetTheme.text(13))
                 .foregroundStyle(WidgetTheme.inkSecondary)

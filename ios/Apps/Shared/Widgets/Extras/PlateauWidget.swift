@@ -93,7 +93,7 @@ struct PlateauView: View {
 
     private func list(rowLimit: Int, showsTip: Bool) -> some View {
         let rows = visibleRows(limit: rowLimit)
-        return VStack(alignment: .leading, spacing: 10) {
+        return VStack(alignment: .leading, spacing: 8) {
             header
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(rows.indices, id: \.self) { index in

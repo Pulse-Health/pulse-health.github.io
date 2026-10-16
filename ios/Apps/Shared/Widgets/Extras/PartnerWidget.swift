@@ -50,7 +50,7 @@ struct PartnerView: View {
     }
 
     private var populated: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("Training partners \u{00B7} this week")
                 .font(WidgetTheme.text(15, .semibold))
                 .foregroundStyle(WidgetTheme.ink)
@@ -70,7 +70,7 @@ struct PartnerView: View {
 
     private func list(partnerLimit: Int, showsStatus: Bool) -> some View {
         let shown = Array(partners.prefix(partnerLimit))
-        return VStack(alignment: .leading, spacing: 8) {
+        return VStack(alignment: .leading, spacing: 6) {
             PartnerRow(badge: "You", isYou: true, completed: week.completed, goal: week.goal)
             ForEach(shown.indices, id: \.self) { index in
                 PartnerRow(
@@ -144,7 +144,7 @@ private struct PartnerRow: View {
                 .foregroundStyle(isYou ? WidgetTheme.onGreen : Color.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-                .frame(width: 30, height: 30)
+                .frame(width: 28, height: 28)
                 .background {
                     Circle()
                         .fill(isYou ? palette.action(WidgetTheme.green) : palette.other)
