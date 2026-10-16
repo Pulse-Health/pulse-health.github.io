@@ -1,7 +1,9 @@
 // RestControl.swift
 //
-// CT-03 Rest timer: shows how much rest is left and skips it when pressed. The countdown is a system timer text (`Text(timerInterval:)`), the one
-// thing in a control that keeps moving without a refresh; everything else comes from the value provider, which the app refreshes when the workout
+// CT-03 Rest timer: shows how much rest is left and skips it when pressed. The countdown is the system's timer text (`Text(timerInterval:)`), which is
+// how WidgetKit and ActivityKit draw a countdown that moves without a refresh. Apple does not document whether Control Center keeps such a text
+// moving inside a control label, and nobody has run this on a device: if the digits stand still there, `restLabel` below is the one place to change
+// (the model carries the end date and the frozen seconds). Everything else comes from the value provider, which the app refreshes when the workout
 // changes. A paused workout shows the frozen time, and a rest that ran out says so. With no rest running the label is "Rest timer" and a press
 // changes nothing (the engine ignores a skip when no rest runs).
 
@@ -23,6 +25,7 @@ struct RestControl: ControlWidget {
                     Image(systemName: "timer")
                 }
             }
+            .tint(WidgetTheme.green)
         }
         .displayName("Rest timer")
         .description("Shows how much rest is left in your running workout. Press it to skip the rest.")

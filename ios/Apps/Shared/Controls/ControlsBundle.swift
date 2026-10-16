@@ -7,12 +7,12 @@
 //
 // Rules the controls follow:
 //   * `ControlWidget` is iOS 18 API and the app supports iOS 17, so every control is `@available(iOS 18.0, *)` and the bundle lists them under
-//     `#available`. PulseStrengthWidgetsBundle composes this bundle with the others.
+//     `#available`. A `ControlWidget` is not a `Widget`; `WidgetBundleBuilder` has its own `buildExpression` and `buildLimitedAvailability` for it.
+//   * A `WidgetBundle` is not a `Widget` either, so PulseStrengthWidgetsBundle composes this bundle through its `body`: `ControlsBundle().body`.
 //   * The Lock Screen slots and the small Control Center size draw only the glyph, so every control has an SF Symbol of its own, and the title of its
 //     `Label` (which VoiceOver reads, and the medium size shows) says in words what a press does.
 //   * Labels come from the WidgetSnapshot through `WorkoutControlProvider`. The app reloads the controls with `ControlCenter.shared.reloadAllControls()`
 //     after it wrote a new snapshot; the system also refreshes a control after one of its own intents ran.
-//   * WidgetBundleBuilder offers `buildBlock` overloads of a fixed size, so the eight controls are two blocks of four rather than one block of eight.
 
 #if os(iOS)
 import SwiftUI
@@ -25,8 +25,6 @@ struct ControlsBundle: WidgetBundle {
             LogSetControl()
             RestControl()
             AddRestControl()
-        }
-        if #available(iOS 18.0, *) {
             PlatesControl()
             PauseControl()
             FinishControl()
