@@ -10,4 +10,9 @@ class WearMainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent { Text("Pulse Strength") }
     }
+
+    companion object {
+        /** Intent extra naming a command the activity runs when it opens (only `startNext` is honoured). */
+        const val EXTRA_COMMAND = "health.pulse.strength.wear.extra.COMMAND"
+    }
 }

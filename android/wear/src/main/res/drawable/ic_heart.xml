@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The heart of the heart-rate tile (canvas board "Apple Watch", item 2). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="16"
+    android:viewportHeight="16">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8,14 s-5.5,-3.4 -5.5,-7.4 A3,3 0 0 1 8,4.3 a3,3 0 0 1 5.5,2.3 C13.5,10.6 8,14 8,14 z" />
+</vector>

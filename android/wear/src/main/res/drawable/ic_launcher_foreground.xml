@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The dumbbell of the Next up card, centred in the adaptive icon's safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="3.375"
+        android:scaleY="3.375"
+        android:translateX="27"
+        android:translateY="27">
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M2,6 v4 M4.5,4.5 v7 M11.5,4.5 v7 M14,6 v4 M4.5,8 h7"
+            android:strokeColor="#FF30D158"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:strokeWidth="2" />
+    </group>
+</vector>
