@@ -13,8 +13,10 @@ import java.util.Date
  * armed again after a reboot, and cancelled as soon as a workout runs (`LiveUpdates` does that). The host UI (owner: host) calls
  * [schedule] from the "Plan a session" dialog of the hub.
  *
- * The alarms are inexact (`setAndAllowWhileIdle`, no permission), so "Time to train" can come a few minutes late; the countdown card
- * itself is exact, because its chronometer counts to the start and the system removes the card then.
+ * The alarms are exact where the system allows that without a permission the app has to request (Android 11 and older, or "Alarms &
+ * reminders" allowed for the app, see [LiveAlarms]); elsewhere they are inexact (`setAndAllowWhileIdle`), so "Time to train" can come a
+ * few minutes late. The countdown card itself is always exact, because its chronometer counts to the start and the system removes the
+ * card then.
  */
 object PlannedSessions {
     /**

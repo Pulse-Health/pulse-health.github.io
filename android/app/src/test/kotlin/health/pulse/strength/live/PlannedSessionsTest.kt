@@ -65,9 +65,40 @@ class PlannedSessionsTest {
         assertThat(byAction.keys).containsExactly(PlannedSessionReceiver.ACTION_COUNTDOWN, PlannedSessionReceiver.ACTION_DUE)
         assertThat(byAction.getValue(PlannedSessionReceiver.ACTION_COUNTDOWN).triggerAtMs).isEqualTo(start - 30 * minute)
         assertThat(byAction.getValue(PlannedSessionReceiver.ACTION_DUE).triggerAtMs).isEqualTo(start)
-        // Inexact and allowed in Doze: no exact-alarm permission is needed.
+        // Without the "Alarms & reminders" permission (the app asks for none) the alarms are inexact, but allowed in Doze.
         assertThat(alarms().all { it.isAllowWhileIdle }).isTrue()
+        assertThat(alarms().map { it.windowLengthMs }.toSet()).containsExactly(ShadowAlarmManager.WINDOW_HEURISTIC)
         assertThat(countdown()).isNull()
+    }
+
+    @Test
+    @Config(sdk = [29])
+    fun beforeAndroid12TheAlarmsAreExactWithoutAnyPermission() {
+        val start = System.currentTimeMillis() + 3 * 60 * minute
+        PlannedSessions.schedule(app, templateId, start)
+        assertThat(alarms()).hasSize(2)
+        assertThat(alarms().map { it.windowLengthMs }.toSet()).containsExactly(ShadowAlarmManager.WINDOW_EXACT)
+        assertThat(alarms().all { it.isAllowWhileIdle }).isTrue()
+        assertThat(alarms().map { it.triggerAtMs }).containsExactly(start - 30 * minute, start)
+    }
+
+    @Test
+    fun onAndroid12AndNewerTheAlarmsAreExactOnceTheUserAllowsAlarmsAndReminders() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        val start = System.currentTimeMillis() + 3 * 60 * minute
+        PlannedSessions.schedule(app, templateId, start)
+        assertThat(alarms()).hasSize(2)
+        assertThat(alarms().map { it.windowLengthMs }.toSet()).containsExactly(ShadowAlarmManager.WINDOW_EXACT)
+        assertThat(alarms().all { it.isAllowWhileIdle }).isTrue()
+    }
+
+    @Test
+    fun theFlashAlarmStaysInexactEvenWhenExactAlarmsAreAllowed() {
+        ShadowAlarmManager.setCanScheduleExactAlarms(true)
+        LiveAlarms.schedule(app, AlarmSlot.MOMENT_END, System.currentTimeMillis() + 4_000)
+        val flash = alarms().single { actionOf(it) == LiveAlarmReceiver.ACTION_MOMENT_END }
+        assertThat(flash.windowLengthMs).isEqualTo(ShadowAlarmManager.WINDOW_HEURISTIC)
+        assertThat(flash.isAllowWhileIdle).isTrue()
     }
 
     @Test
