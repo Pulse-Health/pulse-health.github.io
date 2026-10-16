@@ -40,11 +40,20 @@ struct OnboardingSetupLayout<Content: View, Foot: View>: View {
                 pinnedFoot
             }
         }
-        .onChange(of: isActive) { (_: Bool, active: Bool) in
-            if active {
-                titleHasFocus = true
-            }
+        .task(id: isActive) {
+            await moveFocusToTitle()
         }
+    }
+
+    /// VoiceOver moves to the title once the step has slid into place (not while it is still on its way).
+    private func moveFocusToTitle() async {
+        guard isActive else { return }
+        do {
+            try await Task.sleep(nanoseconds: 600_000_000)
+        } catch {
+            return
+        }
+        titleHasFocus = true
     }
 
     /// The usual layout: head and body scroll above the buttons.

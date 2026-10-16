@@ -9,7 +9,6 @@ struct OnboardingDoneScreen: View {
     @ObservedObject var model: OnboardingModel
     let isActive: Bool
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @AccessibilityFocusState private var titleHasFocus: Bool
 
@@ -41,10 +40,23 @@ struct OnboardingDoneScreen: View {
         }
         .onChange(of: isActive) { (_: Bool, active: Bool) in
             if active {
-                titleHasFocus = true
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
             }
         }
+        .task(id: isActive) {
+            await moveFocusToTitle()
+        }
+    }
+
+    /// VoiceOver moves to the title once the screen has slid into place (not while it is still on its way).
+    private func moveFocusToTitle() async {
+        guard isActive else { return }
+        do {
+            try await Task.sleep(nanoseconds: 600_000_000)
+        } catch {
+            return
+        }
+        titleHasFocus = true
     }
 
     private var summaryBlock: some View {
@@ -65,8 +77,8 @@ struct OnboardingDoneScreen: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 10)
             OnboardingWrapLayout(spacing: 8) {
-                ForEach(summaryItems.indices, id: \.self) { (index: Int) in
-                    chip(summaryItems[index])
+                ForEach(summaryItems, id: \.self) { (item: OnboardingSummaryItem) in
+                    chip(item)
                 }
             }
             .padding(.top, 26)
@@ -194,7 +206,8 @@ private struct OnboardingCheckShape: Shape {
 
 // MARK: - Wrapping chips
 
-/// Lays its children out in rows that wrap, each row centred (the summary chips).
+/// Lays its children out in rows that wrap, each row centred (the summary chips). A child that is wider than the row (a long label at
+/// an accessibility text size) is measured again with the row's width, so its text wraps instead of running off the screen.
 struct OnboardingWrapLayout: Layout {
     var spacing: CGFloat = 8
 
@@ -212,9 +225,9 @@ struct OnboardingWrapLayout: Layout {
         var y = bounds.minY
         for row in rows {
             var x = bounds.minX + (bounds.width - row.width) / 2
-            for index in row.indices {
-                let size = subviews[index].sizeThatFits(.unspecified)
-                subviews[index].place(
+            for position in row.indices.indices {
+                let size = row.sizes[position]
+                subviews[row.indices[position]].place(
                     at: CGPoint(x: x, y: y + (row.height - size.height) / 2),
                     anchor: .topLeading,
                     proposal: ProposedViewSize(size)
@@ -227,15 +240,25 @@ struct OnboardingWrapLayout: Layout {
 
     private struct Row {
         var indices: [Int] = []
+        var sizes: [CGSize] = []
         var width: CGFloat = 0
         var height: CGFloat = 0
+    }
+
+    /// The size of a child: its ideal size, or, when that is wider than `width`, its size at `width`.
+    private func measured(_ subview: LayoutSubview, within width: CGFloat) -> CGSize {
+        let ideal = subview.sizeThatFits(.unspecified)
+        if ideal.width <= width {
+            return ideal
+        }
+        return subview.sizeThatFits(ProposedViewSize(width: width, height: nil))
     }
 
     private func arrange(width: CGFloat, subviews: Subviews) -> [Row] {
         var rows: [Row] = []
         var current = Row()
         for index in subviews.indices {
-            let size = subviews[index].sizeThatFits(.unspecified)
+            let size = measured(subviews[index], within: width)
             let needed = current.indices.isEmpty ? size.width : current.width + spacing + size.width
             if needed > width && !current.indices.isEmpty {
                 rows.append(current)
@@ -244,6 +267,7 @@ struct OnboardingWrapLayout: Layout {
             current.width = current.indices.isEmpty ? size.width : current.width + spacing + size.width
             current.height = max(current.height, size.height)
             current.indices.append(index)
+            current.sizes.append(size)
         }
         if !current.indices.isEmpty {
             rows.append(current)

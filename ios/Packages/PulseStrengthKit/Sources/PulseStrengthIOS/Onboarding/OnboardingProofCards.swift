@@ -48,9 +48,13 @@ private struct OnboardingMiniButton: View {
     var isGreen = false
 
     var body: some View {
+        // Never truncated: an HStack hands its children equal shares of the width, and three of these next to the countdown
+        // would otherwise get less than their text needs ("..." instead of "-15").
         Text(text)
             .font(.system(size: 15, weight: .semibold, design: .rounded))
             .monospacedDigit()
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(isGreen ? OnboardingTheme.green : Color.white)
             .padding(.horizontal, 10)
             .frame(minWidth: 40, minHeight: 34)
@@ -157,6 +161,8 @@ struct OnboardingRestCard: View {
                     Text(clock)
                         .font(.system(size: 30, weight: .bold, design: .rounded))
                         .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                         .foregroundStyle(Color.white)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -165,6 +171,7 @@ struct OnboardingRestCard: View {
                     OnboardingMiniButton(text: "+15")
                     OnboardingMiniButton(text: copy.text(.previewRestSkip), isGreen: true)
                 }
+                .layoutPriority(1)
             }
             heartRateLine
         }

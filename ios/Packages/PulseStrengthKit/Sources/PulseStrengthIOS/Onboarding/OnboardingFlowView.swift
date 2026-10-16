@@ -1,6 +1,5 @@
 #if os(iOS)
 import SwiftUI
-import UIKit
 import PulseStrengthCore
 
 /// The whole first-run flow as one view: the hero clip behind, the welcome screen, the account sheet, the four setup steps and the
@@ -14,7 +13,6 @@ public struct OnboardingFlowView: View {
     private let onComplete: (OnboardingOutcome) -> Void
 
     @State private var highlight = 0
-    @State private var sheetContentHeight: CGFloat = 560
     @State private var screenHeight: CGFloat = 0
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -123,9 +121,9 @@ public struct OnboardingFlowView: View {
         )
     }
 
+    /// The sheet sets its own detents (it is as tall as its form); what is the same for every presentation is set here.
     private var authSheet: some View {
-        OnboardingAuthSheet(model: model, contentHeight: $sheetContentHeight)
-            .presentationDetents([.height(sheetDetentHeight), .large])
+        OnboardingAuthSheet(model: model)
             .presentationDragIndicator(.visible)
             .presentationCornerRadius(PulseTheme.sheetRadius)
             .presentationBackground(.regularMaterial)
@@ -133,17 +131,6 @@ public struct OnboardingFlowView: View {
             .preferredColorScheme(.dark)
             .tint(OnboardingTheme.green)
             .dynamicTypeSize(PulseDynamicType.screenRange)
-    }
-
-    /// The sheet is as tall as its form (plus the home indicator's strip), never shorter than a small sheet.
-    private var sheetDetentHeight: CGFloat {
-        max(sheetContentHeight + OnboardingFlowView.bottomSafeInset, 320)
-    }
-
-    private static var bottomSafeInset: CGFloat {
-        let scenes = UIApplication.shared.connectedScenes.compactMap { (scene: UIScene) in scene as? UIWindowScene }
-        let active = scenes.first { (scene: UIWindowScene) in scene.activationState == .foregroundActive }
-        return (active ?? scenes.first)?.keyWindow?.safeAreaInsets.bottom ?? 0
     }
 }
 

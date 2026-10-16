@@ -808,7 +808,17 @@ final class OnboardingTourTests: XCTestCase {
 @MainActor
 final class OnboardingTour: UIDriver {
 
+    /// The name of the configuration ('default', 'dark', 'xxl', 'se', 'ios17').
+    private var config = "default"
+
+    /// The 'xxl' configuration sets accessibility text sizes: the welcome screen, the sheet and the setup steps scroll there, and
+    /// things that sit side by side at the default size sit one below the other.
+    private var isLargeText: Bool {
+        config == "xxl"
+    }
+
     func run(config: String) {
+        self.config = config
         launchArguments = ["-PulseUITest", "-PulseShowOnboarding", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         output.log("Onboarding tour '" + config + "', iOS " + ProcessInfo.processInfo.operatingSystemVersionString)
         output.log("TOUR_CONFIG=" + (ProcessInfo.processInfo.environment["TOUR_CONFIG"] ?? "(not set)"))
@@ -865,8 +875,13 @@ final class OnboardingTour: UIDriver {
                 if !tap(.button(highlight.button)) {
                     continue
                 }
-                if waitFor(.text(highlight.title), timeout: 5) == nil {
-                    fail("After tapping '" + highlight.button + "' the title '" + highlight.title + "' did not appear")
+                // The titles of all three highlights are in the tree at all times (the ones that are not shown are only hidden from
+                // VoiceOver), so what proves that the bar did its job is that it is the selected one.
+                if !waitUntilSelected(.button(highlight.button), timeout: 5) {
+                    fail("After tapping '" + highlight.button + "' that bar did not become the selected one")
+                }
+                if !exists(.text(highlight.title)) {
+                    fail("The title '" + highlight.title + "' of the highlight is missing")
                 }
                 shot(highlight.name, settle: 1.4)
             }
@@ -892,7 +907,8 @@ final class OnboardingTour: UIDriver {
 
     private func accountSheetStep() {
         step("Account sheet opens on the sign-up tab") {
-            if !tap(.button("onboarding.start")) {
+            // At accessibility text sizes the welcome screen scrolls and the button is below the fold.
+            if !tap(.button("onboarding.start"), scrollUp: true) {
                 return
             }
             if waitFor(.button("onboarding.submit"), timeout: 10) == nil {
@@ -900,6 +916,8 @@ final class OnboardingTour: UIDriver {
                 shot("signup-missing")
                 return
             }
+            pause(1.2)
+            checkSheetHeight()
             if !exists(.text("Create your account")) {
                 fail("The sheet does not show the sign-up title 'Create your account'")
             }
@@ -909,6 +927,20 @@ final class OnboardingTour: UIDriver {
                 }
             }
             shot("signup-sheet", settle: 1.2)
+        }
+    }
+
+    /// The sheet opens as tall as its form: the button that sends it is on the screen without scrolling or pulling the sheet up.
+    /// (At accessibility text sizes the form is taller than any sheet; there it is only written to the log.)
+    private func checkSheetHeight() {
+        guard let submit = find(.button("onboarding.submit")) else {
+            return
+        }
+        let frame = submit.frame
+        let screenHeight = app.frame.height
+        note("sheet: the send button is at y " + String(Int(frame.minY)) + " to " + String(Int(frame.maxY)) + " of " + String(Int(screenHeight)))
+        if !isLargeText && frame.maxY > screenHeight - 4 {
+            fail("The account sheet opens too short: its send button ends at y " + String(Int(frame.maxY)) + " of " + String(Int(screenHeight)) + ", below the visible part")
         }
     }
 
@@ -925,7 +957,8 @@ final class OnboardingTour: UIDriver {
             }
             // The error moved the focus to the email field: close the keyboard (its Done button), so that it does not cover
             // what the next steps tap.
-            tap(.button("onboarding.keyboardDone"), timeout: 3, required: false)
+            // On iOS 18 XCTest finds no point to tap on this toolbar button (its text is a child with the same frame).
+            tap(.button("onboarding.keyboardDone"), timeout: 3, required: false, coordinateFallback: true)
             pause(0.6)
             shot("signup-errors", settle: 0.6)
         }
@@ -1001,12 +1034,16 @@ final class OnboardingTour: UIDriver {
 
     private func backStep() {
         step("Back keeps the answers") {
-            if !tap(.button("onboarding.back")) {
+            // XCTest finds no point to tap on this button (its icon is a child with the same frame): tap it by coordinate.
+            if !tap(.button("onboarding.back"), coordinateFallback: true) {
                 return
             }
             if waitFor(.text("What are you training for?"), timeout: 8) == nil {
                 fail("Back did not return to the profile step")
                 return
+            }
+            if waitFor(.element("Setup progress, step 1 of 4"), timeout: 5) == nil {
+                fail("After Back the setup progress does not say 'step 1 of 4'")
             }
             if let next = waitFor(.button("onboarding.profile.continue"), timeout: 5), !next.isEnabled {
                 fail("The goal and the experience level were forgotten after Back")
@@ -1033,7 +1070,10 @@ final class OnboardingTour: UIDriver {
             }
             let acceptFrame = accept.frame
             let declineFrame = decline.frame
-            if abs(acceptFrame.width - declineFrame.width) > 1 || abs(acceptFrame.height - declineFrame.height) > 1 {
+            // The widths are always equal. The heights are too, except at accessibility text sizes, where a longer label wraps.
+            let widthsDiffer = abs(acceptFrame.width - declineFrame.width) > 1
+            let heightsDiffer = !isLargeText && abs(acceptFrame.height - declineFrame.height) > 1
+            if widthsDiffer || heightsDiffer {
                 fail("'Turn on AI Coaching' and 'No thanks' differ in size: " + String(describing: acceptFrame.size) + " and " + String(describing: declineFrame.size))
             }
             shot("coach", settle: 1.2)
@@ -1049,7 +1089,7 @@ final class OnboardingTour: UIDriver {
                 return
             }
             shot("notify", settle: 1.6)
-            tap(.button("onboarding.notify.later"))
+            tap(.button("onboarding.notify.later"), coordinateFallback: true)
         }
     }
 
@@ -1066,7 +1106,21 @@ final class OnboardingTour: UIDriver {
                 }
             }
             shot("done", settle: 2.0)
-            tap(.button("onboarding.finish"))
+            tap(.button("onboarding.finish"), scrollUp: true)
+        }
+    }
+
+    /// Waits until the target is selected (the 'Selected' accessibility trait: the bar of the highlight on screen).
+    private func waitUntilSelected(_ target: Target, timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while true {
+            if let element = find(target), element.isSelected {
+                return true
+            }
+            if Date() >= deadline {
+                return false
+            }
+            pause(0.3)
         }
     }
 
@@ -1077,8 +1131,8 @@ final class OnboardingTour: UIDriver {
                 shot("hub-missing")
                 return
             }
-            if exists(.button("onboarding.finish")) {
-                fail("The onboarding is still on screen")
+            if !waitUntilGone(.button("onboarding.finish"), timeout: 8) {
+                fail("The onboarding is still on screen 8 s after 'Start training'")
             }
             shot("hub", settle: 1.0)
         }

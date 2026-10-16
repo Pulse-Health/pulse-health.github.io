@@ -139,7 +139,7 @@ final class HealthKitWorkoutWriter: WorkoutSideEffect {
     // MARK: Authorization
 
     /// Asks to share workouts and to read heart rate and active energy, then reports a denied share status.
-    /// Returns true when Health is available, the request went through and sharing workouts was not denied. (HealthKit never says
+    /// Returns true when Health is available, the request went through and sharing workouts was allowed. (HealthKit never says
     /// whether reading was allowed, so a user who allowed only the sharing counts as connected too.)
     @discardableResult
     func requestAuthorization() async -> Bool {
@@ -160,7 +160,7 @@ final class HealthKitWorkoutWriter: WorkoutSideEffect {
             requested = false
         }
         refreshAuthorizationStatus()
-        return requested && store.authorizationStatus(for: HKObjectType.workoutType()) != .sharingDenied
+        return requested && store.authorizationStatus(for: HKObjectType.workoutType()) == .sharingAuthorized
     }
 
     /// Reads the current share status of workouts and tells `onAuthorizationDenied` when it changed.

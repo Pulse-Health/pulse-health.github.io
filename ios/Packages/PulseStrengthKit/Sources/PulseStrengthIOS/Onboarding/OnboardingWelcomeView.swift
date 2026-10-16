@@ -15,6 +15,7 @@ struct OnboardingWelcomeView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.onboardingIsCompact) private var isCompact
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var playback = HighlightPlayback()
     @State private var isHeld = false
@@ -24,23 +25,17 @@ struct OnboardingWelcomeView: View {
     private var copy: OnboardingCopy { model.copy }
 
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: 0)
-            VStack(alignment: .leading, spacing: 0) {
-                heading
-                pager
-                    .padding(.bottom, 14)
-                    .modifier(OnboardingRise(delay: 0.35, visible: hasAppeared))
-                highlights
-                    .modifier(OnboardingRise(delay: 0.45, visible: hasAppeared))
-                actions
-                    .padding(.top, isCompact ? 18 : 22)
-                    .modifier(OnboardingRise(delay: 0.6, visible: hasAppeared))
+        Group {
+            if isLargeText {
+                scrollingBlock
+            } else {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    block
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .padding(.horizontal, OnboardingTheme.heroInset)
-            .padding(.bottom, 14)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .task(id: isRunning) {
             await runClock()
         }
@@ -51,6 +46,44 @@ struct OnboardingWelcomeView: View {
             highlight = playback.index
             hasAppeared = true
         }
+    }
+
+    /// Accessibility text sizes: the block is taller than the screen.
+    private var isLargeText: Bool {
+        dynamicTypeSize.isAccessibilitySize
+    }
+
+    /// The bars, the highlight, and the buttons.
+    private var block: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            heading
+            pager
+                .padding(.bottom, 14)
+                .modifier(OnboardingRise(delay: 0.35, visible: hasAppeared))
+            highlights
+                .modifier(OnboardingRise(delay: 0.45, visible: hasAppeared))
+            actions
+                .padding(.top, isCompact ? 18 : 22)
+                .modifier(OnboardingRise(delay: 0.6, visible: hasAppeared))
+        }
+        .padding(.horizontal, OnboardingTheme.heroInset)
+        .padding(.bottom, 14)
+    }
+
+    /// The block in a scroll view that starts under the top bar, so that nothing runs up into the status bar and everything can be
+    /// reached. While the block is shorter than the screen it still sits at the bottom, as at the default size.
+    private var scrollingBlock: some View {
+        GeometryReader { proxy in
+            ScrollView {
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    block
+                }
+                .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .padding(.top, OnboardingTheme.topBarHeight + 12)
     }
 
     // MARK: Clock
@@ -139,7 +172,7 @@ struct OnboardingWelcomeView: View {
     private var highlights: some View {
         VStack(alignment: .leading, spacing: 0) {
             slides
-            if !isCompact {
+            if !isCompact && !isLargeText {
                 proofs
                     .padding(.top, 20)
             }

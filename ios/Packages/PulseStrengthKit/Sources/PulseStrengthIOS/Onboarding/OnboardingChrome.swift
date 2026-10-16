@@ -45,16 +45,19 @@ struct OnboardingTopBar: View {
         !model.step.isSetup
     }
 
+    /// Brand or Back, never both. The one that is not wanted is not in the view tree at all (rather than faded out and hidden from
+    /// VoiceOver): a hidden copy stays in the accessibility tree that UI tests see, and a Back button that had been hidden once
+    /// showed up there with a child that covered it, so that XCTest found no point to tap.
     private var leading: some View {
         ZStack(alignment: .leading) {
-            brand
-                .opacity(showsBrand ? 1 : 0)
-                .offset(x: showsBrand ? 0 : -10)
-            backButton
-                .opacity(showsBack ? 1 : 0)
-                .offset(x: showsBack ? 0 : 10)
-                .allowsHitTesting(showsBack)
-                .accessibilityHidden(!showsBack)
+            if showsBrand {
+                brand
+                    .transition(AnyTransition.opacity)
+            }
+            if showsBack {
+                backButton
+                    .transition(AnyTransition.opacity)
+            }
         }
         .animation(reduceMotion ? nil : Animation.easeOut(duration: 0.4), value: model.step)
     }
@@ -69,7 +72,6 @@ struct OnboardingTopBar: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(OnboardingBrand.name)
-        .accessibilityHidden(!showsBrand)
     }
 
     private var backButton: some View {

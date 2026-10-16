@@ -87,7 +87,7 @@ The flow is implemented in `ios/Packages/PulseStrengthKit` (see [`ios/README.md`
 | `go()` / `state` | `OnboardingReducer` + `OnboardingModel` (Core, unit-tested on Linux) |
 | video + poster + `.media__grade` + `.media__veil` | `OnboardingBackdrop`: `AVPlayerLooper` in an `AVPlayerLayer`, two gradients, a material veil |
 | pager, slides, previews | `OnboardingWelcomeView` + `HighlightPlayback` (the clock) + `OnboardingProofCards` |
-| sheet | a system `.sheet` (`OnboardingAuthSheet`) with a measured first detent, 26 pt radius, material background |
+| sheet | a system `.sheet` (`OnboardingAuthSheet`) with a measured first detent (at least 540 pt, so the whole form shows), 26 pt radius, material background |
 | profile / health / coach / notify / done | `OnboardingSetupScreens`, `OnboardingDoneView`, on `OnboardingSetupLayout` |
 | `--*` tokens | `OnboardingTheme` (the dark values of `PulseTheme` as fixed colours) |
 

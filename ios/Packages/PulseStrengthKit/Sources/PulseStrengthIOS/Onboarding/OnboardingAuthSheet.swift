@@ -8,14 +8,23 @@ import PulseStrengthCore
 @MainActor
 struct OnboardingAuthSheet: View {
     @ObservedObject var model: OnboardingModel
-    /// The height of the content, for the sheet's first detent (the sheet is as tall as its form, and can be pulled up).
-    @Binding var contentHeight: CGFloat
 
     @FocusState private var focus: AuthField?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The tallest the form has been while the sheet is open. The sheet's first detent is this tall (it hugs its form and can be
+    /// pulled up), and it does not shrink again when an error line goes or the other tab is shorter, so it never jumps.
+    @State private var tallestContent: CGFloat = 0
 
     private var copy: OnboardingCopy { model.copy }
     private var isSignUp: Bool { model.authMode == .signUp }
+
+    /// The form at the default text size is about 526 pt (sign-up) and 504 pt (log-in). A sheet that has not been measured yet, or
+    /// whose measurement came out too small, must still show the whole form and its button, so it is never shorter than this.
+    private static let minimumSheetHeight: CGFloat = 540
+
+    /// A `.height` detent is the height of the content area; the system adds the bottom safe area to it.
+    private var detents: Set<PresentationDetent> {
+        [.height(max(tallestContent.rounded(.up), OnboardingAuthSheet.minimumSheetHeight)), .large]
+    }
 
     var body: some View {
         ScrollView {
@@ -39,8 +48,11 @@ struct OnboardingAuthSheet: View {
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
         .onPreferenceChange(OnboardingSheetHeightKey.self) { (height: CGFloat) in
-            contentHeight = height
+            if height > tallestContent {
+                tallestContent = height
+            }
         }
+        .presentationDetents(detents)
         .overlay(alignment: .topTrailing) {
             closeButton
         }
