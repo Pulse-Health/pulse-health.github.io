@@ -2,7 +2,9 @@ package health.pulse.strength.ui.sheets
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -145,6 +147,59 @@ class ExerciseListSheetTest {
         val before = names()
         drag(1, rowPx * 1.3f, -rowPx * 1.3f)
         assertThat(names()).isEqualTo(before)
+    }
+
+    /** How far the list is scrolled (px), as its scroll semantics report it. */
+    private fun scrolled(): Float =
+        rule.onNode(hasScrollAction()).fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value()
+
+    /** A landscape phone with gesture navigation: the list has room for about 2.7 rows (187 dp), the rows are 70 dp. */
+    private fun openOnALandscapePhone() {
+        open()
+        rule.deliverSheetInsets(status = 24, navigation = 24)
+        val viewport = rule.onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot.height / 3f
+        assertThat(viewport).isAtLeast(180f)
+        assertThat(viewport).isAtMost(200f)
+    }
+
+    @Test
+    @Config(qualifiers = "w891dp-h411dp-land-xxhdpi")
+    fun draggingOneRowDownInAShortListDoesNotScrollIt() {
+        openOnALandscapePhone()
+        val before = names()
+        val handle = rule.onNodeWithTag("reorder-handle-0")
+        handle.performTouchInput { down(center) }
+        for (i in 1..2) {
+            handle.performTouchInput { moveBy(Offset(0f, rowPx * 0.68f)) }
+            rule.waitForIdle()
+        }
+        // The finger is 130 dp down, on the second row, short of the bottom zone (from 140 dp on this 187 dp list). The old zone
+        // (56 dp) began at 131, and went by the dragged row's bottom edge, 153 dp.
+        assertThat(scrolled()).isEqualTo(0f)
+        handle.performTouchInput { up() }
+        rule.waitForIdle()
+        assertThat(names()).isEqualTo(listOf(before[1], before[0]) + before.drop(2))
+        assertThat(scrolled()).isEqualTo(0f)
+    }
+
+    @Test
+    @Config(qualifiers = "w891dp-h411dp-land-xxhdpi")
+    fun holdingTheFingerAtTheBottomEdgeScrollsTheListUntilItIsLifted() {
+        openOnALandscapePhone()
+        val handle = rule.onNodeWithTag("reorder-handle-0")
+        handle.performTouchInput { down(center) }
+        for (i in 1..4) {
+            handle.performTouchInput { moveBy(Offset(0f, rowPx * 0.7f)) }
+            rule.waitForIdle()
+        }
+        // The finger is 182 dp below the row's centre, in the bottom zone of the 187 dp list.
+        assertThat(scrolled()).isGreaterThan(0f)
+        handle.performTouchInput { up() }
+        rule.waitForIdle()
+        val stopped = scrolled()
+        rule.mainClock.advanceTimeBy(500)
+        rule.waitForIdle()
+        assertThat(scrolled()).isEqualTo(stopped)
     }
 
     @Test

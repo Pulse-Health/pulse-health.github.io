@@ -1,6 +1,7 @@
 package health.pulse.strength.ui.sheets
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -264,8 +265,8 @@ internal fun SheetSectionLabel(text: String, modifier: Modifier = Modifier) {
 internal class SegmentOption<T>(val value: T, val title: String, val spoken: String = title)
 
 /**
- * The design's segmented control (a grey track with a raised white thumb on the selected segment) with a screen reader label per
- * segment. [groupLabel] names the group for screen readers. Segments are at least [minHeight] tall (48 dp: a comfortable touch
+ * The design's segmented control (a grey track with a raised white thumb on the selected segment; in dark mode a lighter thumb with
+ * a green ring) with a screen reader label per segment. [groupLabel] names the group for screen readers. Segments are at least [minHeight] tall (48 dp: a comfortable touch
  * target) and grow with the font size.
  */
 @Composable
@@ -287,9 +288,12 @@ internal fun <T> SegmentedOptions(
                 .pulseMinHeight(minHeight)
                 .then(
                     if (isSelected) {
+                        // Dark: the card colour is the track's colour and the shadow is black on black, so the thumb is a step
+                        // lighter and carries the green ring that marks a selection elsewhere (the keypad's edited value).
                         Modifier
                             .shadow(2.dp, RoundedCornerShape(7.dp), clip = false)
-                            .background(colors.card, RoundedCornerShape(7.dp))
+                            .background(if (colors.isDark) colors.cellOnTint else colors.card, RoundedCornerShape(7.dp))
+                            .then(if (colors.isDark) Modifier.border(1.dp, colors.green, RoundedCornerShape(7.dp)) else Modifier)
                     } else {
                         Modifier
                     },

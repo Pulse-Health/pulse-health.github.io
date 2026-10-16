@@ -1,5 +1,6 @@
 package health.pulse.strength.ui.sheets
 
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
@@ -59,6 +60,51 @@ class KeypadSheetTest {
         rule.onNodeWithContentDescription("Reps").assertHasState("6 reps")
         rule.onNodeWithText("Next: Reps").assertExists()
         rule.onNodeWithContentDescription("20 kilogram bar. 25 + 5 + 1.25 per side").assertExists()
+    }
+
+    private fun liveRegions() = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.LiveRegion))
+
+    /** The one live region of the keypad is the card [name], and it says [state]. */
+    private fun assertOnlyLive(name: String, state: String) {
+        liveRegions().assertCountEquals(1)
+        rule.onNodeWithContentDescription(name)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
+            .assertHasState(state)
+    }
+
+    @Test
+    fun onlyTheEditedValueCardIsALiveRegion() {
+        open()
+        assertOnlyLive("Weight", "82.5 kilograms")
+        rule.onNodeWithContentDescription("Reps").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.LiveRegion))
+        // Switching the field hands the live region over: still one node, so a tap on "Next: Reps" is read once.
+        rule.onNodeWithText("Next: Reps").performClick()
+        assertOnlyLive("Reps", "6 reps")
+        rule.onNodeWithContentDescription("Weight").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.LiveRegion))
+        rule.onNodeWithContentDescription("Weight").performClick()
+        assertOnlyLive("Weight", "82.5 kilograms")
+    }
+
+    @Test
+    fun keysSteppersAndUseLastAllUpdateTheOneLiveValue() {
+        open()
+        key("9")
+        assertOnlyLive("Weight", "9 kilograms")
+        key("Decimal point")
+        key("5")
+        assertOnlyLive("Weight", "9.5 kilograms")
+        key("Delete")
+        key("Delete")
+        assertOnlyLive("Weight", "9 kilograms")
+        rule.onNodeWithContentDescription("Increase weight").performClick()
+        assertOnlyLive("Weight", "11.5 kilograms")
+        rule.onNodeWithContentDescription("Decrease weight").performClick()
+        assertOnlyLive("Weight", "9 kilograms")
+        rule.onNodeWithText("Use last: 80 kg").performClick()
+        assertOnlyLive("Weight", "80 kilograms")
+        rule.onNodeWithContentDescription("Reps").performClick()
+        rule.onNodeWithContentDescription("Increase reps").performClick()
+        assertOnlyLive("Reps", "7 reps")
     }
 
     @Test

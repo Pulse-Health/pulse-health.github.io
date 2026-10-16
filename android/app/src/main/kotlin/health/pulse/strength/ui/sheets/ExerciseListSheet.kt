@@ -162,16 +162,19 @@ internal fun ExerciseListSheetContent(
 
     // The sheet must not treat the drag as a swipe to dismiss it.
     LaunchedEffect(reorder.draggedKey) { onReorderingChange(reorder.draggedKey != null) }
-    val edge = with(LocalDensity.current) { 56.dp.toPx() }
-    val maxStep = with(LocalDensity.current) { 18.dp.toPx() }
-    // Near an edge of the list the list scrolls on its own, a step per frame; otherwise this does nothing (and costs no frames).
-    LaunchedEffect(reorder, edge, maxStep) {
-        snapshotFlow { reorder.autoScrollStep(edge, maxStep) }.collectLatest { first ->
-            var step = first
-            while (step != 0f && isActive) {
-                reorder.scrollBySteps(step)
-                withFrameNanos { }
-                step = reorder.autoScrollStep(edge, maxStep)
+    val maxEdge = with(LocalDensity.current) { 56.dp.toPx() }
+    val maxSpeed = with(LocalDensity.current) { AutoScrollSpeed.toPx() }
+    // While the finger is near an edge of the list the list scrolls on its own, by speed x time since the last frame (the same on
+    // a 60 and a 120 Hz screen); otherwise this does nothing (and costs no frames).
+    LaunchedEffect(reorder, maxEdge, maxSpeed) {
+        snapshotFlow { reorder.autoScrollSpeed(maxEdge, maxSpeed) }.collectLatest { first ->
+            var speed = first
+            var last = withFrameNanos { it }
+            while (speed != 0f && isActive) {
+                val now = withFrameNanos { it }
+                reorder.scrollBySteps(edgeScrollDistance(speed, now - last))
+                last = now
+                speed = reorder.autoScrollSpeed(maxEdge, maxSpeed)
             }
         }
     }
@@ -207,9 +210,9 @@ internal fun ExerciseListSheetContent(
                         controller.send(WorkoutAction.MoveExerciseBy(row.id, delta))
                     },
                     drag = RowDrag(
-                        onStart = {
+                        onStart = { fingerFromCentre ->
                             haptics.selection()
-                            reorder.start(row.id, displayed.map { it.id })
+                            reorder.start(row.id, displayed.map { it.id }, fingerFromCentre)
                         },
                         onDrag = { reorder.drag(it) },
                         onEnd = { reorder.end(currentOnMove) },
@@ -256,8 +259,14 @@ internal fun ExerciseListSheetContent(
     }
 }
 
-/** What the drag handle of a row reports (the finger moves [onDrag] px vertically). */
-private class RowDrag(val onStart: () -> Unit, val onDrag: (Float) -> Unit, val onEnd: () -> Unit, val onCancel: () -> Unit)
+/** How fast the list scrolls by itself with the finger at its edge: what 18 dp per frame is on a 60 Hz screen. */
+private val AutoScrollSpeed = 1080.dp
+
+/**
+ * What the drag handle of a row reports: the finger went down [onStart] px below the vertical centre of the handle (which is
+ * the centre of the row), and moves [onDrag] px vertically.
+ */
+private class RowDrag(val onStart: (Float) -> Unit, val onDrag: (Float) -> Unit, val onEnd: () -> Unit, val onCancel: () -> Unit)
 
 /**
  * One row: thumbnail, name with "Superset A · 3 of 5 sets · Chest · Now", the options button and the drag handle. The whole
@@ -349,7 +358,7 @@ private fun ExerciseListRowView(
                     .clearAndSetSemantics { testTag = "reorder-handle-${row.index}" }
                     .pointerInput(row.id) {
                         detectDragGestures(
-                            onDragStart = { currentDrag.onStart() },
+                            onDragStart = { down -> currentDrag.onStart(down.y - size.height / 2f) },
                             onDrag = { change, amount ->
                                 change.consume()
                                 currentDrag.onDrag(amount.y)

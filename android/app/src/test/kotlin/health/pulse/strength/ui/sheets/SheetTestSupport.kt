@@ -1,5 +1,6 @@
 package health.pulse.strength.ui.sheets
 
+import android.view.View
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.core.graphics.Insets
+import androidx.core.view.WindowInsetsCompat
 import health.pulse.strength.StrengthAppEnvironment
 import health.pulse.strength.core.SetRef
 import health.pulse.strength.core.WorkoutController
@@ -22,6 +26,8 @@ import health.pulse.strength.ui.components.LocalPulseClock
 import health.pulse.strength.ui.components.PulseClock
 import health.pulse.strength.ui.theme.PulseMetrics
 import health.pulse.strength.ui.theme.PulseTheme
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.shadows.ShadowDialog
 
 /**
  * Draws [content] the way a sheet window shows it (dimmed page behind, rounded surface at the bottom, handle, body with the
@@ -68,4 +74,23 @@ fun PulseTestTheme(dark: Boolean = false, content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalPulseClock provides PulseClock(now = { ScreenshotSupport.fixedNow }, ticks = false)) {
         PulseTheme(darkTheme = dark, reduceMotion = true) { content() }
     }
+}
+
+/**
+ * Delivers system bar and keyboard insets (dp) to the window of the latest sheet the way the system does it (the keyboard is
+ * visible when [ime] is above 0).
+ */
+fun ComposeTestRule.deliverSheetInsets(status: Int = 0, navigation: Int = 0, ime: Int = 0) {
+    val density = RuntimeEnvironment.getApplication().resources.displayMetrics.density
+    fun px(dp: Int) = (dp * density).toInt()
+    val decor: View = ShadowDialog.getLatestDialog().window!!.decorView
+    val insets = WindowInsetsCompat.Builder()
+        .setInsets(WindowInsetsCompat.Type.statusBars(), Insets.of(0, px(status), 0, 0))
+        .setInsets(WindowInsetsCompat.Type.navigationBars(), Insets.of(0, 0, 0, px(navigation)))
+        .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, px(ime)))
+        .setVisible(WindowInsetsCompat.Type.ime(), ime > 0)
+        .build()
+        .toWindowInsets()!!
+    runOnUiThread { decor.dispatchApplyWindowInsets(insets) }
+    waitForIdle()
 }

@@ -41,9 +41,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -526,6 +528,9 @@ private fun KeypadValueCard(
                 contentDescription = accessibilityName
                 stateDescription = spokenValue
                 selected = isSelected
+                // Screen readers say the new value after a key, a stepper tap or "Use last" (the focus stays on the buttons). Only
+                // the edited card is live: the other one does not change, and a second live node would be read twice.
+                if (isSelected) liveRegion = LiveRegionMode.Polite
             }
             .pulseClickable(enabled = isEnabled, role = Role.RadioButton, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
