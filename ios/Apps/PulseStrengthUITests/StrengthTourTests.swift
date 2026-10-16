@@ -971,23 +971,39 @@ final class OnboardingTour: UIDriver {
         }
     }
 
-    private func checkKeyboardDoesNotHideTheEmailField() {
+    /// The field that has the focus must end above what covers the bottom of the form: the keyboard and the bar over it with the Done
+    /// button. The bar is 44 pt tall with the button in its middle, and it is not part of the keyboard's frame. The form scrolls the
+    /// field there once the keyboard is up, so the position is polled for a few seconds before it counts as wrong.
+    private func checkFieldIsAboveKeyboard(_ target: Target, name: String, screenshot: String) {
         let keyboard = app.keyboards.firstMatch
         guard keyboard.waitForExistence(timeout: 5) else {
-            note("no software keyboard appeared (a hardware keyboard is connected?): the check of the field is skipped")
+            note("no software keyboard appeared (a hardware keyboard is connected?): the check of the " + name + " field is skipped")
             return
         }
         pause(0.8)
-        shot("signup-keyboard", settle: 0.3)
-        guard let email = find(.field("onboarding.email")) else {
-            fail("The email field is not in the tree while the keyboard is up")
+        func coveredFrom() -> CGFloat {
+            var top = keyboard.frame.minY
+            if let done = find(.button("onboarding.keyboardDone")) {
+                top = min(top, done.frame.midY - 22)
+            }
+            return top
+        }
+        guard var bottom = find(target)?.frame.maxY else {
+            fail("The " + name + " field is not in the tree while the keyboard is up")
             return
         }
-        let fieldBottom = email.frame.maxY
-        let keyboardTop = keyboard.frame.minY
-        note("keyboard: the email field ends at y " + String(Int(fieldBottom)) + ", the keyboard starts at y " + String(Int(keyboardTop)))
-        if fieldBottom > keyboardTop {
-            fail("The keyboard hides the email field (the field ends at y " + String(Int(fieldBottom)) + ", the keyboard starts at y " + String(Int(keyboardTop)) + ")")
+        var covered = coveredFrom()
+        let deadline = Date().addingTimeInterval(4)
+        while bottom > covered && Date() < deadline {
+            pause(0.3)
+            bottom = find(target)?.frame.maxY ?? bottom
+            covered = coveredFrom()
+        }
+        shot(screenshot, settle: 0.3)
+        let numbers = "ends at y " + String(Int(bottom)) + ", the keyboard with its Done bar starts at y " + String(Int(covered))
+        note("keyboard: the " + name + " field " + numbers)
+        if bottom > covered {
+            fail("The keyboard hides the " + name + " field (the field " + numbers + ")")
         }
     }
 
@@ -1003,7 +1019,14 @@ final class OnboardingTour: UIDriver {
                 fail("The password rule is not shown")
             }
             // The error moved the focus to the email field, which opens the keyboard: the field must stay above it.
-            checkKeyboardDoesNotHideTheEmailField()
+            checkFieldIsAboveKeyboard(.field("onboarding.email"), name: "email", screenshot: "signup-keyboard")
+            // The password field is the next one down, and the one that the keyboard of a short phone covers. (A tap by coordinate
+            // if XCTest finds no point to tap: a failed tap of XCTest would end the whole test.)
+            if tap(.element("onboarding.password"), timeout: 3, required: false, coordinateFallback: true) {
+                checkFieldIsAboveKeyboard(.element("onboarding.password"), name: "password", screenshot: "signup-keyboard-password")
+            } else {
+                fail("The password field was not found while the keyboard is up")
+            }
             // Then close the keyboard (its Done button), so that it does not cover what the next steps tap.
             // On iOS 18 XCTest finds no point to tap on this toolbar button (its text is a child with the same frame).
             tap(.button("onboarding.keyboardDone"), timeout: 3, required: false, coordinateFallback: true)
