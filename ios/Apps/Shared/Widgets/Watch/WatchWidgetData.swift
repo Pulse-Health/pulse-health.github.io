@@ -392,12 +392,15 @@ enum WatchText {
         }
     }
 
-    /// "Set 3 of 4" gives "Set 3/4" and "Warm-up · Set 1 of 2" gives "Warm-up 1/2".
-    static func compactSet(_ label: String) -> String {
+    /// The position of a set in few characters: "Set 3 of 4" gives "3/4" and "Warm-up · Set 1 of 2" gives "Warm-up 1/2".
+    static func setTag(_ label: String) -> String {
         let warmup = "Warm-up · "
+        let set = "Set "
         var text = label
         if text.hasPrefix(warmup) {
-            text = "Warm-up " + text.dropFirst(warmup.count).replacingOccurrences(of: "Set ", with: "")
+            text = "Warm-up " + text.dropFirst(warmup.count).replacingOccurrences(of: set, with: "")
+        } else if text.hasPrefix(set) {
+            text = String(text.dropFirst(set.count))
         }
         return text.replacingOccurrences(of: " of ", with: "/")
     }

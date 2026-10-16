@@ -9,13 +9,12 @@ import PulseStrengthCore
 /// any UTC offset (`WidgetSnapshotCodec` in `PulseStrengthIOS` writes it; `PulseStrengthCore` keeps its own coder internal).
 enum WidgetSnapshotCodec {
     static func decode(_ data: Data) throws -> WidgetSnapshot {
-        let withFraction = makeFormatter(fractionalSeconds: true)
-        let withoutFraction = makeFormatter(fractionalSeconds: false)
+        let formatters = ISO8601Formatters()
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { (decoder: Decoder) throws -> Date in
             let container = try decoder.singleValueContainer()
             let text = try container.decode(String.self)
-            guard let date = withFraction.date(from: text) ?? withoutFraction.date(from: text) else {
+            guard let date = formatters.withFraction.date(from: text) ?? formatters.withoutFraction.date(from: text) else {
                 throw DecodingError.dataCorruptedError(in: container, debugDescription: "Not an ISO-8601 date: \(text)")
             }
             return date
@@ -23,11 +22,21 @@ enum WidgetSnapshotCodec {
         decoder.nonConformingFloatDecodingStrategy = .convertFromString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
         return try decoder.decode(WidgetSnapshot.self, from: data)
     }
+}
 
-    private static func makeFormatter(fractionalSeconds: Bool) -> ISO8601DateFormatter {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = fractionalSeconds ? [.withInternetDateTime, .withFractionalSeconds] : [.withInternetDateTime]
-        return formatter
+/// The two ISO-8601 formatters of one decoding pass. Each pass makes its own and uses them on its own thread only, which is why they may
+/// be captured by the decoder's `@Sendable` date closure.
+private struct ISO8601Formatters: @unchecked Sendable {
+    let withFraction: ISO8601DateFormatter
+    let withoutFraction: ISO8601DateFormatter
+
+    init() {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        withFraction = fractional
+        withoutFraction = plain
     }
 }
 

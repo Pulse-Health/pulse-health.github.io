@@ -12,25 +12,24 @@ import PulseStrengthCore
 /// `PulseStrengthWatchUI`) each carry a small copy of the plain `JSONEncoder` / `JSONDecoder` setup.
 public enum WidgetSnapshotCodec {
     public static func encode(_ snapshot: WidgetSnapshot) throws -> Data {
-        let formatter = makeFormatter(fractionalSeconds: true)
+        let formatters = ISO8601Formatters()
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
         encoder.dateEncodingStrategy = .custom { (date: Date, encoder: Encoder) throws -> Void in
             var container = encoder.singleValueContainer()
-            try container.encode(formatter.string(from: date))
+            try container.encode(formatters.withFraction.string(from: date))
         }
         encoder.nonConformingFloatEncodingStrategy = .convertToString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
         return try encoder.encode(snapshot)
     }
 
     public static func decode(_ data: Data) throws -> WidgetSnapshot {
-        let withFraction = makeFormatter(fractionalSeconds: true)
-        let withoutFraction = makeFormatter(fractionalSeconds: false)
+        let formatters = ISO8601Formatters()
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { (decoder: Decoder) throws -> Date in
             let container = try decoder.singleValueContainer()
             let text = try container.decode(String.self)
-            guard let date = withFraction.date(from: text) ?? withoutFraction.date(from: text) else {
+            guard let date = formatters.withFraction.date(from: text) ?? formatters.withoutFraction.date(from: text) else {
                 throw DecodingError.dataCorruptedError(in: container, debugDescription: "Not an ISO-8601 date: \(text)")
             }
             return date
@@ -38,11 +37,21 @@ public enum WidgetSnapshotCodec {
         decoder.nonConformingFloatDecodingStrategy = .convertFromString(positiveInfinity: "inf", negativeInfinity: "-inf", nan: "nan")
         return try decoder.decode(WidgetSnapshot.self, from: data)
     }
+}
 
-    private static func makeFormatter(fractionalSeconds: Bool) -> ISO8601DateFormatter {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = fractionalSeconds ? [.withInternetDateTime, .withFractionalSeconds] : [.withInternetDateTime]
-        return formatter
+/// The two ISO-8601 formatters of one coding pass (milliseconds, and none for reading older text). Each pass makes its own and uses them
+/// on its own thread only, which is why they may be captured by the coders' `@Sendable` date closures.
+private struct ISO8601Formatters: @unchecked Sendable {
+    let withFraction: ISO8601DateFormatter
+    let withoutFraction: ISO8601DateFormatter
+
+    init() {
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        withFraction = fractional
+        withoutFraction = plain
     }
 }
 
@@ -57,7 +66,7 @@ public enum WidgetSnapshotCodec {
 /// into its own App Group container (`WatchWidgetSnapshotReceiver`) and reloads its widgets.
 ///
 /// Live `sendMessage` payloads do not carry the snapshot: they stay as small as they were, and the context reaches a running Watch app as
-/// soon as the message does. The snapshot is about 15 to 30 KB of JSON.
+/// soon as the message does. The snapshot is about 10 to 15 KB of JSON (the preview snapshot is 10 KB).
 public final class WatchWidgetSnapshotSender: @unchecked Sendable {
     public static let shared = WatchWidgetSnapshotSender()
 

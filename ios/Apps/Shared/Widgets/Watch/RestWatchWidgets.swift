@@ -62,7 +62,7 @@ struct WatchRestCountdown: View {
     let face: WatchRestFace
     var size: CGFloat
     var width: CGFloat?
-    var alignment: Alignment = .leading
+    var alignment: TextAlignment = .leading
 
     var body: some View {
         if let interval = face.runningInterval {
@@ -72,9 +72,18 @@ struct WatchRestCountdown: View {
             Text(over ? "Go" : NumberText.clock(seconds: face.frozenSeconds))
                 .font(WidgetTheme.number(size, .bold))
                 .foregroundStyle(over ? WidgetTheme.progress : WidgetTheme.recovering)
+                .multilineTextAlignment(alignment)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-                .frame(width: width, alignment: alignment)
+                .frame(maxWidth: width ?? CGFloat.infinity, alignment: frameAlignment)
+        }
+    }
+
+    private var frameAlignment: Alignment {
+        switch alignment {
+        case .leading: return .leading
+        case .center: return .center
+        case .trailing: return .trailing
         }
     }
 }
@@ -175,7 +184,7 @@ struct RestWidgetView: View {
                     WatchRectMessage(
                         eyebrow: "LOG SET",
                         title: WatchText.work(active),
-                        detail: active.exerciseName + " · " + WatchText.compactSet(active.setLabel)
+                        detail: active.exerciseName + " · " + WatchText.setTag(active.setLabel)
                     )
                 }
             }

@@ -59,16 +59,13 @@ struct LogSetWatchView: View {
                     Text(active.exerciseName)
                         .lineLimit(1)
                         .truncationMode(.tail)
-                    Text("· " + WatchText.compactSet(active.setLabel))
+                    Text("· " + WatchText.setTag(active.setLabel))
                         .lineLimit(1)
                         .fixedSize()
                 }
                 .font(WidgetTheme.text(11))
                 .foregroundStyle(WidgetTheme.inkSecondary)
-                workText(active)
-                    .foregroundStyle(WidgetTheme.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                workRow(active)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .ignore)
@@ -82,19 +79,26 @@ struct LogSetWatchView: View {
     }
 
     /// "80 kg × 6" with the weight large and the unit small, "8 reps" or "45 s".
-    private func workText(_ active: WorkoutSnapshot) -> Text {
+    private func workRow(_ active: WorkoutSnapshot) -> some View {
         let large = WidgetTheme.number(24, .bold)
         let small = WidgetTheme.text(12, .semibold)
-        switch active.tracking {
-        case .weightReps:
-            return Text(active.weightText).font(large)
-                + Text(" kg").font(small).foregroundStyle(WidgetTheme.inkSecondary)
-                + Text(" × " + active.repsText).font(WidgetTheme.number(18, .semibold))
-        case .repsOnly:
-            return Text(active.repsText).font(large) + Text(" reps").font(small).foregroundStyle(WidgetTheme.inkSecondary)
-        case .duration:
-            return Text(active.repsText).font(large) + Text(" s").font(small).foregroundStyle(WidgetTheme.inkSecondary)
+        return HStack(alignment: .firstTextBaseline, spacing: 3) {
+            switch active.tracking {
+            case .weightReps:
+                Text(active.weightText).font(large)
+                Text("kg").font(small).foregroundStyle(WidgetTheme.inkSecondary)
+                Text("× " + active.repsText).font(WidgetTheme.number(18, .semibold))
+            case .repsOnly:
+                Text(active.repsText).font(large)
+                Text("reps").font(small).foregroundStyle(WidgetTheme.inkSecondary)
+            case .duration:
+                Text(active.repsText).font(large)
+                Text("s").font(small).foregroundStyle(WidgetTheme.inkSecondary)
+            }
         }
+        .foregroundStyle(WidgetTheme.ink)
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
     }
 
     private func spoken(_ active: WorkoutSnapshot, isPaused: Bool) -> String {

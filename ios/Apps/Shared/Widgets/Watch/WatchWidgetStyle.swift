@@ -39,24 +39,33 @@ extension EnvironmentValues {
 
 // MARK: - Countdown
 
-/// The countdown of a running rest. In a widget `Text(timerInterval:countsDown:)` counts down by itself; it is greedy in width, so every use
-/// gives it a `width`.
+/// The countdown of a running rest. In a widget `Text(timerInterval:countsDown:)` counts down by itself; it is greedy in width, so it is
+/// held to `width` (at most; it shrinks when less is offered) or, without one, to the width it is offered.
 struct WatchCountdownText: View {
     let interval: ClosedRange<Date>
     var size: CGFloat
     var weight: Font.Weight = .bold
     var color: Color = WidgetTheme.progress
     var width: CGFloat?
-    var alignment: Alignment = .leading
+    var alignment: TextAlignment = .leading
     @Environment(\.watchWidgetStaticNow) private var staticNow
 
     var body: some View {
         label
             .font(WidgetTheme.number(size, weight))
             .foregroundStyle(color)
+            .multilineTextAlignment(alignment)
             .lineLimit(1)
             .minimumScaleFactor(0.6)
-            .frame(width: width, alignment: alignment)
+            .frame(maxWidth: width ?? CGFloat.infinity, alignment: frameAlignment)
+    }
+
+    private var frameAlignment: Alignment {
+        switch alignment {
+        case .leading: return .leading
+        case .center: return .center
+        case .trailing: return .trailing
+        }
     }
 
     private var label: Text {
