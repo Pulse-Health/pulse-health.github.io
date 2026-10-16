@@ -14,6 +14,25 @@
     <!-- ==== strings-glance-extras:end ==== -->
 
     <!-- ==== strings-system:begin ==== -->
+    <string name="live_channel_workout">Workout</string>
+    <string name="live_channel_workout_description">The running workout on the lock screen and in the status bar, and the summary afterwards.</string>
+    <string name="live_channel_reminder">Workout reminders</string>
+    <string name="live_channel_reminder_description">A reminder when a planned session is due.</string>
+    <string name="bench_mode_label">Bench mode</string>
+    <string name="tile_start_next_label">Start workout</string>
+    <string name="tile_log_set_label">Log set</string>
+    <string name="tile_rest_label">Rest</string>
+    <string name="tile_add_rest_label">+30 s rest</string>
+    <string name="tile_plates_label">Plates</string>
+    <string name="tile_pause_label">Pause workout</string>
+    <string name="tile_finish_label">Finish workout</string>
+    <string name="tile_next_up_label">Next up</string>
+    <string name="shortcut_primary_short">Primary action</string>
+    <string name="shortcut_primary_long">Log set, skip rest or start workout</string>
+    <string name="shortcut_start_short">Start workout</string>
+    <string name="shortcut_start_long">Start the next workout</string>
+    <string name="shortcut_plates_short">Plates</string>
+    <string name="shortcut_plates_long">Open the plate calculator</string>
     <!-- ==== strings-system:end ==== -->
 
     <!-- ==== strings-wear:begin ==== -->

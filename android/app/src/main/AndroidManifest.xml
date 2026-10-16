@@ -8,6 +8,15 @@
     <!-- ==== permissions-host:end ==== -->
 
     <!-- ==== permissions-system:begin ==== -->
+    <!-- The workout notification (the host UI asks for POST_NOTIFICATIONS at runtime) and its promotion to a Live Update on Android 16. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
+    <!-- Rest end, PR moment and planned-session alarms. Without the user's "Alarms & reminders" grant they fall back to inexact alarms. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- One buzz when a rest is over. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Alarms do not survive a reboot: the planned session is armed again. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- ==== permissions-system:end ==== -->
 
     <!-- ==== permissions-wear:begin ==== -->
@@ -55,6 +64,173 @@
         <!-- ==== glance-extras:end ==== -->
 
         <!-- ==== system:begin (service, receivers, tile services, shortcuts activity) ==== -->
+        <!--
+            Launcher entry that carries the static shortcuts (CT-10). The integrator removes the LAUNCHER intent-filter from MainActivity,
+            otherwise the app shows two launcher icons.
+        -->
+        <activity-alias
+            android:name=".LauncherAlias"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <!-- SB-02 / SB-04: full-screen bench mode, opened from the app, the widgets and the Rest tile (never from outside). -->
+        <activity
+            android:name=".live.BenchModeActivity"
+            android:exported="false"
+            android:label="@string/bench_mode_label"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.PulseBench" />
+
+        <!-- CT-10: starts from a launcher shortcut, Quick Tap, a side key or a routine; runs the primary action and finishes. -->
+        <activity
+            android:name=".controls.PrimaryActionActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="@string/shortcut_primary_short"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.PulseTransparent" />
+
+        <!-- Notification actions (Log set, -, +, rest adjustments, coach tip answers). -->
+        <receiver
+            android:name=".live.WorkoutActionReceiver"
+            android:exported="false" />
+
+        <!-- Rest end, PR moment end, and the user granting or revoking exact alarms. -->
+        <receiver
+            android:name=".live.LiveAlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- LA-06: countdown, "Time to train", snooze, and arming the plan again after a reboot or an update. -->
+        <receiver
+            android:name=".live.PlannedSessionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- CT-01 ... CT-08: Quick Settings tiles. Active tiles: the app asks for a refresh through Controls.refresh. -->
+        <service
+            android:name=".controls.StartNextTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_start"
+            android:label="@string/tile_start_next_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.LogSetTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_log"
+            android:label="@string/tile_log_set_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.RestTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_rest"
+            android:label="@string/tile_rest_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.AddRestTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_add_rest"
+            android:label="@string/tile_add_rest_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.PlatesTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_plates"
+            android:label="@string/tile_plates_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.PauseTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_pause"
+            android:label="@string/tile_pause_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.FinishTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_finish"
+            android:label="@string/tile_finish_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
+        <service
+            android:name=".controls.NextUpTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_next_up"
+            android:label="@string/tile_next_up_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+        </service>
         <!-- ==== system:end ==== -->
 
         <!-- ==== wear:begin (Data Layer listener service) ==== -->
