@@ -42,7 +42,9 @@ export function createBillingApp(options: BillingAppOptions): Hono {
   const app = new Hono();
 
   app.use('*', async (c, next) => {
-    const requestId = c.req.header('x-request-id') ?? crypto.randomUUID();
+    // Echo the caller's request id only if it is a plain token; anything else could not be set as a header value safely.
+    const supplied = c.req.header('x-request-id');
+    const requestId = supplied && /^[A-Za-z0-9._-]{1,64}$/.test(supplied) ? supplied : crypto.randomUUID();
     c.header('x-request-id', requestId);
     c.header('cache-control', 'no-store');
     await next();

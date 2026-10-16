@@ -59,6 +59,17 @@ describe('authentication', () => {
     expect((await h.call('GET', '/nope')).res.status).toBe(404);
   });
 
+  it('echoes a sane request id and replaces a hostile one', async () => {
+    const h = await harness();
+    const good = await h.app.request('/healthz', { headers: { 'x-request-id': 'req-123.abc_DEF' } });
+    expect(good.headers.get('x-request-id')).toBe('req-123.abc_DEF');
+    for (const hostile of ['has spaces', 'semi;colon', 'x'.repeat(200), 'ünï']) {
+      const res = await h.app.request('/healthz', { headers: { 'x-request-id': hostile } });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/);
+    }
+  });
+
   it('never caches', async () => {
     const { res } = await (await harness()).call('GET', '/v1/billing/entitlement', { user: 'user_A' });
     expect(res.headers.get('cache-control')).toBe('no-store');
