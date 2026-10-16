@@ -1,8 +1,12 @@
-# Jeff Nippard UL/PPL: weekly schedule
+# Jeff Nippard UL/PPL: training plan
 
-Five training days a week from the playlist *Jeff Nippard UL/PPL* (upper / lower / push / pull / legs). The playlist's sixth video (an 8-second neck-posture tip) is not a workout and was left out.
+Five workouts from the playlist *Jeff Nippard UL/PPL* (upper / lower / push / pull / legs), as a plan for the app. The playlist's sixth video (an 8-second neck-posture tip) is not a workout and was left out.
 
-## The week
+## How it runs
+
+The plan is a **rotation, not a calendar**: Upper → Lower → Push → Pull → Legs → Upper … The app recommends the workout after the one you did last, whatever the weekday. Miss a day and nothing is behind; skip a workout and the rotation moves on. The target is 5 workouts a week.
+
+A typical week, if you like to fix the days:
 
 | Day | Workout | Exercises |
 |---|---|---|
@@ -14,9 +18,9 @@ Five training days a week from the playlist *Jeff Nippard UL/PPL* (upper / lower
 | Saturday | **Legs** | 7 |
 | Sunday | Rest | |
 
-> **Assumption:** the videos give the five workouts and their order, but not weekdays or rest days. The layout above (two on, one off, three on, one off) is the usual way to run an upper/lower + push/pull/legs split and keeps the playlist order. Move the days to suit you.
+> The videos give the five workouts and their order (the playlist order), not weekdays or rest days. The week above is only the usual way to run an upper/lower + push/pull/legs split.
 
-## Monday: Upper
+## Upper
 
 [The Upper Body Workout I Followed For My 1 Year Transformation](https://www.youtube.com/watch?v=928aRhhPP8I)  ·  Jeff Nippard's 7-exercise upper-body day from his 365-day experiment; the last set of every exercise goes to failure.
 
@@ -25,7 +29,7 @@ Five training days a week from the playlist *Jeff Nippard UL/PPL* (upper / lower
 | 1 | Incline barbell bench press | 3 × 10 · last set to failure | 45 degree incline, slightly narrower grip, slow descent with a slight pause on the chest, last set to absolute failure. |
 | 2 | Seated cable fly | 3 × 10 · last set to failure | Bench set far in front, elbows up ('hug a tree'), sweep out in a wide arc, last set to failure. |
 | 3 | Weighted pull-up | 3 × 6 · last set to failure | Chest to the bar, drive elbows down and in, pause at the bottom; last set to failure. Assisted or eccentric-only pull-ups if you cannot do weighted ones yet. |
-| 4 | High cable lateral raise | 3 × 10 · last set to failure | 2-3 sets of 8-10 reps. Sweep the weight out, not up; no shrugging; last set to failure. |
+| 4 | High cable lateral raise | 3 × 8–10 · last set to failure | Sweep the weight out, not up, and do not shrug. Last set to failure. |
 | 5 | Deficit Pendlay row | 3 × 10 · last set to failure | Stand on a bumper plate, torso parallel to the floor, slow negative; on the last set go past failure with 3-4 lengthened partials. Use straps or chalk. |
 | 6 | Cable overhead triceps extension | 3 × 10 · last set to failure | Set the cable high, squat under it and stand up with the weight; last set to failure. |
 | 7 | Bayesian cable curl | 3 × 10 · last set to failure | Long muscle length with high tension; last set to failure. |
@@ -33,53 +37,53 @@ Five training days a week from the playlist *Jeff Nippard UL/PPL* (upper / lower
 What the video did not say:
 
 - Sets and reps are not stated in the video for: incline barbell press, seated cable fly, weighted pull-up, deficit Pendlay row, overhead triceps extension, Bayesian curl. Used 3 sets of 10 (check against the full program).
-- High cable lateral raise: video says 2-3 sets of 8-10 reps; 3 x 10 used.
+- High cable lateral raise: the video says 2-3 sets of 8-10 reps; 3 sets used.
 - Weighted pull-up: the 6 reps come from Jeff's own progress example (30 lb to 60 lb for 6 reps), not a prescription. Weight left at 0.
 - Rest times are not stated in the video; the exercise's default rest was used.
 - Weights are not stated for any exercise; enter your own.
 
-## Tuesday: Lower
+## Lower
 
 [The Leg Workout I Followed For My 1 Year Transformation](https://www.youtube.com/watch?v=hRZ5MM6gmlE)  ·  Jeff Nippard's 6-exercise lower-body day (the first of his two leg days per week), starting with lying leg curls to warm up the knees.
 
 | # | Exercise | Sets × reps | Notes |
 |---|---|---|---|
 | 1 | Lying leg curl | 3 × 10 · last set to failure | First exercise of the day. Hips pressed into the pad, lengthened partials at the end of the last set. |
-| 2 | Pendulum squat | 3 × 8 · last set to failure | 3 sets of 6-8. Leave 1-2 reps in reserve on the first two sets, last set to failure; go as deep as you can. Swap: barbell, Smith or hack squat. |
+| 2 | Pendulum squat | 3 × 6–8 · last set to failure | Leave 1-2 reps in reserve on the first two sets, last set to failure; go as deep as you can. Swap: barbell, Smith or hack squat. |
 | 3 | Romanian deadlift | 3 × 6 | Push the hips straight back, slight knee bend, lower to just below the knee with a neutral spine. |
 | 4 | Leg extension | 2 × 10 · last set to failure | One or two hard sets. Seat set as far back as possible, strapped in, optional slow 3 s negative. |
 | 5 | Hip abduction machine | 3 × 10 · last set to failure | Seated with hips extended (upright) to target the glute medius; push it hard, close to failure. |
-| 6 | Standing calf raise | 3 × 10 | 8-10 reps, deep stretch at the bottom. After the last set hold the bottom stretch for 30 seconds. |
+| 6 | Standing calf raise | 3 × 8–10 | Deep stretch at the bottom. After the last set hold the bottom stretch for 30 seconds. |
 
 What the video did not say:
 
 - Sets and reps are not stated in the video for: lying leg curl, Romanian deadlift, hip abduction. Used 3 sets of 10 (check against the full program).
-- Pendulum squat: video says 3 sets of 6-8 reps; 3 x 8 used. Leg extension: 'one or two hard sets'; 2 used with 10 reps (reps not stated). Standing calf raise: 8-10 reps; 3 sets assumed, 10 reps.
+- Pendulum squat: 3 sets of 6-8 as stated. Leg extension: 'one or two hard sets', 2 used, reps not stated (10). Standing calf raise: 8-10 reps as stated, number of sets not stated (3).
 - Romanian deadlift: the 6 reps come from Jeff's example ('two plates per side for six hard reps'), not a prescription.
 - Rest times are not stated in the video; the exercise's default rest was used.
 - Weights are not stated for any exercise; enter your own.
 
-## Thursday: Push
+## Push
 
 [Best Push Workout (Chest, Shoulders & Triceps)](https://www.youtube.com/watch?v=bvwg4D9UWGI)  ·  Jeff Nippard's push day: bench press, machine press, pec deck, cable lateral raise and two triceps exercises.
 
 | # | Exercise | Sets × reps | Notes |
 |---|---|---|---|
-| 1 | Bench press | 3 × 10 | 3 x 8-10. Smaller arch, pause on the chest on every rep. |
-| 2 | Machine shoulder press | 3 × 12 · last set to failure | 3 x 10-12. Last set all the way to failure. |
-| 3 | Pec deck | 3 × 20 · last set to failure | 3 x 15-20. Go as deep as you can; after the last set add 4-5 lengthened partials. |
-| 4 | High cable lateral raise | 3 × 15 | 3 x 10-15. Scoop the weight out, push the cable away from the body rather than lifting it. |
-| 5 | Overhead cable extension | 3 × 10 | 3 x 5-10, heavier weight. |
-| 6 | Cable triceps kickback | 3 × 15 | 3 x 10-15, lighter weight. |
+| 1 | Bench press | 3 × 8–10 | Smaller arch, pause on the chest on every rep. |
+| 2 | Machine shoulder press | 3 × 10–12 · last set to failure | Last set all the way to failure; the machine needs no stabilising. |
+| 3 | Pec deck | 3 × 15–20 · last set to failure | Go as deep as you can; after the last set add 4-5 lengthened partials. |
+| 4 | High cable lateral raise | 3 × 10–15 | Scoop the weight out: push the cable away from the body rather than lifting it. |
+| 5 | Overhead cable extension | 3 × 5–10 | Heavier weight. |
+| 6 | Cable triceps kickback | 3 × 10–15 | Lighter weight. |
 
 What the video did not say:
 
-- Sets and rep ranges come from the video description; the app stores one number, so the TOP of each range is used (bench 8-10 -> 10, shoulder press 10-12 -> 12, pec deck 15-20 -> 20, lateral raise 10-15 -> 15, overhead extension 5-10 -> 10, kickback 10-15 -> 15).
+- Sets and rep ranges come from the video description (bench 3 x 8-10, shoulder press 3 x 10-12, pec deck 3 x 15-20, lateral raise 3 x 10-15, overhead extension 3 x 5-10, kickback 3 x 10-15).
 - The description reads '3:10-15' for the kickback; read as 3 x 10-15.
 - Rest times are not stated in the video; the exercise's default rest was used.
 - Weights are not stated; enter your own.
 
-## Friday: Pull
+## Pull
 
 [Best Scientific Pull Workout (Back, Biceps, Rear Delts)](https://www.youtube.com/watch?v=KV4D8MQrdhw)  ·  Jeff Nippard's pull day: lat, mid-back, rear delt, upper trap and two biceps exercises.
 
@@ -101,7 +105,7 @@ What the video did not say:
 - Rest times are not stated in the video; the exercise's default rest was used.
 - Weights are not stated; enter your own.
 
-## Saturday: Legs
+## Legs
 
 [Best Scientific Leg Workout](https://www.youtube.com/watch?v=jf9PBwwNAMs)  ·  Jeff Nippard's second leg day: seated curls, Smith machine squats, RDL, leg extensions, an adduction/abduction superset and calves.
 
@@ -125,5 +129,6 @@ What the video did not say:
 
 ## Files
 
-* `templates.json`: the five workouts as the app's `[WorkoutTemplate]`; `custom-exercises.json`: the exercises that are not in the built-in library.
+* `pulse-import.json`: the plan, its five workouts and the 18 exercises that are not in the built-in library, in one file. Put it on the phone (AirDrop or Files) and choose **More › Import Plan…** in the Strength hub.
+* `templates.json`, `custom-exercises.json`, `plans.json`: the same data in the app's own storage files.
 * `ul-ppl-*.extracted.json`: the source of both files (edit one, then run `./yt_workout.py --rebuild`).

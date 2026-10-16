@@ -12,18 +12,21 @@
         "sets": [
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
@@ -44,18 +47,21 @@
         "sets": [
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
@@ -76,18 +82,21 @@
         "sets": [
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "failure",
             "weight": null,
             "weight_unit": null
@@ -108,18 +117,21 @@
         "sets": [
           {
             "reps": 15,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 15,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 15,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
@@ -140,18 +152,21 @@
         "sets": [
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
@@ -172,18 +187,21 @@
         "sets": [
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
@@ -204,18 +222,21 @@
         "sets": [
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
           },
           {
             "reps": 10,
+            "reps_max": null,
             "type": "normal",
             "weight": null,
             "weight_unit": null
@@ -238,6 +259,11 @@
   },
   "model": "manual: read from the video captions and description by Claude in a Claude Code session (no API call)",
   "name": "UL/PPL · Pull",
+  "plan": {
+    "daysPerWeek": 5,
+    "name": "Jeff Nippard UL/PPL",
+    "position": 3
+  },
   "sources": [
     {
       "captions": "auto",

@@ -22,6 +22,7 @@
           "tracking": "weightReps"
         },
         "id": "8F12D30D-C4CD-5EAF-8383-666140CD63B5",
+        "note": "Hamstrings; warms up the knees for squats.",
         "plannedSets": [
           {
             "reps": 10,
@@ -62,6 +63,7 @@
           "tracking": "weightReps"
         },
         "id": "F4C79C32-02F8-5A50-85B6-5E84A866D2FF",
+        "note": "As deep as you can, explode out of the hole; last set to failure.",
         "plannedSets": [
           {
             "reps": 10,
@@ -112,6 +114,7 @@
           "tracking": "weightReps"
         },
         "id": "3B7B1FB3-1FF1-5AE0-8364-0B473AF5BA2B",
+        "note": "Push the hips back without rounding the lower back; use straps.",
         "plannedSets": [
           {
             "reps": 10,
@@ -162,6 +165,7 @@
           "tracking": "weightReps"
         },
         "id": "4F51E1FE-972B-5F52-B77D-94D77A253901",
+        "note": "Seat set back for a deep stretch of the rectus femoris; on the last set do myo-reps beyond failure (rest a few seconds, 3 more reps, repeat).",
         "plannedSets": [
           {
             "reps": 10,
@@ -202,6 +206,7 @@
           "tracking": "weightReps"
         },
         "id": "0D70B314-2386-5084-B73D-EC222E016377",
+        "note": "Inner thighs; 2 sets, superset with hip abduction.",
         "plannedSets": [
           {
             "reps": 10,
@@ -238,6 +243,7 @@
           "tracking": "weightReps"
         },
         "id": "78D4F68D-03A4-5860-8C07-6C2F5E369B26",
+        "note": "Glutes; 2 sets, superset with hip adduction.",
         "plannedSets": [
           {
             "reps": 10,
@@ -284,6 +290,7 @@
           "tracking": "weightReps"
         },
         "id": "B42D372D-3DED-569A-A795-DA2377C8BCCF",
+        "note": "4 sets.",
         "plannedSets": [
           {
             "reps": 10,
@@ -345,6 +352,7 @@
           "tracking": "weightReps"
         },
         "id": "8D40D16B-5A10-54FC-8476-EB097F1E7783",
+        "note": "First exercise of the day. Hips pressed into the pad, lengthened partials at the end of the last set.",
         "plannedSets": [
           {
             "reps": 10,
@@ -385,19 +393,23 @@
           "tracking": "weightReps"
         },
         "id": "B701D506-AFFE-5579-946D-029DE84099A3",
+        "note": "Leave 1-2 reps in reserve on the first two sets, last set to failure; go as deep as you can. Swap: barbell, Smith or hack squat.",
         "plannedSets": [
           {
-            "reps": 8,
+            "reps": 6,
+            "repsMax": 8,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 8,
+            "reps": 6,
+            "repsMax": 8,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 8,
+            "reps": 6,
+            "repsMax": 8,
             "type": "failure",
             "weightKg": 0.0
           }
@@ -435,6 +447,7 @@
           "tracking": "weightReps"
         },
         "id": "1E7F18E4-B0D5-56AC-B987-E2288C7BF7A0",
+        "note": "Push the hips straight back, slight knee bend, lower to just below the knee with a neutral spine.",
         "plannedSets": [
           {
             "reps": 6,
@@ -485,6 +498,7 @@
           "tracking": "weightReps"
         },
         "id": "56BBF393-6EC7-5DF9-9A45-8D722CFB7EC4",
+        "note": "One or two hard sets. Seat set as far back as possible, strapped in, optional slow 3 s negative.",
         "plannedSets": [
           {
             "reps": 10,
@@ -520,6 +534,7 @@
           "tracking": "weightReps"
         },
         "id": "030E6690-40B4-5580-AA6D-3B063036BB38",
+        "note": "Seated with hips extended (upright) to target the glute medius; push it hard, close to failure.",
         "plannedSets": [
           {
             "reps": 10,
@@ -570,19 +585,23 @@
           "tracking": "weightReps"
         },
         "id": "4C501992-CC23-5A9D-9005-49DE015D9203",
+        "note": "Deep stretch at the bottom. After the last set hold the bottom stretch for 30 seconds.",
         "plannedSets": [
           {
-            "reps": 10,
+            "reps": 8,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 10,
+            "reps": 8,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 10,
+            "reps": 8,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           }
@@ -626,6 +645,7 @@
           "tracking": "weightReps"
         },
         "id": "5E56356D-C6F1-5935-94E1-A970FF848683",
+        "note": "Torso vertical for a big stretch at the top, drive the elbows down. Very high lat emphasis.",
         "plannedSets": [
           {
             "reps": 10,
@@ -666,6 +686,7 @@
           "tracking": "weightReps"
         },
         "id": "39A58A48-7DE4-559A-B022-EB86A4D468F7",
+        "note": "Elbows higher and flared, squeeze the shoulder blades together at the top (mid-back, rhomboids, mid traps).",
         "plannedSets": [
           {
             "reps": 10,
@@ -716,6 +737,7 @@
           "tracking": "weightReps"
         },
         "id": "1318AD3D-D7E2-55B7-9083-DB3661A63690",
+        "note": "Horizontal shoulder extension; after failure keep going with lengthened partials.",
         "plannedSets": [
           {
             "reps": 10,
@@ -756,6 +778,7 @@
           "tracking": "weightReps"
         },
         "id": "10A655CF-8660-5D9E-AFD0-A9A976B38F49",
+        "note": "Light weight, higher reps so the mid traps do not take over (rear delts).",
         "plannedSets": [
           {
             "reps": 15,
@@ -796,6 +819,7 @@
           "tracking": "weightReps"
         },
         "id": "DAD61A3F-0F63-548F-ABB4-F2AEBFD844FF",
+        "note": "Upper traps: shrug up and in toward the ears.",
         "plannedSets": [
           {
             "reps": 10,
@@ -836,6 +860,7 @@
           "tracking": "weightReps"
         },
         "id": "F58CC7FA-9812-572F-9F75-3D1CD404D805",
+        "note": "Biceps.",
         "plannedSets": [
           {
             "reps": 10,
@@ -879,6 +904,7 @@
           "tracking": "weightReps"
         },
         "id": "3746B3F6-FD92-5FA3-BF21-FDA85A6439E2",
+        "note": "Biceps.",
         "plannedSets": [
           {
             "reps": 10,
@@ -951,19 +977,23 @@
           "tracking": "weightReps"
         },
         "id": "2B996976-0EC7-5CA9-9A26-AC864C91E799",
+        "note": "Smaller arch, pause on the chest on every rep.",
         "plannedSets": [
           {
-            "reps": 10,
+            "reps": 8,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 10,
+            "reps": 8,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 10,
+            "reps": 8,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           }
@@ -991,19 +1021,23 @@
           "tracking": "weightReps"
         },
         "id": "FF94DA9E-70B8-5AB9-9B3B-ADBEDBDA3BE8",
+        "note": "Last set all the way to failure; the machine needs no stabilising.",
         "plannedSets": [
           {
-            "reps": 12,
+            "reps": 10,
+            "repsMax": 12,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 12,
+            "reps": 10,
+            "repsMax": 12,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 12,
+            "reps": 10,
+            "repsMax": 12,
             "type": "failure",
             "weightKg": 0.0
           }
@@ -1031,19 +1065,23 @@
           "tracking": "weightReps"
         },
         "id": "F4C37133-0569-5E1D-83ED-E77EF7BADDB8",
+        "note": "Go as deep as you can; after the last set add 4-5 lengthened partials.",
         "plannedSets": [
           {
-            "reps": 20,
+            "reps": 15,
+            "repsMax": 20,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 20,
+            "reps": 15,
+            "repsMax": 20,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 20,
+            "reps": 15,
+            "repsMax": 20,
             "type": "failure",
             "weightKg": 0.0
           }
@@ -1071,19 +1109,23 @@
           "tracking": "weightReps"
         },
         "id": "ACA5AE59-3C30-5946-9736-BAB20E1D2FC1",
+        "note": "Scoop the weight out: push the cable away from the body rather than lifting it.",
         "plannedSets": [
           {
-            "reps": 15,
+            "reps": 10,
+            "repsMax": 15,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 15,
+            "reps": 10,
+            "repsMax": 15,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 15,
+            "reps": 10,
+            "repsMax": 15,
             "type": "normal",
             "weightKg": 0.0
           }
@@ -1114,19 +1156,23 @@
           "tracking": "weightReps"
         },
         "id": "9CE29799-6F12-5EC2-AB62-432CCC0B007C",
+        "note": "Heavier weight.",
         "plannedSets": [
           {
-            "reps": 10,
+            "reps": 5,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 10,
+            "reps": 5,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 10,
+            "reps": 5,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           }
@@ -1154,19 +1200,23 @@
           "tracking": "weightReps"
         },
         "id": "4F45CC74-8BB4-5770-9D53-A0D405F4691F",
+        "note": "Lighter weight.",
         "plannedSets": [
           {
-            "reps": 15,
+            "reps": 10,
+            "repsMax": 15,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 15,
+            "reps": 10,
+            "repsMax": 15,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 15,
+            "reps": 10,
+            "repsMax": 15,
             "type": "normal",
             "weightKg": 0.0
           }
@@ -1200,6 +1250,7 @@
           "tracking": "weightReps"
         },
         "id": "3DC79DA5-956B-50B2-9E82-FB3A7719067D",
+        "note": "45 degree incline, slightly narrower grip, slow descent with a slight pause on the chest, last set to absolute failure.",
         "plannedSets": [
           {
             "reps": 10,
@@ -1240,6 +1291,7 @@
           "tracking": "weightReps"
         },
         "id": "002886CC-D448-5250-84D8-E23008829269",
+        "note": "Bench set far in front, elbows up ('hug a tree'), sweep out in a wide arc, last set to failure.",
         "plannedSets": [
           {
             "reps": 10,
@@ -1280,6 +1332,7 @@
           "tracking": "weightReps"
         },
         "id": "DFC1B328-6F77-5673-A9B0-8C7296086C06",
+        "note": "Chest to the bar, drive elbows down and in, pause at the bottom; last set to failure. Assisted or eccentric-only pull-ups if you cannot do weighted ones yet.",
         "plannedSets": [
           {
             "reps": 6,
@@ -1320,19 +1373,23 @@
           "tracking": "weightReps"
         },
         "id": "C482357A-7C5B-5EF6-A820-31B817C6D9C3",
+        "note": "Sweep the weight out, not up, and do not shrug. Last set to failure.",
         "plannedSets": [
           {
-            "reps": 10,
+            "reps": 8,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 10,
+            "reps": 8,
+            "repsMax": 10,
             "type": "normal",
             "weightKg": 0.0
           },
           {
-            "reps": 10,
+            "reps": 8,
+            "repsMax": 10,
             "type": "failure",
             "weightKg": 0.0
           }
@@ -1360,6 +1417,7 @@
           "tracking": "weightReps"
         },
         "id": "116A2A7B-5172-53BE-A7B1-BDC5328F1B84",
+        "note": "Stand on a bumper plate, torso parallel to the floor, slow negative; on the last set go past failure with 3-4 lengthened partials. Use straps or chalk.",
         "plannedSets": [
           {
             "reps": 10,
@@ -1403,6 +1461,7 @@
           "tracking": "weightReps"
         },
         "id": "E3DFF83A-6B27-5567-B08B-197A6AA3DBC8",
+        "note": "Set the cable high, squat under it and stand up with the weight; last set to failure.",
         "plannedSets": [
           {
             "reps": 10,
@@ -1443,6 +1502,7 @@
           "tracking": "weightReps"
         },
         "id": "291FA096-9AF5-5A94-BC84-6FBF05917B9F",
+        "note": "Long muscle length with high tension; last set to failure.",
         "plannedSets": [
           {
             "reps": 10,
