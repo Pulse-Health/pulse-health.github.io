@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ (android:dataExtractionRules): the same rules for cloud backup and for device-to-device transfer. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="PulseStrength" />
+        <exclude domain="file" path="PulseStrength/active-workout.json" />
+        <exclude domain="sharedpref" path="pulse_settings.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="PulseStrength" />
+        <exclude domain="file" path="PulseStrength/active-workout.json" />
+        <exclude domain="sharedpref" path="pulse_settings.xml" />
+    </device-transfer>
+</data-extraction-rules>

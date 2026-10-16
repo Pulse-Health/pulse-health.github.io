@@ -8,6 +8,7 @@ class PulseStrengthApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        environment.services?.let { registerActivityLifecycleCallbacks(it.foreground) }
         // Touch it now so that a notification action that starts the process in the background finds the running workout restored.
         environment.controller.restoreFromDisk()
     }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older (android:fullBackupContent): back up the workout data, not the unfinished workout or device settings. -->
+<full-backup-content>
+    <include domain="file" path="PulseStrength" />
+    <exclude domain="file" path="PulseStrength/active-workout.json" />
+    <exclude domain="sharedpref" path="pulse_settings.xml" />
+</full-backup-content>

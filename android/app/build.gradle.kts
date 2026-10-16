@@ -43,6 +43,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.health.connect.client)
 
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.junit)
