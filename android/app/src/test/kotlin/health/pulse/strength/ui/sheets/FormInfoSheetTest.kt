@@ -12,7 +12,9 @@ import health.pulse.strength.core.Equipment
 import health.pulse.strength.core.Exercise
 import health.pulse.strength.core.ExerciseLibrary
 import health.pulse.strength.core.MuscleGroup
+import health.pulse.strength.ui.components.ExerciseMediaStore
 import health.pulse.strength.core.TrackingKind
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -50,7 +52,7 @@ class FormInfoSheetTest {
         rule.onNodeWithText("How to").assertExists()
         for (cue in bench.cues) rule.onNodeWithContentDescription("Step ${bench.cues.indexOf(cue) + 1}. $cue").assertExists()
         rule.onNodeWithText("Start · End", useUnmergedTree = true).assertExists()
-        rule.onNodeWithText("Demo photos: Free Exercise DB (public domain).").assertExists()
+        rule.onNodeWithText("Demo photos from the Free Exercise DB.").assertExists()
         rule.onNodeWithContentDescription(
             "Form demo for Barbell bench press, alternating between the start and the end position",
         ).assertExists()
@@ -72,6 +74,24 @@ class FormInfoSheetTest {
         assertThat(opened).isEqualTo(1)
     }
 
+    @After
+    fun photosOn() {
+        ExerciseMediaStore.enabled = true
+    }
+
+    @Test
+    fun aBuildWithoutThePhotosShowsNoDemoTileBadgeOrCredit() {
+        ExerciseMediaStore.enabled = false
+        rule.setContent { PulseTestTheme { FormInfoSheet(bench, onShowHistory = null, onDismiss = {}) } }
+        rule.waitForIdle()
+        rule.onNodeWithText("Barbell bench press").assertExists()
+        for (cue in bench.cues) rule.onNodeWithContentDescription("Step ${bench.cues.indexOf(cue) + 1}. $cue").assertExists()
+        rule.onNodeWithText("Start · End", useUnmergedTree = true).assertDoesNotExist()
+        rule.onNodeWithContentDescription("No form demo for this exercise yet").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Form demo for Barbell bench press", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Demo photos from the Free Exercise DB.").assertDoesNotExist()
+    }
+
     @Test
     fun exerciseWithoutMediaShowsThePlaceholderAndNoBadge() {
         val custom = Exercise.custom("Landmine press", MuscleGroup.SHOULDERS, Equipment.OTHER, TrackingKind.WEIGHT_REPS)
@@ -82,6 +102,8 @@ class FormInfoSheetTest {
         // "Custom" is a placeholder, not a muscle: no chip for it.
         rule.onNodeWithText("Custom").assertDoesNotExist()
         rule.onNodeWithText("Landmine press").assertExists()
+        // No photo, so no photo credit either.
+        rule.onNodeWithText("Demo photos from the Free Exercise DB.").assertDoesNotExist()
     }
 
     @Test

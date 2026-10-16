@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -52,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import health.pulse.strength.core.Exercise
 import health.pulse.strength.core.StrengthStore
 import health.pulse.strength.ui.components.DumbbellGlyph
+import health.pulse.strength.ui.components.ExerciseMediaStore
 import health.pulse.strength.ui.components.ExerciseMediaView
 import health.pulse.strength.ui.detail.ExerciseDetailScreen
 import health.pulse.strength.ui.theme.PulseFont
@@ -110,10 +112,12 @@ internal fun FormInfoSheetContent(
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // A build without the demo photos (the release, see android/README.md) has no demo to show: no tile and no photo credit.
+    val photosShipped = ExerciseMediaStore.isShipped(LocalContext.current)
     Column(modifier.fillMaxSize()) {
         SheetTitleBar(title = "Form", trailing = SheetBarButton("Done", onClick = onDone))
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-            val sideBySide = maxWidth >= 520.dp && maxHeight < 460.dp
+            val sideBySide = photosShipped && maxWidth >= 520.dp && maxHeight < 460.dp
             Column(
                 Modifier
                     .fillMaxSize()
@@ -131,16 +135,18 @@ internal fun FormInfoSheetContent(
                         }
                     }
                 } else {
-                    DemoTile(exercise)
+                    if (photosShipped) DemoTile(exercise)
                     FormTitleBlock(exercise)
                     if (exercise.cues.isNotEmpty()) CuesCard(exercise.cues)
                     if (onShowHistory != null) HistoryRow(onShowHistory)
                 }
-                Text(
-                    "Demo photos: Free Exercise DB (public domain).",
-                    style = PulseFont.caption2,
-                    color = PulseTheme.colors.inkSecondary,
-                )
+                if (photosShipped && !exercise.mediaKey.isNullOrEmpty()) {
+                    Text(
+                        "Demo photos from the Free Exercise DB.",
+                        style = PulseFont.caption2,
+                        color = PulseTheme.colors.inkSecondary,
+                    )
+                }
             }
         }
     }
