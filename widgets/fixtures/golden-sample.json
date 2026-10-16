@@ -1,0 +1,838 @@
+{
+  "block" : {
+    "liftDeltaKg" : 3,
+    "liftName" : "Barbell bench press",
+    "name" : "Block 1",
+    "rows" : [
+      {
+        "cells" : [
+          {
+            "state" : "done"
+          },
+          {
+            "state" : "done"
+          },
+          {
+            "state" : "planned"
+          },
+          {
+            "state" : "upcoming"
+          }
+        ],
+        "label" : "Push"
+      },
+      {
+        "cells" : [
+          {
+            "state" : "missed"
+          },
+          {
+            "state" : "done"
+          },
+          {
+            "state" : "planned"
+          },
+          {
+            "state" : "upcoming"
+          }
+        ],
+        "label" : "Quads"
+      },
+      {
+        "cells" : [
+          {
+            "state" : "missed"
+          },
+          {
+            "state" : "missed"
+          },
+          {
+            "state" : "done"
+          },
+          {
+            "state" : "upcoming"
+          }
+        ],
+        "label" : "Pull"
+      }
+    ],
+    "sessionsDone" : 5,
+    "sessionsMissed" : 3,
+    "sessionsPlanned" : 12,
+    "weekCount" : 4,
+    "weekIndex" : 3
+  },
+  "bodyMap" : {
+    "levels" : [
+      {
+        "level" : 0,
+        "muscle" : "Chest"
+      },
+      {
+        "level" : 3,
+        "muscle" : "Back"
+      },
+      {
+        "level" : 1,
+        "muscle" : "Shoulders"
+      },
+      {
+        "level" : 1,
+        "muscle" : "Arms"
+      },
+      {
+        "level" : 0,
+        "muscle" : "Legs"
+      },
+      {
+        "level" : 0,
+        "muscle" : "Core"
+      }
+    ],
+    "message" : "Chest untouched. Upper A is next in line.",
+    "untouched" : [
+      "Chest",
+      "Legs",
+      "Core"
+    ]
+  },
+  "formCue" : {
+    "count" : 3,
+    "cue" : "Pull your shoulder blades back and down and keep your feet planted.",
+    "exerciseID" : "bench",
+    "exerciseName" : "Barbell bench press",
+    "index" : 1
+  },
+  "freshness" : [
+    {
+      "daysSince" : 5,
+      "muscle" : "Chest",
+      "status" : "ready"
+    },
+    {
+      "daysSince" : 3,
+      "muscle" : "Back",
+      "status" : "recovering"
+    },
+    {
+      "daysSince" : 3,
+      "muscle" : "Shoulders",
+      "status" : "recovering"
+    },
+    {
+      "daysSince" : 3,
+      "muscle" : "Arms",
+      "status" : "recovering"
+    },
+    {
+      "daysSince" : 7,
+      "muscle" : "Legs",
+      "status" : "ready"
+    },
+    {
+      "muscle" : "Core",
+      "status" : "ready"
+    }
+  ],
+  "generatedAt" : "2026-10-16T09:41:00.000Z",
+  "lastSession" : {
+    "averageHeartRate" : 124,
+    "durationMinutes" : 52,
+    "finishedAt" : "2026-10-13T09:41:00.000Z",
+    "heartRateBars" : [
+
+    ],
+    "loggedSets" : 19,
+    "longBreakCount" : 0,
+    "name" : "Upper B · Pull",
+    "personalRecordCount" : 0,
+    "timeline" : [
+
+    ],
+    "volumeKg" : 6245,
+    "workoutID" : "5EED0003-0000-4000-8000-000000000001"
+  },
+  "latestPR" : {
+    "achievedAt" : "2026-10-06T09:41:00.000Z",
+    "deltaKg" : 4.166666666666671,
+    "estimated1RM" : 99.16666666666667,
+    "exerciseID" : "bench",
+    "exerciseName" : "Barbell bench press",
+    "isFresh" : false,
+    "reps" : 5,
+    "weightKg" : 85
+  },
+  "lifts" : [
+    {
+      "bestE1RM" : 99.2,
+      "currentE1RM" : 96,
+      "deltaKg" : -3.2,
+      "exerciseID" : "bench",
+      "name" : "Barbell bench press",
+      "points" : [
+        {
+          "date" : "2026-10-01T09:41:00.000Z",
+          "value" : 93
+        },
+        {
+          "date" : "2026-10-06T09:41:00.000Z",
+          "value" : 99.2
+        },
+        {
+          "date" : "2026-10-11T09:41:00.000Z",
+          "value" : 96
+        }
+      ],
+      "prIndex" : 1,
+      "sessionCount" : 3
+    },
+    {
+      "bestE1RM" : 22,
+      "currentE1RM" : 21,
+      "deltaKg" : -1,
+      "exerciseID" : "crossover",
+      "name" : "Cable crossover",
+      "points" : [
+        {
+          "date" : "2026-10-01T09:41:00.000Z",
+          "value" : 21
+        },
+        {
+          "date" : "2026-10-06T09:41:00.000Z",
+          "value" : 22
+        },
+        {
+          "date" : "2026-10-11T09:41:00.000Z",
+          "value" : 21
+        }
+      ],
+      "prIndex" : 1,
+      "sessionCount" : 3
+    },
+    {
+      "bestE1RM" : 38,
+      "currentE1RM" : 34.7,
+      "deltaKg" : -3.3,
+      "exerciseID" : "incline",
+      "name" : "Incline dumbbell press",
+      "points" : [
+        {
+          "date" : "2026-10-01T09:41:00.000Z",
+          "value" : 32
+        },
+        {
+          "date" : "2026-10-06T09:41:00.000Z",
+          "value" : 38
+        },
+        {
+          "date" : "2026-10-11T09:41:00.000Z",
+          "value" : 34.7
+        }
+      ],
+      "prIndex" : 1,
+      "sessionCount" : 3
+    },
+    {
+      "bestE1RM" : 12.5,
+      "currentE1RM" : 12,
+      "deltaKg" : -0.5,
+      "exerciseID" : "lateral",
+      "name" : "Dumbbell lateral raise",
+      "points" : [
+        {
+          "date" : "2026-10-01T09:41:00.000Z",
+          "value" : 11.7
+        },
+        {
+          "date" : "2026-10-06T09:41:00.000Z",
+          "value" : 12.5
+        },
+        {
+          "date" : "2026-10-11T09:41:00.000Z",
+          "value" : 12
+        }
+      ],
+      "prIndex" : 1,
+      "sessionCount" : 3
+    },
+    {
+      "bestE1RM" : 58.3,
+      "currentE1RM" : 57,
+      "deltaKg" : -1.3,
+      "exerciseID" : "ohp",
+      "name" : "Overhead press",
+      "points" : [
+        {
+          "date" : "2026-10-01T09:41:00.000Z",
+          "value" : 53.8
+        },
+        {
+          "date" : "2026-10-06T09:41:00.000Z",
+          "value" : 58.3
+        },
+        {
+          "date" : "2026-10-11T09:41:00.000Z",
+          "value" : 57
+        }
+      ],
+      "prIndex" : 1,
+      "sessionCount" : 3
+    },
+    {
+      "bestE1RM" : 43,
+      "currentE1RM" : 42,
+      "deltaKg" : -1,
+      "exerciseID" : "pushdown",
+      "name" : "Triceps pushdown",
+      "points" : [
+        {
+          "date" : "2026-10-01T09:41:00.000Z",
+          "value" : 38.5
+        },
+        {
+          "date" : "2026-10-06T09:41:00.000Z",
+          "value" : 43
+        },
+        {
+          "date" : "2026-10-11T09:41:00.000Z",
+          "value" : 42
+        }
+      ],
+      "prIndex" : 1,
+      "sessionCount" : 3
+    },
+    {
+      "bestE1RM" : 76,
+      "currentE1RM" : 76,
+      "deltaKg" : 0,
+      "exerciseID" : "brow",
+      "name" : "Barbell row",
+      "points" : [
+        {
+          "date" : "2026-10-13T09:41:00.000Z",
+          "value" : 76
+        }
+      ],
+      "sessionCount" : 1
+    },
+    {
+      "bestE1RM" : 66.7,
+      "currentE1RM" : 66.7,
+      "deltaKg" : 0,
+      "exerciseID" : "crow",
+      "name" : "Seated cable row",
+      "points" : [
+        {
+          "date" : "2026-10-13T09:41:00.000Z",
+          "value" : 66.7
+        }
+      ],
+      "sessionCount" : 1
+    }
+  ],
+  "loadedBar" : {
+    "barKg" : 20,
+    "exerciseID" : "bench",
+    "exerciseName" : "Barbell bench press",
+    "leftoverKg" : 0,
+    "platesPerSide" : [
+      25,
+      5,
+      2.5
+    ],
+    "summary" : "25 + 5 + 2.5",
+    "totalKg" : 85
+  },
+  "month" : {
+    "days" : [
+      {
+        "day" : 1,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 2,
+        "sessions" : 1
+      },
+      {
+        "day" : 2,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 3,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 4,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 5,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 6,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 2,
+        "sessions" : 1
+      },
+      {
+        "day" : 7,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 8,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 9,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 3,
+        "sessions" : 1
+      },
+      {
+        "day" : 10,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 11,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 2,
+        "sessions" : 1
+      },
+      {
+        "day" : 12,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 13,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 2,
+        "sessions" : 1
+      },
+      {
+        "day" : 14,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 15,
+        "isFuture" : false,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 16,
+        "isFuture" : false,
+        "isToday" : true,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 17,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 18,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 19,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 20,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 21,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 22,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 23,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 24,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 25,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 26,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 27,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 28,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 29,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 30,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      },
+      {
+        "day" : 31,
+        "isFuture" : true,
+        "isToday" : false,
+        "level" : 0,
+        "sessions" : 0
+      }
+    ],
+    "leadingBlankDays" : 3,
+    "monthStart" : "2026-10-01T00:00:00.000Z",
+    "sessionCount" : 5,
+    "title" : "October"
+  },
+  "nextUp" : {
+    "daysSince" : 5,
+    "estimatedMinutes" : 45,
+    "exerciseCount" : 6,
+    "exercises" : [
+      {
+        "exerciseID" : "bench",
+        "muscle" : "Chest",
+        "name" : "Barbell bench press",
+        "setCount" : 5,
+        "summary" : "3 × 85"
+      },
+      {
+        "exerciseID" : "incline",
+        "muscle" : "Chest",
+        "name" : "Incline dumbbell press",
+        "setCount" : 3,
+        "summary" : "3 × 28"
+      },
+      {
+        "exerciseID" : "ohp",
+        "muscle" : "Shoulders",
+        "name" : "Overhead press",
+        "setCount" : 3,
+        "summary" : "3 × 45"
+      },
+      {
+        "exerciseID" : "lateral",
+        "muscle" : "Shoulders",
+        "name" : "Dumbbell lateral raise",
+        "setCount" : 3,
+        "summary" : "3 × 8"
+      },
+      {
+        "exerciseID" : "pushdown",
+        "muscle" : "Arms",
+        "name" : "Triceps pushdown",
+        "setCount" : 3,
+        "summary" : "3 × 30"
+      },
+      {
+        "exerciseID" : "crossover",
+        "muscle" : "Chest",
+        "name" : "Cable crossover",
+        "setCount" : 3,
+        "summary" : "3 × 15"
+      }
+    ],
+    "lastPerformedAt" : "2026-10-11T09:41:00.000Z",
+    "name" : "Upper A · Push",
+    "setCount" : 20,
+    "splitLabel" : "Push day",
+    "templateID" : "5EED0001-0000-4000-8000-000000000001"
+  },
+  "overload" : {
+    "deltaKg" : 2.5,
+    "exerciseID" : "bench",
+    "exerciseName" : "Barbell bench press",
+    "lastDaysAgo" : 5,
+    "lastReps" : 6,
+    "lastWeightKg" : 80,
+    "targetReps" : 6,
+    "targetSets" : 3,
+    "targetWeightKg" : 82.5
+  },
+  "partners" : [
+
+  ],
+  "plateaus" : [
+    {
+      "exerciseID" : "bench",
+      "flatSessions" : 2,
+      "name" : "Barbell bench press",
+      "status" : "falling"
+    },
+    {
+      "exerciseID" : "crossover",
+      "flatSessions" : 2,
+      "name" : "Cable crossover",
+      "status" : "falling"
+    },
+    {
+      "exerciseID" : "incline",
+      "flatSessions" : 2,
+      "name" : "Incline dumbbell press",
+      "status" : "falling"
+    },
+    {
+      "exerciseID" : "lateral",
+      "flatSessions" : 2,
+      "name" : "Dumbbell lateral raise",
+      "status" : "falling"
+    }
+  ],
+  "schemaVersion" : 1,
+  "strengthRatio" : {
+    "estimated1RM" : 99.2,
+    "exerciseID" : "bench",
+    "exerciseName" : "Barbell bench press",
+    "goalRatio" : 1.5
+  },
+  "templates" : [
+    {
+      "daysSince" : 5,
+      "estimatedMinutes" : 45,
+      "exerciseCount" : 6,
+      "isSuggested" : true,
+      "lastPerformedAt" : "2026-10-11T09:41:00.000Z",
+      "name" : "Upper A · Push",
+      "templateID" : "5EED0001-0000-4000-8000-000000000001"
+    },
+    {
+      "daysSince" : 7,
+      "estimatedMinutes" : 45,
+      "exerciseCount" : 5,
+      "isSuggested" : false,
+      "lastPerformedAt" : "2026-10-09T09:41:00.000Z",
+      "name" : "Lower A · Quads",
+      "templateID" : "5EED0001-0000-4000-8000-000000000002"
+    },
+    {
+      "daysSince" : 3,
+      "estimatedMinutes" : 45,
+      "exerciseCount" : 6,
+      "isSuggested" : false,
+      "lastPerformedAt" : "2026-10-13T09:41:00.000Z",
+      "name" : "Upper B · Pull",
+      "templateID" : "5EED0001-0000-4000-8000-000000000003"
+    }
+  ],
+  "timeZoneID" : "UTC",
+  "tomorrow" : {
+    "isInferred" : true,
+    "note" : "Gym bag ready?",
+    "plannedMinuteOfDay" : 530,
+    "templateName" : "Upper A · Push",
+    "weekday" : "Saturday"
+  },
+  "week" : {
+    "completed" : 1,
+    "days" : [
+      {
+        "date" : "2026-10-12T00:00:00.000Z",
+        "isFuture" : false,
+        "isToday" : false,
+        "letter" : "M",
+        "sessions" : 0
+      },
+      {
+        "date" : "2026-10-13T00:00:00.000Z",
+        "isFuture" : false,
+        "isToday" : false,
+        "label" : "UB",
+        "letter" : "T",
+        "sessions" : 1
+      },
+      {
+        "date" : "2026-10-14T00:00:00.000Z",
+        "isFuture" : false,
+        "isToday" : false,
+        "letter" : "W",
+        "sessions" : 0
+      },
+      {
+        "date" : "2026-10-15T00:00:00.000Z",
+        "isFuture" : false,
+        "isToday" : false,
+        "letter" : "T",
+        "sessions" : 0
+      },
+      {
+        "date" : "2026-10-16T00:00:00.000Z",
+        "isFuture" : false,
+        "isToday" : true,
+        "letter" : "F",
+        "sessions" : 0
+      },
+      {
+        "date" : "2026-10-17T00:00:00.000Z",
+        "isFuture" : true,
+        "isToday" : false,
+        "letter" : "S",
+        "sessions" : 0
+      },
+      {
+        "date" : "2026-10-18T00:00:00.000Z",
+        "isFuture" : true,
+        "isToday" : false,
+        "letter" : "S",
+        "sessions" : 0
+      }
+    ],
+    "daysSinceLastWorkout" : 3,
+    "goal" : 4,
+    "lastWorkoutAt" : "2026-10-13T09:41:00.000Z",
+    "streakWeeks" : 0,
+    "weekStart" : "2026-10-12T00:00:00.000Z"
+  },
+  "weeklySets" : {
+    "laggingMuscle" : "Chest",
+    "muscles" : [
+      {
+        "muscle" : "Chest",
+        "sets" : 0,
+        "status" : "under",
+        "targetHigh" : 14,
+        "targetLow" : 10
+      },
+      {
+        "muscle" : "Back",
+        "sets" : 12,
+        "status" : "onTarget",
+        "targetHigh" : 14,
+        "targetLow" : 10
+      },
+      {
+        "muscle" : "Shoulders",
+        "sets" : 3,
+        "status" : "under",
+        "targetHigh" : 14,
+        "targetLow" : 10
+      },
+      {
+        "muscle" : "Arms",
+        "sets" : 3,
+        "status" : "under",
+        "targetHigh" : 10,
+        "targetLow" : 6
+      },
+      {
+        "muscle" : "Legs",
+        "sets" : 0,
+        "status" : "under",
+        "targetHigh" : 14,
+        "targetLow" : 10
+      },
+      {
+        "muscle" : "Core",
+        "sets" : 0,
+        "status" : "under",
+        "targetHigh" : 10,
+        "targetLow" : 6
+      }
+    ],
+    "setsToGo" : 33,
+    "totalSets" : 15,
+    "totalTarget" : 48
+  },
+  "year" : {
+    "monthlyTonnes" : [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      31.9,
+      0,
+      0
+    ],
+    "sessionCount" : 5,
+    "tonnes" : 31.9,
+    "year" : 2026
+  }
+}
