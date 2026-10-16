@@ -52,6 +52,11 @@ enum LiveMetrics {
     static let expandedSideInset: CGFloat = 22
     static let expandedBottomInset: CGFloat = 18
 
+    // StandBy bench mode (StandBy.dc.html): the mock-up draws the full-screen activity in a 620 x 286 pt frame with a 40 pt bezel.
+    static let benchWidth: CGFloat = 620
+    static let benchHeight: CGFloat = 286
+    static let benchCornerRadius: CGFloat = 40
+
     /// Space around the artwork inside a PNG.
     static let canvasPadding: CGFloat = 16
 
@@ -86,6 +91,14 @@ enum LiveExtra {
     static let systemCompactResting = 6
     static let systemMinimalResting = 7
     static let systemExpandedResting = 8
+    static let standbyResting = 9
+    static let standbyRestOver = 10
+    static let standbyLogging = 11
+    static let standbyRecord = 12
+    static let standbyComplete = 13
+    /// First index of the pre-workout countdown images (PlannedSessionSnapshots.swift): one Lock Screen card per scenario, then the
+    /// compact sheet, the minimal sheet and the expanded island.
+    static let plannedBase = 14
 }
 
 // MARK: - Chrome: wallpaper, canvas, sensor
@@ -199,6 +212,43 @@ struct LockScreenSnapshot: View {
             width: LiveMetrics.lockScreenWidth + 2 * LiveMetrics.canvasPadding
         ) {
             LockScreenCard(scenario: scenario)
+        }
+    }
+}
+
+// MARK: - StandBy (bench mode)
+
+/// The activity in StandBy: the full-screen layout (`isFullscreen: true`) in the frame of StandBy.dc.html, on black.
+struct BenchCard: View {
+    let scenario: LiveScenario
+
+    var body: some View {
+        LockScreenActivityView(
+            state: scenario.snapshot,
+            workoutName: scenario.workoutName,
+            isStale: scenario.isStale,
+            isFullscreen: true
+        )
+        .frame(width: LiveMetrics.benchWidth, height: LiveMetrics.benchHeight)
+        .background(Color.black)
+        .clipShape(RoundedRectangle(cornerRadius: LiveMetrics.benchCornerRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: LiveMetrics.benchCornerRadius, style: .continuous)
+                .strokeBorder(Color(white: 0.13), lineWidth: 5)
+        )
+        .activityStaticClock(scenario.staticClock)
+    }
+}
+
+struct BenchSnapshot: View {
+    let scenario: LiveScenario
+
+    var body: some View {
+        LiveCanvas(
+            caption: "standby bench mode \u{00B7} " + scenario.title + "\nlayout of StandBy.dc.html (620 x 286 pt)",
+            width: LiveMetrics.benchWidth + 2 * LiveMetrics.canvasPadding
+        ) {
+            BenchCard(scenario: scenario)
         }
     }
 }

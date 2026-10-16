@@ -1,12 +1,17 @@
 // LockScreenActivityView.swift
 //
-// The Lock Screen / banner presentation of the Live Activity (LockScreen.dc.html).
+// The Lock Screen / banner presentation of the Live Activity (LockScreen.dc.html, LiveActivityNext.dc.html).
 //
 // Phases: logging (set label, - / + steppers, Log set), resting (ring, countdown, Next, -15 s / +15 s /
 // Skip rest), rest over ("Go" + Log set) and complete ("All sets logged"; a tap opens the app through
 // `.widgetURL`). While paused the clock and the rest are frozen and a "Paused" label replaces the running clock.
 // A workout without any set (started empty) is `.complete` for the builder but has nothing logged: the card shows
 // the barbell and "No exercises yet" with a hint instead of the check and "All sets logged".
+//
+// The live moments of the snapshot change the card (`WorkoutSnapshot.lockLayout`, first match wins; the cards are in
+// LockScreenStates.swift): the finished workout (`finish`), a record just logged (`moment`), the coach tip while resting
+// (`coachTip`), a superset or the plates while logging (`superset`, `plates`). In StandBy (`isFullscreen`) the large bench layout
+// of BenchModeView.swift replaces the card.
 //
 // The system cuts a Live Activity off at about 160 pt, the mock-up is taller (about 230 pt in the logging
 // phase), so the logging card puts "Log set" next to the exercise title instead of below the steppers. Every
@@ -21,45 +26,116 @@ struct LockScreenActivityView: View {
     let workoutName: String
     /// `ActivityViewContext.isStale`: the app sets `staleDate = restEndsAt`, so stale + resting means rest over.
     let isStale: Bool
+    /// True when the activity fills the screen in StandBy (`EnvironmentValues.isActivityFullscreen`, iOS 17.2). It is a parameter
+    /// and not read here because that environment value does not exist on iOS 17.0 and 17.1 and cannot be set by the tests:
+    /// `WorkoutLockScreenContainer` reads it and passes it in.
+    var isFullscreen: Bool = false
     /// Snapshot tests only (nil in production): the instant the views are drawn at.
     @Environment(\.activityStaticNow) private var staticNow
 
     var body: some View {
         let phase = state.displayPhase(isStale: isStale, staticNow: staticNow)
+        Group {
+            if isFullscreen && state.finish == nil {
+                BenchModeView(state: state, phase: phase)
+            } else {
+                card(phase: phase)
+            }
+        }
+        .environment(\.colorScheme, .dark)
+    }
+
+    private func card(phase: SnapshotPhase) -> some View {
         VStack(alignment: .leading, spacing: ActivityTheme.Metrics.lockSectionSpacing) {
-            LockScreenHeader(state: state, workoutName: workoutName)
-            LockScreenContent(state: state, phase: phase)
+            cardContent(phase: phase)
         }
         .padding(.horizontal, ActivityTheme.Metrics.lockSideInset)
         .padding(.top, ActivityTheme.Metrics.lockTopInset)
         .padding(.bottom, ActivityTheme.Metrics.lockBottomInset)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .environment(\.colorScheme, .dark)
+    }
+
+    @ViewBuilder
+    private func cardContent(phase: SnapshotPhase) -> some View {
+        switch state.lockLayout(phase: phase) {
+        case .finish:
+            if let finish = state.finish {
+                LockFinishContent(finish: finish)
+            }
+        case .moment:
+            LockScreenHeader(state: state, workoutName: workoutName)
+            if let moment = state.moment {
+                LockMomentContent(state: state, moment: moment, phase: phase)
+            }
+        case .coachTip:
+            if let tip = state.coachTip {
+                LockCoachTipContent(state: state, tip: tip, phase: phase)
+            }
+        case .superset:
+            if let superset = state.superset {
+                LockSupersetContent(state: state, superset: superset)
+            }
+        case .plates:
+            LockScreenHeader(state: state, workoutName: workoutName, showsExercise: true)
+            if let plates = state.plates {
+                LockPlatesContent(state: state, plates: plates)
+            }
+        case .standard:
+            LockScreenHeader(state: state, workoutName: workoutName)
+            LockScreenContent(state: state, phase: phase)
+        }
     }
 }
 
 // MARK: - Header
 
 /// App badge, workout name, heart rate (when known) and the elapsed time (frozen with a "Paused" label when paused).
+/// With `showsExercise` the exercise and the set replace the workout name: the plate row has taken the place of the exercise title
+/// in the logging card, so the title moves up here.
 struct LockScreenHeader: View {
     let state: WorkoutSnapshot
     let workoutName: String
+    var showsExercise: Bool = false
 
     var body: some View {
         HStack(spacing: 8) {
             ActivityAppBadge(size: ActivityTheme.Metrics.lockHeaderHeight, glyphSize: 15, cornerRadius: 7)
-            Text(workoutName)
-                .font(ActivityTheme.text(15, .semibold))
-                .foregroundStyle(ActivityTheme.textPrimary)
-                .lineLimit(1)
+            title
             Spacer(minLength: 8)
-            trailing
+            LockScreenStatus(state: state)
         }
         .frame(height: ActivityTheme.Metrics.lockHeaderHeight)
     }
 
     @ViewBuilder
-    private var trailing: some View {
+    private var title: some View {
+        if showsExercise {
+            HStack(spacing: 5) {
+                Text(state.exerciseName)
+                    .font(ActivityTheme.text(15, .semibold))
+                    .foregroundStyle(ActivityTheme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                Text("\u{00B7} " + state.setLabel)
+                    .font(ActivityTheme.text(15))
+                    .foregroundStyle(ActivityTheme.lockTextSecondary)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+        } else {
+            Text(workoutName)
+                .font(ActivityTheme.text(15, .semibold))
+                .foregroundStyle(ActivityTheme.textPrimary)
+                .lineLimit(1)
+        }
+    }
+}
+
+/// Heart rate (when known) and the elapsed clock, or the frozen clock with "Paused": the right end of every header.
+struct LockScreenStatus: View {
+    let state: WorkoutSnapshot
+
+    var body: some View {
         HStack(spacing: 10) {
             if let bpm = state.heartRate {
                 ActivityHeartRateLabel(bpm: bpm, size: 15, color: ActivityTheme.lockTextSecondary)
@@ -108,6 +184,8 @@ struct LockLoggingContent: View {
                 if let intent = state.logSetIntent {
                     ActivityLogButton(
                         intent: intent,
+                        title: state.logTitle,
+                        spokenTitle: state.logSpokenTitle,
                         height: ActivityTheme.Metrics.lockControlHeight,
                         fillsWidth: false,
                         fontSize: 17
@@ -201,6 +279,8 @@ struct LockRestContent: View {
             if let intent = state.logSetIntent {
                 ActivityLogButton(
                     intent: intent,
+                    title: state.logTitle,
+                    spokenTitle: state.logSpokenTitle,
                     height: ActivityTheme.Metrics.lockRestButtonHeight,
                     fillsWidth: true,
                     fontSize: 17
