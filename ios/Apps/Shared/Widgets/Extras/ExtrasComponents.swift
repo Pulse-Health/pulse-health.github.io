@@ -13,7 +13,6 @@
 #if os(iOS)
 import SwiftUI
 import WidgetKit
-import PulseStrengthCore
 
 // MARK: - Palette
 
@@ -152,13 +151,12 @@ enum ExtrasText {
 struct ExtrasEyebrow: View {
     let title: String
     var color: Color = WidgetTheme.inkSecondary
-    var size: CGFloat = 12
     /// Lines the title may take before it is scaled down.
     var lines: Int = 1
 
     var body: some View {
         Text(title)
-            .font(WidgetTheme.eyebrow(size))
+            .font(WidgetTheme.eyebrow(12))
             .tracking(0.5)
             .foregroundStyle(color)
             .textCase(.uppercase)

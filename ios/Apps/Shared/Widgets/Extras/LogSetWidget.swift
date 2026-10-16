@@ -9,8 +9,9 @@
 // The intents are the Live Activity's: they run in the app, or leave the command in the App Group inbox (WidgetIntentDispatch).
 //
 // A widget can only redraw when the app writes a new snapshot, so the view shows what the snapshot says. The values a button changes are
-// marked `invalidatableContent()`, which makes the system dim them from the tap until the new snapshot arrives. Whether a rest is over is
-// decided at the entry's date, not at the render time: the provider adds an entry at the end of every rest.
+// marked `invalidatableContent()`: from the tap until the new snapshot is presented the system draws them as invalidated, so a stale
+// number does not look current. Whether a rest is over is decided at the entry's date, not at the render time: the provider adds an
+// entry at the end of every rest.
 
 #if os(iOS)
 import AppIntents
