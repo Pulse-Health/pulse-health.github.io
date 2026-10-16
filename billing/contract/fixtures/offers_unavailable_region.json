@@ -1,0 +1,7 @@
+{
+  "purchase": { "available": false, "reason": "region_not_supported" },
+  "requiresWithdrawalConsent": true,
+  "publishableKey": "pk_test_FIXTURE",
+  "merchantDisplayName": "Pulse",
+  "plans": []
+}

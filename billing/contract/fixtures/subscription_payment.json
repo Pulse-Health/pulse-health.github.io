@@ -1,0 +1,8 @@
+{
+  "subscriptionId": "sub_FIXTURE",
+  "status": "incomplete",
+  "customerId": "cus_FIXTURE",
+  "customerEphemeralKeySecret": "ek_test_FIXTURE",
+  "publishableKey": "pk_test_FIXTURE",
+  "intent": { "kind": "payment", "clientSecret": "pi_FIXTURE_secret_FIXTURE" }
+}

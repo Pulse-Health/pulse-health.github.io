@@ -1,0 +1,28 @@
+{
+  "purchase": { "available": true, "reason": null },
+  "requiresWithdrawalConsent": true,
+  "publishableKey": "pk_test_FIXTURE",
+  "merchantDisplayName": "Pulse",
+  "plans": [
+    {
+      "id": "premium_monthly",
+      "name": "Pulse Premium",
+      "interval": "month",
+      "intervalCount": 1,
+      "currency": "eur",
+      "unitAmount": 999,
+      "taxBehavior": "inclusive",
+      "trialDays": 7
+    },
+    {
+      "id": "premium_yearly",
+      "name": "Pulse Premium",
+      "interval": "year",
+      "intervalCount": 1,
+      "currency": "eur",
+      "unitAmount": 7999,
+      "taxBehavior": "inclusive",
+      "trialDays": 7
+    }
+  ]
+}

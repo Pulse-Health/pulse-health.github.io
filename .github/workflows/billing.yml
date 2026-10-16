@@ -1,0 +1,154 @@
+# Stripe billing: the server (billing/server), the iOS client (ios/Packages/PulseBillingKit) and, once added, the Android client.
+#
+#   server     Node 22 + PostgreSQL 16: typecheck, the unit tests, the PostgreSQL-backed tests (TEST_DATABASE_URL) and the build.
+#   ios-core   PulseBillingCore on Linux (swift test): models, API client, purchase state machine, parsing of the contract fixtures.
+#   ios-ui     macOS: swift test, then PulseBillingUI (Stripe PaymentSheet, SwiftUI) built for the iOS Simulator, which resolves
+#              the Stripe iOS SDK. This is the only job that compiles the SwiftUI / Stripe code.
+#
+# The contract fixtures in billing/contract/fixtures are parsed by the tests of all three code bases, so a change to the wire
+# format that is not made everywhere fails here.
+
+name: billing
+
+on:
+  pull_request:
+    paths:
+      - 'billing/**'
+      - 'ios/Packages/PulseBillingKit/**'
+      - 'android/**'
+      - '.github/workflows/billing.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'billing/**'
+      - 'ios/Packages/PulseBillingKit/**'
+      - 'android/**'
+      - '.github/workflows/billing.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: billing-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  server:
+    name: server
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: billing/server
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: billing_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/billing_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: billing/server/package-lock.json
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Test (unit tests and PostgreSQL-backed tests)
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  ios-core:
+    name: ios-core (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ios/Packages/PulseBillingKit
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Build
+        run: swift build
+      - name: Test
+        run: swift test
+
+  ios-ui:
+    name: ios-ui (macOS, iOS Simulator)
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+        working-directory: ios/Packages/PulseBillingKit
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same rule as strength-ios: the newest installed Xcode 16.x.
+      - name: Select Xcode 16
+        working-directory: .
+        run: |
+          newest="$(python3 - <<'PY'
+          import glob, re
+
+          def key(path):
+              match = re.search(r"Xcode_(\d+(?:\.\d+)*)\.app$", path)
+              return tuple(int(part) for part in match.group(1).split(".")) if match else ()
+
+          apps = [p for p in glob.glob("/Applications/Xcode_16*.app") if re.search(r"Xcode_16(\.\d+)*\.app$", p)]
+          print(max(apps, key=key) if apps else "")
+          PY
+          )"
+          if [ -n "$newest" ]; then
+            echo "Selecting $newest"
+            sudo xcode-select -s "$newest/Contents/Developer"
+          else
+            echo "::warning::No Xcode 16.x installed on this runner image, using the default Xcode"
+          fi
+          xcodebuild -version
+          swift --version
+
+      - name: Resolve packages (fetches the Stripe iOS SDK)
+        run: swift package resolve
+
+      - name: swift test (macOS; the UI target is empty there)
+        run: swift test
+
+      - name: Schemes
+        run: xcodebuild -list
+
+      - name: Build PulseBillingUI for the iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -scheme PulseBillingUI \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee "$RUNNER_TEMP/build.log" | tail -n 60 || {
+              echo "----- unique error lines -----"
+              grep -E "error:" "$RUNNER_TEMP/build.log" | sort -u || true
+              exit 1
+            }
+
+      - name: Build PulseBillingUI for iOS devices (no signing)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -scheme PulseBillingUI \
+            -destination 'generic/platform=iOS' \
+            -configuration Release \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -n 30

@@ -1,0 +1,13 @@
+{
+  "entitlement": {
+    "premium": true,
+    "status": "active",
+    "planId": "premium_yearly",
+    "source": "stripe",
+    "currentPeriodEnd": "2027-03-01T08:30:00Z",
+    "cancelAtPeriodEnd": true,
+    "trialEnd": null,
+    "premiumUntil": "2027-03-01T08:30:00Z"
+  },
+  "serverTime": "2026-10-16T10:00:00Z"
+}

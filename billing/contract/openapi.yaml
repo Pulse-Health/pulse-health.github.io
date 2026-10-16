@@ -1,0 +1,272 @@
+openapi: 3.1.0
+info:
+  title: Pulse Billing API
+  version: 1.0.0
+  summary: Stripe subscriptions for the Pulse iOS and Android apps.
+  description: |
+    The one contract shared by the billing server (`billing/server`), the iOS client
+    (`ios/Packages/PulseBillingKit`) and the Android client (`android/`). The JSON files in
+    `fixtures/` are example responses of this contract; all three code bases parse them in tests, so a change
+    to a field name or type that is not made everywhere fails a test somewhere.
+
+    Conventions
+    * Every endpoint except `/webhook` needs `Authorization: Bearer <Clerk session token>`. The user is the token's
+      `sub`; there is no user id in any request body.
+    * Timestamps are ISO-8601 UTC strings without fractions (`2026-11-16T10:00:00Z`). Money is an integer in minor
+      units plus a lower-case ISO 4217 currency, exactly as Stripe reports it.
+    * Errors are `{ "error": { "code", "message" } }` with the HTTP statuses listed per endpoint. `code` is the
+      stable part; `message` is for logs, not for users.
+    * Unknown response fields must be ignored by clients (the server may add fields without a version bump).
+servers:
+  - url: https://api.example.invalid
+    description: Placeholder. The real origin is the Railway service that mounts the billing routes.
+security:
+  - clerkSession: []
+paths:
+  /v1/billing/offers:
+    get:
+      operationId: getOffers
+      summary: What can this user buy here, and what does it cost?
+      description: |
+        Returns the plans (prices are read from Stripe, never hard-coded in the apps) and whether a purchase may be
+        started from this platform and country. `purchase.available = false` means the app must not show a buy button;
+        it may still show the current entitlement and a "manage" button.
+        `country` is the best country signal the app has (iOS: the App Store storefront; Android: the Play country if
+        known, otherwise the device region). It is advisory: the policy decision is the server's.
+      parameters:
+        - { name: platform, in: query, required: true, schema: { $ref: '#/components/schemas/Platform' } }
+        - { name: country, in: query, required: false, schema: { type: string, pattern: '^[A-Za-z]{2}$' } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/OffersResponse' } } } }
+        '401': { $ref: '#/components/responses/Error' }
+  /v1/billing/entitlement:
+    get:
+      operationId: getEntitlement
+      summary: The user's current Premium entitlement (from the database; cheap).
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/EntitlementResponse' } } } }
+        '401': { $ref: '#/components/responses/Error' }
+  /v1/billing/subscriptions:
+    post:
+      operationId: createSubscription
+      summary: Start (or resume) a subscription and get what the Stripe PaymentSheet needs.
+      description: |
+        Creates the Stripe customer on first use, then a subscription with `payment_behavior=default_incomplete`.
+        If the user already has an `incomplete` subscription for the same plan it is resumed instead of creating a
+        second one. Send a fresh `Idempotency-Key` (a UUID) per user tap; retries of the same tap reuse it.
+        When the plan has a free trial and the user never had a subscription, `intent.kind` is `setup`
+        (collect a payment method, charge nothing now); otherwise it is `payment`.
+      parameters:
+        - { name: Idempotency-Key, in: header, required: false, schema: { type: string, maxLength: 255 } }
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/CreateSubscriptionRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/CreateSubscriptionResponse' } } } }
+        '400': { description: 'code = invalid_request or consent_required', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '401': { $ref: '#/components/responses/Error' }
+        '403': { description: 'code = purchase_not_available', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '404': { description: 'code = plan_not_found', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '409': { description: 'code = already_subscribed', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+        '429': { $ref: '#/components/responses/Error' }
+        '502': { description: 'code = stripe_error', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /v1/billing/sync:
+    post:
+      operationId: syncEntitlement
+      summary: Re-read the user's subscriptions from Stripe and return the fresh entitlement.
+      description: |
+        Call it right after the PaymentSheet reports `completed`: the `invoice.paid` webhook usually arrives within
+        seconds but not before the sheet closes. Idempotent; rate limited per user.
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/EntitlementResponse' } } } }
+        '401': { $ref: '#/components/responses/Error' }
+        '429': { $ref: '#/components/responses/Error' }
+  /v1/billing/subscription/cancel:
+    post:
+      operationId: cancelSubscription
+      summary: Cancel at the end of the paid period (Premium stays until then).
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/EntitlementResponse' } } } }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { description: 'code = no_subscription', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /v1/billing/subscription/resume:
+    post:
+      operationId: resumeSubscription
+      summary: Undo a pending cancellation.
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/EntitlementResponse' } } } }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { description: 'code = no_subscription', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /v1/billing/portal:
+    post:
+      operationId: createPortalSession
+      summary: A Stripe Customer Portal link (payment methods, invoices, cancellation).
+      description: Open `url` in the system browser (SFSafariViewController / Custom Tab). `returnUrl` must match the server's allow-list.
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: '#/components/schemas/PortalRequest' } } }
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/PortalResponse' } } } }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+        '404': { description: 'code = no_customer', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /v1/billing/account:
+    delete:
+      operationId: deleteBillingAccount
+      summary: Close the user's billing account (call it when the user deletes their Pulse account).
+      description: |
+        Deletes the Stripe customer, which ends any subscription immediately (a deleted account is never billed again),
+        removes the Stripe-sourced Premium access and the stored billing rows. Stripe keeps its invoices, as accounting
+        law requires. Idempotent: calling it again, or for a user who never subscribed, succeeds.
+      responses:
+        '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/AccountDeletedResponse' } } } }
+        '401': { $ref: '#/components/responses/Error' }
+        '502': { description: 'code = stripe_error. Nothing was removed on our side; retry.', content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } } }
+  /v1/billing/webhook:
+    post:
+      operationId: stripeWebhook
+      summary: Stripe event endpoint (not for the apps).
+      description: |
+        Authenticated by the `Stripe-Signature` header only. Verified against the raw body, processed at most once per
+        event id. Answers 2xx once the event is stored or recognised as already processed; any other status makes
+        Stripe retry.
+      security: []
+      requestBody:
+        required: true
+        content: { application/json: { schema: { type: object } } }
+      responses:
+        '200': { description: Event accepted }
+        '400': { description: Missing or invalid signature }
+        '500': { description: Processing failed; Stripe will retry }
+components:
+  securitySchemes:
+    clerkSession:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Clerk session token as returned by `getToken()` of the Clerk iOS / Android SDK.
+  responses:
+    Error:
+      description: Error
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' } } }
+  schemas:
+    Platform: { type: string, enum: [ios, android] }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [unauthorized, invalid_request, consent_required, purchase_not_available, plan_not_found, already_subscribed, no_subscription, no_customer, rate_limited, stripe_error, internal]
+            message: { type: string }
+    PurchaseAvailability:
+      type: object
+      required: [available]
+      properties:
+        available: { type: boolean }
+        reason:
+          description: Present when `available` is false.
+          oneOf:
+            - { type: 'null' }
+            - { type: string, enum: [billing_disabled, platform_not_supported, region_not_supported, already_subscribed] }
+    Plan:
+      type: object
+      required: [id, name, interval, intervalCount, currency, unitAmount, taxBehavior, trialDays]
+      properties:
+        id: { type: string, description: 'Stable plan id = the Stripe price lookup_key, e.g. premium_monthly.' }
+        name: { type: string }
+        interval: { type: string, enum: [month, year] }
+        intervalCount: { type: integer, minimum: 1 }
+        currency: { type: string }
+        unitAmount: { type: integer, description: Minor units. }
+        taxBehavior: { type: string, enum: [inclusive, exclusive, unspecified] }
+        trialDays: { type: integer, minimum: 0, description: 0 when no trial is offered to this user. }
+    OffersResponse:
+      type: object
+      required: [purchase, requiresWithdrawalConsent, publishableKey, merchantDisplayName, plans]
+      properties:
+        purchase: { $ref: '#/components/schemas/PurchaseAvailability' }
+        requiresWithdrawalConsent:
+          type: boolean
+          description: |
+            True when the buyer must expressly consent to immediate performance and acknowledge losing the right of
+            withdrawal (EU consumers). The app shows that consent next to the buy button and sends `consent` when it is
+            ticked; without it the server answers `consent_required`. The server stores the time and locale with the subscription.
+        publishableKey: { type: string }
+        merchantDisplayName: { type: string }
+        plans: { type: array, items: { $ref: '#/components/schemas/Plan' } }
+    Entitlement:
+      type: object
+      required: [premium, status, planId, source, currentPeriodEnd, cancelAtPeriodEnd, trialEnd, premiumUntil]
+      properties:
+        premium: { type: boolean }
+        status: { type: string, enum: [none, trialing, active, past_due, incomplete, unpaid, canceled, paused] }
+        planId: { type: [string, 'null'] }
+        source: { type: string, enum: [none, stripe, code], description: 'Clients must treat an unknown value like any other premium source.' }
+        currentPeriodEnd: { type: [string, 'null'], format: date-time }
+        cancelAtPeriodEnd: { type: boolean }
+        trialEnd: { type: [string, 'null'], format: date-time }
+        premiumUntil:
+          type: [string, 'null']
+          format: date-time
+          description: The instant until which a client may keep treating the user as Premium without asking the server (offline cache). Null when not premium.
+    EntitlementResponse:
+      type: object
+      required: [entitlement, serverTime]
+      properties:
+        entitlement: { $ref: '#/components/schemas/Entitlement' }
+        serverTime: { type: string, format: date-time }
+    CreateSubscriptionRequest:
+      type: object
+      required: [planId, platform]
+      properties:
+        planId: { type: string }
+        platform: { $ref: '#/components/schemas/Platform' }
+        country: { type: string, pattern: '^[A-Za-z]{2}$', description: Same signal as in `getOffers`. }
+        billingCountry:
+          type: string
+          pattern: '^[A-Za-z]{2}$'
+          description: Country used for tax when automatic tax is on; defaults to `country`.
+        consent:
+          type: object
+          required: [withdrawalWaiver, locale]
+          description: Required when `requiresWithdrawalConsent` was true for the buyer's country.
+          properties:
+            withdrawalWaiver: { type: boolean }
+            locale: { type: string, description: 'BCP 47 language of the text the buyer saw, e.g. de-DE.' }
+    CreateSubscriptionResponse:
+      type: object
+      required: [subscriptionId, status, customerId, customerEphemeralKeySecret, publishableKey, intent]
+      properties:
+        subscriptionId: { type: string }
+        status: { type: string }
+        customerId: { type: string }
+        customerEphemeralKeySecret: { type: string }
+        publishableKey: { type: string }
+        intent:
+          oneOf:
+            - { type: 'null' }
+            - type: object
+              required: [kind, clientSecret]
+              properties:
+                kind: { type: string, enum: [payment, setup] }
+                clientSecret: { type: string }
+    AccountDeletedResponse:
+      type: object
+      required: [deleted]
+      properties:
+        deleted: { type: boolean, const: true }
+    PortalRequest:
+      type: object
+      required: [returnUrl]
+      properties:
+        returnUrl: { type: string }
+    PortalResponse:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string, format: uri }

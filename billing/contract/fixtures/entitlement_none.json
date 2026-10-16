@@ -1,0 +1,13 @@
+{
+  "entitlement": {
+    "premium": false,
+    "status": "none",
+    "planId": null,
+    "source": "none",
+    "currentPeriodEnd": null,
+    "cancelAtPeriodEnd": false,
+    "trialEnd": null,
+    "premiumUntil": null
+  },
+  "serverTime": "2026-10-16T10:00:00Z"
+}
