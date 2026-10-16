@@ -255,16 +255,9 @@ struct OnboardingHealthScreen: View {
             subtitle: copy.text(.healthSub),
             isActive: isActive,
             content: {
+                // What the app really asks for: it saves workouts (the one permission this step requests); the heart rate arrives from
+                // the Watch, not from Health; body weight is a sync that is turned on later in Settings.
                 OnboardingRowGroup {
-                    OnboardingRow(
-                        tint: OnboardingTheme.heart,
-                        title: copy.text(.healthHeartRate),
-                        subtitle: copy.text(.healthHeartRateSub),
-                        tag: copy.text(.healthRead)
-                    ) {
-                        OnboardingSymbol(name: "heart.fill")
-                    }
-                    OnboardingRowDivider()
                     OnboardingRow(
                         tint: OnboardingTheme.green,
                         title: copy.text(.healthWorkouts),
@@ -276,12 +269,21 @@ struct OnboardingHealthScreen: View {
                     }
                     OnboardingRowDivider()
                     OnboardingRow(
+                        tint: OnboardingTheme.heart,
+                        title: copy.text(.healthHeartRate),
+                        subtitle: copy.text(.healthHeartRateSub),
+                        tag: copy.text(.healthWatch)
+                    ) {
+                        OnboardingSymbol(name: "heart.fill")
+                    }
+                    OnboardingRowDivider()
+                    OnboardingRow(
                         tint: OnboardingTheme.blueText,
                         title: copy.text(.healthBody),
                         subtitle: copy.text(.healthBodySub),
-                        tag: copy.text(.healthRead)
+                        tag: copy.text(.healthOptional)
                     ) {
-                        OnboardingSymbol(name: "moon")
+                        OnboardingSymbol(name: "scalemass")
                     }
                 }
             },

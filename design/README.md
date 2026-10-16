@@ -47,7 +47,7 @@ CSS variables use the dark values of `ios/Packages/PulseStrengthKit/Sources/Puls
 |---|---|---|
 | `--ground` · `--card` · `--cell-fill` | `ground` · `card` · `cellFill` | `#000` · `#1C1C1E` · `#2C2C2E` |
 | `--chip-fill` · `--separator` | `chipFill` · `separator` | `#767680` @ 24 % · `#545458` @ 65 % |
-| `--ink` · `--ink-secondary` · `--ink-tertiary` | same | `#FFF` · `#98989D` · `#636366` |
+| `--ink` · `--ink-secondary` · `--ink-tertiary` | same | `#FFF` · `#98989D` · `#636366` (the app's own dark `inkTertiary` became `#98989D` in its contrast audit; the onboarding keeps `#636366` for the label of a disabled button only, where no contrast is required) |
 | `--green` · `--green-tint` · `--on-green` | `green` · `greenTint` · `onGreen` | `#30D158` · `#30D158` @ 18 % · `#000` |
 | `--heart` | `heart` | `#FF453A` (heart rate only) |
 | `--recovery-good / -fair / -low` | `recoveryGood / Fair / Low` | `#30D158` · `#FFD60A` · `#FF453A` |
@@ -108,7 +108,7 @@ Where it differs on purpose:
 3. **Continue with Apple.** The privacy policy (§6, Clerk) mentions email sign-in only. Offering Apple means enabling the provider in Clerk and updating §6. If it is not offered, remove the button and the "or" divider.
 4. **Consent copy.** The AI Coaching step is derived from privacy policy §7 ("explicit consent during onboarding", EU processing, what is and is not sent). Whoever owns the legal text should review it before it ships.
 5. **Not designed:** preferred name (the policy sends it as a placeholder), coaching style and the free-text limitation notes the policy lists, the separate medication consent.
-6. **Health rows.** Heart rate, active energy and workouts come from the Info.plist strings of the strength app; "sleep & body profile" comes from policy §4. Align them with the types the app really requests.
+6. **Health rows** follow what the app really asks for: it saves finished workouts to Health (the one permission the step requests), body weight is an optional sync that is turned on later in Settings, and the heart rate comes from the Watch, not from Health. If the app starts reading more, this step and the Info.plist strings change together.
 7. **German** is a proposal in the same informal "du" as `datenschutz-einfach.html`.
 8. **Fonts.** SF Pro on Apple devices; other platforms fall back to Inter, Segoe UI or Roboto.
 

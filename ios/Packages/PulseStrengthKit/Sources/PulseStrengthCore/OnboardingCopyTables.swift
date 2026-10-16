@@ -117,14 +117,15 @@ public enum OnboardingText: CaseIterable, Hashable, Sendable {
     // health
     case healthTitle
     case healthSub
-    case healthHeartRate
-    case healthHeartRateSub
     case healthWorkouts
     case healthWorkoutsSub
+    case healthWrite
+    case healthHeartRate
+    case healthHeartRateSub
+    case healthWatch
     case healthBody
     case healthBodySub
-    case healthRead
-    case healthWrite
+    case healthOptional
     case healthConnect
     case healthLater
 
@@ -275,15 +276,16 @@ extension OnboardingCopy {
 
         // health
         case .healthTitle: return "Connect Apple Health"
-        case .healthSub: return "\(brand) reads your heart rate and active energy during a strength workout and saves finished workouts to Health."
-        case .healthHeartRate: return "Heart rate & energy"
-        case .healthHeartRateSub: return "Live on iPhone, Watch and Lock Screen"
+        case .healthSub: return "\(brand) saves your finished workouts to Health."
         case .healthWorkouts: return "Workouts"
         case .healthWorkoutsSub: return "Finished sessions saved to Health"
-        case .healthBody: return "Sleep & body profile"
-        case .healthBodySub: return "For recovery, plus age range, sex, height and weight"
-        case .healthRead: return "Read"
         case .healthWrite: return "Write"
+        case .healthHeartRate: return "Heart rate"
+        case .healthHeartRateSub: return "Live from your Watch, not read from Health"
+        case .healthWatch: return "Watch"
+        case .healthBody: return "Body weight"
+        case .healthBodySub: return "Optional sync, turned on later in Settings"
+        case .healthOptional: return "Optional"
         case .healthConnect: return "Connect Apple Health"
         case .healthLater: return "Not now"
 
@@ -432,15 +434,16 @@ extension OnboardingCopy {
 
         // health
         case .healthTitle: return "Apple Health verbinden"
-        case .healthSub: return "\(brand) liest beim Krafttraining deine Herzfrequenz und aktive Energie und speichert abgeschlossene Workouts in Health."
-        case .healthHeartRate: return "Herzfrequenz & Energie"
-        case .healthHeartRateSub: return "Live auf iPhone, Watch und Sperrbildschirm"
+        case .healthSub: return "\(brand) speichert deine abgeschlossenen Workouts in Health."
         case .healthWorkouts: return "Workouts"
         case .healthWorkoutsSub: return "Abgeschlossene Einheiten in Health sichern"
-        case .healthBody: return "Schlaf & Körperprofil"
-        case .healthBodySub: return "Für die Erholung sowie Altersgruppe, Geschlecht, Größe und Gewicht"
-        case .healthRead: return "Lesen"
         case .healthWrite: return "Schreiben"
+        case .healthHeartRate: return "Herzfrequenz"
+        case .healthHeartRateSub: return "Live von der Watch, nicht aus Health gelesen"
+        case .healthWatch: return "Watch"
+        case .healthBody: return "Körpergewicht"
+        case .healthBodySub: return "Optionaler Abgleich, später in den Einstellungen"
+        case .healthOptional: return "Optional"
         case .healthConnect: return "Apple Health verbinden"
         case .healthLater: return "Später"
 

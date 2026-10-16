@@ -197,10 +197,10 @@ public struct OnboardingCopy: Equatable, Hashable, Sendable {
     public var healthNote: [OnboardingRun] {
         switch language {
         case .english:
-            return [.plain("Your Apple Health readings stay on your iPhone, and \(brand) only uses what you allow. "
+            return [.plain("Your Apple Health data stays on your iPhone, and \(brand) only uses what you allow. "
                            + "Change this anytime in Settings › Health. "), .link("Privacy details", .privacy)]
         case .german:
-            return [.plain("Deine Apple-Health-Messwerte bleiben auf deinem iPhone, und \(brand) nutzt nur, was du erlaubst. "
+            return [.plain("Deine Apple-Health-Daten bleiben auf deinem iPhone, und \(brand) nutzt nur, was du erlaubst. "
                            + "Das kannst du jederzeit unter Einstellungen › Health ändern. "), .link("Datenschutz-Details", .privacy)]
         }
     }

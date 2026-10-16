@@ -24,7 +24,7 @@ final class OnboardingCopyTests: XCTestCase {
 
     /// A string that is the same in both languages is usually an untranslated one. These are the ones that really are the same.
     func testGermanIsTranslatedExceptWhereItReallyIsTheSame() {
-        let sameInBothLanguages: Set<OnboardingText> = [.previewRestBpm, .previewRecordMeta, .healthWorkouts, .notifyApp]
+        let sameInBothLanguages: Set<OnboardingText> = [.previewRestBpm, .previewRecordMeta, .healthWorkouts, .healthWatch, .healthOptional, .notifyApp]
         for key in OnboardingText.allCases {
             if sameInBothLanguages.contains(key) {
                 XCTAssertEqual(english.text(key), german.text(key), "\(key) was expected to be identical")
@@ -127,7 +127,7 @@ final class OnboardingCopyTests: XCTestCase {
             XCTAssertEqual(copy.healthNote.last?.style, .link(.privacy), "\(copy.language)")
             XCTAssertEqual(copy.coachConsent.last?.style, .link(.privacy), "\(copy.language)")
         }
-        XCTAssertTrue(english.healthNote.plainText.contains("stay on your iPhone"))
+        XCTAssertTrue(english.healthNote.plainText.contains("stays on your iPhone"))
         XCTAssertTrue(german.healthNote.plainText.contains("bleiben auf deinem iPhone"))
     }
 
