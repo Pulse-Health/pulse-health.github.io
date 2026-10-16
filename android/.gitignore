@@ -6,6 +6,7 @@ build/
 local.properties
 captures/
 .cxx/
+.kotlin/
 
 # Signing material must never be committed (see android/README.md, "Release signing")
 keystore.properties
