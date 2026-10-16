@@ -176,6 +176,7 @@ private struct LiftTrendContent: View {
                 Text("Not enough sessions yet")
                     .font(WidgetTheme.text(13))
                     .foregroundStyle(WidgetTheme.inkSecondary)
+                    .lineLimit(1)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 LiftTrendChart(points: lift.points, prIndex: lift.prIndex, now: now, timeZoneID: timeZoneID)
@@ -255,6 +256,7 @@ private struct LiftTrendEmptyContent: View {
                 Text("Lift trend")
                     .font(WidgetTheme.text(15, .semibold))
                     .foregroundStyle(WidgetTheme.ink)
+                    .lineLimit(1)
                 Spacer(minLength: 4)
                 Text("No lifts to chart yet")
                     .font(WidgetTheme.text(17, .bold))

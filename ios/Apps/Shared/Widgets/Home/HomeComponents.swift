@@ -36,7 +36,6 @@ struct HomeStatTile: View {
     var spokenValue: String?
     var spokenUnit: String?
     let caption: String
-    var valueSize: CGFloat = 20
 
     private var spoken: String {
         let suffix = (spokenUnit ?? unit).map { " " + $0 } ?? ""
@@ -47,7 +46,7 @@ struct HomeStatTile: View {
         VStack(alignment: .leading, spacing: 1) {
             HStack(alignment: .firstTextBaseline, spacing: 2) {
                 Text(value)
-                    .font(WidgetTheme.number(valueSize))
+                    .font(WidgetTheme.number(20))
                     .foregroundStyle(WidgetTheme.ink)
                 if let unit {
                     Text(unit)
@@ -104,7 +103,8 @@ struct HomeStatusDot: View {
 
 // MARK: - Week strip
 
-/// One weekday: its letter over a circle that is filled with the initials of the day's workout, dashed for today, dim otherwise.
+/// One weekday: its letter over a circle that is filled with the initials of the day's workout, dashed for today, dim otherwise. `size` is the
+/// largest diameter; the circle shrinks, staying round, when seven of them do not fit the width (the narrowest large widget).
 struct HomeWeekDayCell: View {
     let day: DayCell
     let size: CGFloat
@@ -119,6 +119,7 @@ struct HomeWeekDayCell: View {
             Text(day.letter)
                 .font(WidgetTheme.text(11, day.isToday ? .bold : .regular))
                 .foregroundStyle(day.isToday ? WidgetTheme.ink : WidgetTheme.inkSecondary)
+                .lineLimit(1)
             circle
         }
         .frame(maxWidth: .infinity)
@@ -141,7 +142,8 @@ struct HomeWeekDayCell: View {
                         .foregroundStyle(WidgetTheme.onGreen)
                 }
             }
-            .frame(width: size, height: size)
+            .aspectRatio(1, contentMode: .fit)
+            .frame(maxWidth: size)
         } else {
             Circle()
                 .fill(WidgetTheme.muted)
@@ -150,7 +152,8 @@ struct HomeWeekDayCell: View {
                         Circle().strokeBorder(WidgetTheme.green, style: StrokeStyle(lineWidth: 2, dash: [4, 3]))
                     }
                 }
-                .frame(width: size, height: size)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: size)
         }
     }
 }

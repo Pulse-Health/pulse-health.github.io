@@ -4,7 +4,7 @@
 // PulseStrengthWidgetsBundle composes this bundle with the others.
 //
 // A widget builder holds a limited number of widgets in the older SDKs (five at first), so the widgets are grouped by size into three small
-// bundles and `HomeWidgetBundle`, the one entry of this area, lists the groups.
+// bundles and `HomeWidgetBundle`, the one entry of this area, lists the groups through their `body`.
 
 #if os(iOS)
 import SwiftUI
@@ -12,9 +12,9 @@ import WidgetKit
 
 struct HomeWidgetBundle: WidgetBundle {
     var body: some Widget {
-        HomeSmallWidgets()
-        HomeMediumWidgets()
-        HomeLargeWidgets()
+        HomeSmallWidgets().body
+        HomeMediumWidgets().body
+        HomeLargeWidgets().body
     }
 }
 

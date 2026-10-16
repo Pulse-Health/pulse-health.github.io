@@ -64,11 +64,13 @@ struct TemplateLauncherView: View {
             Text("Start a workout")
                 .font(WidgetTheme.text(17, .bold))
                 .foregroundStyle(WidgetTheme.ink)
+                .lineLimit(1)
             Spacer(minLength: 8)
             if hiddenCount > 0 {
                 Text(verbatim: "+ \(hiddenCount) more")
                     .font(WidgetTheme.text(12))
                     .foregroundStyle(WidgetTheme.inkSecondary)
+                    .lineLimit(1)
             }
         }
         .padding(.bottom, 4)

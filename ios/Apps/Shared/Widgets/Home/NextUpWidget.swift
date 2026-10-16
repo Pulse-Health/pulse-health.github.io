@@ -169,6 +169,7 @@ private struct NextUpMediumContent: View {
                 Text("No exercises yet")
                     .font(WidgetTheme.text(14))
                     .foregroundStyle(WidgetTheme.inkSecondary)
+                    .lineLimit(1)
             }
             ForEach(shown.indices, id: \.self) { index in
                 NextUpExerciseRow(exercise: shown[index])
@@ -234,6 +235,7 @@ private struct NextUpNightContent: View {
                 .font(WidgetTheme.eyebrow(13))
                 .tracking(0.4)
                 .textCase(.uppercase)
+                .lineLimit(1)
             if let tomorrow {
                 Text(tomorrow.templateName)
                     .font(WidgetTheme.text(19, .bold))

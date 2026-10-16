@@ -58,7 +58,7 @@ struct WeeklyGoalView: View {
     @ViewBuilder
     private var content: some View {
         if isLuminanceReduced {
-            GoalRing(
+            WeeklyGoalRing(
                 week: week,
                 progress: progress,
                 lineWidth: 14,
@@ -73,12 +73,12 @@ struct WeeklyGoalView: View {
         } else if isTinted {
             tintedContent
         } else if !showsBackground {
-            GoalRing(week: week, progress: progress, lineWidth: 14, numeralSize: 36, captionSize: 13)
+            WeeklyGoalRing(week: week, progress: progress, lineWidth: 14, numeralSize: 36, captionSize: 13)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .homeDarkAppearance()
         } else {
             VStack(spacing: 8) {
-                GoalRing(week: week, progress: progress)
+                WeeklyGoalRing(week: week, progress: progress)
                     .frame(maxHeight: .infinity)
                 DayDotRow(days: HomeDates.weekDays(of: week))
             }
@@ -107,7 +107,7 @@ struct WeeklyGoalView: View {
 }
 
 /// The ring with "3/4" and "this week" in the middle. The colours and sizes belong to the surface drawing it.
-private struct GoalRing: View {
+private struct WeeklyGoalRing: View {
     let week: WeekSummary
     let progress: Double
     var lineWidth: CGFloat = 10
@@ -152,6 +152,7 @@ struct DayDotRow: View {
                     Text(day.letter)
                         .font(WidgetTheme.text(9, day.isToday ? .bold : .regular))
                         .foregroundStyle(day.isToday ? WidgetTheme.ink : WidgetTheme.inkSecondary)
+                        .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity)
             }

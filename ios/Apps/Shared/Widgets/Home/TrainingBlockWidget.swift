@@ -126,6 +126,7 @@ private struct TrainingBlockGrid: View {
                     Text(verbatim: "Wk \(week)")
                         .font(WidgetTheme.text(12, week == block.weekIndex ? .bold : .regular))
                         .foregroundStyle(week == block.weekIndex ? WidgetTheme.ink : WidgetTheme.inkSecondary)
+                        .lineLimit(1)
                         .frame(maxWidth: .infinity)
                 }
             }
@@ -197,10 +198,12 @@ private struct TrainingBlockEmptyContent: View {
             Text("Training block")
                 .font(WidgetTheme.text(17, .bold))
                 .foregroundStyle(WidgetTheme.ink)
+                .lineLimit(1)
             Spacer(minLength: 4)
             Text("No block yet")
                 .font(WidgetTheme.text(22, .bold))
                 .foregroundStyle(WidgetTheme.ink)
+                .lineLimit(1)
             Text("Your four-week block appears after your first workout.")
                 .font(WidgetTheme.text(15))
                 .foregroundStyle(WidgetTheme.inkSecondary)

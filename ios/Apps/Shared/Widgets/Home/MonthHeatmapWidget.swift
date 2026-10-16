@@ -58,6 +58,8 @@ struct MonthHeatmapView: View {
                 Text("No workouts this month yet")
                     .font(WidgetTheme.text(15, .semibold))
                     .foregroundStyle(WidgetTheme.inkSecondary)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 grid
@@ -96,6 +98,7 @@ struct MonthHeatmapView: View {
                 Text(Self.weekdayLetters[index])
                     .font(WidgetTheme.text(10))
                     .foregroundStyle(WidgetTheme.inkSecondary)
+                    .lineLimit(1)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -120,6 +123,7 @@ struct MonthHeatmapView: View {
             Text("Volume")
                 .font(WidgetTheme.text(11))
                 .foregroundStyle(WidgetTheme.inkSecondary)
+                .lineLimit(1)
             ForEach(0..<4, id: \.self) { level in
                 RoundedRectangle(cornerRadius: 4, style: .continuous)
                     .fill(WidgetTheme.heat(level))
@@ -128,6 +132,7 @@ struct MonthHeatmapView: View {
             Text("more")
                 .font(WidgetTheme.text(11))
                 .foregroundStyle(WidgetTheme.inkSecondary)
+                .lineLimit(1)
             Spacer(minLength: 0)
         }
     }
