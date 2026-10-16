@@ -161,5 +161,12 @@ class PhoneWearListenerServiceTest {
         assertThat(capabilities.toList()).containsExactly(WearProtocol.PHONE_CAPABILITY)
     }
 
+    @Test
+    fun theResourceShrinkerOfTheReleaseBuildKeepsTheCapability() {
+        val keepFile = app.resources.openRawResource(health.pulse.strength.R.raw.keep_wear).bufferedReader().use { it.readText() }
+
+        assertThat(keepFile).contains("""tools:keep="@array/android_wear_capabilities"""")
+    }
+
     // endregion
 }
