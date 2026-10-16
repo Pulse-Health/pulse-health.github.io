@@ -24,7 +24,11 @@ struct PulseStrengthApp: App {
             // Created here rather than lazily by the first view: when a Live Activity button (an App Intent) launches the
             // app in the background no scene is ever created, but the first access to `StrengthAppEnvironment.shared`
             // restores the running workout and installs the WorkoutCommandBus handler the intent is waiting for.
-            self.environment = StrengthAppEnvironment.shared
+            let shared = StrengthAppEnvironment.shared
+            self.environment = shared
+            // The standalone app has no onboarding of its own, so its first launch stands in for "after onboarding": the
+            // walkthrough opens once and never again by itself. The Pulse app calls this where its onboarding ends.
+            shared.showWalkthroughAfterOnboarding()
         }
     }
 
