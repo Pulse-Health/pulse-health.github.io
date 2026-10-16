@@ -22,7 +22,7 @@ enum PresFix {
 
     /// A built-in exercise of the library.
     static func lib(_ id: String) -> Exercise {
-        guard let exercise = ExerciseLibrary.exercise(id: id) else { preconditionFailure("unknown exercise \(id)") }
+        guard let exercise = DesignBaseline.exercise(id: id) else { preconditionFailure("unknown exercise \(id)") }
         return exercise
     }
 

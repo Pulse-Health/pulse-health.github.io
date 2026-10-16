@@ -12,6 +12,8 @@ import PulseStrengthCore
 /// * Finishing hides the cover and, once it is gone, presents the summary (discarding presents nothing).
 /// * `pulse-strength://` links (`StrengthDeepLink`: the Live Activity's `widgetURL`, widgets, controls) open the running workout, start a
 ///   workout or show the hub; links that arrive through the widget command inbox take the same path.
+/// * The walkthrough sheet (`StrengthWalkthroughView`) opens when `environment.showsWalkthrough` is set: the host calls
+///   `environment.showWalkthroughAfterOnboarding()` when onboarding ends, and the hub's More menu replays it.
 @MainActor
 public struct PulseStrengthRootView: View {
     @ObservedObject private var environment: StrengthAppEnvironment
@@ -59,6 +61,11 @@ public struct PulseStrengthRootView: View {
         .sheet(isPresented: $environment.showsWeightEntry) {
             BodyWeightEntrySheet(store: environment.store)
         }
+        .sheet(isPresented: $environment.showsWalkthrough, onDismiss: {
+            environment.walkthroughClosed()
+        }, content: {
+            walkthroughSheet
+        })
         .environment(\.watchStatus, environment.watchStatus)
         .tint(PulseTheme.green)
         // The whole app follows the user's text size up to accessibility3 (its screens scroll); the dense screens
@@ -77,7 +84,10 @@ public struct PulseStrengthRootView: View {
                 environment.sceneBecameActive()
             }
         }
-        .task {
+        .task(id: environment.showsWalkthrough) {
+            // The walkthrough comes first: the permission prompts would cover it. Closing it runs this again (the prompts
+            // only ever appear once, so asking again later is harmless).
+            guard !environment.showsWalkthrough else { return }
             await requestPermissions()
         }
         .task {
@@ -109,6 +119,17 @@ public struct PulseStrengthRootView: View {
         .tint(PulseTheme.green)
         // The workout screen, its keypad and the rest dock cannot scroll as a page: their text stops growing at xxxLarge.
         .dynamicTypeSize(PulseDynamicType.activeWorkoutRange)
+    }
+
+    /// The tour that follows onboarding; "Skip", "Get Started" and a swipe down all end up in `walkthroughClosed()`.
+    private var walkthroughSheet: some View {
+        StrengthWalkthroughView(
+            onClose: {
+                environment.showsWalkthrough = false
+            }
+        )
+        .tint(PulseTheme.green)
+        .dynamicTypeSize(PulseDynamicType.screenRange)
     }
 
     private func summaryCover(_ workout: CompletedWorkout) -> some View {

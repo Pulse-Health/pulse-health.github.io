@@ -132,7 +132,7 @@ final class EngineBasicsTests: XCTestCase {
         svcMain {
             let rig = SvcRig(self)
             let squatBefore = rig.upperA.entries[0].exercise
-            XCTAssertEqual(squatBefore.previousBestE1RM, 99, "the template carries the library value")
+            XCTAssertEqual(squatBefore.previousBestE1RM, 0, "the template carries no history: the library has none")
             let workout = SvcDataFix.workout(80, finishedAt: SvcDataFix.daysAgo(0.1), [
                 SvcDataFix.entry("bench", [SvcDataFix.work(100, 3)], n: 80),
             ])
@@ -143,7 +143,7 @@ final class EngineBasicsTests: XCTestCase {
             XCTAssertEqual(bench?.previousSets, [PreviousSet(weightKg: 100, reps: 3)])
             XCTAssertEqual(bench?.name, squatBefore.name)
             XCTAssertEqual(bench?.defaults, squatBefore.defaults)
-            XCTAssertEqual(rig.model.template(id: rig.upperA.id)?.entries[0].exercise.previousBestE1RM, 99, "the stored template is not rewritten")
+            XCTAssertEqual(rig.model.template(id: rig.upperA.id)?.entries[0].exercise.previousBestE1RM, 0, "the stored template is not rewritten")
         }
     }
 

@@ -28,6 +28,7 @@ import health.pulse.strength.ui.theme.PulseTheme
 
 @Composable
 internal fun HubRecoveryScreen(recovery: RecoveryProvider, actions: HubActions, modifier: Modifier = Modifier) {
+    val colors = PulseTheme.colors
     HubScreenFrame(title = "Muscle Recovery", onBack = actions.pop, modifier = modifier) { inner ->
         HubContentBox(Modifier.hubScreenPadding(inner).fillMaxSize()) { gutter ->
             Column(
@@ -44,6 +45,13 @@ internal fun HubRecoveryScreen(recovery: RecoveryProvider, actions: HubActions, 
                         }
                     }
                 }
+                Text(
+                    "An estimate from the sets you log: about 48 hours for a normal session, up to 72 hours after a very hard one. " +
+                        "It is a rule of thumb, not medical advice.",
+                    style = PulseFont.footnote,
+                    color = colors.inkSecondary,
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 12.dp),
+                )
             }
         }
     }

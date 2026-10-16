@@ -25,7 +25,7 @@ ios/
       PulseStrengthCore/     platform neutral (Foundation only): models, reducer, presenter, stores, sync
       PulseStrengthActivity/ iOS: ActivityAttributes + command bus (shared by app and widget)
       PulseStrengthIOS/      iOS: SwiftUI screens, services (Live Activity manager, notifications, HealthKit, Watch bridge)
-        Resources/ExerciseMedia/*.jpg   form demo frames "<mediaKey>-a.jpg" / "-b.jpg" (public domain)
+        Resources/ExerciseMedia/*.jpg   form demo frames "<mediaKey>-a.jpg" / "-b.jpg" (placeholders of unverified provenance, see README "Exercise photos")
       PulseStrengthWatchUI/  watchOS: SwiftUI screens, workout session, WatchConnectivity client
     Tests/PulseStrengthCoreTests/
   Apps/
@@ -90,8 +90,10 @@ public enum NumberText {
 Library data and media keys come from `Active.dc.html` (`IMG`/`L`): the 25 media keys are
 bench, incline, ohp, lateral, pushdown, crossover, pullup, pulldown, brow, squat, deadlift, curl, pushup,
 legpress, rdl, plank, hipthrust, crow, facepull, dbcurl, skull, legcurl, legext, calf, cablecrunch.
-Keep ids, names, muscles, secondary text, equipment, tracking, previous best e1RM, previous sets, defaults
-and cues exactly as in the design. `barKg` is 10 for "skull", else 20.
+Keep ids, names, muscles, secondary text, equipment, tracking, defaults and cues exactly as in the design. The entries
+carry NO previous results (`previousBestE1RM` 0, `previousSets` empty): those come from the user's own history through
+`StrengthData.overlay`, so a new user has nothing to compare with. (The design's baseline lives in the tests as `DesignBaseline`.)
+`barKg` is 10 for "skull", else 20.
 
 ### 3.2 `WorkoutTargets.swift`, `WorkoutReducer.swift`, `WorkoutFactory.swift` (area: reducer)
 
@@ -146,7 +148,10 @@ Reducer rules (ported from `Active.dc.html`; `S` = state):
    set re-inserted at its index), and always clears the entry.
 7. `moveExercise(from:to:)` and `moveExerciseBy(delta:)` reorder; `currentIndex` keeps following the same exercise.
    `replaceExercise` keeps the entry id and superset group, takes the new exercise with default sets (not done),
-   its default rest, empty note; clears `lastLogged` if it pointed at it. `addExercises` appends entries with default
+   its default rest, empty note; clears `lastLogged` if it pointed at it. When the old entry had a logged set or a note it sets
+   `undo = UndoEntry(.replaced(exercise), title "Replaced <name>", expiresAt now + undoWindow)`; that undo swaps the original
+   back (keeping the entry's current superset group) unless a set was logged or a note typed on the replacement in the
+   meantime, in which case the undo is just spent. `addExercises` appends entries with default
    sets and default rest; into an empty workout it sets `currentIndex = 0`. `setRest` sets `restSeconds`, clamped to
    0...`maximumRestSeconds` (3,600 s; the rest presets stop at 5:00); default rests are clamped the same way.
    `WorkoutTemplate.estimatedMinutes` counts a rest outside that range (a template that did not come through the reducer) as the nearest bound,
@@ -554,7 +559,7 @@ conservative, documented SwiftUI/ActivityKit/HealthKit/WatchConnectivity code fo
 
 * Bundle ids: app `health.pulse.strength`, widget extension `health.pulse.strength.widgets`, watch app `health.pulse.strength.watchkitapp`.
   `StrengthConfig.appGroupID` = `group.health.pulse.strength` is reserved for sharing data with the Pulse app (the standalone build declares no App Group); URL scheme `pulse-strength`. The bundle id and the team live in `Config/Signing.xcconfig`. All are placeholders to replace.
-* iOS app: HealthKit (read heart rate; share workouts and active energy), Push-less Live Activities
+* iOS app: HealthKit (share workouts; it reads nothing during a workout, the heart rate arrives from the Watch over WatchConnectivity; body weight is read and written only when Sync with Apple Health is on), Push-less Live Activities
   (`NSSupportsLiveActivities` = YES, `NSSupportsLiveActivitiesFrequentUpdates` = YES), `NSHealthShareUsageDescription`,
   `NSHealthUpdateUsageDescription`, URL type for the scheme, Notifications (time-sensitive rest alert).
 * Watch app: HealthKit, `WKBackgroundModes` = `workout-processing`, `WKCompanionAppBundleIdentifier` = the iOS bundle id, usage descriptions.
@@ -632,7 +637,7 @@ The keypad keeps its text buffer locally and dispatches `setWeight` / `setReps` 
     public let services: PulseServices
     @Published public var watchStatus: WatchStatus
     public static let shared: StrengthAppEnvironment            // live(); created lazily on the main actor; also registers the WorkoutCommandBus handler
-    public static func live(seedDemoData: Bool = true) -> StrengthAppEnvironment   // app-group persistence, fallback Application Support/PulseStrength; installs services; restoreFromDisk()
+    public static func live(seedDemoData: Bool = false) -> StrengthAppEnvironment   // app-group persistence, fallback Application Support/PulseStrength; installs services; restoreFromDisk()
     public static func preview(withActiveWorkout: Bool = false) -> StrengthAppEnvironment  // temporary persistence + sample data, no services
 }
 public struct StrengthHubView: View { public init(environment: StrengthAppEnvironment, onStart: @escaping (WorkoutTemplate?) -> Void, onResume: @escaping () -> Void) }
@@ -747,7 +752,7 @@ asset catalogs (AccentColor, placeholder AppIcon). Since the widgets (5.7) the p
 `.github/workflows/strength-ios.yml`: Linux job (`swift test`, with and without `-Xswiftc -DPULSE_COMBINE_SHIM`) and a macOS job
 (`swift test` of the package on macOS, `xcodegen generate` plus a check that the committed `PulseStrength.xcodeproj` is unchanged, `xcodebuild build` of the iOS and watchOS schemes for the simulators with `CODE_SIGNING_ALLOWED=NO`). `README.md`
 documents setup, what is verified and what is not, integration with the Pulse app (replace `RecoveryProvider`, the App Group id, the bundle ids, the media source), and the
-public-domain attribution of the form photos (Free Exercise DB, Unlicense).
+source of the form photos (Free Exercise DB; they are placeholders with no cleared image licence, see "Exercise photos").
 
 ### 5.7 Widgets, controls and live surfaces
 

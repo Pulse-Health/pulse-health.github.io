@@ -40,9 +40,12 @@ public struct WorkoutSettings: Codable, Hashable, Sendable {
 public enum UndoPayload: Codable, Hashable, Sendable {
     case exercise(index: Int, exercise: WorkoutExercise)
     case set(exerciseID: UUID, index: Int, set: LoggedSet)
+    /// An exercise that was replaced by another one (the replacement keeps the entry id): undoing swaps the original back,
+    /// with its logged sets and its note.
+    case replaced(exercise: WorkoutExercise)
 }
 
-/// The last destructive edit (removed exercise / deleted set), restorable until `expiresAt`.
+/// The last destructive edit (removed or replaced exercise / deleted set), restorable until `expiresAt`.
 public struct UndoEntry: Codable, Hashable, Sendable {
     public var payload: UndoPayload
     public var title: String

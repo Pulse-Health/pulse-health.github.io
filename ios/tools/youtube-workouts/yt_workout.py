@@ -68,8 +68,8 @@ class WorkoutError(Exception):
 _STR = r'"(?:[^"\\]|\\.)*"'
 _ROW = re.compile(
     r'row\(\s*"(?P<id>[^"]+)",\s*(?P<name>' + _STR + r'),\s*\.(?P<muscle>\w+),\s*(?P<secondary>' + _STR + r'),'
-    r'\s*\.(?P<equipment>\w+),\s*\.(?P<tracking>\w+),\s*media:\s*(?P<media>nil|"[^"]*"),\s*e1RM:\s*(?P<e1rm>[\d.]+),'
-    r'\s*last:\s*\[(?P<last>[^\]]*)\],\s*sets:\s*(?P<sets>\d+),\s*kg:\s*(?P<kg>[\d.]+),\s*reps:\s*(?P<reps>\d+),'
+    r'\s*\.(?P<equipment>\w+),\s*\.(?P<tracking>\w+),\s*media:\s*(?P<media>nil|"[^"]*"),\s*'
+    r'(?:e1RM:\s*(?P<e1rm>[\d.]+),\s*last:\s*\[(?P<last>[^\]]*)\],\s*)?sets:\s*(?P<sets>\d+),\s*kg:\s*(?P<kg>[\d.]+),\s*reps:\s*(?P<reps>\d+),'
     r'\s*rest:\s*(?P<rest>\d+),\s*cues:\s*\[(?P<cues>(?:[^\]"]|' + _STR + r')*)\]\s*\)',
     re.S,
 )
@@ -104,10 +104,11 @@ def load_library(path: Path) -> dict[str, dict]:
             "secondary": _unswift(m["secondary"]),
             "equipment": _swift_enum(m["equipment"]),
             "tracking": m["tracking"],
-            "previousBestE1RM": float(m["e1rm"]),
+            # The shipped library carries no previous results any more; older revisions listed them as `e1RM:` / `last:`.
+            "previousBestE1RM": float(m["e1rm"] or 0),
             "previousSets": [
                 {"weightKg": float(w), "reps": int(r)}
-                for w, r in re.findall(r"\(\s*([\d.]+)\s*,\s*(\d+)\s*\)", m["last"])
+                for w, r in re.findall(r"\(\s*([\d.]+)\s*,\s*(\d+)\s*\)", m["last"] or "")
             ],
             "defaults": {
                 "sets": int(m["sets"]),

@@ -10,6 +10,7 @@ import health.pulse.strength.core.NumberText
 import health.pulse.strength.core.WorkoutSideEffect
 import health.pulse.strength.core.WorkoutState
 import health.pulse.strength.services.PulseSettings
+import health.pulse.strength.services.setCountText
 import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,9 +35,24 @@ class HealthConnectWorkoutWriter(
     }
 
     internal suspend fun save(completed: CompletedWorkout) {
-        if (HealthConnectSupport.availability(context) != HealthConnectSupport.Availability.AVAILABLE) return
+        if (HealthConnectSupport.availability(context) != HealthConnectSupport.Availability.AVAILABLE) {
+            Log.w(TAG, "Health Connect is not available; the workout was not saved there")
+            return
+        }
+        when (HealthConnectSupport.permissionState(context)) {
+            HealthConnectSupport.PermissionState.GRANTED -> Unit
+            HealthConnectSupport.PermissionState.UNKNOWN -> {
+                Log.w(TAG, "Health Connect could not be asked for the permission; the workout was not saved there")
+                return
+            }
+            HealthConnectSupport.PermissionState.MISSING -> {
+                // The user revoked it in Health Connect: show the switch as off (Settings says why) instead of silently saving nothing.
+                Log.w(TAG, "The Health Connect permission was removed; the setting is turned off")
+                settings.setHealthConnectEnabled(false)
+                return
+            }
+        }
         runCatching {
-            if (!HealthConnectSupport.hasWritePermission(context)) return
             HealthConnectClient.getOrCreate(context).insertRecords(listOf(record(completed)))
         }.onFailure { Log.w(TAG, "Could not save the workout to Health Connect", it) }
     }
@@ -55,7 +71,7 @@ class HealthConnectWorkoutWriter(
                 metadata = Metadata.manualEntry(clientRecordId = completed.id.toString()),
                 exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_STRENGTH_TRAINING,
                 title = completed.name,
-                notes = "${completed.loggedSets} sets · ${NumberText.thousands(completed.volumeKg)} kg",
+                notes = "${setCountText(completed.loggedSets)} · ${NumberText.thousands(completed.volumeKg)} kg",
             )
         }
     }

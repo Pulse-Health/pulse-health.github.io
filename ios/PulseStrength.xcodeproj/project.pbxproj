@@ -193,6 +193,7 @@
 		C7C3C000A2450EB469A18132 /* TemplateLauncherWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB642B204F0850164A6F4ED6 /* TemplateLauncherWidget.swift */; };
 		C8C7797AB89F7F637A07387D /* LockWidgetBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D967B8FCFD4A55AB610303D /* LockWidgetBundle.swift */; };
 		D13A3D0A665419AECCA4E308 /* TemplateLauncherWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB642B204F0850164A6F4ED6 /* TemplateLauncherWidget.swift */; };
+		D35C63DA961ABB641F944693 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EB2C77A8B867752B60670F36 /* PrivacyInfo.xcprivacy */; };
 		D3B100EC25034C5319BA0AC9 /* PlannedSessionActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D97BB5FF2DA1738C02EB8C6 /* PlannedSessionActivity.swift */; };
 		D4FF3378ECD8320C051243EE /* LiveSnapshotHarness.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D8C353E873B8A325E01DBB /* LiveSnapshotHarness.swift */; };
 		D52F4F2B27F5DADFBB648E91 /* LiveSnapshotFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F45B60FC72FBE53481E5120B /* LiveSnapshotFixtures.swift */; };
@@ -200,6 +201,7 @@
 		D7FB496F0565D45B678C7354 /* AddRestControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5062B51303926F39EF197B40 /* AddRestControl.swift */; };
 		D803A176334F4A6646559F82 /* LiveMomentIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251D09C26F7550BF044C6B32 /* LiveMomentIntents.swift */; };
 		D8D35960C58358E3CDD54F35 /* LiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B069BB17DCF7E1C911269D /* LiveActivityBundle.swift */; };
+		D9D2698483576616B078427F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B68251C5DA33F4888E23338E /* PrivacyInfo.xcprivacy */; };
 		DADE8BD175511E5C7E581550 /* WorkoutControlState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF8874912F5512E8139A2B5 /* WorkoutControlState.swift */; };
 		DB27AF6040B9752171516E41 /* ControlIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCC6106BD64A5B41B72B70C8 /* ControlIntents.swift */; };
 		DE09BE398BBE7903F95BFE19 /* LiveActivitySnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C9BFA3E27FA38E6C864D62 /* LiveActivitySnapshotTests.swift */; };
@@ -390,6 +392,7 @@
 		AC9CBCC09EA5DAEF95AC800A /* LockAccessoryText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockAccessoryText.swift; sourceTree = "<group>"; };
 		AF105FBD097BA095408E9A7B /* WeeklySetsWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklySetsWidget.swift; sourceTree = "<group>"; };
 		B1410FB4F5A91BB23E1F27EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B68251C5DA33F4888E23338E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		B965633640AD348550E0F4CB /* MonthHeatmapWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MonthHeatmapWidget.swift; sourceTree = "<group>"; };
 		BDE10996FAD4FE3F87A91D20 /* WatchWidgetSnapshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWidgetSnapshotTests.swift; sourceTree = "<group>"; };
 		C11383CF820E4440CCD83F1A /* PulseStrengthUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PulseStrengthUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -411,6 +414,7 @@
 		E1FA38F36C4FB86AA870B866 /* PulseStrength.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PulseStrength.entitlements; sourceTree = "<group>"; };
 		E604A55A06793D4699A2D342 /* ActivityComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityComponents.swift; sourceTree = "<group>"; };
 		E79954EFA59CAF1C32EF0219 /* PulseStrengthWidgetSnapshotTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PulseStrengthWidgetSnapshotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		EB2C77A8B867752B60670F36 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F45B60FC72FBE53481E5120B /* LiveSnapshotFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSnapshotFixtures.swift; sourceTree = "<group>"; };
 		F602644FE9072E53C18C41D9 /* SnapshotProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotProvider.swift; sourceTree = "<group>"; };
 		F6E13FC599BDEE16AB16EAB0 /* PulseStrengthWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseStrengthWatchApp.swift; sourceTree = "<group>"; };
@@ -658,6 +662,7 @@
 			children = (
 				370C601D67262C6BBB07C3A6 /* Assets.xcassets */,
 				12929ABCA60B58DBC291FABF /* Info.plist */,
+				B68251C5DA33F4888E23338E /* PrivacyInfo.xcprivacy */,
 				8FC342859CB1C9ACF29C9DFD /* PulseStrengthWatch.entitlements */,
 				F6E13FC599BDEE16AB16EAB0 /* PulseStrengthWatchApp.swift */,
 			);
@@ -796,6 +801,7 @@
 			children = (
 				B1410FB4F5A91BB23E1F27EB /* Assets.xcassets */,
 				CD11956FA99A0FC4B2BA3471 /* Info.plist */,
+				EB2C77A8B867752B60670F36 /* PrivacyInfo.xcprivacy */,
 				E1FA38F36C4FB86AA870B866 /* PulseStrength.entitlements */,
 				273BBEA41C09838A23FEC3B9 /* PulseStrengthApp.swift */,
 			);
@@ -1082,6 +1088,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				56AD65F9585B10EAD7690C9C /* Assets.xcassets in Resources */,
+				D9D2698483576616B078427F /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1090,6 +1097,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A62B485384B63E9F1EC7FAE8 /* Assets.xcassets in Resources */,
+				D35C63DA961ABB641F944693 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

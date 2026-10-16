@@ -31,8 +31,12 @@ class FileStrengthPersistence(val directory: File) {
         const val personalBests = "personal-bests.json"
     }
 
+    /** Where a write is staged before it is moved over its target: a subfolder the Android backup rules leave out. */
+    private val stagingDirectory = File(directory, STAGING_DIRECTORY)
+
     init {
         runCatching { directory.mkdirs() }
+        sweepStaging()
     }
 
     // region Active workout
@@ -124,9 +128,9 @@ class FileStrengthPersistence(val directory: File) {
     /** Writes [text] to a temporary file next to the target, flushes it to disk and moves it over the target. */
     private fun write(text: String, name: String) {
         synchronized(lock) {
-            directory.mkdirs()
+            stagingDirectory.mkdirs()
             val target = file(name)
-            val temporary = File(directory, "$name.${UUID.randomUUID()}.tmp")
+            val temporary = File(stagingDirectory, "$name.${UUID.randomUUID()}.tmp")
             try {
                 FileOutputStream(temporary).use { stream ->
                     stream.write(text.toByteArray(Charsets.UTF_8))
@@ -143,6 +147,17 @@ class FileStrengthPersistence(val directory: File) {
         }
     }
 
+    /**
+     * Deletes what a killed write left in the staging folder (the process died between creating the temporary file and moving it).
+     * Only files older than a minute go, so a write in progress in another instance is never touched.
+     */
+    private fun sweepStaging() {
+        val cutoff = System.currentTimeMillis() - STALE_STAGING_MILLIS
+        runCatching {
+            stagingDirectory.listFiles()?.forEach { if (it.isFile && it.lastModified() < cutoff) it.delete() }
+        }
+    }
+
     private fun remove(name: String) {
         synchronized(lock) {
             val target = file(name)
@@ -154,10 +169,32 @@ class FileStrengthPersistence(val directory: File) {
     // endregion
 
     companion object {
-        /** Persistence in a new, unique directory inside the system temporary directory (tests, previews). */
+        /** The subfolder of [directory] where writes are staged; the app's backup rules exclude `PulseStrength/tmp`. */
+        const val STAGING_DIRECTORY = "tmp"
+
+        private const val STALE_STAGING_MILLIS = 60_000L
+
+        private val temporaryDirectories = java.util.concurrent.ConcurrentLinkedQueue<File>()
+
+        private val shutdownHookAdded = java.util.concurrent.atomic.AtomicBoolean(false)
+
+        private fun removeTemporaryDirectoriesAtExit() {
+            if (!shutdownHookAdded.compareAndSet(false, true)) return
+            Runtime.getRuntime().addShutdownHook(
+                Thread {
+                    while (true) {
+                        val directory = temporaryDirectories.poll() ?: break
+                        directory.deleteRecursively()
+                    }
+                },
+            )
+        }
+
+        /** Persistence in a new, unique directory inside the system temporary directory (tests, previews); removed when the JVM ends. */
         fun temporary(): FileStrengthPersistence {
             val directory = Files.createTempDirectory("PulseStrength-").toFile()
-            directory.deleteOnExit()
+            temporaryDirectories.add(directory)
+            removeTemporaryDirectoriesAtExit()
             return FileStrengthPersistence(directory)
         }
     }

@@ -104,7 +104,7 @@ Intents inside a package would need `AppIntentsPackage` plumbing that only exist
 
 ### Simulator notes
 
-* The first launch seeds demo templates and history (see [Placeholders](#placeholders-to-replace)).
+* A fresh install starts empty (no demo workouts, no invented records). Create a template or start an empty workout from the hub; the UI-test mode `-PulseUITest` and the SwiftUI previews use demo data (see [Placeholders](#placeholders-to-replace)).
 * Start a workout from the hub. To see the Live Activity, lock the simulator (Device > Lock, Cmd-L) while a workout runs;
   use an iPhone 14 Pro or newer simulator to see the Dynamic Island as well.
 * For the Watch app, use a simulator pair (iPhone + Apple Watch, created in Xcode > Window > Devices and Simulators, Shift-Cmd-2),
@@ -186,7 +186,7 @@ each test log, the number of PNGs per suite and their file names (also saved as 
 warning annotation; the log of its step then usually shows a compile error of the test code. The UI flow keeps going after a
 failed step, so open `ui-flow-log.txt` first: it names the steps that failed, with the screenshot taken at that point.
 
-* **`matrix` job:** a short second tour (`StrengthTourTests`, 14 screenshots, about 3 minutes) on four simulators in parallel: `dark` (dark mode), `xxl` (accessibility-extra-large text), `se` (iPhone SE 3rd generation, 375 x 667 pt) and `ios17` (oldest installed iOS 17+ runtime). A simulator the runner lacks prints `SKIPPED: <reason>`; the entry still succeeds.
+* **`matrix` job:** a short second tour (`StrengthTourTests`, 21 screenshots, about 4 minutes; 15 to 21 are the pages of the walkthrough) on four simulators in parallel: `dark` (dark mode), `xxl` (accessibility-extra-large text), `se` (iPhone SE 3rd generation, 375 x 667 pt) and `ios17` (oldest installed iOS 17+ runtime). A simulator the runner lacks prints `SKIPPED: <reason>`; the entry still succeeds.
 * **Artifact `strength-matrix-<name>`** (14 days): `tour-<name>-NN-*.png`, `tour-<name>-layout.txt` (frames of header, navigator, card and rest dock, `pageScrolls`, `LAYOUT VIOLATION` lines), `tour-<name>-flow-log.txt`, `simulator-settings.txt`, `digest.txt` (also printed at the end of the job log).
 * The tour belongs to the `PulseStrengthUITests` scheme, so `visual` runs it once more with the defaults (`tour-default-*` in `strength-screens`).
 
@@ -274,8 +274,8 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | Names, version | "Pulse Strength", 1.0.0 (1) | `CFBundleDisplayName` in the three `Info.plist` files, `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `project.yml` |
 | Permission texts | Health usage descriptions | `NSHealthShareUsageDescription` / `NSHealthUpdateUsageDescription` in the iOS and Watch `Info.plist` files |
 | App icon | generated green dumbbell | `Apps/PulseStrength/Assets.xcassets/AppIcon.appiconset/AppIcon.png` and the same in `Apps/PulseStrengthWatch` (1024 x 1024, opaque) |
-| Accent colour | green `#1B8448` | `AccentColor.colorset` in both asset catalogs |
-| Demo data | templates and history seeded on first launch | `StrengthAppEnvironment.live(seedDemoData:)`; the host app uses the default `true` through `StrengthAppEnvironment.shared` |
+| Accent colour | green: `PulseTheme.green` (`#187A42` light, `#30D158` dark) tints the app's own controls; the system fallback tint `#1B8448` is `AccentColor.colorset` in both asset catalogs | `PulseTheme.swift`, `AccentColor.colorset` |
+| Demo data | demo templates, five invented workouts and personal bests, used by previews and the UI tests only | `StrengthAppEnvironment.preview(withActiveWorkout:)` seeds it; `StrengthAppEnvironment.live(seedDemoData:)` defaults to `false`, so the running app starts empty |
 | Muscle recovery | fixed demo percentages | `DemoRecovery.provider`, see below |
 
 ## Integrating with the Pulse app
@@ -300,6 +300,9 @@ The seams are plain protocols and closures:
   and the 25 built-in keys stay the contract.
 * **UI entry point.** `PulseStrengthRootView(environment:)` is one view with its own `NavigationStack`; embed it, or use
   `StrengthHubView`, `ActiveWorkoutView` and the sheets individually. It handles `pulse-strength://workout` through `onOpenURL`.
+* **Walkthrough after onboarding.** Call `environment.showWalkthroughAfterOnboarding()` where the Pulse app's onboarding ends: it opens the
+  tour (`StrengthWalkthroughView`, presented by `PulseStrengthRootView`) the first time and never again by itself, so calling it on every
+  launch is fine. It needs no extra wiring; the seen-flag is one integer in `UserDefaults` (`WalkthroughMemory`). See [Walkthrough](#walkthrough-after-onboarding).
 * **Live Activity.** Add `Apps/Shared/LiveActivity` and `Apps/Shared/Intents` as sources of the Pulse widget extension,
   list `WorkoutLiveActivity()` in its `WidgetBundle`, compile `Apps/Shared/Intents` into the Pulse app target as well, and touch
   `StrengthAppEnvironment.shared` during app launch (see `PulseStrengthApp.init()`), so a button press that launches the app in the
@@ -315,18 +318,51 @@ own repository before using it for a product (then delete the `exclude` entry).
 
 | Target | Capability / setting |
 | --- | --- |
-| iOS app | HealthKit (reads heart rate and active energy, writes workouts; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); App Groups (`group.<bundle id>`: the widget snapshot and command inbox); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
+| iOS app | HealthKit (writes workouts and reads nothing during a workout: the heart rate arrives from the Watch over WatchConnectivity; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); App Groups (`group.<bundle id>`: the widget snapshot and command inbox); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
 | Widget extension | App Groups (the same id as the app: it reads the snapshot and leaves commands); `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
 | Watch widget extension | App Groups (the same id); `NSExtension` point `com.apple.widgetkit-extension` (watchOS). It reads the snapshot the Watch app stores from the phone. |
 | Watch app | HealthKit; App Groups; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). |
 
+### Privacy manifests
+
+`Apps/PulseStrength/PrivacyInfo.xcprivacy` and `Apps/PulseStrengthWatch/PrivacyInfo.xcprivacy` are bundled into the iPhone and Watch apps (App Store Connect
+rejects an upload that uses a required-reason API without one). Both declare `UserDefaults` (reason `CA92.1`: the app reads and writes only its own
+values, such as the ids of the workouts already saved to Health), no tracking and no collected data types, because nothing leaves the device. Update
+them when the app gains network code, an SDK, or another required-reason API (file timestamps, disk space, system boot time, active keyboards). The
+widget extension uses none of these APIs. XcodeGen 2.46.0 adds the files to the project; run `xcodegen generate` after changing them and commit the
+regenerated project (on Linux set `USER`, otherwise XcodeGen stops before it writes anything).
+
 ## Exercise photos
 
 The form-demo frames in `Packages/PulseStrengthKit/Sources/PulseStrengthIOS/Resources/ExerciseMedia` come from the
-[Free Exercise DB](https://github.com/yuhonas/free-exercise-db), released under the Unlicense (public domain): 25
-exercises, two frames each. The app shows the line "Demo photos: Free Exercise DB (public domain)." in the form sheets.
-They are demo material: the real Pulse app may prefer licensed GIFs or video with a consistent look, which the media seam
-above allows without touching the rest of the feature.
+[Free Exercise DB](https://github.com/yuhonas/free-exercise-db): 25 exercises, two frames each. The app shows the line
+"Demo photos from the Free Exercise DB." in the form sheets.
+
+**These photos are placeholders, not cleared media.** The database is released under the Unlicense, but its README does not say where
+its images come from or under which licence they may be used, so "public domain" cannot be claimed for them. The photos show
+identifiable people in a commercial gym, and some show brand marks. Replace them with your own or properly licensed photos, GIFs or
+video before any TestFlight or App Store build (the media seam above allows that without touching the rest of the feature), and
+remember that the current files also remain in the git history of this public repository.
+
+## Walkthrough after onboarding
+
+A short tour of the Strength feature that follows onboarding: seven swipeable pages (welcome, today's workout on the hub, logging sets,
+the rest timer, shaping a workout, finishing, and where everything else lives), each with a small picture drawn in the theme colours, a
+sentence and up to three tips. "Skip", "Get Started" and a swipe down all close it; "Back" and the page dots are on every page.
+
+* **When it opens.** `StrengthAppEnvironment.showWalkthroughAfterOnboarding()` opens it once (it remembers the version it showed, see
+  `Walkthrough.version`: raise it to show a revised tour again), and not while a workout runs. The standalone app calls it at launch because it has
+  no onboarding of its own, so its first launch stands in for "after onboarding". The permission prompts (notifications, Health) wait until the
+  tour has closed, so they do not cover it. Previews and the UI-test mode (`-PulseUITest`) never open it by themselves.
+* **Replay.** Hub > More > **App Walkthrough** (`environment.startWalkthrough()`).
+* **Where the text lives.** `Walkthrough.steps` in `PulseStrengthCore/Walkthrough.swift`, next to `WalkthroughProgress` (the page logic) and
+  `Walkthrough.shouldShow(seenVersion:)`; `WalkthroughTests` covers them on Linux. The pictures are in `Screens/StrengthWalkthroughView.swift`,
+  chosen by the step's `id`. When a screen the tour describes changes, change its step.
+* **Verification.** The Core logic is unit-tested (`WalkthroughTests`, on Linux in CI). The screen compiles with Xcode 16 and 26, and CI renders it:
+  `StrengthTourTests` opens it from the More menu, pages through all seven pages and takes screenshots 15 to 21 in every `matrix` configuration
+  (dark mode, accessibility-extra-large text, iPhone SE, oldest available runtime). The screenshots were looked at in the simulator: nothing overflows,
+  `Next` / `Get Started` stay visible, and on the SE and at large text the pages scroll inside (a short fade at the bottom shows there is more). Not tried:
+  a real device, VoiceOver, Reduce Motion, landscape and iPad layouts.
 
 ## Training plans and importing them
 
@@ -388,7 +424,7 @@ State at the last commit of this branch; the numbers come from the `strength-ios
 * The Watch app was rendered (snapshot tests) but not driven in a watchOS simulator; its Health session logic is covered by unit tests of
   the Core rules and a stub harness, not by a real session.
 * VoiceOver, Reduce Motion and the landscape / iPad layouts were not exercised. Bundle ids, team, App Group and the exercise photos are
-  placeholders / public-domain stand-ins, see [Placeholders to replace](#placeholders-to-replace).
+  placeholders / stand-ins (the photos have no cleared licence), see [Placeholders to replace](#placeholders-to-replace) and [Exercise photos](#exercise-photos).
 
 ### Must be tested on real hardware
 

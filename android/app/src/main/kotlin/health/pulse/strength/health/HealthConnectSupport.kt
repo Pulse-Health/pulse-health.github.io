@@ -20,7 +20,31 @@ object HealthConnectSupport {
         else -> Availability.UNAVAILABLE
     }
 
-    suspend fun hasWritePermission(context: Context): Boolean = runCatching {
-        HealthConnectClient.getOrCreate(context).permissionController.getGrantedPermissions().contains(writePermission)
-    }.getOrDefault(false)
+    suspend fun hasWritePermission(context: Context): Boolean = permissionState(context) == PermissionState.GRANTED
+
+    /** Whether the write permission is held right now; [PermissionState.UNKNOWN] when Health Connect could not be asked. */
+    enum class PermissionState { GRANTED, MISSING, UNKNOWN }
+
+    suspend fun permissionState(context: Context): PermissionState = try {
+        if (HealthConnectClient.getOrCreate(context).permissionController.getGrantedPermissions().contains(writePermission)) {
+            PermissionState.GRANTED
+        } else {
+            PermissionState.MISSING
+        }
+    } catch (e: Exception) {
+        PermissionState.UNKNOWN
+    }
+
+    /**
+     * Why "Save workouts to Health Connect" cannot work right now although the user turned it on, or null when nothing is wrong (or
+     * it cannot be told). The switch is turned off in that case, so it shows the truth and turning it on asks for the permission again.
+     */
+    fun problem(availability: Availability, permission: PermissionState): String? = when {
+        availability == Availability.UNAVAILABLE -> "Health Connect is not available on this device, so workouts are not saved there."
+        availability == Availability.UPDATE_REQUIRED -> "Health Connect needs an update, so workouts are not saved there."
+        permission == PermissionState.MISSING ->
+            "Pulse Strength no longer has permission to write to Health Connect, so workouts are not saved there. " +
+                "Turn the switch on to allow it again."
+        else -> null
+    }
 }

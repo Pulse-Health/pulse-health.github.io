@@ -143,6 +143,23 @@ class ServicesTest {
     }
 
     @Test
+    fun aRestartedProcessRestoresTheWorkoutAndPostsItsNotificationAgain() {
+        startBenchWorkout()
+        manager.cancelAll()
+        assertThat(shadowOf(manager).getNotification(WorkoutNotifications.ONGOING_ID)).isNull()
+
+        // What Application.onCreate does in a new process (the system killed the old one): a fresh environment on the same files, then
+        // the restore. The services are registered before the restore, so they see the workout that comes back.
+        val restarted = StrengthAppEnvironment.live(app)
+        assertThat(restarted.controller.state.value).isNull()
+        restarted.controller.restoreFromDisk()
+
+        assertThat(restarted.controller.state.value?.name).isEqualTo("Push day")
+        assertThat(restarted.controller.state.value?.exercises?.single()?.exercise?.id).isEqualTo("bench")
+        assertThat(title(ongoing())).isEqualTo("Barbell bench press")
+    }
+
+    @Test
     fun finishingOrDiscardingRemovesTheNotifications() {
         startBenchWorkout()
         assertThat(shadowOf(manager).getNotification(WorkoutNotifications.ONGOING_ID)).isNotNull()
@@ -178,6 +195,37 @@ class ServicesTest {
         broadcast(intent) // a stale second tap must not log the next set
         val after = environment.controller.state.value!!
         assertThat(after.exercises[0].sets.map { it.isDone }).containsExactly(true, false, false).inOrder()
+    }
+
+    private fun logSetButton(n: Notification): android.app.PendingIntent = n.actions.first { it.title == "Log set" }.actionIntent
+
+    /** A tap on a notification button: the system fires its PendingIntent and the receiver runs on the main thread. */
+    private fun tap(button: android.app.PendingIntent) {
+        button.send()
+        shadowOf(android.os.Looper.getMainLooper()).idle()
+    }
+
+    @Test
+    fun everySetGetsItsOwnLogSetButtonSoAStaleTapCannotLogTheNextSet() {
+        startBenchWorkout()
+        val first = logSetButton(ongoing())
+        assertThat(shadowOf(first).savedIntent.data.toString()).startsWith("pulse-strength://log/")
+
+        // The real button, fired the way the system fires it, logs the first set and starts the rest.
+        tap(first)
+        assertThat(environment.controller.state.value!!.exercises[0].sets.map { it.isDone }).containsExactly(true, false, false).inOrder()
+        environment.controller.send(WorkoutAction.SkipRest)
+
+        // The notification now offers the second set through a different PendingIntent.
+        val second = logSetButton(ongoing())
+        assertThat(second).isNotEqualTo(first)
+        assertThat(shadowOf(second).savedIntent.data).isNotEqualTo(shadowOf(first).savedIntent.data)
+
+        // A late tap on the old button must not log the second set.
+        tap(first)
+        assertThat(environment.controller.state.value!!.exercises[0].sets.map { it.isDone }).containsExactly(true, false, false).inOrder()
+        tap(second)
+        assertThat(environment.controller.state.value!!.exercises[0].sets.map { it.isDone }).containsExactly(true, true, false).inOrder()
     }
 
     @Test

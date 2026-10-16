@@ -49,6 +49,12 @@
             border-radius: 3px;
             font-family: monospace;
         }
+
+        /* Small screens: long words (e.g. "Geschäftsbedingungen") may wrap instead of stretching the page. */
+        h1, h2, h3 { overflow-wrap: anywhere; }
+        @media (max-width: 720px) {
+            .container { padding: 24px 14px; }
+        }
     </style>
 </head>
 <body>
@@ -472,7 +478,7 @@
         </p>
 
         <hr style="margin: 40px 0;">
-        <p style="text-align: center; color: #999; font-size: 12px;">
+        <p style="text-align: center; color: #6b6b6b; font-size: 12px;">
             Letzte Aktualisierung: 13. Oktober 2026<br>
             Version 1.1
         </p>

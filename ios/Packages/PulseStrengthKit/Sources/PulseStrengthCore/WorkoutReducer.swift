@@ -2,7 +2,7 @@ import Foundation
 
 /// The only code that applies a `WorkoutAction` to a `WorkoutState` (port of the design's Active.dc.html logic).
 public enum WorkoutReducer {
-    /// How long a removed exercise or deleted set can be restored with `.undo` (6 seconds).
+    /// How long a removed or replaced exercise or a deleted set can be restored with `.undo` (6 seconds).
     public static var undoWindow: TimeInterval { 6 }
 
     /// Heaviest weight a set can hold (1,000,000 kg). Larger values are clamped to it; the keypad's six characters stay below it.
@@ -100,7 +100,7 @@ private extension WorkoutReducer {
             guard !overflow else { return }
             moveExercise(&s, from: k, to: target)
         case let .replaceExercise(exerciseID, replacement):
-            replaceExercise(&s, exerciseID: exerciseID, with: replacement)
+            replaceExercise(&s, exerciseID: exerciseID, with: replacement, now: now)
         case let .toggleSuperset(exerciseID):
             toggleSuperset(&s, exerciseID: exerciseID)
         case let .setRest(exerciseID, seconds):
@@ -342,7 +342,7 @@ private extension WorkoutReducer {
         if let index = s.exercises.firstIndex(where: { $0.id == currentID }) { s.currentIndex = index }
     }
 
-    static func replaceExercise(_ s: inout WorkoutState, exerciseID: UUID, with replacement: Exercise) {
+    static func replaceExercise(_ s: inout WorkoutState, exerciseID: UUID, with replacement: Exercise, now: Date) {
         guard let k = s.exerciseIndex(id: exerciseID) else { return }
         let old = s.exercises[k]
         s.exercises[k] = makeEntry(for: replacement, id: old.id, group: old.supersetGroup, templateEntryID: old.templateEntryID)
@@ -350,6 +350,16 @@ private extension WorkoutReducer {
         // A deleted set of the old exercise no longer fits the new one.
         if let undo = s.undo, case let .set(undoExerciseID, _, _) = undo.payload, undoExerciseID == old.id {
             s.undo = nil
+        }
+        // Replacing throws away what was logged on the old exercise (and its note): keep it restorable for a few seconds. An exercise
+        // with no logged set and no note has only planned values to lose, which are cheap to enter again, so it leaves a pending undo
+        // of something else alone.
+        if old.sets.contains(where: { $0.isDone }) || !old.note.isEmpty {
+            s.undo = UndoEntry(
+                payload: .replaced(exercise: old),
+                title: "Replaced " + old.exercise.name,
+                expiresAt: now.addingTimeInterval(undoWindow)
+            )
         }
     }
 
@@ -443,6 +453,18 @@ private extension WorkoutReducer {
                   !s.exercises.contains(where: { $0.sets.contains(where: { $0.id == set.id }) }) else { return }
             let at = max(0, min(index, s.exercises[k].sets.count))
             s.exercises[k].sets.insert(set, at: at)
+        case let .replaced(original):
+            // The replacement carries the entry id of the original; if that entry is gone the undo has nothing to swap back.
+            guard let k = s.exerciseIndex(id: original.id) else { return }
+            let current = s.exercises[k]
+            // Swapping back would throw away what was logged on the replacement in the meantime: then the undo is simply spent.
+            guard !current.sets.contains(where: { $0.isDone }), current.note.isEmpty else { return }
+            var restored = original
+            // The superset group is whatever the entry belongs to now (its partner may have been toggled since); a group never has
+            // a single member.
+            restored.supersetGroup = current.supersetGroup
+            s.exercises[k] = restored
+            s.currentIndex = k
         }
     }
 }

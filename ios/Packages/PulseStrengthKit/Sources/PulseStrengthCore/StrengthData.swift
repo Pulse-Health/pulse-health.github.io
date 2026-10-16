@@ -66,7 +66,7 @@ public struct StrengthData: Equatable, Sendable {
 public extension StrengthData {
     /// The built-in library plus the custom exercises, each with `previousBestE1RM` and `previousSets` taken from the user's results.
     ///
-    /// An exercise with no personal best or history keeps the values it already carries (the library's demo values).
+    /// An exercise with no personal best or history keeps the values it already carries (none for the built-in exercises).
     /// A custom exercise whose id equals a built-in id is ignored.
     func exercises() -> [Exercise] {
         let memory = exerciseMemory()

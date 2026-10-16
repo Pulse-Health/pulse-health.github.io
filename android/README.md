@@ -8,7 +8,7 @@ design "Pulse Strength Widget Ideas": home screen and lock screen widgets, Quick
 sessions, bench mode and a **Wear OS** companion (see [Widgets, tiles and live surfaces](#widgets-tiles-and-live-surfaces)).
 
 It is a native Kotlin / Jetpack Compose app that follows the iOS app in [`../ios/`](../ios/README.md) screen by screen (same design,
-same copy, same workout rules) and is **ready to ship to Google Play**: see [`RELEASING.md`](RELEASING.md) for the steps that need your
+same copy, same workout rules, as the iOS app was when the Android work started; see "Parity with iOS" below) and is **ready to ship to Google Play**: see [`RELEASING.md`](RELEASING.md) for the steps that need your
 accounts, keys and decisions (application id, upload key, Play Console, privacy policy review).
 
 > **Repository note.** This directory lives in the `pulse-health.github.io` website repository. The root `_config.yml` excludes
@@ -21,7 +21,7 @@ accounts, keys and decisions (application id, upload key, Play Console, privacy 
 android/
   README.md  RELEASING.md       this file; the release guide
   settings.gradle.kts, build.gradle.kts, gradle/libs.versions.toml, gradlew   Gradle 9.8 / AGP 9.4 / Kotlin 2.4 (version catalog)
-  core/                         pure Kotlin (JVM) port of PulseStrengthCore: no Android dependency, 870+ unit tests
+  core/                         pure Kotlin (JVM) port of PulseStrengthCore: no Android dependency, about 880 unit tests
     src/main/kotlin/health/pulse/strength/core/
       Models, WorkoutState, WorkoutAction, Presentation, Snapshot, Completed   the value types (kotlinx.serialization)
       WorkoutReducer, WorkoutFactory, WorkoutTargets                           every change to a workout (pure function)
@@ -43,7 +43,7 @@ android/
       live/, controls/                                                          Live Update decoration, planned session, bench mode; Quick Settings tiles, shortcuts
       wear/                                                                     phone side of the Wear OS sync (Data Layer)
     src/main/assets/ExerciseMedia/                                              50 form-demo frames (public domain, see below)
-    src/test/                                                                   Robolectric tests: screens render and behave; screenshots go to app/build/screens
+    src/test/                                                                   about 1,180 Robolectric tests: screens, widgets, tiles, services; screenshots go to app/build/screens
   wear/                         the Wear OS companion: tiles, complications, Ongoing Activity, watch screens (:wear, watch-only APK)
   store/                        Google Play listing text (en-US, de-DE), graphics, release notes
 ../.github/workflows/strength-android.yml                                       CI: tests, lint, release bundle, optional Play upload
@@ -63,6 +63,23 @@ cd android
 ./gradlew :app:assembleDebug :wear:assembleDebug   # debug APKs (install next to a Play build: the id ends in .debug)
 ./gradlew :app:bundleRelease                 # release bundle with R8; unsigned without a keystore (see RELEASING.md)
 ```
+
+## Verification status
+
+What was run (in a Linux sandbox, no emulator, no device):
+
+| Check | Result |
+| --- | --- |
+| `:core:test` | 877 tests, all pass (the Swift suite was ported; it found two real divergences from the Swift rules, both fixed; the widget builder and the live moments are tested too, and the Kotlin snapshot of the demo data equals the Swift one, `widgets/fixtures/golden-sample.json`) |
+| `:app:testDebugUnitTest` | 1181 tests, all pass: every screen and sheet, the notification and rest-alert services, `FirstRunFlowTest` (an empty install through the real picker, a logged set, finish, summary and hub), and the widgets, tiles, live surfaces, runtime and watch sync described below (the widgets are drawn into PNGs) |
+| `:wear:testDebugUnitTest` | 236 tests, all pass: tiles, complications, Ongoing Activity, the watch screens, the Data Layer codec |
+| `:app:lintDebug`, `:wear:lintDebug` | no errors (lint errors fail the build) |
+| `:app:assembleRelease`, `:wear:assembleRelease` | R8 + resource shrinking, unsigned APKs; the merged manifests contain no `INTERNET` or `ACCESS_NETWORK_STATE`; the phone asks for `POST_NOTIFICATIONS`, `POST_PROMOTED_NOTIFICATIONS`, Health Connect `WRITE_EXERCISE`, `RECEIVE_BOOT_COMPLETED` and, through WorkManager (a dependency of Glance), `WAKE_LOCK` and `FOREGROUND_SERVICE` |
+| CI (`strength-android`, `verify` job) | runs the same tests, lint and debug builds on every pull request |
+
+**Not verified:** anything that needs a real device: the notification buttons on the lock screen, rest alerts with the screen off,
+Health Connect, backup and restore, the Play upload, and everything listed under "Widgets, tiles and live surfaces" below. The checklist for
+those is `RELEASING.md`, section 5.
 
 The UI tests render the real Compose screens on the JVM with Robolectric's native graphics and write PNGs to
 `app/build/screens/` (CI uploads them as the `android-screens` artifact), so a screen can be looked at without an emulator.
@@ -94,6 +111,18 @@ The UI tests render the real Compose screens on the JVM with Robolectric's nativ
 * **No heart rate.** The Wear OS companion shows data and sends commands but does not record heart rate, so the heart-rate stat is hidden; the core keeps the heart-rate fields.
 * **No network permission, no foreground service, no exact-alarm permission** (see `RELEASING.md`, "Known limitations").
 * The app is English-only and kilograms-only, as the iOS app is.
+
+### Parity with iOS
+
+The Kotlin core is a port of the iOS strength core **as it was when the Android work started** (`main` at `b6c14ac`; the ported Swift test
+suite is the proof). `ios/` has moved on since, and none of these later iOS features exist on Android yet:
+
+* body weight with weigh-in reminders and the Apple Health sync, and the body-weight based records (iOS PR #7);
+* training plans with a flexible rotation, rep ranges (`repsMax`), template notes and plan import;
+* the YouTube workout import tool (`ios/tools/youtube-workouts`).
+
+Nothing detects drift between the two cores automatically; when one of these is ported, port its Swift tests with it and update this
+list. The Android app is complete and shippable without them (v1 of the iOS app did not have them either).
 
 ## Widgets, tiles and live surfaces
 

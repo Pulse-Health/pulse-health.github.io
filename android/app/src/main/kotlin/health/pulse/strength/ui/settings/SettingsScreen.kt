@@ -48,6 +48,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.PermissionController
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import health.pulse.strength.StrengthAppEnvironment
 import health.pulse.strength.health.HealthConnectSupport
 import health.pulse.strength.ui.PrivacyLinks
@@ -80,6 +82,27 @@ fun SettingsScreen(environment: StrengthAppEnvironment, onBack: () -> Unit, modi
         ?: remember { kotlinx.coroutines.flow.MutableStateFlow(false) }).collectAsState()
     var availability by remember { mutableStateOf(HealthConnectSupport.availability(context)) }
     var healthMessage by remember { mutableStateOf<String?>(null) }
+
+    // The screen sends the user to system screens (notification settings, Health Connect, the store): look at the real state again
+    // when they come back, instead of showing what it was when the screen opened.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        val wasOn = notificationsOn
+        notificationsOn = areNotificationsOn(context)
+        // Notifications were just turned on for a workout that is already running: show its notification now.
+        if (notificationsOn && !wasOn) services?.onNotificationPermissionResult()
+        availability = HealthConnectSupport.availability(context)
+        val settings = services?.settings
+        if (settings != null && settings.healthConnectEnabled.value) {
+            scope.launch {
+                // A switch that is on although Health Connect cannot take the workouts would silently save nothing: say so, turn it off.
+                val problem = HealthConnectSupport.problem(availability, HealthConnectSupport.permissionState(context))
+                if (problem != null) {
+                    settings.setHealthConnectEnabled(false)
+                    healthMessage = problem
+                }
+            }
+        }
+    }
     val healthLauncher = rememberLauncherForActivityResult(PermissionController.createRequestPermissionResultContract()) { granted ->
         val allowed = granted.containsAll(HealthConnectSupport.permissions)
         services?.settings?.setHealthConnectEnabled(allowed)
