@@ -15,6 +15,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
@@ -30,7 +32,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import health.pulse.strength.StrengthAppEnvironment
@@ -40,6 +46,7 @@ import health.pulse.strength.ui.active.ActiveWorkoutScreen
 import health.pulse.strength.ui.active.LocalRestAlertsEnabled
 import health.pulse.strength.ui.active.UnsavedWorkoutDialog
 import health.pulse.strength.ui.active.WorkoutInProgressBar
+import health.pulse.strength.ui.components.LocalMediaAnimating
 import health.pulse.strength.ui.components.rememberNow
 import health.pulse.strength.ui.hub.StrengthHubScreen
 import health.pulse.strength.ui.summary.WorkoutSummaryScreen
@@ -81,22 +88,32 @@ fun PulseStrengthRoot(environment: StrengthAppEnvironment) {
     LaunchedEffect(hasWorkout) { if (!hasWorkout) showsActiveWorkout = false }
 
     val barVisible = hasWorkout && !showsActiveWorkout
+    // The summary of the layer that is sliding out: kept so that the exit animation has something to draw.
+    var lastSummary by remember { mutableStateOf<CompletedWorkout?>(null) }
+    if (summary != null) lastSummary = summary
+    // Something covers the hub: it must neither animate, nor take touches, nor be reachable by a screen reader.
+    val hubCovered = showsActiveWorkout && hasWorkout || summary != null
 
     Box(Modifier.fillMaxSize().background(PulseTheme.colors.ground)) {
         Column(Modifier.fillMaxSize()) {
             Box(
                 Modifier
                     .weight(1f)
-                    .then(if (barVisible) Modifier.consumeWindowInsets(WindowInsets.navigationBars) else Modifier),
+                    // The bar below pads the bottom navigation inset itself; a navigation bar at the side (landscape, three buttons) still
+                    // has to be cleared by the hub.
+                    .then(if (barVisible) Modifier.consumeWindowInsets(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)) else Modifier)
+                    .then(if (hubCovered) Modifier.clearAndSetSemantics { } else Modifier),
             ) {
-                StrengthHubScreen(
-                    environment = environment,
-                    onStart = { template: WorkoutTemplate? ->
-                        if (controller.state.value == null) controller.startWorkout(template)
-                        if (controller.state.value != null) showsActiveWorkout = true
-                    },
-                    onResume = { if (controller.state.value != null) showsActiveWorkout = true },
-                )
+                CompositionLocalProvider(LocalMediaAnimating provides !hubCovered) {
+                    StrengthHubScreen(
+                        environment = environment,
+                        onStart = { template: WorkoutTemplate? ->
+                            if (controller.state.value == null) controller.startWorkout(template)
+                            if (controller.state.value != null) showsActiveWorkout = true
+                        },
+                        onResume = { if (controller.state.value != null) showsActiveWorkout = true },
+                    )
+                }
             }
             if (barVisible) {
                 val now by rememberNow()
@@ -122,6 +139,8 @@ fun PulseStrengthRoot(environment: StrengthAppEnvironment) {
             ActiveWorkoutScreen(
                 controller = controller,
                 store = environment.store,
+                // A layer takes the touches it covers (a background alone lets them fall through to the hub) and is announced as a screen.
+                modifier = Modifier.layerBehavior(title = "Workout"),
                 onMinimise = { showsActiveWorkout = false },
                 onFinished = { completed: CompletedWorkout? ->
                     showsActiveWorkout = false
@@ -139,10 +158,14 @@ fun PulseStrengthRoot(environment: StrengthAppEnvironment) {
             enter = slideInVertically { it / 6 } + fadeIn(),
             exit = slideOutVertically { it / 6 } + fadeOut(),
         ) {
-            val shown = summary
+            val shown = summary ?: lastSummary
             if (shown != null) {
-                BackHandler { summaryWorkoutID = null }
-                WorkoutSummaryScreen(workout = shown, onDone = { summaryWorkoutID = null })
+                BackHandler(enabled = summary != null) { summaryWorkoutID = null }
+                WorkoutSummaryScreen(
+                    workout = shown,
+                    onDone = { summaryWorkoutID = null },
+                    modifier = Modifier.layerBehavior(title = "Workout summary"),
+                )
             }
         }
 
@@ -162,6 +185,10 @@ fun PulseStrengthRoot(environment: StrengthAppEnvironment) {
         }
     }
 }
+
+/** What a full-screen layer over the hub needs: it swallows touches and a screen reader treats it as a new screen called [title]. */
+private fun Modifier.layerBehavior(title: String): Modifier =
+    pointerInput(Unit) { }.semantics { paneTitle = title }
 
 /**
  * Asks for the notification permission (Android 13+) the first time a workout is running, which is the moment the ongoing notification

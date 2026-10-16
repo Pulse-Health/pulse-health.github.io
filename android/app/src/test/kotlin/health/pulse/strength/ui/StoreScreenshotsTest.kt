@@ -13,9 +13,11 @@ import health.pulse.strength.ui.active.ScreenEvents
 import health.pulse.strength.ui.active.TestScreenTheme
 import health.pulse.strength.ui.active.applySystemBars
 import health.pulse.strength.ui.active.showActiveScreen
+import health.pulse.strength.ui.components.ExerciseMediaStore
 import health.pulse.strength.ui.detail.ExerciseDetailScreen
 import health.pulse.strength.ui.hub.HubTestSupport
 import health.pulse.strength.ui.summary.WorkoutSummaryScreen
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -39,7 +41,16 @@ class StoreScreenshotsTest {
     private val demoNow = HubTestSupport.demoNow
 
     @Before
-    fun pinLocale() = HubTestSupport.fixLocale()
+    fun pinLocaleAndHidePhotos() {
+        HubTestSupport.fixLocale()
+        // The listing must show what a release shows: the demo photos are not cleared media and are not in the release build.
+        ExerciseMediaStore.enabled = false
+    }
+
+    @After
+    fun showPhotosAgain() {
+        ExerciseMediaStore.enabled = true
+    }
 
     /** Drags the page up by [fraction] of the window height, like a thumb would. */
     private fun scrollUp(fraction: Float) {

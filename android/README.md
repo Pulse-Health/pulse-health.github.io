@@ -2,7 +2,7 @@
 
 The strength-workout feature of Pulse for **Android phones**: a strength hub with templates, history and recovery, the active-workout
 screen (set table, keypad with plate calculator, rest timer, supersets, undo, PR detection, coach tip), the workout summary, an
-exercise library with form photos and per-exercise history, and an ongoing **workout notification** (the Android counterpart of the iOS
+exercise library with how-to cues and per-exercise history, and an ongoing **workout notification** (the Android counterpart of the iOS
 Live Activity) with buttons that log a set and control the rest timer from the lock screen.
 
 It is a native Kotlin / Jetpack Compose app that follows the iOS app in [`../ios/`](../ios/README.md) screen by screen (same design,
@@ -35,7 +35,7 @@ android/
       ui/hub, ui/active, ui/sheets, ui/detail, ui/summary, ui/settings          the screens (ports of the SwiftUI views)
       services/                                                                 ongoing notification, notification buttons, rest alerts, settings
       health/                                                                   opt-in Health Connect writer and its rationale screen
-    src/main/assets/ExerciseMedia/                                              50 form-demo frames (public domain, see below)
+    src/exerciseMedia/assets/ExerciseMedia/                                     50 demo photos: debug builds only, NOT in the release (see below)
     src/test/                                                                   about 630 Robolectric tests: screens render and behave; screenshots go to app/build/screens
   store/                        Google Play listing text (en-US, de-DE), graphics, release notes
 ../.github/workflows/strength-android.yml                                       CI: tests, lint, release bundle, optional Play upload
@@ -125,6 +125,16 @@ list. The Android app is complete and shippable without them (v1 of the iOS app 
 
 ## Exercise photos
 
-`app/src/main/assets/ExerciseMedia` holds the same 25 exercises x 2 form-demo frames as the iOS app, from the
-[Free Exercise DB](https://github.com/yuhonas/free-exercise-db) (Unlicense, public domain). The app shows "Demo photos: Free Exercise
-DB (public domain)." in the form sheet and under Settings > About.
+`app/src/exerciseMedia/assets/ExerciseMedia` holds the same 25 exercises x 2 form-demo frames as the iOS app, from the
+[Free Exercise DB](https://github.com/yuhonas/free-exercise-db). **They are placeholders, not cleared media.** The database is released
+under the Unlicense, but its README does not say where its images come from or under which licence they may be used, so "public domain"
+cannot be claimed for them; the photos show identifiable people in a commercial gym and some show brand marks (the iOS README says the same).
+
+So the **release build does not contain them**: they are an extra asset folder of the *debug* build type (used by the debug APK, the tests
+and the store-screenshot test) and a release only ships them with `-Ppulse.includeExerciseMedia=true` (or `PULSE_INCLUDE_EXERCISE_MEDIA=true`;
+in CI the repository variable `ANDROID_INCLUDE_EXERCISE_MEDIA=true`). The CI `release-build` job fails when the release APK holds any of them
+without that variable. Without photos the app shows its placeholder tile, no "Form demo" badge and no photo attribution; where photos are
+present it says "Demo photos from the Free Exercise DB." in the form sheet, the exercise detail and under Settings.
+
+To ship photos: replace the 50 files with your own or properly licensed ones (same file names, `<key>-a.jpg` / `<key>-b.jpg`), update the
+attribution line and the privacy/listing text, then set the variable. The current files also remain in the git history of this public repository.

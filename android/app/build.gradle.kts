@@ -30,6 +30,13 @@ if (providers.gradleProperty("pulse.requireSigning").isPresent && !hasReleaseSig
     )
 }
 
+// The 50 form-demo photos in src/exerciseMedia/assets are NOT cleared media (their licence is unknown, they show identifiable people and brand
+// marks; see android/README.md, "Exercise photos"). They stay in debug builds and tests, and a RELEASE build only ships them with
+// -Ppulse.includeExerciseMedia=true (or PULSE_INCLUDE_EXERCISE_MEDIA=true) after they were replaced by licensed ones. Without them the app
+// shows its placeholder tile and no photo attribution.
+val includeExerciseMedia =
+    (providers.gradleProperty("pulse.includeExerciseMedia").orNull ?: System.getenv("PULSE_INCLUDE_EXERCISE_MEDIA")) == "true"
+
 android {
     namespace = "health.pulse.strength"
     compileSdk = 37
@@ -104,6 +111,11 @@ android {
         unitTests {
             isIncludeAndroidResources = true
         }
+    }
+
+    sourceSets {
+        getByName("debug").assets.srcDir("src/exerciseMedia/assets")
+        if (includeExerciseMedia) getByName("release").assets.srcDir("src/exerciseMedia/assets")
     }
 }
 

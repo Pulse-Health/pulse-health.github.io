@@ -18,7 +18,9 @@
 # Secrets of the `google-play` ENVIRONMENT (not repository secrets, so that only the deploy job can read them):
 #   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD   the upload key (base64 of the .jks file)
 #   PLAY_SERVICE_ACCOUNT_JSON                                                                    JSON key of the Play API service account
-# Variable (optional): ANDROID_VERSION_CODE_OFFSET  added to the run number to make the Play versionCode (default 0).
+# Variables (optional): ANDROID_VERSION_CODE_OFFSET  added to the run number to make the Play versionCode (default 0).
+#                       ANDROID_INCLUDE_EXERCISE_MEDIA  "true" ships the exercise photos in the release (only after they were replaced by
+#                       licensed ones, see android/README.md "Exercise photos"); otherwise the release contains none, and a check proves it.
 
 name: strength-android
 
@@ -188,6 +190,7 @@ jobs:
         env:
           PULSE_VERSION_CODE: ${{ needs.version.outputs.code }}
           PULSE_VERSION_NAME: ${{ needs.version.outputs.name }}
+          PULSE_INCLUDE_EXERCISE_MEDIA: ${{ vars.ANDROID_INCLUDE_EXERCISE_MEDIA }}
         run: ./gradlew :app:bundleRelease :app:assembleRelease "-Ppulse.versionName=$PULSE_VERSION_NAME"
 
       - name: The release APK asks for no network permission
@@ -201,6 +204,18 @@ jobs:
             exit 1
           fi
           grep -q 'android.permission.POST_NOTIFICATIONS' <<< "$permissions" || { echo "::error::aapt2 printed no permissions: the check proves nothing."; exit 1; }
+
+      - name: The release ships no exercise photos unless that was decided
+        env:
+          INCLUDE_EXERCISE_MEDIA: ${{ vars.ANDROID_INCLUDE_EXERCISE_MEDIA }}
+        run: |
+          apk=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          photos=$(unzip -l "$apk" | grep -c 'assets/ExerciseMedia/' || true)
+          echo "exercise photos in the release APK: $photos"
+          if [[ "$INCLUDE_EXERCISE_MEDIA" != "true" && "$photos" != "0" ]]; then
+            echo "::error::The release contains exercise photos, whose licence is not cleared (android/README.md, Exercise photos)."
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
@@ -258,6 +273,7 @@ jobs:
           PULSE_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           PULSE_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           PULSE_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          PULSE_INCLUDE_EXERCISE_MEDIA: ${{ vars.ANDROID_INCLUDE_EXERCISE_MEDIA }}
         run: ./gradlew :app:bundleRelease :app:assembleRelease "-Ppulse.versionName=$PULSE_VERSION_NAME" -Ppulse.requireSigning=true
 
       - name: The signed bundle verifies and the release APK asks for no network permission
