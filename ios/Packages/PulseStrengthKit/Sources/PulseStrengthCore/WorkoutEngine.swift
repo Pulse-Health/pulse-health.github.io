@@ -23,6 +23,8 @@ public protocol WorkoutDataProviding: AnyObject {
     /// file); the engine then keeps the active-workout file, the last saved copy of the workout.
     @discardableResult
     func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error>
+    /// The recovery of each muscle group at `now`, estimated from the finished workouts (see `RecoveryEstimator`).
+    func recoveryProvider(now: Date) -> RecoveryProvider
 }
 
 // MARK: - Engine
@@ -52,8 +54,12 @@ public final class WorkoutEngine {
 
     /// Phone (authority) or Watch (mirror).
     public let role: WorkoutRole
-    /// Muscle recovery lookup used by `presentation(now:)`.
-    public var recovery: RecoveryProvider
+    /// Muscle recovery lookup used by `presentation(now:)`. Unless one was set (or passed to `init`), it is the estimate that the
+    /// data provider makes from the finished workouts (`RecoveryEstimator`) at the time of the call; a provider that was set stays.
+    public var recovery: RecoveryProvider {
+        get { recoveryOverride ?? data.recoveryProvider(now: clock()) }
+        set { recoveryOverride = newValue }
+    }
     /// The workout in progress; nil when there is none.
     public private(set) var state: WorkoutState?
     /// The workout finished most recently (cleared when the next one starts).
@@ -95,6 +101,7 @@ public final class WorkoutEngine {
     private let persistence: FileStrengthPersistence?
     private let data: WorkoutDataProviding
     private let clock: @Sendable () -> Date
+    private var recoveryOverride: RecoveryProvider?
     private var seenCommands = SeenCommands()
     private var effects: [WorkoutSideEffect] = []
     private var lastHeartRateReport: Date?
@@ -169,18 +176,19 @@ public final class WorkoutEngine {
         var sentAt: Date
     }
 
-    /// Creates an engine; `persistence` is only written when `role == .authority`.
+    /// Creates an engine; `persistence` is only written when `role == .authority`. Without `recovery` the muscle recovery is
+    /// estimated from the finished workouts of `data`; previews and tests pass `DemoRecovery.provider` or their own.
     public init(
         role: WorkoutRole,
         persistence: FileStrengthPersistence?,
         data: WorkoutDataProviding,
-        recovery: @escaping RecoveryProvider = DemoRecovery.provider,
+        recovery: RecoveryProvider? = nil,
         clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.role = role
         self.persistence = persistence
         self.data = data
-        self.recovery = recovery
+        self.recoveryOverride = recovery
         self.clock = clock
     }
 
@@ -197,13 +205,26 @@ public final class WorkoutEngine {
     /// Does nothing for a mirror, without persistence, without a saved workout, or while a workout is already in progress
     /// (the in-memory copy can be newer than the file because heart-rate samples are saved only every few seconds).
     ///
+    /// The previous results of the restored exercises are brought up to date like at the start (`start(template:)`), so a workout
+    /// saved by an older build does not keep results that are not in the history.
+    ///
     /// The acknowledged command ids are restored too (whether or not a workout is saved): a command that was applied before the
     /// relaunch is acknowledged again by the next envelope and is not applied a second time when it is redelivered.
     public func restore() {
         guard role == .authority, state == nil, let persistence else { return }
         restoreAcknowledgements(from: persistence)
-        guard let restored = persistence.loadActiveWorkout() else { return }
+        guard var restored = persistence.loadActiveWorkout() else { return }
+        // A workout saved by an older build carries the previous results that build knew (invented ones included).
+        var changed = false
+        for index in restored.exercises.indices {
+            let current = refreshed(restored.exercises[index].exercise)
+            if current != restored.exercises[index].exercise {
+                restored.exercises[index].exercise = current
+                changed = true
+            }
+        }
         state = restored
+        if changed { persistActiveWorkout() }
         lastHeartRateReport = nil
         onUpdate?()
         for effect in effects { effect.workoutStarted(restored) }
@@ -478,7 +499,7 @@ public final class WorkoutEngine {
 
     /// The active-workout screen model for `now`; nil without a workout.
     public func presentation(now: Date) -> ActiveWorkoutPresentation? {
-        state.map { WorkoutPresenter.present($0, now: now, recovery: recovery) }
+        state.map { WorkoutPresenter.present($0, now: now, recovery: recoveryOverride ?? data.recoveryProvider(now: now)) }
     }
 
     /// The Live Activity / Watch snapshot for `now`; nil without a workout.

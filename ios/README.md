@@ -97,7 +97,7 @@ Intents inside a package would need `AppIntentsPackage` plumbing that only exist
 
 ### Simulator notes
 
-* The first launch seeds demo templates and history (see [Placeholders](#placeholders-to-replace)).
+* The first launch starts empty: no templates, no history, no invented numbers. Demo data exists only in previews and in the UI-test mode (`-PulseUITest`, see [Placeholders](#placeholders-to-replace)).
 * Start a workout from the hub. To see the Live Activity, lock the simulator (Device > Lock, Cmd-L) while a workout runs;
   use an iPhone 14 Pro or newer simulator to see the Dynamic Island as well.
 * For the Watch app, use a simulator pair (iPhone + Apple Watch, created in Xcode > Window > Devices and Simulators, Shift-Cmd-2),
@@ -236,8 +236,8 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | Permission texts | Health usage descriptions | `NSHealthShareUsageDescription` / `NSHealthUpdateUsageDescription` in the iOS and Watch `Info.plist` files |
 | App icon | generated green dumbbell | `Apps/PulseStrength/Assets.xcassets/AppIcon.appiconset/AppIcon.png` and the same in `Apps/PulseStrengthWatch` (1024 x 1024, opaque) |
 | Accent colour | green `#1B8448` | `AccentColor.colorset` in both asset catalogs |
-| Demo data | templates and history seeded on first launch | `StrengthAppEnvironment.live(seedDemoData:)`; the host app uses the default `true` through `StrengthAppEnvironment.shared` |
-| Muscle recovery | fixed demo percentages | `DemoRecovery.provider`, see below |
+| Demo data | three sample templates, five workouts and invented previous results, for previews and the `-PulseUITest` mode only; the app never seeds (`live(seedDemoData:)` defaults to `false`). Builds before that seeded real files: `StrengthStore.hasSampleData` / `removeSampleData()` clean them up | `StrengthAppEnvironment.preview(...)`, `SampleData`, `DemoPreviousResults` |
+| Muscle recovery | estimated from the sets the user logged (a heuristic, see `RecoveryEstimator`); `DemoRecovery.provider` is demo data for previews and tests | `RecoveryEstimator`, or the Pulse app's own model via `controller.recovery`, see below |
 
 ## Integrating with the Pulse app
 
@@ -245,7 +245,9 @@ The seams are plain protocols and closures:
 
 * **Recovery data.** `RecoveryProvider` is `@Sendable (MuscleGroup) -> Int` (percent recovered, 0 to 100). Pass the Pulse
   app's own muscle-recovery model to `WorkoutController(store:persistence:role:recovery:clock:)`, or assign
-  `controller.recovery` later. The default, `DemoRecovery.provider`, returns fixed demo numbers.
+  `controller.recovery` later. The default estimates the recovery from the store's finished workouts (`RecoveryEstimator`: the
+  more working sets of a muscle group, the longer it needs, 30 to 96 hours); `DemoRecovery.provider` returns fixed demo numbers
+  for previews and tests.
 * **Storage.** `FileStrengthPersistence` is a small final class with one load/save pair per file (active workout,
   templates, history, custom exercises, personal bests, body weights, weigh-in preferences, acknowledged commands). The data
   directory is versioned (`schema.json`, with migrations), a file that cannot be read completely is copied to

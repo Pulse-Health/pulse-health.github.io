@@ -408,6 +408,39 @@ public final class FileStrengthPersistence: @unchecked Sendable {
         try FileManager.default.removeItem(at: target)
     }
 
+    // MARK: Reset
+
+    /// Removes every data file: the workout in progress, the templates, the history, the custom exercises, the personal bests, the
+    /// weigh-ins, the reminder preferences and the remembered command ids. `schema.json` stays, and so do the copies of damaged
+    /// files (`<name>.corrupt-<timestamp>.json`) and the pre-migration folders.
+    ///
+    /// Refused like a write (`PersistenceError.newerSchema` / `.migrationFailed`), and also when the original of a damaged file
+    /// cannot be copied first (`.originalNotPreserved`, see `write`); nothing is removed in that case. Otherwise every file is
+    /// attempted, even after one fails to go; the first such error is thrown at the end.
+    public func deleteAll() throws {
+        try deleteAll(removing: { try FileManager.default.removeItem(at: $0) })
+    }
+
+    /// `deleteAll()` with the removal of one file passed in, so a failing removal can be tested.
+    func deleteAll(removing remove: (URL) throws -> Void) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        try requireWritableLocked()
+        let manager = FileManager.default
+        for name in Self.protectedFileNames where manager.fileExists(atPath: url(name).path) {
+            try preserveOriginalLocked(name)
+        }
+        var firstError: Error?
+        for name in Self.dataFileNames where manager.fileExists(atPath: url(name).path) {
+            do {
+                try remove(url(name))
+            } catch {
+                firstError = firstError ?? error
+            }
+        }
+        if let firstError { throw firstError }
+    }
+
     // MARK: Schema (all called with the lock held)
 
     private func requireWritableLocked() throws {

@@ -63,7 +63,11 @@ final class StrengthDataTests: XCTestCase {
         data.personalBests["incline"] = PersonalBest(exerciseID: "incline", estimated1RM: 10, weightKg: 8, reps: 8, date: F.now)
         XCTAssertEqual(try XCTUnwrap(data.exercise(id: "bench")).previousBestE1RM, 120)
         XCTAssertEqual(try XCTUnwrap(data.exercise(id: "incline")).previousBestE1RM, 10, "what is remembered wins")
-        XCTAssertEqual(try XCTUnwrap(data.exercise(id: "ohp")).previousBestE1RM, 58, "untouched exercises keep the library value")
+        XCTAssertEqual(try XCTUnwrap(data.exercise(id: "ohp")).previousBestE1RM, 0, "untouched exercises have no previous best")
+        data.usesDemoPreviousResults = true
+        XCTAssertEqual(try XCTUnwrap(data.exercise(id: "ohp")).previousBestE1RM, 58, "a demo store keeps the demo value of untouched exercises")
+        XCTAssertEqual(try XCTUnwrap(data.exercise(id: "bench")).previousBestE1RM, 120, "what is remembered still wins in a demo store")
+        data.usesDemoPreviousResults = false
         var expected = try XCTUnwrap(ExerciseLibrary.exercise(id: "bench"))
         expected.previousBestE1RM = 120
         XCTAssertEqual(data.exercise(id: "bench"), expected)
@@ -463,7 +467,10 @@ final class StrengthDataModelTests: XCTestCase {
         let second = svcMain { () -> StrengthData in
             StrengthDataModel(persistence: persistence, seedDemoData: true, now: F.now.addingTimeInterval(86_400 * 3)).data
         }
-        XCTAssertEqual(second, first, "an existing store is neither reseeded nor shifted")
+        var expected = first
+        expected.usesDemoPreviousResults = false
+        XCTAssertTrue(first.usesDemoPreviousResults)
+        XCTAssertEqual(second, expected, "an existing store is neither reseeded nor shifted (the demo flag is per process)")
     }
 
     func testNoSeedingWithoutTheFlag() {

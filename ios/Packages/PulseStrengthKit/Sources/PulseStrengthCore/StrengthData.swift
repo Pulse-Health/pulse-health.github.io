@@ -21,6 +21,10 @@ public struct StrengthData: Equatable, Sendable {
     /// True while `history` is known to lack workouts that could not be read from disk. The personal bests may then be the only
     /// trace of those workouts, so `recomputePersonalBests()` only raises them and never lowers or drops one.
     public var historyIsIncomplete: Bool
+    /// True when the demo data was seeded into this store in this process (previews and UI tests): the built-in exercises then
+    /// carry the invented previous results of `DemoPreviousResults` until the user's own history replaces them. Never stored; a
+    /// real user's store is always false, so the previous column and the record baseline come from real history only.
+    public var usesDemoPreviousResults: Bool
 
     /// Creates the data from its collections.
     public init(
@@ -30,7 +34,8 @@ public struct StrengthData: Equatable, Sendable {
         personalBests: [String: PersonalBest] = [:],
         bodyWeights: [BodyWeightEntry] = [],
         weighIn: WeighInPreferences = WeighInPreferences(),
-        historyIsIncomplete: Bool = false
+        historyIsIncomplete: Bool = false,
+        usesDemoPreviousResults: Bool = false
     ) {
         self.templates = templates
         self.history = history
@@ -39,6 +44,7 @@ public struct StrengthData: Equatable, Sendable {
         self.bodyWeights = bodyWeights
         self.weighIn = weighIn
         self.historyIsIncomplete = historyIsIncomplete
+        self.usesDemoPreviousResults = usesDemoPreviousResults
     }
 
     /// True when there are neither templates nor finished workouts (the condition for seeding demo data).
@@ -55,8 +61,8 @@ public struct StrengthData: Equatable, Sendable {
 public extension StrengthData {
     /// The built-in library plus the custom exercises, each with `previousBestE1RM` and `previousSets` taken from the user's results.
     ///
-    /// An exercise with no personal best or history keeps the values it already carries (the library's demo values).
-    /// A custom exercise whose id equals a built-in id is ignored.
+    /// An exercise with no personal best or history has none (0 and no sets), except in a demo store (`usesDemoPreviousResults`),
+    /// where it keeps the invented demo values. A custom exercise whose id equals a built-in id is ignored.
     func exercises() -> [Exercise] {
         let memory = exerciseMemory()
         return allExercises().map { overlay($0, memory: memory) }
@@ -69,7 +75,8 @@ public extension StrengthData {
         return overlay(base, memory: exerciseMemory(only: id))
     }
 
-    /// `exercise` with the remembered best e1RM and last sets of the same exercise id applied (anything remembered wins).
+    /// `exercise` with the remembered best e1RM and last sets of the same exercise id applied (anything remembered wins). In a demo
+    /// store an exercise with nothing remembered gets the demo numbers of its id; otherwise it keeps what it carries.
     func overlay(_ exercise: Exercise) -> Exercise {
         overlay(exercise, memory: exerciseMemory(only: exercise.id))
     }
@@ -84,8 +91,7 @@ private struct ExerciseMemory {
 
 private extension StrengthData {
     func allExercises() -> [Exercise] {
-        let builtInIDs = Set(ExerciseLibrary.builtIn.map { $0.id })
-        var seen = builtInIDs
+        var seen = Set(ExerciseLibrary.builtIn.map { $0.id })
         var result = ExerciseLibrary.builtIn
         for custom in customExercises where seen.insert(custom.id).inserted {
             result.append(custom)
@@ -94,7 +100,7 @@ private extension StrengthData {
     }
 
     func overlay(_ exercise: Exercise, memory: [String: ExerciseMemory]) -> Exercise {
-        var result = exercise
+        var result = usesDemoPreviousResults ? DemoPreviousResults.applying(to: exercise) : exercise
         let remembered = memory[exercise.id]
         let best = max(personalBests[exercise.id]?.estimated1RM ?? 0, remembered?.bestE1RM ?? 0)
         if best > 0 { result.previousBestE1RM = best }
@@ -269,7 +275,8 @@ public extension StrengthData {
         )
     }
 
-    /// Fills an empty store (no templates, no history) with the demo templates, history and personal bests; true when it did.
+    /// Fills an empty store (no templates, no history) with the demo templates, history and personal bests and switches on the demo
+    /// previous results (`usesDemoPreviousResults`); true when it did. Only previews and UI tests seed.
     @discardableResult
     mutating func seedDemoDataIfEmpty(now: Date) -> Bool {
         guard isEmpty else { return false }
@@ -277,16 +284,19 @@ public extension StrengthData {
         templates = demo.templates
         history = demo.history
         if personalBests.isEmpty { personalBests = demo.personalBests }
+        usesDemoPreviousResults = true
         return true
     }
 
-    /// The demo data for `now` (see `SampleData`): three templates, five finished workouts and the matching personal bests.
+    /// The demo data for `now` (see `SampleData`): three templates, five finished workouts and the matching personal bests, with
+    /// the demo previous results switched on.
     static func demo(now: Date) -> StrengthData {
         StrengthData(
             templates: SampleData.templates(now: now),
             history: SampleData.history(now: now),
             customExercises: [],
-            personalBests: SampleData.personalBests(now: now)
+            personalBests: SampleData.personalBests(now: now),
+            usesDemoPreviousResults: true
         )
     }
 
@@ -560,7 +570,8 @@ public final class StrengthDataModel: WorkoutDataProviding {
     var cache: (list: [Exercise], byID: [String: Exercise])?
     private var unsavedFiles: PersistTargets = []
 
-    /// Loads `persistence` (when given); with `seedDemoData` an empty store is filled with the demo data for `now`.
+    /// Loads `persistence` (when given); with `seedDemoData` an empty store is filled with the demo data for `now` and shows the
+    /// demo previous results (`StrengthData.usesDemoPreviousResults`). The app seeds only in previews and UI tests.
     ///
     /// Demo data is only written to a data directory that has no data files at all and no load issues: files that exist but
     /// could not be read are never seeded over.
@@ -694,6 +705,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         persistence.rescanSchema()
         let bestsFileExisted = persistence.hasPersonalBestsFile
         let historyWasIncomplete = data.historyIsIncomplete
+        let wasDemo = data.usesDemoPreviousResults
         data = StrengthData(
             templates: persistence.loadTemplates(),
             history: persistence.loadHistory(),
@@ -701,7 +713,8 @@ public final class StrengthDataModel: WorkoutDataProviding {
             personalBests: persistence.loadPersonalBests(),
             bodyWeights: persistence.loadBodyWeights(),
             weighIn: persistence.loadWeighInPreferences(),
-            historyIsIncomplete: historyWasIncomplete
+            historyIsIncomplete: historyWasIncomplete,
+            usesDemoPreviousResults: wasDemo
         )
         cache = nil
         refreshPersistenceIssues()
@@ -807,6 +820,8 @@ public final class StrengthDataModel: WorkoutDataProviding {
         history: Bool = false,
         customExercises: Bool = false,
         personalBests: Bool = false,
+        bodyWeights: Bool = false,
+        weighIn: Bool = false,
         exercises: Bool = false
     ) -> Result<Void, Error> {
         if exercises || history || personalBests { cache = nil }
@@ -815,8 +830,39 @@ public final class StrengthDataModel: WorkoutDataProviding {
         if history { requested.insert(.history) }
         if customExercises { requested.insert(.customExercises) }
         if personalBests { requested.insert(.personalBests) }
-        let failures = persist(templates: templates, history: history, customExercises: customExercises, personalBests: personalBests)
+        if bodyWeights { requested.insert(.bodyWeights) }
+        if weighIn { requested.insert(.weighIn) }
+        let failures = persist(
+            templates: templates,
+            history: history,
+            customExercises: customExercises,
+            personalBests: personalBests,
+            bodyWeights: bodyWeights,
+            weighIn: weighIn
+        )
         if let failure = failures.first(where: { requested.contains($0.target) }) { return .failure(failure.error) }
         return .success(())
+    }
+
+    /// Removes every data file of the persistence after the whole data was reset (`FileStrengthPersistence.deleteAll()`) and forgets
+    /// the writes that were still pending: there is nothing left to write. When the removal fails (or is refused), every file counts
+    /// as unwritten, so the next save of anything writes the emptied data again.
+    func removeAllFiles() -> Result<Void, Error> {
+        cache = nil
+        guard let persistence else {
+            unsavedFiles = []
+            lastPersistenceError = nil
+            return .success(())
+        }
+        do {
+            try persistence.deleteAll()
+            unsavedFiles = []
+            lastPersistenceError = nil
+            return .success(())
+        } catch {
+            unsavedFiles = [.templates, .history, .customExercises, .personalBests, .bodyWeights, .weighIn]
+            lastPersistenceError = error
+            return .failure(error)
+        }
     }
 }

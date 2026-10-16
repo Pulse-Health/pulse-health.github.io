@@ -10,6 +10,12 @@ import Foundation
 public enum SampleData {
     // MARK: Public API
 
+    /// The ids of the three demo templates. `StrengthStore.removeSampleData()` deletes exactly these.
+    public static let templateIDs: [UUID] = [fixedID(1, 1), fixedID(1, 2), fixedID(1, 3)]
+
+    /// The ids of the five demo workouts. `StrengthStore.removeSampleData()` deletes exactly these.
+    public static let workoutIDs: [UUID] = (1...5).map { fixedID(3, $0) }
+
     /// The three demo templates: "Upper A · Push", "Lower A · Quads" and "Upper B · Pull" (never performed).
     public static func templates() -> [WorkoutTemplate] {
         [upperPush(), lowerQuads(), upperPull()]
@@ -65,7 +71,7 @@ public enum SampleData {
 private extension SampleData {
     static func upperPush() -> WorkoutTemplate {
         WorkoutTemplate(
-            id: fixedID(1, 1),
+            id: templateIDs[0],
             name: "Upper A · Push",
             entries: [
                 entry(1, "bench", [planned(.warmup, 50, 8), planned(.warmup, 70, 5), planned(.normal, 82.5, 6), planned(.normal, 82.5, 6), planned(.normal, 85, 6)], rest: 150),
@@ -80,7 +86,7 @@ private extension SampleData {
 
     static func lowerQuads() -> WorkoutTemplate {
         WorkoutTemplate(
-            id: fixedID(1, 2),
+            id: templateIDs[1],
             name: "Lower A · Quads",
             entries: [
                 entry(11, "squat", [planned(.warmup, 40, 8), planned(.warmup, 60, 5), planned(.normal, 80, 6), planned(.normal, 80, 6), planned(.normal, 80, 6)], rest: 180),
@@ -94,7 +100,7 @@ private extension SampleData {
 
     static func upperPull() -> WorkoutTemplate {
         WorkoutTemplate(
-            id: fixedID(1, 3),
+            id: templateIDs[2],
             name: "Upper B · Pull",
             entries: [
                 entry(21, "pullup", straight(3, 0, 8), rest: 120),
@@ -119,9 +125,9 @@ private extension SampleData {
         Array(repeating: planned(.normal, kg, reps), count: count)
     }
 
-    /// The built-in exercise `id`; the fallback only exists so a mistyped id can never crash a preview.
+    /// The built-in exercise `id` with its demo previous results; the fallback only exists so a mistyped id can never crash a preview.
     static func libraryExercise(_ id: String) -> Exercise {
-        if let exercise = ExerciseLibrary.exercise(id: id) { return exercise }
+        if let exercise = ExerciseLibrary.exercise(id: id) { return DemoPreviousResults.applying(to: exercise) }
         return Exercise(
             id: id, name: id, muscle: .core, equipment: .other,
             defaults: ExerciseDefaults(sets: 3, weightKg: 0, reps: 10, restSeconds: 60)
@@ -151,9 +157,9 @@ private extension SampleData {
     }
 
     static func sessionDefinitions() -> [SessionDefinition] {
-        let upperA = fixedID(1, 1)
-        let lowerA = fixedID(1, 2)
-        let upperB = fixedID(1, 3)
+        let upperA = templateIDs[0]
+        let lowerA = templateIDs[1]
+        let upperB = templateIDs[2]
         return [
             SessionDefinition(number: 1, name: "Upper B · Pull", templateID: upperB, daysAgo: 3, minutes: 52, averageHeartRate: 124, lines: [
                 ("pullup", [work(0, 8, rir: 2), work(0, 8, rir: 2), work(0, 7, rir: 1)]),
@@ -249,7 +255,7 @@ private extension SampleData {
         let finishedAt = now.addingTimeInterval(-Double(session.daysAgo) * 86_400)
         let duration = session.minutes * 60
         return CompletedWorkout(
-            id: fixedID(3, session.number),
+            id: workoutIDs[session.number - 1],
             name: session.name,
             templateID: session.templateID,
             startedAt: finishedAt.addingTimeInterval(-Double(duration)),
@@ -285,4 +291,74 @@ private extension SampleData {
         let digits = String(value, radix: 16, uppercase: true)
         return String(repeating: "0", count: max(0, width - digits.count)) + digits
     }
+}
+
+// MARK: - Demo previous results
+
+/// The invented "previous" numbers of the demo data: a best estimated 1RM and last sets for 25 library exercises.
+///
+/// The built-in library carries none of this (see `ExerciseLibrary.builtIn`). Previews, UI tests and the tests of the demo data use
+/// `ExerciseLibrary.demoBuiltIn` or `applying(to:)`; `StrengthData` applies them only after the demo data was seeded (see
+/// `StrengthData.usesDemoPreviousResults`). The values are consistent with `SampleData.history(now:)`.
+public enum DemoPreviousResults {
+    /// The previous results of one exercise.
+    public struct Entry: Equatable, Sendable {
+        /// Best estimated 1RM in kg; 0 when the demo gives none (bodyweight and timed exercises).
+        public var bestE1RM: Double
+        /// The last session's sets.
+        public var sets: [PreviousSet]
+
+        init(bestE1RM: Double, sets: [(Double, Int)]) {
+            self.bestE1RM = bestE1RM
+            self.sets = sets.map { PreviousSet(weightKg: $0.0, reps: $0.1) }
+        }
+    }
+
+    /// The demo previous results by exercise id.
+    public static let byExerciseID: [String: Entry] = [
+        "bench": Entry(bestE1RM: 99, sets: [(50, 8), (70, 5), (80, 6), (80, 6), (80, 5)]),
+        "incline": Entry(bestE1RM: 38, sets: [(26, 10), (26, 10), (26, 9)]),
+        "crossover": Entry(bestE1RM: 22, sets: [(15, 12), (15, 12), (15, 11)]),
+        "pushup": Entry(bestE1RM: 0, sets: [(0, 15)]),
+        "pullup": Entry(bestE1RM: 0, sets: [(0, 8)]),
+        "pulldown": Entry(bestE1RM: 0, sets: [(55, 10)]),
+        "brow": Entry(bestE1RM: 0, sets: [(60, 8)]),
+        "crow": Entry(bestE1RM: 0, sets: [(50, 10)]),
+        "deadlift": Entry(bestE1RM: 0, sets: [(100, 5)]),
+        "facepull": Entry(bestE1RM: 0, sets: [(20, 15)]),
+        "ohp": Entry(bestE1RM: 58, sets: [(45, 8), (45, 8), (45, 7)]),
+        "lateral": Entry(bestE1RM: 12.5, sets: [(8, 15), (8, 15), (8, 14)]),
+        "curl": Entry(bestE1RM: 0, sets: [(30, 10)]),
+        "dbcurl": Entry(bestE1RM: 0, sets: [(12, 10)]),
+        "pushdown": Entry(bestE1RM: 43, sets: [(30, 12), (30, 12), (30, 11)]),
+        "skull": Entry(bestE1RM: 0, sets: [(25, 10)]),
+        "squat": Entry(bestE1RM: 0, sets: [(80, 6)]),
+        "legpress": Entry(bestE1RM: 0, sets: [(140, 10)]),
+        "rdl": Entry(bestE1RM: 0, sets: [(70, 8)]),
+        "legext": Entry(bestE1RM: 0, sets: [(45, 12)]),
+        "legcurl": Entry(bestE1RM: 0, sets: [(35, 12)]),
+        "calf": Entry(bestE1RM: 0, sets: [(60, 12)]),
+        "hipthrust": Entry(bestE1RM: 0, sets: [(80, 8)]),
+        "plank": Entry(bestE1RM: 0, sets: [(0, 45)]),
+        "cablecrunch": Entry(bestE1RM: 0, sets: [(35, 15)]),
+    ]
+
+    /// `exercise` with the demo best e1RM and last sets of its id; an exercise without a demo entry is returned unchanged.
+    public static func applying(to exercise: Exercise) -> Exercise {
+        guard let entry = byExerciseID[exercise.id] else { return exercise }
+        var result = exercise
+        result.previousBestE1RM = entry.bestE1RM
+        result.previousSets = entry.sets
+        return result
+    }
+
+    /// `exercises` with the demo previous results applied (see `applying(to:)`).
+    public static func applying(to exercises: [Exercise]) -> [Exercise] {
+        exercises.map { applying(to: $0) }
+    }
+}
+
+public extension ExerciseLibrary {
+    /// The built-in library with the demo previous results (`DemoPreviousResults`), for previews, UI tests and tests of the demo data.
+    static let demoBuiltIn: [Exercise] = DemoPreviousResults.applying(to: builtIn)
 }

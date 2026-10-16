@@ -35,7 +35,7 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// Exchanges the body weight with Apple Health when the user turned that on; nil for previews and UI tests (no Health access, no prompts).
     let healthSync: BodyWeightHealthSync?
 
-    /// The live environment of the running app (persistence in Application Support or the App Group container, demo data when the store is empty).
+    /// The live environment of the running app (persistence in Application Support or the App Group container; never seeded with demo data).
     public static let shared: StrengthAppEnvironment = StrengthAppEnvironment.live()
 
     private init(
@@ -62,8 +62,9 @@ public final class StrengthAppEnvironment: ObservableObject {
 
     /// Builds the environment of the running app: persistence in the App Group container when the app is
     /// entitled to one, otherwise in Application Support/PulseStrength (the standalone build), the platform services, the command-bus handler for the Live Activity
-    /// buttons, and restores a workout that was running when the app was last closed.
-    public static func live(seedDemoData: Bool = true) -> StrengthAppEnvironment {
+    /// buttons, and restores a workout that was running when the app was last closed. A real user's store starts empty,
+    /// so `seedDemoData` is false.
+    public static func live(seedDemoData: Bool = false) -> StrengthAppEnvironment {
         let persistence = makeLivePersistence()
         let store = StrengthStore(persistence: persistence, seedDemoData: seedDemoData)
         let controller = WorkoutController(store: store, persistence: persistence, role: .authority)
@@ -89,7 +90,8 @@ public final class StrengthAppEnvironment: ObservableObject {
 
     // MARK: Preview
 
-    /// Temporary persistence with the sample data and no live services; optionally with a workout already running.
+    /// Temporary persistence with the sample data (and the demo muscle recovery) and no live services; optionally with a workout
+    /// already running.
     ///
     /// `services` is a required property, so previews get a `PulseServices` that is registered with a detached
     /// controller nobody uses: the preview's own controller has no effects, so nothing reaches ActivityKit,
@@ -97,7 +99,7 @@ public final class StrengthAppEnvironment: ObservableObject {
     public static func preview(withActiveWorkout: Bool = false) -> StrengthAppEnvironment {
         let persistence = FileStrengthPersistence.temporary()
         let store = StrengthStore(persistence: persistence, seedDemoData: true)
-        let controller = WorkoutController(store: store, persistence: persistence, role: .authority)
+        let controller = WorkoutController(store: store, persistence: persistence, role: .authority, recovery: DemoRecovery.provider)
         let detached = WorkoutController(store: store, persistence: nil, role: .mirror)
         let services = PulseServices(controller: detached)
         let environment = StrengthAppEnvironment(

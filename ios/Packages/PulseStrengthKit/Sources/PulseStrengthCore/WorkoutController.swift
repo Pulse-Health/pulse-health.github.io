@@ -20,7 +20,8 @@ public final class WorkoutController: ObservableObject {
     /// Phone (authority) or Watch (mirror).
     public let role: WorkoutRole
 
-    /// Muscle recovery lookup used by `presentation(now:)`; replace it with the Pulse app's real model.
+    /// Muscle recovery lookup used by `presentation(now:)`. By default the estimate from the store's finished workouts
+    /// (`RecoveryEstimator`); assigning a provider replaces it for good.
     public var recovery: RecoveryProvider {
         get { engine.recovery }
         set { engine.recovery = newValue }
@@ -29,11 +30,12 @@ public final class WorkoutController: ObservableObject {
     private let engine: WorkoutEngine
 
     /// Creates a controller on top of `store`; `persistence` holds the active workout (authority only), `clock` is injectable for tests.
+    /// `recovery` replaces the default estimate of the store's history (previews and tests pass `DemoRecovery.provider`).
     public init(
         store: StrengthStore,
         persistence: FileStrengthPersistence?,
         role: WorkoutRole = .authority,
-        recovery: @escaping RecoveryProvider = DemoRecovery.provider,
+        recovery: RecoveryProvider? = nil,
         clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = store
@@ -185,6 +187,10 @@ private final class StoreDataAdapter: WorkoutDataProviding {
 
     func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error> {
         store.record(completed, updateTemplate: updateTemplate)
+    }
+
+    func recoveryProvider(now: Date) -> RecoveryProvider {
+        store.recoveryProvider(now: now)
     }
 }
 

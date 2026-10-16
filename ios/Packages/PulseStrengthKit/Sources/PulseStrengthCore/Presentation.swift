@@ -324,9 +324,11 @@ public struct TemplateDiff: Codable, Equatable, Hashable, Sendable {
     }
 }
 
-/// Muscle recovery lookup (percent 0...100). The Pulse app injects its real model; this is the demo data.
+/// Muscle recovery lookup (percent 0...100). By default the engine estimates it from the finished workouts (`RecoveryEstimator`);
+/// the Pulse app can inject its own model.
 public typealias RecoveryProvider = @Sendable (MuscleGroup) -> Int
 
+/// Fixed, invented recovery percentages for previews, UI tests and tests. The app itself never uses them.
 public enum DemoRecovery {
     public static let provider: RecoveryProvider = { muscle in
         switch muscle {

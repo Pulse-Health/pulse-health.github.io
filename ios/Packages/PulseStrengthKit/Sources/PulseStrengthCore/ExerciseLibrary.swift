@@ -3,9 +3,12 @@ import Foundation
 /// The built-in exercise library of the strength feature (the 36 exercises of the design) and its search.
 public enum ExerciseLibrary {
     /// The 36 built-in exercises, in design order (ids, names, cues and defaults exactly as in the design).
+    ///
+    /// The library carries no results of the user: `previousBestE1RM` is 0 and `previousSets` is empty for every exercise.
+    /// `StrengthData.exercises()` overlays the user's own history; previews and tests that need numbers use `demoBuiltIn`.
     public static let builtIn: [Exercise] = [
         row("bench", "Barbell bench press", .chest, "Shoulders · Triceps", .barbell, .weightReps,
-            media: "bench", e1RM: 99, last: [(50, 8), (70, 5), (80, 6), (80, 6), (80, 5)],
+            media: "bench",
             sets: 3, kg: 60, reps: 8, rest: 150,
             cues: [
                 "Pull your shoulder blades back and down and keep your feet planted.",
@@ -13,7 +16,7 @@ public enum ExerciseLibrary {
                 "Press up and slightly back until your arms are straight.",
             ]),
         row("incline", "Incline dumbbell press", .chest, "Shoulders · Triceps", .dumbbell, .weightReps,
-            media: "incline", e1RM: 38, last: [(26, 10), (26, 10), (26, 9)],
+            media: "incline",
             sets: 3, kg: 24, reps: 10, rest: 90,
             cues: [
                 "Set the bench to 30–45° and keep your back flat on the pad.",
@@ -21,7 +24,7 @@ public enum ExerciseLibrary {
                 "Press up without letting the weights drift apart.",
             ]),
         row("crossover", "Cable crossover", .chest, "Shoulders", .cable, .weightReps,
-            media: "crossover", e1RM: 22, last: [(15, 12), (15, 12), (15, 11)],
+            media: "crossover",
             sets: 3, kg: 15, reps: 12, rest: 60,
             cues: [
                 "Step forward with a slight lean and a soft bend in your elbows.",
@@ -29,7 +32,7 @@ public enum ExerciseLibrary {
                 "Pause, then open back up until you feel a stretch across your chest.",
             ]),
         row("pushup", "Push-up", .chest, "Shoulders · Triceps", .bodyweight, .repsOnly,
-            media: "pushup", e1RM: 0, last: [(0, 15)],
+            media: "pushup",
             sets: 3, kg: 0, reps: 12, rest: 60,
             cues: [
                 "Hands under your shoulders, body in one straight line.",
@@ -37,21 +40,21 @@ public enum ExerciseLibrary {
                 "Press back up without sagging at the hips.",
             ]),
         row("cpress", "Machine chest press", .chest, "Shoulders · Triceps", .machine, .weightReps,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 40, reps: 10, rest: 90,
             cues: [
                 "Set the seat so the handles line up with mid-chest.",
                 "Press forward until your arms are almost straight, then return slowly.",
             ]),
         row("dips", "Chest dip", .chest, "Triceps · Shoulders", .bodyweight, .repsOnly,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 0, reps: 8, rest: 90,
             cues: [
                 "Lean your torso forward and keep your elbows slightly flared.",
                 "Lower until your shoulders are just below your elbows, then press up.",
             ]),
         row("pullup", "Pull-up", .back, "Biceps · Mid back", .bodyweight, .repsOnly,
-            media: "pullup", e1RM: 0, last: [(0, 8)],
+            media: "pullup",
             sets: 3, kg: 0, reps: 8, rest: 120,
             cues: [
                 "Start from a dead hang with your shoulders pulled down.",
@@ -59,7 +62,7 @@ public enum ExerciseLibrary {
                 "Lower all the way down under control.",
             ]),
         row("pulldown", "Lat pulldown", .back, "Biceps · Mid back", .cable, .weightReps,
-            media: "pulldown", e1RM: 0, last: [(55, 10)],
+            media: "pulldown",
             sets: 3, kg: 50, reps: 10, rest: 90,
             cues: [
                 "Grip slightly wider than your shoulders and lean back a touch.",
@@ -67,7 +70,7 @@ public enum ExerciseLibrary {
                 "Let the bar rise until your arms are straight again.",
             ]),
         row("brow", "Barbell row", .back, "Biceps · Lats", .barbell, .weightReps,
-            media: "brow", e1RM: 0, last: [(60, 8)],
+            media: "brow",
             sets: 3, kg: 50, reps: 8, rest: 120,
             cues: [
                 "Hinge at the hips with a flat back and the bar hanging below your knees.",
@@ -75,7 +78,7 @@ public enum ExerciseLibrary {
                 "Lower under control without letting your torso rise.",
             ]),
         row("crow", "Seated cable row", .back, "Biceps · Lats", .cable, .weightReps,
-            media: "crow", e1RM: 0, last: [(50, 10)],
+            media: "crow",
             sets: 3, kg: 45, reps: 10, rest: 90,
             cues: [
                 "Sit tall with a slight bend in your knees.",
@@ -83,14 +86,14 @@ public enum ExerciseLibrary {
                 "Return slowly until your arms are straight without rounding your back.",
             ]),
         row("dbrow", "One-arm dumbbell row", .back, "Biceps · Lats", .dumbbell, .weightReps,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 24, reps: 10, rest: 90,
             cues: [
                 "Support yourself on a bench with a flat back.",
                 "Row the dumbbell toward your hip and pause before lowering.",
             ]),
         row("deadlift", "Deadlift", .back, "Glutes · Hamstrings", .barbell, .weightReps,
-            media: "deadlift", e1RM: 0, last: [(100, 5)],
+            media: "deadlift",
             sets: 3, kg: 80, reps: 5, rest: 180,
             cues: [
                 "Stand with the bar over mid-foot and grip just outside your legs.",
@@ -98,7 +101,7 @@ public enum ExerciseLibrary {
                 "Lock out hips and knees together, then lower the bar along your legs.",
             ]),
         row("facepull", "Face pull", .shoulders, "Mid back", .cable, .weightReps,
-            media: "facepull", e1RM: 0, last: [(20, 15)],
+            media: "facepull",
             sets: 3, kg: 20, reps: 15, rest: 60,
             cues: [
                 "Set the cable at face height with a rope attachment.",
@@ -106,7 +109,7 @@ public enum ExerciseLibrary {
                 "Pause, then return under control.",
             ]),
         row("ohp", "Overhead press", .shoulders, "Triceps", .barbell, .weightReps,
-            media: "ohp", e1RM: 58, last: [(45, 8), (45, 8), (45, 7)],
+            media: "ohp",
             sets: 3, kg: 40, reps: 8, rest: 120,
             cues: [
                 "Grip just outside shoulder width and brace your core and glutes.",
@@ -114,14 +117,14 @@ public enum ExerciseLibrary {
                 "Lock out overhead and lower under control to your collarbone.",
             ]),
         row("dbpress", "Dumbbell shoulder press", .shoulders, "Triceps", .dumbbell, .weightReps,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 18, reps: 10, rest: 90,
             cues: [
                 "Start with the dumbbells at shoulder height, palms forward.",
                 "Press overhead until your arms are straight, then lower slowly.",
             ]),
         row("lateral", "Dumbbell lateral raise", .shoulders, "Side delts", .dumbbell, .weightReps,
-            media: "lateral", e1RM: 12.5, last: [(8, 15), (8, 15), (8, 14)],
+            media: "lateral",
             sets: 3, kg: 8, reps: 15, rest: 60,
             cues: [
                 "Stand tall with a slight bend in your elbows.",
@@ -129,14 +132,14 @@ public enum ExerciseLibrary {
                 "Lower slowly and don't swing your torso.",
             ]),
         row("rdelt", "Reverse pec deck", .shoulders, "Mid back", .machine, .weightReps,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 25, reps: 12, rest: 60,
             cues: [
                 "Sit facing the pad with your arms level with your shoulders.",
                 "Sweep your arms back in a wide arc and squeeze your rear delts.",
             ]),
         row("curl", "Barbell curl", .arms, "Biceps · Forearms", .barbell, .weightReps,
-            media: "curl", e1RM: 0, last: [(30, 10)],
+            media: "curl",
             sets: 3, kg: 30, reps: 10, rest: 75,
             cues: [
                 "Stand tall with your elbows pinned to your sides.",
@@ -144,7 +147,7 @@ public enum ExerciseLibrary {
                 "Lower for a slow two-count to a full stretch.",
             ]),
         row("dbcurl", "Dumbbell curl", .arms, "Biceps · Forearms", .dumbbell, .weightReps,
-            media: "dbcurl", e1RM: 0, last: [(12, 10)],
+            media: "dbcurl",
             sets: 3, kg: 12, reps: 10, rest: 75,
             cues: [
                 "Keep your elbows by your sides and your wrists straight.",
@@ -152,14 +155,14 @@ public enum ExerciseLibrary {
                 "Lower slowly to a full stretch.",
             ]),
         row("hammer", "Hammer curl", .arms, "Biceps · Forearms", .dumbbell, .weightReps,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 12, reps: 10, rest: 75,
             cues: [
                 "Hold the dumbbells with palms facing each other.",
                 "Curl up without letting your elbows drift forward.",
             ]),
         row("pushdown", "Triceps pushdown", .arms, "Triceps", .cable, .weightReps,
-            media: "pushdown", e1RM: 43, last: [(30, 12), (30, 12), (30, 11)],
+            media: "pushdown",
             sets: 3, kg: 30, reps: 12, rest: 60,
             cues: [
                 "Pin your elbows to your sides and keep your chest up.",
@@ -167,7 +170,7 @@ public enum ExerciseLibrary {
                 "Let it rise back to elbow height without moving your upper arms.",
             ]),
         row("skull", "Skull crusher", .arms, "Triceps · Forearms", .barbell, .weightReps,
-            media: "skull", e1RM: 0, last: [(25, 10)],
+            media: "skull",
             sets: 3, kg: 25, reps: 10, rest: 75,
             cues: [
                 "Lie on a bench holding the bar over your chest with straight arms.",
@@ -175,21 +178,21 @@ public enum ExerciseLibrary {
                 "Extend back up without letting your elbows flare.",
             ]),
         row("ohtri", "Overhead triceps extension", .arms, "Triceps", .cable, .weightReps,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 20, reps: 12, rest: 60,
             cues: [
                 "Face away from the cable with your elbows pointing forward.",
                 "Extend your arms overhead and return to a deep stretch.",
             ]),
         row("preacher", "Preacher curl", .arms, "Biceps", .machine, .weightReps,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 25, reps: 10, rest: 75,
             cues: [
                 "Rest your upper arms flat on the pad.",
                 "Curl up and lower slowly without lifting your elbows.",
             ]),
         row("squat", "Back squat", .legs, "Glutes · Hamstrings", .barbell, .weightReps,
-            media: "squat", e1RM: 0, last: [(80, 6)],
+            media: "squat",
             sets: 3, kg: 60, reps: 6, rest: 180,
             cues: [
                 "Set the bar on your upper back and brace before you unrack.",
@@ -197,7 +200,7 @@ public enum ExerciseLibrary {
                 "Drive up through your whole foot, keeping your knees in line with your toes.",
             ]),
         row("legpress", "Leg press", .legs, "Glutes", .machine, .weightReps,
-            media: "legpress", e1RM: 0, last: [(140, 10)],
+            media: "legpress",
             sets: 3, kg: 120, reps: 10, rest: 120,
             cues: [
                 "Place your feet shoulder-width apart in the middle of the platform.",
@@ -205,7 +208,7 @@ public enum ExerciseLibrary {
                 "Press through your heels without locking your knees.",
             ]),
         row("rdl", "Romanian deadlift", .legs, "Glutes · Lower back", .barbell, .weightReps,
-            media: "rdl", e1RM: 0, last: [(70, 8)],
+            media: "rdl",
             sets: 3, kg: 60, reps: 8, rest: 120,
             cues: [
                 "Soften your knees and push your hips straight back.",
@@ -213,14 +216,14 @@ public enum ExerciseLibrary {
                 "Squeeze your glutes to stand tall again.",
             ]),
         row("lunge", "Walking lunge", .legs, "Glutes", .dumbbell, .weightReps,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 12, reps: 10, rest: 90,
             cues: [
                 "Take a long step and lower your back knee toward the floor.",
                 "Push through your front heel to step into the next rep.",
             ]),
         row("legext", "Leg extension", .legs, "Quads", .machine, .weightReps,
-            media: "legext", e1RM: 0, last: [(45, 12)],
+            media: "legext",
             sets: 3, kg: 40, reps: 12, rest: 75,
             cues: [
                 "Align your knees with the machine's pivot and sit back in the seat.",
@@ -228,7 +231,7 @@ public enum ExerciseLibrary {
                 "Lower under control and don't let the stack crash.",
             ]),
         row("legcurl", "Lying leg curl", .legs, "Hamstrings", .machine, .weightReps,
-            media: "legcurl", e1RM: 0, last: [(35, 12)],
+            media: "legcurl",
             sets: 3, kg: 30, reps: 12, rest: 75,
             cues: [
                 "Line up your knees with the machine's pivot point.",
@@ -236,7 +239,7 @@ public enum ExerciseLibrary {
                 "Lower slowly to full extension.",
             ]),
         row("calf", "Standing calf raise", .legs, "Calves", .machine, .weightReps,
-            media: "calf", e1RM: 0, last: [(60, 12)],
+            media: "calf",
             sets: 4, kg: 60, reps: 12, rest: 60,
             cues: [
                 "Place the balls of your feet on the platform with your heels hanging off.",
@@ -244,7 +247,7 @@ public enum ExerciseLibrary {
                 "Lower into a deep stretch before the next rep.",
             ]),
         row("hipthrust", "Hip thrust", .legs, "Glutes · Hamstrings", .barbell, .weightReps,
-            media: "hipthrust", e1RM: 0, last: [(80, 8)],
+            media: "hipthrust",
             sets: 3, kg: 70, reps: 8, rest: 90,
             cues: [
                 "Rest your upper back on a bench with the bar over your hips.",
@@ -252,7 +255,7 @@ public enum ExerciseLibrary {
                 "Tuck your chin and pause at the top before lowering.",
             ]),
         row("plank", "Plank", .core, "Abs", .bodyweight, .duration,
-            media: "plank", e1RM: 0, last: [(0, 45)],
+            media: "plank",
             sets: 3, kg: 0, reps: 45, rest: 45,
             cues: [
                 "Elbows under your shoulders, body in a straight line from head to heels.",
@@ -260,7 +263,7 @@ public enum ExerciseLibrary {
                 "Breathe steadily and stop when your hips start to sag.",
             ]),
         row("cablecrunch", "Cable crunch", .core, "Abs", .cable, .weightReps,
-            media: "cablecrunch", e1RM: 0, last: [(35, 15)],
+            media: "cablecrunch",
             sets: 3, kg: 30, reps: 15, rest: 60,
             cues: [
                 "Kneel below a high pulley with the rope by your head.",
@@ -268,14 +271,14 @@ public enum ExerciseLibrary {
                 "Return slowly without sitting back onto your heels.",
             ]),
         row("hlr", "Hanging leg raise", .core, "Hip flexors", .bodyweight, .repsOnly,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 0, reps: 10, rest: 60,
             cues: [
                 "Hang from the bar with your shoulders engaged.",
                 "Raise your legs without swinging, then lower slowly.",
             ]),
         row("abwheel", "Ab wheel rollout", .core, "Shoulders", .other, .repsOnly,
-            media: nil, e1RM: 0, last: [],
+            media: nil,
             sets: 3, kg: 0, reps: 8, rest: 60,
             cues: [
                 "Start on your knees with the wheel under your shoulders.",
@@ -346,8 +349,6 @@ public enum ExerciseLibrary {
         _ equipment: Equipment,
         _ tracking: TrackingKind,
         media: String?,
-        e1RM: Double,
-        last: [(Double, Int)],
         sets: Int,
         kg: Double,
         reps: Int,
@@ -362,8 +363,6 @@ public enum ExerciseLibrary {
             equipment: equipment,
             tracking: tracking,
             mediaKey: media,
-            previousBestE1RM: e1RM,
-            previousSets: last.map { PreviousSet(weightKg: $0.0, reps: $0.1) },
             defaults: ExerciseDefaults(sets: sets, weightKg: kg, reps: reps, restSeconds: rest),
             cues: cues,
             barKg: id == "skull" ? 10 : 20,

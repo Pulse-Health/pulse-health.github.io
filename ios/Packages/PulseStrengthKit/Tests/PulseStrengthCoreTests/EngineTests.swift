@@ -83,7 +83,7 @@ final class SvcRig {
             test.addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
         }
         model = StrengthDataModel(persistence: persistence, seedDemoData: seed, now: SvcSyncFix.epoch)
-        engine = WorkoutEngine(role: role, persistence: persistence, data: model, clock: clock.reader)
+        engine = WorkoutEngine(role: role, persistence: persistence, data: model, recovery: DemoRecovery.provider, clock: clock.reader)
         engine.addEffect(recorder)
         engine.onUpdate = { [unowned self] in self.updates += 1 }
     }
@@ -1084,6 +1084,39 @@ final class EngineLifecycleTests: XCTestCase {
             XCTAssertEqual(rig.diskState, rig.engine.state)
             rig.logSets(1)
             XCTAssertNotNil(rig.engine.finish(updateTemplate: false))
+        }
+    }
+
+    func testRestoreReplacesThePreviousResultsOfAnOlderBuildWithTheRealOnes() throws {
+        let persistence = FileStrengthPersistence.temporary()
+        let directory = persistence.directory
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+        try svcMain {
+            let first = SvcRig(self, seed: false, persistence: persistence)
+            first.model.addStarterTemplates()
+            first.model.record(
+                SvcDataFix.workout(1, finishedAt: SvcDataFix.daysAgo(2), [SvcDataFix.entry("bench", [SvcDataFix.work(80, 5)], n: 1)]),
+                updateTemplate: nil
+            )
+            first.engine.start(template: first.model.data.templates[0])
+            // The workout as an older build saved it: the invented previous results of the library are embedded.
+            var saved = try XCTUnwrap(first.engine.state)
+            let bench = try XCTUnwrap(saved.exercises.firstIndex { $0.exercise.id == "bench" })
+            saved.exercises[bench].exercise.previousBestE1RM = 99
+            saved.exercises[bench].exercise.previousSets = [PreviousSet(weightKg: 80, reps: 6), PreviousSet(weightKg: 85, reps: 5)]
+            try persistence.saveActiveWorkout(saved)
+
+            let second = SvcRig(self, seed: false, persistence: persistence)
+            second.engine.restore()
+            let restored = try XCTUnwrap(second.engine.state)
+            let real = try XCTUnwrap(second.model.exercise(id: "bench"))
+            XCTAssertEqual(real.previousBestE1RM, 80 * (1 + 5.0 / 30), accuracy: 1e-9)
+            XCTAssertEqual(restored.exercises[bench].exercise.previousBestE1RM, real.previousBestE1RM)
+            XCTAssertEqual(restored.exercises[bench].exercise.previousSets, real.previousSets)
+            XCTAssertNotEqual(restored.exercises[bench].exercise.previousSets, saved.exercises[bench].exercise.previousSets)
+            XCTAssertEqual(restored.exercises.filter { $0.exercise.id != "bench" }.map { $0.exercise.previousBestE1RM }, [0, 0, 0, 0, 0])
+            XCTAssertEqual(second.recorder.events, [.started(restored)], "the effects see the refreshed workout")
+            XCTAssertEqual(second.diskState, restored, "the saved copy is brought up to date")
         }
     }
 

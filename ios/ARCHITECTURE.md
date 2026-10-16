@@ -90,8 +90,10 @@ public enum NumberText {
 Library data and media keys come from `Active.dc.html` (`IMG`/`L`): the 25 media keys are
 bench, incline, ohp, lateral, pushdown, crossover, pullup, pulldown, brow, squat, deadlift, curl, pushup,
 legpress, rdl, plank, hipthrust, crow, facepull, dbcurl, skull, legcurl, legext, calf, cablecrunch.
-Keep ids, names, muscles, secondary text, equipment, tracking, previous best e1RM, previous sets, defaults
-and cues exactly as in the design. `barKg` is 10 for "skull", else 20.
+Keep ids, names, muscles, secondary text, equipment, tracking, defaults and cues exactly as in the design. `barKg` is 10 for "skull",
+else 20. The library carries NO results of the user: `previousBestE1RM` is 0 and `previousSets` is empty for every built-in exercise. The design's
+invented previous results (bench best 99 kg, 25 exercises with last sets) live in `DemoPreviousResults` (`SampleData.swift`) and in
+`ExerciseLibrary.demoBuiltIn`, for previews, UI tests and the tests of the demo data (see "No invented data" in section 3.4).
 
 ### 3.2 `WorkoutTargets.swift`, `WorkoutReducer.swift`, `WorkoutFactory.swift` (area: reducer)
 
@@ -295,7 +297,8 @@ JSON (ISO-8601 dates, sorted keys), atomic writes per file, a missing file reads
 * `StrengthDataModel` / `StrengthStore` expose `persistenceIssues` (kept until `acknowledgePersistenceIssues()`, also across a later clean reload) and
   `refreshPersistenceIssues()` (picks up the active-workout / acknowledged-commands issues, which the engine reads on its own: `WorkoutController.restoreFromDisk()` calls it).
 * **Never seed over damage.** `seedDemoData` seeds only when the store has no templates and no history AND `persistence.hasDataFiles` is false AND there are no load issues
-  (files that exist and failed to decode are never seeded over). It is a preview / UI-test facility.
+  (files that exist and failed to decode are never seeded over). It is a preview / UI-test facility: `StrengthAppEnvironment.live(seedDemoData:)` and `shared` use `false`,
+  only `preview(...)` and the `-PulseUITest` launch seed (see "No invented data").
 * **Derived data at load.** `personal-bests.json` missing -> recomputed from the history (and written); damaged while the history is whole -> recomputed in memory (the file is
   left for the next save); damaged together with the history -> kept as read (they may be the only trace of an unreadable workout). In that case
   `StrengthData.historyIsIncomplete` is set (kept across reloads, cleared by `acknowledgePersistenceIssues()`) and `recomputePersonalBests()` only raises the bests meanwhile. Template copies of built-in exercises take
@@ -317,7 +320,7 @@ public final class StrengthStore: ObservableObject {
     @Published public private(set) var lastPersistenceError: Error?        // the first error of the last save that failed; nil when it worked
     @Published public private(set) var persistenceIssues: [PersistenceIssue]   // files that were damaged at load, until acknowledged
     public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false)
-    /// builtIn + custom, with `previousBestE1RM` / `previousSets` overlaid from personal bests and history.
+    /// builtIn + custom, with `previousBestE1RM` / `previousSets` overlaid from personal bests and history (none without history, except in a demo store).
     public var exercises: [Exercise] { get }
     public func exercise(id: String) -> Exercise?
     // Every mutating call below changes the store in memory first and returns `Result<_, Error>` (`@discardableResult`): `.failure` carries the write error
@@ -335,6 +338,13 @@ public final class StrengthStore: ObservableObject {
     public func recomputePersonalBests() -> Result<Void, Error>
     public func deleteCustomExercise(id: String) -> Result<Int, Error>               // success = number of templates that lost an entry
     public func updateCustomExercise(_ exercise: Exercise) -> Result<Void, Error>
+    public var hasSampleData: Bool { get }                                           // sample templates / workouts of an older build's demo data are stored
+    public func removeSampleData() -> Result<SampleDataRemoval, Error>               // deletes exactly SampleData.templateIDs / workoutIDs, recomputes the bests
+    public func addStarterTemplates() -> Result<Int, Error>                          // Push / Pull / Legs; success = how many were added (0 when all exist)
+    public func resetData(_ scope: ResetScope) -> Result<Void, Error>                // .templates .history .customExercises .bodyWeights .preferences .all
+    public func recoveryEstimates(now: Date = Date()) -> [MuscleGroup: RecoveryEstimate]   // percent + hasData per muscle group
+    public func readinessPercent(now: Date = Date()) -> Int?                         // mean of the six percents; nil without a workout in the last 21 days
+    public func recoveryProvider(now: Date = Date()) -> RecoveryProvider
     public func acknowledgePersistenceIssues();  public func refreshPersistenceIssues()
     public func history(for exerciseID: String, now: Date) -> ExerciseHistory
     public func reload()
@@ -345,9 +355,9 @@ public final class WorkoutController: ObservableObject {
     @Published public private(set) var lastCompleted: CompletedWorkout?
     public let store: StrengthStore
     public let role: WorkoutRole
-    public var recovery: RecoveryProvider
+    public var recovery: RecoveryProvider                            // by default the estimate from the store's history (RecoveryEstimator); assigning replaces it
     public init(store: StrengthStore, persistence: FileStrengthPersistence?, role: WorkoutRole = .authority,
-                recovery: @escaping RecoveryProvider = DemoRecovery.provider, clock: @escaping @Sendable () -> Date = { Date() })
+                recovery: RecoveryProvider? = nil, clock: @escaping @Sendable () -> Date = { Date() })   // nil = estimated; previews and tests pass DemoRecovery.provider
     public func addEffect(_ effect: WorkoutSideEffect)
     public func restoreFromDisk()                                    // on launch: reload the active workout and notify effects
     public func startWorkout(template: WorkoutTemplate?, name: String? = nil)   // nil template = empty workout named `name ?? "Workout"`
@@ -470,12 +480,42 @@ another workout replaces the kept file; the history is rewritten in full by the 
 
 `SampleData`: `public enum SampleData { static func templates() -> [WorkoutTemplate]  // "Upper A · Push" (the 6 exercises of the design with
 the same sets), "Lower A · Quads", "Upper B · Pull"; static func history(now: Date) -> [CompletedWorkout]; static func personalBests(now:) }`
-used for `seedDemoData` and SwiftUI previews. Make the sample data consistent: today is the `now` argument; "Upper A · Push" was last done
+used for `seedDemoData` and SwiftUI previews only (a real user's store is never seeded). `SampleData.templateIDs` (3) and `SampleData.workoutIDs` (5) list the fixed ids
+of the sample items in one place; the sample templates' exercises carry the demo previous results. Make the sample data consistent: today is the `now` argument; "Upper A · Push" was last done
 5 days ago (the Strength hub says so), bench sessions exist 5 days ago (W 50×8, W 70×5, 80×6, 80×6, 80×5), 10 days ago (…, 82.5×5, 85×5 = personal
 record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads" 7 days ago; personal best bench e1RM 99 (85 kg × 5, 10 days ago).
 `seedDemoData` also seeds templates and history only when the store is empty and the data directory holds no data files and no load issues (see "Persistence integrity"). The "Upper A · Push" template is the design's workout: bench
 (warm-up 50×8, warm-up 70×5, 82.5×6, 82.5×6, 85×6, rest 150), incline 3×28×10 (rest 90), ohp 3×45×8 (rest 120), lateral 3×8×15 and pushdown
 3×30×12 (both rest 60, superset A), crossover 3×15×12 (rest 60).
+
+**No invented data** (`SampleData.swift`, `StrengthData.swift`, `StrengthData+Reset.swift`, `StarterTemplates.swift`, `RecoveryEstimator.swift`).
+* A real user never sees invented workouts, previous results, personal-record baselines or recovery. `DemoPreviousResults.byExerciseID` is the exercise id -> best e1RM + last sets table of the
+  design (`applying(to:)` puts it onto an `Exercise`; `ExerciseLibrary.demoBuiltIn` is the whole library with it). `StrengthData.usesDemoPreviousResults` (not stored, never encoded) is true
+  only when `seedDemoDataIfEmpty` seeded this store in this process: the overlay (`exercises()`, `exercise(id:)`, `overlay(_:)`) then starts from the demo numbers; remembered history and
+  personal bests still win. In every other store the overlay uses only the user's own history and bests, so the PREVIOUS column is empty, no set is flagged as a record, no coach tip appears and
+  `PersonalRecord.previousBest` is never invented for a first session. A reload keeps the flag; `removeSampleData()` and a history reset switch it off.
+* `WorkoutEngine.restore()` refreshes the exercises of the restored workout like `start(template:)` does (previous best and last sets from the store) and saves the file again when that changed
+  something, so a workout that an older build saved does not keep the invented previous results or record baseline.
+* Older builds seeded the sample items into real files. `StrengthData.hasSampleData` (also on the model and the store) is true while a template or workout with an id of `SampleData.templateIDs` /
+  `workoutIDs` is stored. `removeSampleData()` deletes exactly those (also when the user edited a sample template; finished workouts started from one stay, with their template id), then runs
+  `recomputePersonalBests()` so the sample records go too (while `historyIsIncomplete` the bests are only raised), and returns `SampleDataRemoval(templates:workouts:)`. The model saves the templates
+  when any went, and the history and bests when a workout went; nothing is written when nothing was there.
+* `StarterTemplates.all` is Push, Pull and Legs (5-6 library exercises each; sets, reps, weight and rest are `Exercise.defaults`; no `lastPerformed`, no previous results). Their ids are fixed
+  (`57A2<group>-0000-4000-8000-...`, never equal to a sample id), so `addStarterTemplates()` (data, model, store) appends only those whose id is not stored and returns how many it added.
+  The weights are starting values.
+* `RecoveryEstimator.estimates(history:now:)` gives each muscle group a `RecoveryEstimate(percent: Int 0...100, hasData: Bool)`. For every finished workout whose `finishedAt` is at most 5 days
+  before `now` and every muscle group in its `muscleSets` with n working sets: `hoursNeeded = 24 + 6 * min(n, 12)` and `recovered = clamp(hoursSinceFinish / hoursNeeded, 0...1)` (a workout that finished
+  after `now` counts as just finished); a group's percent is the MINIMUM over those workouts, times 100, rounded, and 100 when no workout in the window trained it. `hasData` is true when a workout
+  finished at most 21 days before `now`; without one every group reads 100 and `hasData` is false (screens must then hide the readiness ring, the recovery grid and the coach sentence instead of showing
+  100 %). `readinessPercent` is the mean of the six percents, rounded, nil without data. `StrengthStore.recoveryEstimates(now:)`, `readinessPercent(now:)` and `recoveryProvider(now:)` expose it.
+  `WorkoutDataProviding.recoveryProvider(now:)` lets the engine use it: unless a provider was passed to `WorkoutEngine` / `WorkoutController` (or assigned to `recovery`) the engine estimates from the
+  store's history at the time of each call. `DemoRecovery.provider` stays for previews, `StrengthAppEnvironment.preview` and tests.
+* `StrengthStore.resetData(_ scope: ResetScope)` (an `OptionSet`: `.templates`, `.history`, `.customExercises`, `.bodyWeights`, `.preferences`, `.all`) erases and saves: `.history` also clears the personal
+  bests, the `lastPerformed` of every template, `historyIsIncomplete` and the demo flag; `.customExercises` leaves the copies inside templates and the names inside finished workouts; `.bodyWeights` does
+  not touch Apple Health and switches `weighIn.syncWithHealth` off (otherwise the next read from Health would import the weigh-ins again; the preferences file is saved too); `.preferences` puts every stored preference back to its default (today the weigh-in reminder; new preference fields are reset in the private `resetPreferences()` of `StrengthData+Reset.swift`). The files of
+  the named parts are written empty; for `.all` (every option set) the model calls `FileStrengthPersistence.deleteAll()` instead, which removes every data file (also `active-workout.json` and
+  `acknowledged-commands.json`) but keeps `schema.json`, the `*.corrupt-*.json` copies and the `schema-vN-backup` folders. Like a write, `deleteAll` is refused for a newer data format and for an
+  unreadable file whose original cannot be copied first (nothing is removed then). The store does not look at the running workout: the screen must not offer a reset while one runs.
 
 **Managing what is stored** (`StrengthData+Management.swift`; pure functions on `StrengthData`, forwarded by `StrengthDataModel` and `StrengthStore`).
 * The order of `templates` (the array order of `templates.json`) is the user's order. `saveTemplate` keeps the position of a known id and appends a new one; `duplicateTemplate`
@@ -663,8 +703,8 @@ The keypad keeps its text buffer locally and dispatches `setWeight` / `setReps` 
     public let services: PulseServices
     @Published public var watchStatus: WatchStatus
     public static let shared: StrengthAppEnvironment            // live(); created lazily on the main actor; also registers the WorkoutCommandBus handler
-    public static func live(seedDemoData: Bool = true) -> StrengthAppEnvironment   // app-group persistence, fallback Application Support/PulseStrength; installs services; restoreFromDisk()
-    public static func preview(withActiveWorkout: Bool = false) -> StrengthAppEnvironment  // temporary persistence + sample data, no services
+    public static func live(seedDemoData: Bool = false) -> StrengthAppEnvironment   // app-group persistence, fallback Application Support/PulseStrength; installs services; restoreFromDisk(); never seeds by default
+    public static func preview(withActiveWorkout: Bool = false) -> StrengthAppEnvironment  // temporary persistence + sample data + DemoRecovery, no services (also the -PulseUITest launch)
 }
 public struct StrengthHubView: View { public init(environment: StrengthAppEnvironment, onStart: @escaping (WorkoutTemplate?) -> Void, onResume: @escaping () -> Void) }
 public struct ExerciseDetailView: View { public init(exercise: Exercise, store: StrengthStore) }

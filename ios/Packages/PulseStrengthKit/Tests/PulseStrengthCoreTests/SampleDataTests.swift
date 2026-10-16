@@ -55,10 +55,11 @@ final class SampleDataTests: XCTestCase {
         XCTAssertEqual(try template("Upper B · Pull").entries.map { $0.exercise.id }, ["pullup", "brow", "pulldown", "crow", "facepull", "curl"])
     }
 
-    func testEveryTemplateExerciseIsTheLibraryExercise() {
+    func testEveryTemplateExerciseIsTheLibraryExerciseWithTheDemoPreviousResults() {
         for template in SampleData.templates() {
             for entry in template.entries {
-                XCTAssertEqual(entry.exercise, ExerciseLibrary.exercise(id: entry.exercise.id), entry.exercise.id)
+                let library = ExerciseLibrary.exercise(id: entry.exercise.id).map { DemoPreviousResults.applying(to: $0) }
+                XCTAssertEqual(entry.exercise, library, entry.exercise.id)
                 XCTAssertFalse(entry.plannedSets.isEmpty)
                 XCTAssertGreaterThan(entry.restSeconds, 0)
             }
@@ -252,10 +253,10 @@ final class SampleDataTests: XCTestCase {
         XCTAssertNil(bests["pullup"], "bodyweight exercises have no e1RM")
     }
 
-    func testBestsMatchTheLibraryValuesOfTheDesignExercises() throws {
+    func testBestsMatchTheDemoValuesOfTheDesignExercises() throws {
         let bests = SampleData.personalBests(now: now)
         for id in ["bench", "incline", "ohp", "lateral", "pushdown", "crossover"] {
-            let library = try XCTUnwrap(ExerciseLibrary.exercise(id: id)).previousBestE1RM
+            let library = try XCTUnwrap(DemoPreviousResults.byExerciseID[id]).bestE1RM
             XCTAssertGreaterThan(library, 0)
             XCTAssertEqual(try XCTUnwrap(bests[id]).estimated1RM, library, accuracy: 0.5, id)
         }
@@ -266,8 +267,8 @@ final class SampleDataTests: XCTestCase {
     func testSeededDataReproducesThePreviousSetsOfTheDesign() throws {
         let data = StrengthData.demo(now: now)
         for id in ["bench", "incline", "ohp", "lateral", "pushdown", "crossover"] {
-            let library = try XCTUnwrap(ExerciseLibrary.exercise(id: id))
-            XCTAssertEqual(try XCTUnwrap(data.exercise(id: id)).previousSets, library.previousSets, id)
+            let library = try XCTUnwrap(DemoPreviousResults.byExerciseID[id])
+            XCTAssertEqual(try XCTUnwrap(data.exercise(id: id)).previousSets, library.sets, id)
         }
     }
 

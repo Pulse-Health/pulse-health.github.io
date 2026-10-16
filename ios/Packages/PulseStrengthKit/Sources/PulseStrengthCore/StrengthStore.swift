@@ -37,7 +37,8 @@ public final class StrengthStore: ObservableObject {
 
     private let model: StrengthDataModel
 
-    /// Loads the saved data from `persistence` (nil keeps everything in memory); `seedDemoData` fills an empty store with demo data.
+    /// Loads the saved data from `persistence` (nil keeps everything in memory). `seedDemoData` fills an empty store with demo data and
+    /// shows the invented demo previous results; only previews and tests pass true.
     public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false) {
         model = StrengthDataModel(persistence: persistence, seedDemoData: seedDemoData)
         publish()
@@ -160,6 +161,57 @@ public final class StrengthStore: ObservableObject {
         let result = model.updateCustomExercise(exercise)
         publish()
         return result
+    }
+
+    // MARK: Sample data, starter templates, reset
+
+    /// True when sample templates or sample workouts from an older build's demo data are stored; the app then offers
+    /// `removeSampleData()`.
+    public var hasSampleData: Bool { model.hasSampleData }
+
+    /// Deletes exactly the sample templates and sample workouts, recomputes the personal bests from what is left and saves. The
+    /// success value says how many templates and workouts went; the user's own data stays (see `StrengthData.removeSampleData`).
+    @discardableResult
+    public func removeSampleData() -> Result<SampleDataRemoval, Error> {
+        let result = model.removeSampleData()
+        publish()
+        return result
+    }
+
+    /// Adds Push, Pull and Legs (`StarterTemplates`) unless they are already stored and saves them; the success value is how many
+    /// were added. Their weights are the library defaults, only starting values.
+    @discardableResult
+    public func addStarterTemplates() -> Result<Int, Error> {
+        let result = model.addStarterTemplates()
+        publish()
+        return result
+    }
+
+    /// Erases what `scope` names and saves it; `.all` removes every data file. Only offer it while no workout is running. The
+    /// weigh-ins that were saved to Apple Health stay there (`onBodyWeightRemoved` is not called).
+    @discardableResult
+    public func resetData(_ scope: ResetScope) -> Result<Void, Error> {
+        let result = model.resetData(scope)
+        publish()
+        return result
+    }
+
+    // MARK: Recovery
+
+    /// The estimated recovery of every muscle group at `now` from the finished workouts (see `RecoveryEstimator`); `hasData` is
+    /// false when there is no workout in the last 21 days.
+    public func recoveryEstimates(now: Date = Date()) -> [MuscleGroup: RecoveryEstimate] {
+        model.recoveryEstimates(now: now)
+    }
+
+    /// The mean recovery of the muscle groups at `now`; nil without a workout in the last 21 days.
+    public func readinessPercent(now: Date = Date()) -> Int? {
+        model.readinessPercent(now: now)
+    }
+
+    /// The estimated recovery as a `RecoveryProvider`, fixed at `now`.
+    public func recoveryProvider(now: Date = Date()) -> RecoveryProvider {
+        model.recoveryProvider(now: now)
     }
 
     /// Forgets the load issues the user has seen. The copies of the damaged files stay on disk.
