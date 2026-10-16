@@ -373,7 +373,7 @@ object ExerciseLibrary {
      * "name muscle equipment secondary". A blank query matches everything; null filters match every value.
      */
     fun filter(exercises: List<Exercise>, query: String, muscle: MuscleGroup?, equipment: Equipment?): List<Exercise> {
-        val tokens = query.lowercase().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val tokens = query.lowercase().splitOnFoundationWhitespace()
         class Match(val key: String, val offset: Int, val exercise: Exercise)
         val matches = mutableListOf<Match>()
         for ((offset, exercise) in exercises.withIndex()) {

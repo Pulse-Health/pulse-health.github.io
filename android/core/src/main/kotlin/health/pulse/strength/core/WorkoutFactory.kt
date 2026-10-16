@@ -54,8 +54,8 @@ object WorkoutFactory {
 
     /** A new template (new ids, never performed) holding the workout's current exercises ("save as template"). */
     fun template(state: WorkoutState, name: String): WorkoutTemplate {
-        val trimmed = name.trim()
-        val fallback = state.name.trim()
+        val trimmed = name.trimmedFoundation()
+        val fallback = state.name.trimmedFoundation()
         val title = if (trimmed.isNotEmpty()) trimmed else if (fallback.isNotEmpty()) fallback else "Workout"
         return WorkoutTemplate(
             id = UUID.randomUUID(),
