@@ -397,8 +397,9 @@ State at the last commit of this branch; the numbers come from the `strength-ios
   workout, discard) with 55 screenshots; snapshot tests that render the Lock Screen and Dynamic Island (compact, minimal, expanded) for
   every phase and the Watch screens on five case sizes. The screenshots were compared with the design boards.
 * **Widgets render** (job `visual`, the same artifact): `PulseStrengthWidgetSnapshots`, `PulseStrengthWatchWidgetSnapshots` and
-  `PulseStrengthLiveSnapshots` draw the view of every catalogue id (`../widgets/SPEC.md`), light and dark, with the idealised preview data
-  and with the empty state, and the live states of a running workout: 128 iPhone widget images (`widget-*`), 15 Apple Watch widget
+  `PulseStrengthLiveSnapshots` draw the widget, complication and Live Activity views of the catalogue (`../widgets/SPEC.md`), light and dark, with the idealised
+  preview data and with the empty state, and the live states of a running workout (the controls, which the system draws itself, and the variants that
+  share a view with another id, such as the inline rest day LS-11, are not drawn separately): 128 iPhone widget images (`widget-*`), 15 Apple Watch widget
   images (`watchwidget-*`) and 107 Live Activity images (`live-*`). They were looked at against the design canvas. They are drawings of the
   views by `ImageRenderer`, not screenshots of the system's widgets (see below).
 * **Dark mode, large text, small phone** (job `matrix`): the same tour on an iPhone 16 Pro in dark mode, at accessibility-extra-large text,
