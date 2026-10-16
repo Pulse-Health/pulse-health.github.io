@@ -35,6 +35,14 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// Exchanges the body weight with Apple Health when the user turned that on; nil for previews and UI tests (no Health access, no prompts).
     let healthSync: BodyWeightHealthSync?
 
+    /// A deep link that arrived from a widget, a control or the Action button through the command inbox (not as an opened URL). The root view
+    /// handles it like `onOpenURL` and sets it back to nil.
+    @Published public var pendingDeepLink: StrengthDeepLink?
+
+    /// Keeps the widget snapshot current (nil in previews and UI tests) and applies what widgets left in the command inbox.
+    private let widgetPublisher: WidgetPublisher?
+    private var commandDrain: WidgetCommandDrain?
+
     /// The live environment of the running app (persistence in Application Support or the App Group container, demo data when the store is empty).
     public static let shared: StrengthAppEnvironment = StrengthAppEnvironment.live()
 
@@ -46,7 +54,8 @@ public final class StrengthAppEnvironment: ObservableObject {
         hasSystemServices: Bool,
         watchStatus: WatchStatus,
         weightReminders: WeightReminderScheduler?,
-        healthSync: BodyWeightHealthSync?
+        healthSync: BodyWeightHealthSync?,
+        widgetPublisher: WidgetPublisher? = nil
     ) {
         self.persistence = persistence
         self.store = store
@@ -56,6 +65,7 @@ public final class StrengthAppEnvironment: ObservableObject {
         self.watchStatus = watchStatus
         self.weightReminders = weightReminders
         self.healthSync = healthSync
+        self.widgetPublisher = widgetPublisher
     }
 
     // MARK: Live
@@ -68,6 +78,13 @@ public final class StrengthAppEnvironment: ObservableObject {
         let store = StrengthStore(persistence: persistence, seedDemoData: seedDemoData)
         let controller = WorkoutController(store: store, persistence: persistence, role: .authority)
         let services = PulseServices(controller: controller)
+        let publisher = WidgetPublisher(
+            store: store,
+            controller: controller,
+            directory: WidgetSnapshotStore.directory(),
+            providers: WidgetPublisher.Providers(weeklyGoal: { store.weeklyGoal })
+        )
+        controller.addEffect(publisher)
         let environment = StrengthAppEnvironment(
             persistence: persistence,
             store: store,
@@ -76,14 +93,16 @@ public final class StrengthAppEnvironment: ObservableObject {
             hasSystemServices: true,
             watchStatus: services.watchStatus,
             weightReminders: WeightReminderScheduler(store: store),
-            healthSync: BodyWeightHealthSync.make(store: store)
+            healthSync: BodyWeightHealthSync.make(store: store),
+            widgetPublisher: publisher
         )
         environment.connectWeightReminders()
         environment.connectHealthSync()
         environment.installCommandBus()
         environment.connectWatchStatus()
-        // Last, so that the services (Live Activity re-attach, Watch sync) see the restored workout.
+        // Last, so that the services (Live Activity re-attach, Watch sync, widget snapshot) see the restored workout.
         controller.restoreFromDisk()
+        environment.startWidgetSupport()
         return environment
     }
 
@@ -199,6 +218,23 @@ public final class StrengthAppEnvironment: ObservableObject {
         }
     }
 
+    /// Starts the widget snapshot publisher and the command-inbox drain. Called once the running workout was restored: a command left by an
+    /// intent that launched the app in the background is applied to that workout.
+    private func startWidgetSupport() {
+        widgetPublisher?.start()
+        let drain = WidgetCommandDrain(controller: controller, inbox: WidgetCommandInbox.shared()) { [weak self] link in
+            self?.pendingDeepLink = link
+        }
+        commandDrain = drain
+        drain.start()
+    }
+
+    /// The app became active: apply what widgets left meanwhile and refresh the snapshot (the day may have changed).
+    public func sceneBecameActive() {
+        commandDrain?.drain()
+        widgetPublisher?.publishNow()
+    }
+
     /// Mirrors the services' Watch status into the published `watchStatus`.
     /// The callback may arrive from a WatchConnectivity queue, so it hops to the main actor.
     private func connectWatchStatus() {
@@ -217,14 +253,19 @@ public final class StrengthAppEnvironment: ObservableObject {
         }
     }
 
+    /// The strength data lives in the App Group container, where the widgets, controls and Watch widgets can read it. Data that an earlier
+    /// version of the app kept in Application Support is copied there once (`StrengthDataMigration`). Without the App Group (an unsigned
+    /// simulator build) the app keeps using Application Support and the widgets show their sample content.
     private static func makeLivePersistence() -> FileStrengthPersistence {
-        if let shared = FileStrengthPersistence.appGroup(identifier: StrengthConfig.appGroupID) {
-            return shared
-        }
         let manager = FileManager.default
         let base = manager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first ?? manager.temporaryDirectory
+        let legacy = base.appendingPathComponent("PulseStrength", isDirectory: true)
+        if let shared = FileStrengthPersistence.appGroup(identifier: StrengthConfig.appGroupID) {
+            StrengthDataMigration.copyMissingFiles(from: legacy, to: shared.directory)
+            return shared
+        }
         // `FileStrengthPersistence` creates the directory when needed.
-        return FileStrengthPersistence(directory: base.appendingPathComponent("PulseStrength", isDirectory: true))
+        return FileStrengthPersistence(directory: legacy)
     }
 }
 

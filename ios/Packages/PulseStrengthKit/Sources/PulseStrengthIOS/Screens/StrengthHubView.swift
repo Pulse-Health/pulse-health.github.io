@@ -485,7 +485,10 @@ public struct StrengthHubView: View {
         let week = HubFormat.weekStats(history: store.history, now: now)
         return VStack(spacing: 12) {
             HubSectionHeader(title: "This Week")
-            HubWeekCard(sessions: week.sessions, sets: week.sets, volumeKg: week.volume)
+            HubWeekCard(sessions: week.sessions, sets: week.sets, volumeKg: week.volume, goal: store.weeklyGoal)
+            HubWeeklyGoalRow(goal: store.weeklyGoal) { (goal: Int) in
+                store.setWeeklyGoal(goal)
+            }
         }
     }
 
@@ -1030,19 +1033,44 @@ private struct HubWeekCard: View {
     let sessions: Int
     let sets: Int
     let volumeKg: Double
-
-    /// The design's weekly target ("2 of 4").
-    static let sessionGoal = 4
+    /// Workouts per week the user aims for (the design's default is 4: "2 of 4"); the widgets show the same goal.
+    let goal: Int
 
     var body: some View {
         HubStatRow(stats: [
-            HubStat(title: "Sessions", value: "\(sessions) of \(max(HubWeekCard.sessionGoal, sessions))"),
+            HubStat(title: "Sessions", value: "\(sessions) of \(max(goal, sessions))"),
             HubStat(title: "Sets", value: "\(sets)"),
             HubStat(title: "Volume", value: HubFormat.volume(volumeKg))
         ])
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .hubRowBackground()
+    }
+}
+
+/// The weekly workout goal (1 to 7) with a stepper. It is the goal of the "Sessions" figure above and of the weekly-goal widgets.
+private struct HubWeeklyGoalRow: View {
+    let goal: Int
+    let onChange: (Int) -> Void
+
+    var body: some View {
+        Stepper(
+            value: Binding(get: { goal }, set: { onChange($0) }),
+            in: 1...7
+        ) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Weekly goal")
+                    .pulseFont(15, .medium, relativeTo: .subheadline)
+                    .foregroundStyle(PulseTheme.ink)
+                Text(goal == 1 ? "1 workout a week" : "\(goal) workouts a week")
+                    .pulseFont(12, relativeTo: .footnote)
+                    .foregroundStyle(PulseTheme.inkSecondary)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .hubRowBackground()
+        .accessibilityIdentifier("hub-weekly-goal")
     }
 }
 

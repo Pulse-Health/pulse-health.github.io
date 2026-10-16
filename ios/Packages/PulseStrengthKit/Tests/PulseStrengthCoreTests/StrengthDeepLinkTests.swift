@@ -5,7 +5,7 @@ final class StrengthDeepLinkTests: XCTestCase {
     func testEveryLinkRoundTrips() {
         let id = UUID()
         let links: [StrengthDeepLink] = [
-            .workout, .startNext, .hub, .plates,
+            .workout, .startNext, .hub, .plates, .weight,
             .start(templateID: id), .startEmpty(name: "Mobility · Hips & T-spine"), .exercise(id: "bench"),
         ]
         for link in links {
