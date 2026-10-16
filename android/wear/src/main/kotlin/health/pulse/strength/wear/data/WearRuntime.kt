@@ -114,12 +114,23 @@ object WearRuntime {
         placeholderFlow.value = false
     }
 
-    /** Test hook: forgets everything and installs the given store and link (null means in-memory only). */
+    /** Test hook: forgets everything and installs the given store and link (null means in-memory only), as if [init] had run. */
     internal fun installForTest(store: SnapshotStore?, link: PhoneLink?) {
         synchronized(lock) {
             this.store = store
             this.link = link
             initialised = true
+            snapshotFlow.value = WidgetSnapshot.preview
+            placeholderFlow.value = true
+        }
+    }
+
+    /** Test hook: back to the state of a process that has not run [init] yet. */
+    internal fun resetForTest() {
+        synchronized(lock) {
+            store = null
+            link = null
+            initialised = false
             snapshotFlow.value = WidgetSnapshot.preview
             placeholderFlow.value = true
         }
