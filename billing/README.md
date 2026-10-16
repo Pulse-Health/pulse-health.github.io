@@ -31,7 +31,7 @@ Clerk; the Pulse backend's `user_premium_access` table stays the one place that 
 | `docs/deploy.md` | Stripe dashboard, Clerk, Railway, test-mode walkthrough, go-live checklist, operations. |
 | `docs/integration.md` | Wiring into the Pulse iOS/Android apps and the Pulse backend. |
 | `docs/legal.md` | What the terms, privacy policy and checkout need before taking real money (drafts, not legal advice). |
-| `../ios/Packages/PulseBillingKit` | iOS client. |
+| `ios/PulseBillingKit` | iOS client (Swift package). |
 | `android/` | Android client (Gradle project; not the same as the top-level `android/` of the Strength app). |
 
 ## Endpoints (all but the webhook need `Authorization: Bearer <Clerk session token>`)

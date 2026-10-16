@@ -5,7 +5,7 @@ info:
   summary: Stripe subscriptions for the Pulse iOS and Android apps.
   description: |
     The one contract shared by the billing server (`billing/server`), the iOS client
-    (`ios/Packages/PulseBillingKit`) and the Android client (`android/`). The JSON files in
+    (`billing/ios/PulseBillingKit`) and the Android client (`billing/android`). The JSON files in
     `fixtures/` are example responses of this contract; all three code bases parse them in tests, so a change
     to a field name or type that is not made everywhere fails a test somewhere.
 

@@ -93,8 +93,11 @@ function storeTests(name: string, make: () => Promise<{ store: BillingStore; res
         store.withUserLock('user_A', slow('a2', 1)),
         store.withUserLock('user_B', slow('b', 1)),
       ]);
-      expect(order.indexOf('a1:end')).toBeLessThan(order.indexOf('a2:start'));
-      expect(order.indexOf('b:end')).toBeLessThan(order.indexOf('a1:end')); // B was not blocked by A
+      const at = (entry: string) => order.indexOf(entry);
+      // the same user's two jobs never overlap (which one goes first is up to the database)
+      expect(at('a1:end') < at('a2:start') || at('a2:end') < at('a1:start')).toBe(true);
+      // another user is not held up by them: it finishes before the 40 ms job does
+      expect(at('b:end')).toBeLessThan(at('a1:end'));
     });
 
     it('releases the lock when the work throws', async () => {

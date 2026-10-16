@@ -1,6 +1,6 @@
 # Billing clients: shared design (iOS and Android)
 
-The iOS package (`ios/Packages/PulseBillingKit`) and the Android modules (`android/`) implement the same design with the
+The iOS package (`billing/ios/PulseBillingKit`) and the Android modules (`billing/android`) implement the same design with the
 same names, so a change to the flow is made twice in the same shape. The wire format is `billing/contract/openapi.yaml`;
 the example responses in `billing/contract/fixtures/` are parsed by the tests of the server and of both clients.
 

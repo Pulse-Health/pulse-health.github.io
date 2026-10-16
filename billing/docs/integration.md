@@ -25,7 +25,7 @@ connect, found by reading it on 2026-10-16.
 
 ## iOS (`ios/HealthCoach`)
 
-1. **Add the package.** Copy `ios/Packages/PulseBillingKit` from this repository to `ios/Packages/PulseBillingKit` in the Pulse repo,
+1. **Add the package.** Copy `billing/ios/PulseBillingKit` from this repository to `ios/Packages/PulseBillingKit` in the Pulse repo (next to `PulseStrengthKit`),
    and add it to the HealthCoach target (*Package Dependencies → Add Local…*; products `PulseBillingCore` and `PulseBillingUI`).
    It pulls in the Stripe iOS SDK (`stripe-ios-spm`, product `StripePaymentSheet`).
 2. **URL scheme.** Register a scheme for Stripe's redirects (for example `pulse://stripe-redirect`) and for the portal return

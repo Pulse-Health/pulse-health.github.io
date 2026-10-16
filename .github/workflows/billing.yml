@@ -1,4 +1,4 @@
-# Stripe billing: the server (billing/server), the iOS client (ios/Packages/PulseBillingKit) and the Android client (billing/android).
+# Stripe billing: the server (billing/server), the iOS client (billing/ios/PulseBillingKit) and the Android client (billing/android).
 #
 #   server     Node 22 + PostgreSQL 16: typecheck, the unit tests, the PostgreSQL-backed tests (TEST_DATABASE_URL) and the build.
 #   ios-core   PulseBillingCore on Linux (swift test): models, API client, purchase state machine, parsing of the contract fixtures.
@@ -14,13 +14,11 @@ on:
   pull_request:
     paths:
       - 'billing/**'
-      - 'ios/Packages/PulseBillingKit/**'
       - '.github/workflows/billing.yml'
   push:
     branches: [main]
     paths:
       - 'billing/**'
-      - 'ios/Packages/PulseBillingKit/**'
       - '.github/workflows/billing.yml'
   workflow_dispatch:
 
@@ -75,7 +73,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: ios/Packages/PulseBillingKit
+        working-directory: billing/ios/PulseBillingKit
     steps:
       - uses: actions/checkout@v4
       - name: Swift version
@@ -92,7 +90,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: ios/Packages/PulseBillingKit
+        working-directory: billing/ios/PulseBillingKit
     steps:
       - uses: actions/checkout@v4
 

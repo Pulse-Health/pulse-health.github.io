@@ -1,0 +1,35 @@
+{
+  "": {
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/master.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingUI/BillingViewModel.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/BillingViewModel.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/BillingViewModel.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/BillingViewModel~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/BillingViewModel.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingUI/ManageSubscriptionView.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/ManageSubscriptionView.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/ManageSubscriptionView.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/ManageSubscriptionView~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/ManageSubscriptionView.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingUI/PaywallView.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/PaywallView.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/PaywallView.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/PaywallView~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/PaywallView.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingUI/PulseBilling.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/PulseBilling.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/PulseBilling.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/PulseBilling~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/PulseBilling.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingUI/StripePaymentSheetPresenter.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/StripePaymentSheetPresenter.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/StripePaymentSheetPresenter.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/StripePaymentSheetPresenter~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingUI.build/StripePaymentSheetPresenter.swiftdeps"
+  }
+}

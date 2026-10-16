@@ -1,0 +1,71 @@
+{
+  "": {
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/master.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/BillingAPI.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingAPI.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingAPI.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingAPI~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingAPI.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/BillingError.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingError.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingError.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingError~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingError.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/BillingFormat.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingFormat.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingFormat.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingFormat~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingFormat.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/BillingModels.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingModels.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingModels.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingModels~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingModels.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/BillingStrings.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingStrings.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingStrings.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingStrings~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingStrings.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/BillingTransport.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingTransport.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingTransport.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingTransport~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/BillingTransport.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/EntitlementCache.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/EntitlementCache.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/EntitlementCache.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/EntitlementCache~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/EntitlementCache.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/ISOCountry.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/ISOCountry.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/ISOCountry.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/ISOCountry~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/ISOCountry.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/JSONCoding.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/JSONCoding.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/JSONCoding.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/JSONCoding~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/JSONCoding.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/PurchaseCoordinator.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/PurchaseCoordinator.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/PurchaseCoordinator.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/PurchaseCoordinator~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/PurchaseCoordinator.swiftdeps"
+  },
+  "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/Sources/PulseBillingCore/WireEnum.swift": {
+    "dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/WireEnum.d",
+    "object": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/WireEnum.swift.o",
+    "swiftmodule": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/WireEnum~partial.swiftmodule",
+    "swift-dependencies": "/home/user/pulse-health.github.io/billing/ios/PulseBillingKit/.build/x86_64-unknown-linux-gnu/debug/PulseBillingCore.build/WireEnum.swiftdeps"
+  }
+}
