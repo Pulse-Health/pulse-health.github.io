@@ -27,9 +27,13 @@ public struct PulseStrengthRootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
 
-    public init(environment: StrengthAppEnvironment) {
+    /// False when the onboarding already asked for the notification and Health permissions (at their own steps).
+    private let requestsPermissionsAtLaunch: Bool
+
+    public init(environment: StrengthAppEnvironment, requestsPermissionsAtLaunch: Bool = true) {
         self._environment = ObservedObject(wrappedValue: environment)
         self._controller = ObservedObject(wrappedValue: environment.controller)
+        self.requestsPermissionsAtLaunch = requestsPermissionsAtLaunch
     }
 
     // MARK: Body
@@ -266,7 +270,7 @@ public struct PulseStrengthRootView: View {
     }
 
     private func requestPermissions() async {
-        guard environment.hasSystemServices else { return }
+        guard requestsPermissionsAtLaunch, environment.hasSystemServices else { return }
         await environment.services.requestPermissions()
     }
 
