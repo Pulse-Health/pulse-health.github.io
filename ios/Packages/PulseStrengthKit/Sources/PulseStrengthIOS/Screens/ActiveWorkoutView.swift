@@ -205,14 +205,21 @@ public struct ActiveWorkoutView: View {
 
     @ViewBuilder
     private var watchBanner: some View {
-        if watchStatus != .connected && dismissedWatchStatus != watchStatus {
-            WatchBannerView(
-                status: watchStatus,
-                onAction: { openWatchBannerTarget() },
-                onDismiss: { dismissedWatchStatus = watchStatus }
-            )
-            .padding(.horizontal, PulseTheme.screenInset)
-            .padding(.top, 8)
+        Group {
+            if watchStatus != .connected && dismissedWatchStatus != watchStatus {
+                WatchBannerView(
+                    status: watchStatus,
+                    onAction: { openWatchBannerTarget() },
+                    onDismiss: { dismissedWatchStatus = watchStatus }
+                )
+                .padding(.horizontal, PulseTheme.screenInset)
+                .padding(.top, 8)
+            }
+        }
+        // A dismissed banner stays dismissed only for as long as the problem lasts: once the Watch is connected again the next
+        // disconnect shows it again.
+        .onChange(of: watchStatus) { _, status in
+            if status == .connected { dismissedWatchStatus = nil }
         }
     }
 
