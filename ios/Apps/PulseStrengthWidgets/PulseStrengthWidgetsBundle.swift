@@ -13,6 +13,7 @@ struct PulseStrengthWidgetsBundle: WidgetBundle {
     var body: some Widget {
         WorkoutLiveActivity()
         HomeWidgetBundle()
+        LockWidgetBundle()
     }
 }
 #endif
