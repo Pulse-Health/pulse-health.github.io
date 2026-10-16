@@ -41,6 +41,9 @@ internal object HomeText {
     /** "85 × 5". */
     fun weightReps(kg: Double, reps: Int): String = kg(kg) + " × " + reps
 
+    /** "1 kilogram", "82.5 kilograms": the unit spelled out, for a screen reader. */
+    fun kilograms(value: Double): String = kg(value).let { if (it == "1") "$it kilogram" else "$it kilograms" }
+
     /** "+2.5" / "−3" with a real minus sign, "0" for zero. */
     fun signed(value: Double): String {
         if (abs(value) < 0.005) return "0"

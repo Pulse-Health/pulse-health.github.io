@@ -62,11 +62,15 @@ internal data class NextUpCard(
     val summary: String?,
     /** Under the title of the wide card, which shows [rows] beside it. */
     val wideSummary: String?,
+    /** The training plan the template belongs to and its place in it, when there is a plan. */
+    val planLine: String?,
     /** Shown when there is nothing to start. */
     val message: String?,
     val button: NextUpButton?,
     val rows: List<NextUpRow>,
     val description: String,
+    /** The same for a screen reader when the wide card shows [rows] too (a described card hides its children from the reader). */
+    val wideDescription: String,
 )
 
 internal object NextUpModel {
@@ -84,6 +88,7 @@ internal object NextUpModel {
                     title = active.workoutName,
                     summary = progress,
                     wideSummary = progress,
+                    planLine = null,
                     message = null,
                     button = NextUpButton("Resume", DeepLinks.workout, "Resume ${active.workoutName}"),
                     rows = listOfNotNull(
@@ -91,6 +96,9 @@ internal object NextUpModel {
                         active.nextSetText.takeIf { it.isNotBlank() }?.let { NextUpRow("Next", it) },
                     ),
                     description = "Workout in progress: ${active.workoutName}, $progress logged",
+                    wideDescription = "Workout in progress: ${active.workoutName}, $progress logged. " +
+                        "Now: ${active.exerciseName}, ${active.setLabel}" +
+                        (active.nextSetText.takeIf { it.isNotBlank() }?.let { ". Next: $it" } ?: ""),
                 )
             }
             next != null -> {
@@ -103,10 +111,14 @@ internal object NextUpModel {
                     title = next.name,
                     summary = summary,
                     wideSummary = lastDone(next.daysSince),
+                    planLine = planLine(next.planName, next.planPosition, next.planCount),
                     message = null,
                     button = NextUpButton("Start", DeepLinks.startNext, "Start ${next.name}"),
                     rows = next.exercises.map { NextUpRow(it.name, it.summary) },
                     description = "Next up: ${next.name}, $summary",
+                    wideDescription = "Next up: ${next.name}, $summary" +
+                        (planLine(next.planName, next.planPosition, next.planCount)?.let { ". $it" } ?: "") +
+                        (next.exercises.takeIf { it.isNotEmpty() }?.joinToString("; ", prefix = ". Exercises: ") { "${it.name} ${it.summary}" } ?: ""),
                 )
             }
             else -> NextUpCard(
@@ -114,20 +126,28 @@ internal object NextUpModel {
                 title = EmptyTitle,
                 summary = null,
                 wideSummary = null,
+                planLine = null,
                 message = EmptyMessage,
                 button = null,
                 rows = emptyList(),
                 description = "$EmptyTitle. $EmptyMessage",
+                wideDescription = "$EmptyTitle. $EmptyMessage",
             )
         }
     }
 
-    /** "Last done 5 days ago", "Done today", "Not done yet". */
+    /** "Upper / Lower · workout 1 of 3"; null without a plan. */
+    fun planLine(name: String?, position: Int?, count: Int?): String? {
+        if (name.isNullOrBlank()) return null
+        return HomeText.dotted(name, if (position != null && count != null) "workout $position of $count" else null)
+    }
+
+    /** "Done 5 days ago", "Done today", "Not done yet". */
     fun lastDone(daysSince: Int?): String = when {
         daysSince == null -> "Not done yet"
         daysSince <= 0 -> "Done today"
         daysSince == 1 -> "Done yesterday"
-        else -> "Last done $daysSince days ago"
+        else -> "Done $daysSince days ago"
     }
 
     /** Preview rows that fit into [availableDp] of height (a row is 24 dp, the "+ N more" line 18 dp). */
@@ -179,13 +199,16 @@ private fun CompactNextUp(card: NextUpCard, size: DpSize) {
 private fun WideNextUp(card: NextUpCard, size: DpSize) {
     val leftWidth = ((size.width - 24.dp) * 0.4f).coerceIn(112.dp, 160.dp)
     val shown = NextUpModel.visibleRows(size.height.value - 16f, card.rows.size)
-    WidgetCard(padding = 12.dp, bottomPadding = if (card.button != null) 4.dp else 12.dp, description = card.description) {
+    val titleLines = if (size.height >= 170.dp) 2 else 1
+    val roomForPlan = size.height >= 140.dp
+    WidgetCard(padding = 12.dp, bottomPadding = if (card.button != null) 4.dp else 12.dp, description = card.wideDescription) {
         Row(modifier = GlanceModifier.fillMaxSize()) {
             Column(modifier = GlanceModifier.width(leftWidth).fillMaxHeight()) {
                 Eyebrow(card.eyebrow)
                 Spacer(GlanceModifier.height(2.dp))
-                Label(card.title, 17.sp, GlanceTheme.colors.onSurface, FontWeight.Bold, maxLines = 2)
-                card.wideSummary?.let { Label(it, 13.sp, GlanceTheme.colors.onSurfaceVariant, maxLines = 2) }
+                Label(card.title, 17.sp, GlanceTheme.colors.onSurface, FontWeight.Bold, maxLines = titleLines)
+                card.wideSummary?.let { Label(it, 13.sp, GlanceTheme.colors.onSurfaceVariant) }
+                if (roomForPlan) card.planLine?.let { Label(it, 13.sp, GlanceTheme.colors.onSurfaceVariant) }
                 Spacer(GlanceModifier.defaultWeight())
                 card.button?.let { StartButton(it) }
             }

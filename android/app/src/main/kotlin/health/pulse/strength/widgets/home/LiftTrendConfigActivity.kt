@@ -7,7 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -22,8 +21,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -31,7 +28,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.glance.appwidget.GlanceAppWidgetManager
@@ -42,7 +38,7 @@ import androidx.lifecycle.lifecycleScope
 import health.pulse.strength.R
 import health.pulse.strength.core.widgets.LiftTrend
 import health.pulse.strength.runtime.StrengthRuntime
-import health.pulse.strength.widgets.common.PulseColors
+import health.pulse.strength.ui.theme.PulseTheme
 import kotlinx.coroutines.launch
 
 /**
@@ -67,7 +63,7 @@ class LiftTrendConfigActivity : ComponentActivity() {
         setContent {
             var selectedId by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(Unit) { selectedId = storedChoice() }
-            LiftPickerTheme {
+            PulseTheme {
                 LiftPicker(lifts = lifts, selectedId = selectedId, onPick = ::finishWith)
             }
         }
@@ -94,7 +90,7 @@ class LiftTrendConfigActivity : ComponentActivity() {
     }
 }
 
-/** What a row of the picker says: the lift, its current estimated 1RM and how many sessions the trend rests on. */
+/** What a row of the picker says: the lift's current estimated 1RM and how many sessions the trend rests on. */
 internal fun liftPickerSummary(lift: LiftTrend): String =
     HomeText.dotted("Estimated 1RM ${HomeText.kg(lift.currentE1RM)} kg", HomeText.sessions(lift.sessionCount))
 
@@ -111,7 +107,7 @@ private fun LiftPicker(lifts: List<LiftTrend>, selectedId: String?, onPick: (Str
                 Button(onClick = { onPick(null) }) { Text(stringResource(R.string.widget_lift_trend_config_add)) }
             }
         } else {
-            // The selected lift of a widget that is being reconfigured; a new widget starts on the first lift, which is what it shows.
+            // The lift a widget that is being reconfigured shows; a new widget shows the first lift until one is picked.
             val current = selectedId ?: lifts.first().exerciseID
             LazyColumn(modifier = Modifier.padding(padding)) {
                 item {
@@ -137,28 +133,3 @@ private fun LiftPicker(lifts: List<LiftTrend>, selectedId: String?, onPick: (Str
         }
     }
 }
-
-@Composable
-private fun LiftPickerTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = if (isSystemInDarkTheme()) DarkScheme else LightScheme, content = content)
-}
-
-private val LightScheme = lightColorScheme(
-    primary = PulseColors.GreenLight,
-    onPrimary = Color.White,
-    background = Color(0xFFF2F2F7),
-    onBackground = Color.Black,
-    surface = Color(0xFFF2F2F7),
-    onSurface = Color.Black,
-    onSurfaceVariant = Color(0xFF6B6B70),
-)
-
-private val DarkScheme = darkColorScheme(
-    primary = PulseColors.GreenDark,
-    onPrimary = Color.Black,
-    background = Color.Black,
-    onBackground = Color.White,
-    surface = Color.Black,
-    onSurface = Color.White,
-    onSurfaceVariant = Color(0xFF98989D),
-)

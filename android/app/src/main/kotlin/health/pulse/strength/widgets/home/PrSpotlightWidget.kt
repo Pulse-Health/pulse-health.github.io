@@ -64,9 +64,9 @@ internal object PrModel {
             exercise = pr.exerciseName,
             figure = HomeText.weightReps(pr.weightKg, pr.reps),
             detail = HomeText.dotted(estimate, delta?.let { "+" + HomeText.kg(it) }),
-            description = "$header: ${pr.exerciseName}, ${HomeText.kg(pr.weightKg)} kilograms for ${pr.reps} reps. " +
-                "Estimated one-rep max ${HomeText.kg(pr.estimated1RM)} kilograms" +
-                (delta?.let { ", up ${HomeText.kg(it)}" } ?: ""),
+            description = "$header: ${pr.exerciseName}, ${HomeText.kilograms(pr.weightKg)} for ${pr.reps} reps. " +
+                "Estimated one-rep max ${HomeText.kilograms(pr.estimated1RM)}" +
+                (delta?.let { ", up ${HomeText.kilograms(it)}" } ?: ""),
             link = DeepLinks.exercise(pr.exerciseID),
         )
     }

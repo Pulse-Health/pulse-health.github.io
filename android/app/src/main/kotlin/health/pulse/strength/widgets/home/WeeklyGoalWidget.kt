@@ -24,6 +24,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import health.pulse.strength.core.widgets.DayCell
+import health.pulse.strength.core.widgets.WeekSummary
 import health.pulse.strength.core.widgets.WidgetSnapshot
 import health.pulse.strength.widgets.common.ChartBitmaps
 import health.pulse.strength.widgets.common.MaskImage
@@ -84,8 +85,13 @@ internal object WeeklyGoalModel {
 
     fun subline(streakWeeks: Int): String = if (streakWeeks > 0) "$streakWeeks week streak" else "This week"
 
-    fun description(completed: Int, goal: Int, streakWeeks: Int): String =
-        "$completed of $goal workouts this week" + if (streakWeeks > 0) ", $streakWeeks week streak" else ""
+    /** "3 of 4 workouts this week, 6 week streak. Workouts on Monday, Tuesday and Wednesday." */
+    fun description(week: WeekSummary): String {
+        val days = week.days.mapIndexedNotNull { index, day -> if (day.sessions > 0) HomeText.weekdayName(index) else null }
+        return "${week.completed} of ${week.goal} workouts this week" +
+            (if (week.streakWeeks > 0) ", ${week.streakWeeks} week streak" else "") + "." +
+            (if (days.isEmpty()) "" else " Workouts on ${HomeText.list(days)}.")
+    }
 }
 
 @Composable
@@ -98,7 +104,7 @@ internal fun WeeklyGoalContent(snapshot: WidgetSnapshot, palette: WeeklyGoalPale
 
     WidgetCard(
         padding = WidgetDimens.paddingCompact,
-        description = WeeklyGoalModel.description(week.completed, week.goal, week.streakWeeks),
+        description = WeeklyGoalModel.description(week),
         contentAlignment = Alignment.Center,
     ) {
         if (wide) {

@@ -1,6 +1,7 @@
 package health.pulse.strength.widgets.home
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
 import androidx.glance.LocalSize
@@ -32,10 +33,12 @@ class OverloadReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget = OverloadWidget()
 }
 
+/** What the dark card says. [last] is absent on the empty card. */
 internal data class OverloadCard(
     val age: String?,
     val label: String,
-    val last: String,
+    val exercise: String,
+    val last: String?,
     val target: String,
     val description: String,
     val link: String,
@@ -46,7 +49,8 @@ internal object OverloadModel {
         val overload = snapshot.overload ?: return OverloadCard(
             age = null,
             label = "Beat last time",
-            last = "No target yet",
+            exercise = "No target yet",
+            last = null,
             target = "Finish a workout to get one",
             description = "Beat last time: no target yet. Finish a workout to get one.",
             link = DeepLinks.hub,
@@ -60,12 +64,13 @@ internal object OverloadModel {
         }
         return OverloadCard(
             age = overload.lastDaysAgo?.let { HomeDates.shortAgo(it) },
-            label = "Last time · ${overload.exerciseName}",
+            label = "Last time",
+            exercise = overload.exerciseName,
             last = last,
             target = target,
-            description = "Beat last time. ${overload.exerciseName}: ${HomeText.kg(overload.lastWeightKg)} kilograms for " +
+            description = "Beat last time. ${overload.exerciseName}: ${HomeText.kilograms(overload.lastWeightKg)} for " +
                 "${overload.lastReps} reps" + (overload.lastDaysAgo?.let { ", ${HomeDates.daysAgoLower(it)}" } ?: "") + ". " +
-                "Today: ${HomeText.kg(overload.targetWeightKg)} kilograms for ${overload.targetReps} reps in ${overload.targetSets} sets.",
+                "Today: ${HomeText.kilograms(overload.targetWeightKg)} for ${overload.targetReps} reps in ${overload.targetSets} sets.",
             link = DeepLinks.exercise(overload.exerciseID),
         )
     }
@@ -74,20 +79,23 @@ internal object OverloadModel {
 @Composable
 internal fun OverloadContent(snapshot: WidgetSnapshot) {
     val card = OverloadModel.card(snapshot)
-    val width = LocalSize.current.width.value - 32f
-    val lastSp = HomeLayout.fittedSp(card.last, width, baseSp = 22f, minSp = 14f)
+    val size = LocalSize.current
+    val lastSp = card.last?.let { HomeLayout.fittedSp(it, size.width.value - 32f, baseSp = 22f, minSp = 14f) }
+    val showBadge = size.height >= 125.dp
+    val showLabel = size.height >= 150.dp
     val colors = HomeColors.DarkCard
     WidgetCard(background = colors.surface, description = card.description, onClick = PulseActions.link(card.link)) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
             Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                IconBadge(HomeIcons.Dumbbell, container = colors.accent, tint = colors.onAccent)
+                if (showBadge) IconBadge(HomeIcons.Dumbbell, container = colors.accent, tint = colors.onAccent)
                 Spacer(GlanceModifier.defaultWeight())
                 card.age?.let { Label(it, 13.sp, colors.inkSecondary) }
             }
             Spacer(GlanceModifier.defaultWeight())
-            Label(card.label, 13.sp, colors.inkSecondary)
-            Label(card.last, lastSp.sp, colors.ink, FontWeight.Bold)
-            Label(card.target, 13.sp, colors.accent)
+            if (showLabel) Label(card.label, 13.sp, colors.inkSecondary)
+            Label(card.exercise, 15.sp, colors.ink, FontWeight.Medium)
+            if (card.last != null && lastSp != null) Label(card.last, lastSp.sp, colors.ink, FontWeight.Bold)
+            Label(card.target, 13.sp, colors.accent, maxLines = if (card.last == null) 2 else 1)
         }
     }
 }

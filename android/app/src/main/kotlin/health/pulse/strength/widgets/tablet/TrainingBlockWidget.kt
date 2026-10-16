@@ -57,6 +57,8 @@ internal data class BlockRowCard(val label: String, val cells: List<BlockCellSta
 
 internal data class BlockCard(
     val title: String,
+    /** The name of the training plan the next workout belongs to, when there is a plan. */
+    val plan: String?,
     val weekHeaders: List<String>,
     val currentWeek: Int,
     val rows: List<BlockRowCard>,
@@ -74,7 +76,7 @@ internal object BlockModel {
     private const val MAX_CELL_DP = 40f
 
     /** Null without history (the snapshot has no block then). */
-    fun card(block: TrainingBlock?): BlockCard? {
+    fun card(block: TrainingBlock?, planName: String? = null): BlockCard? {
         block ?: return null
         val weeks = block.weekCount.coerceIn(1, MAX_WEEKS)
         val rows = block.rows.map { row ->
@@ -92,6 +94,7 @@ internal object BlockModel {
         val title = "${block.name} · Week ${block.weekIndex} of ${block.weekCount}"
         return BlockCard(
             title = title,
+            plan = planName?.takeIf { it.isNotBlank() },
             weekHeaders = List(weeks) { "Wk ${it + 1}" },
             currentWeek = block.weekIndex,
             rows = rows,
@@ -114,8 +117,8 @@ internal object BlockModel {
 
     private fun liftWords(deltaKg: Double): String = when {
         abs(deltaKg) < 0.005 -> "unchanged"
-        deltaKg > 0 -> "up ${HomeText.kg(deltaKg)} kilograms"
-        else -> "down ${HomeText.kg(-deltaKg)} kilograms"
+        deltaKg > 0 -> "up ${HomeText.kilograms(deltaKg)}"
+        else -> "down ${HomeText.kilograms(-deltaKg)}"
     }
 
     /** The stat tiles need 62 dp; without them (a short widget) the grid gets the room. */
@@ -128,7 +131,7 @@ internal object BlockModel {
 
 @Composable
 internal fun TrainingBlockContent(snapshot: WidgetSnapshot) {
-    val card = BlockModel.card(snapshot.block)
+    val card = BlockModel.card(snapshot.block, snapshot.nextUp?.planName)
     if (card == null) {
         BlockEmpty(snapshot)
         return
@@ -138,7 +141,10 @@ internal fun TrainingBlockContent(snapshot: WidgetSnapshot) {
     val cellHeight = BlockModel.cellHeight(size.height.value, card.rows.size, stats).dp
     WidgetCard(padding = 16.dp, description = card.description) {
         Column(modifier = GlanceModifier.fillMaxSize()) {
-            Label(card.title, 17.sp, GlanceTheme.colors.onSurface, FontWeight.Bold)
+            Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Label(card.title, 17.sp, GlanceTheme.colors.onSurface, FontWeight.Bold, GlanceModifier.defaultWeight())
+                card.plan?.let { Label(it, 13.sp, GlanceTheme.colors.onSurfaceVariant) }
+            }
             Spacer(GlanceModifier.height(10.dp))
             WeekHeaders(card)
             Column(modifier = GlanceModifier.fillMaxWidth()) {

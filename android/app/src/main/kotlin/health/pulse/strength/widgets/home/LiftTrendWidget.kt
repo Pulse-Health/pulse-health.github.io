@@ -76,10 +76,10 @@ internal data class LiftChartPlan(val chartHeight: Float, val showPrBand: Boolea
     companion object {
         const val MIN_CHART_DP = 24f
         const val BAND_DP = 14f
-        private const val CHROME_DP = 20f + 40f + 4f
+        private const val CHROME_DP = 20f + 52f + 4f
         private const val COMFORTABLE_DP = 30f
 
-        /** Sets aside the padding (20), the header (40) and the gap (4), then gives the "PR" band and the day labels what the chart can spare. */
+        /** Sets aside the padding (20), the header (52: the figure and the change under it) and the gap (4), then gives the "PR" band and the day labels what the chart can spare. */
         fun forHeight(heightDp: Float, hasPr: Boolean): LiftChartPlan {
             val room = heightDp - CHROME_DP
             val prBandWanted = if (hasPr) BAND_DP else 0f
@@ -136,9 +136,10 @@ internal object LiftTrendModel {
             prIndex = record,
             firstLabel = if (plotted) ageLabel(ages.first()) else null,
             lastLabel = if (plotted) ageLabel(ages.last()) else null,
-            description = "${lift.name}: estimated one-rep max $value kilograms" +
+            description = "${lift.name}: estimated one-rep max ${HomeText.kilograms(lift.currentE1RM)}" +
                 (if (plotted) deltaWords(lift.deltaKg) else "") +
-                (record?.let { ", personal record ${HomeText.kg(points[it].value)} kilograms" } ?: ""),
+                (record?.let { ", personal record ${HomeText.kilograms(points[it].value)}" } ?: "") +
+                if (plotted) ". Last ${HomeText.sessions(points.size)}: $series kilograms" else "",
             chartDescription = chartDescription,
         )
     }
@@ -150,8 +151,8 @@ internal object LiftTrendModel {
     /** ", up 3 kilograms since the last session" for a screen reader. */
     fun deltaWords(deltaKg: Double): String = when {
         abs(deltaKg) < 0.005 -> ", unchanged since the last session"
-        deltaKg > 0 -> ", up ${HomeText.kg(deltaKg)} kilograms since the last session"
-        else -> ", down ${HomeText.kg(-deltaKg)} kilograms since the last session"
+        deltaKg > 0 -> ", up ${HomeText.kilograms(deltaKg)} since the last session"
+        else -> ", down ${HomeText.kilograms(-deltaKg)} since the last session"
     }
 
     /** "today" or "5d": how long ago a session was. */

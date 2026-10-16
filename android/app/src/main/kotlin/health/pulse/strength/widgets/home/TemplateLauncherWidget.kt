@@ -103,8 +103,8 @@ internal object LauncherModel {
         )
     }
 
-    fun description(plan: LauncherPlan): String =
-        "Start a workout. " + (plan.message ?: plan.rows.joinToString(". ") { it.description })
+    /** The rows are buttons of their own with their own descriptions, so the card only names itself. */
+    fun description(plan: LauncherPlan): String = "Start a workout" + (plan.message?.let { ". $it" } ?: "")
 }
 
 @Composable

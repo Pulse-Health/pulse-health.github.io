@@ -66,8 +66,11 @@ internal object MonthModel {
             title = month.title,
             sessions = month.sessionCount,
             weeks = padded.chunked(7),
-            description = "${month.title}: ${HomeText.sessions(month.sessionCount)}." +
-                if (trainedDays.isEmpty()) " No training days yet." else " Trained on days ${HomeText.list(trainedDays)}.",
+            description = "${month.title}: ${HomeText.sessions(month.sessionCount)}." + when (trainedDays.size) {
+                0 -> " No training days yet."
+                1 -> " Trained on day ${trainedDays[0]}."
+                else -> " Trained on days ${HomeText.list(trainedDays)}."
+            },
         )
     }
 

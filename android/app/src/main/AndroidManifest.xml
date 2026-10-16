@@ -170,7 +170,7 @@
             android:exported="true"
             android:excludeFromRecents="true"
             android:label="@string/widget_lift_trend_config_title"
-            android:theme="@style/Theme.PulseStrength.WidgetConfig">
+            android:theme="@style/Theme.PulseStrength">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
