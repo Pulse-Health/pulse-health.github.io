@@ -1,6 +1,7 @@
 package health.pulse.strength.core.widgets
 
 import health.pulse.strength.core.StrengthData
+import health.pulse.strength.core.WorkoutTemplate
 import java.time.Instant
 
 /**
@@ -53,8 +54,21 @@ object WidgetSnapshotBuilder {
             active = context.active,
         )
     }
+
+    /**
+     * The template that `startNext` starts and that [make] reports as `nextUp`: the rotation over [templates] (widgets/SPEC.md section 2),
+     * null without templates.
+     */
+    fun nextTemplate(templates: List<WorkoutTemplate>): WorkoutTemplate? = WidgetTemplates.nextTemplate(templates)
 }
 
 /** What a widget shows when the app has never written a snapshot and there is no data: no templates, an empty week. */
 fun WidgetSnapshot.Companion.empty(now: Instant, context: WidgetContext = WidgetContext()): WidgetSnapshot =
     WidgetSnapshotBuilder.make(StrengthData(), context, now)
+
+/**
+ * True when [other] shows the same as this snapshot: everything equal but the time stamp and the running workout's revision, which
+ * grows with every edit of the workout even when the edit looks the same on screen.
+ */
+fun WidgetSnapshot.hasSameContentAs(other: WidgetSnapshot): Boolean =
+    copy(generatedAt = other.generatedAt, active = active?.copy(revision = other.active?.revision ?: 0)) == other

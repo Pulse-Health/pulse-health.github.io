@@ -12,6 +12,7 @@ import health.pulse.strength.core.SetType
 import health.pulse.strength.core.SnapshotBuilder
 import health.pulse.strength.core.StrengthData
 import health.pulse.strength.core.WorkoutFactory
+import health.pulse.strength.core.WorkoutState
 import java.time.Instant
 import org.junit.Test
 
@@ -268,6 +269,56 @@ class WidgetSnapshotBuilderTests {
         assertThat(WidFix.snapshot(data, WidFix.context(bodyweightKg = 80.0)).strengthRatio?.ratio).isEqualTo(1.24)
         assertThat(WidFix.snapshot(data, WidFix.context(bodyweightKg = 90.0)).strengthRatio?.bodyweightKg).isEqualTo(90.0)
         assertWithMessage("the Android store keeps no weigh-ins").that(WidFix.snapshot(data).strengthRatio?.bodyweightKg).isNull()
+    }
+
+    // endregion
+
+    // region What a host asks of the builder
+
+    @Test
+    fun testNextTemplateIsTheTemplateOfNextUp() {
+        val data = StrengthData.demo(WidFix.now)
+        assertThat(WidgetSnapshotBuilder.nextTemplate(data.templates)?.id?.toString()).isEqualTo(demo().nextUp?.templateID)
+        assertThat(WidgetSnapshotBuilder.nextTemplate(emptyList())).isNull()
+
+        // The rotation wraps around: after the last template comes the first.
+        val templates = listOf(1, 2, 3).map { WidFix.template(it, "Day $it", last = if (it == 3) WidFix.now else null) }
+        assertThat(WidgetSnapshotBuilder.nextTemplate(templates)).isEqualTo(templates[0])
+        assertThat(WidFix.snapshot(StrengthData(templates = templates)).nextUp?.templateID).isEqualTo(templates[0].id.toString())
+    }
+
+    @Test
+    fun testTwoSnapshotsOfTheSameDataHaveTheSameContentWhateverTheTimeStamp() {
+        val data = StrengthData.demo(WidFix.now)
+        val earlier = WidFix.snapshot(data)
+        val later = WidFix.snapshot(data, now = WidFix.now.plusSeconds(3_600))
+        assertThat(later.generatedAt).isNotEqualTo(earlier.generatedAt)
+        assertThat(earlier.hasSameContentAs(later)).isTrue()
+        assertThat(later.hasSameContentAs(earlier)).isTrue()
+        assertThat(earlier.hasSameContentAs(earlier)).isTrue()
+    }
+
+    @Test
+    fun testAnotherDayOrAnotherGoalIsAnotherContent() {
+        val data = StrengthData.demo(WidFix.now)
+        val snapshot = WidFix.snapshot(data)
+        assertThat(snapshot.hasSameContentAs(WidFix.snapshot(data, now = WidFix.now.plusSeconds(86_400)))).isFalse()
+        assertThat(snapshot.hasSameContentAs(WidFix.snapshot(data, WidFix.context(goal = 5)))).isFalse()
+        assertThat(snapshot.hasSameContentAs(WidFix.snapshot(data, WidFix.context("Pacific/Auckland")))).isFalse()
+        assertThat(snapshot.hasSameContentAs(WidFix.snapshot(StrengthData()))).isFalse()
+    }
+
+    @Test
+    fun testTheRunningWorkoutsRevisionIsNotContentButItsStateIs() {
+        val state = WorkoutFactory.makeWorkout(SampleData.templates(WidFix.now)[0], WidFix.now)
+        fun snapshot(workout: WorkoutState?): WidgetSnapshot =
+            WidFix.snapshot(StrengthData(), WidFix.context().copy(active = workout?.let { SnapshotBuilder.make(it, WidFix.now) }))
+
+        val running = snapshot(state)
+        assertThat(running.hasSameContentAs(snapshot(state.copy(revision = state.revision + 7)))).isTrue()
+        assertThat(running.hasSameContentAs(snapshot(state.copy(name = "Renamed")))).isFalse()
+        assertThat(running.hasSameContentAs(snapshot(null))).isFalse()
+        assertThat(snapshot(null).hasSameContentAs(running)).isFalse()
     }
 
     // endregion
