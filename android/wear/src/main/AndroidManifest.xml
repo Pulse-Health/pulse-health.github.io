@@ -4,11 +4,17 @@
     <uses-feature android:name="android.hardware.type.watch" />
 
     <!-- ==== wear-permissions:begin ==== -->
+    <!-- The Ongoing Activity chip of a running workout is the status of a notification (a runtime permission from Wear OS 4). The Data
+         Layer, tiles and complications need no permission, and the watch app has no network access. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- ==== wear-permissions:end ==== -->
 
     <application
         android:name=".WearApp"
         android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true">
 
@@ -19,9 +25,14 @@
             android:name="com.google.android.wearable.standalone"
             android:value="false" />
 
+        <!-- Exported: the launcher, the tiles (launch actions) and the complications (tap actions) start it. No task affinity, so that the
+             watch's recents show the app as one entry. -->
         <activity
             android:name=".WearMainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.DeviceDefault">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -29,6 +40,191 @@
         </activity>
 
         <!-- ==== wear-components:begin (tile services, complication services, Data Layer listener) ==== -->
+
+        <!-- Data Layer: the phone writes the widget snapshot at WearProtocol.SNAPSHOT_PATH. Play services binds this service, so it is
+             exported; the path in the filter is the value of that constant. -->
+        <service
+            android:name=".sync.WearSnapshotListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
+                <data
+                    android:host="*"
+                    android:pathPrefix="/pulse/widget-snapshot"
+                    android:scheme="wear" />
+            </intent-filter>
+        </service>
+
+        <!-- Tiles (WA-03, WA-04, WA-05, WA-06, WA-08, WA-09). Only the system may bind them. -->
+        <service
+            android:name=".tiles.NextUpTile"
+            android:description="@string/tile_next_up_description"
+            android:exported="true"
+            android:icon="@drawable/ic_dumbbell"
+            android:label="@string/tile_next_up_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tiles.WorkoutTile"
+            android:description="@string/tile_workout_description"
+            android:exported="true"
+            android:icon="@drawable/ic_hand"
+            android:label="@string/tile_workout_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tiles.RecordTile"
+            android:description="@string/tile_record_description"
+            android:exported="true"
+            android:icon="@drawable/ic_trophy"
+            android:label="@string/tile_record_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tiles.LiftTrendTile"
+            android:description="@string/tile_lift_trend_description"
+            android:exported="true"
+            android:icon="@drawable/ic_trend"
+            android:label="@string/tile_lift_trend_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".tiles.HeartRateTile"
+            android:description="@string/tile_heart_rate_description"
+            android:exported="true"
+            android:icon="@drawable/ic_heart"
+            android:label="@string/tile_heart_rate_label"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+        </service>
+
+        <!-- Complications (WA-01, WA-02, WA-07, WA-10). They are pushed (UPDATE_PERIOD_SECONDS 0) whenever a snapshot arrives. -->
+        <service
+            android:name=".complications.WeeklyGoalComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_goal"
+            android:label="@string/complication_weekly_goal_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="RANGED_VALUE,SHORT_TEXT" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+        </service>
+        <service
+            android:name=".complications.DaysSinceComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_timer"
+            android:label="@string/complication_days_since_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="SHORT_TEXT" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+        </service>
+        <service
+            android:name=".complications.NextUpComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_dumbbell"
+            android:label="@string/complication_next_up_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="LONG_TEXT,SHORT_TEXT" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+        </service>
+        <service
+            android:name=".complications.StartComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_play"
+            android:label="@string/complication_start_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="MONOCHROMATIC_IMAGE,SMALL_IMAGE,SHORT_TEXT" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+        </service>
+        <service
+            android:name=".complications.RestComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_timer"
+            android:label="@string/complication_rest_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="RANGED_VALUE,SHORT_TEXT" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+        </service>
+        <service
+            android:name=".complications.StreakComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_flame"
+            android:label="@string/complication_streak_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="SHORT_TEXT" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+        </service>
+        <service
+            android:name=".complications.WeeklySetsComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_goal"
+            android:label="@string/complication_weekly_sets_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="RANGED_VALUE" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="0" />
+        </service>
         <!-- ==== wear-components:end ==== -->
 
     </application>

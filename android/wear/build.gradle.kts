@@ -78,6 +78,11 @@ dependencies {
     implementation(libs.google.play.services.wearable)
 
     // ==== deps-wear:begin ====
+    // Compose tests of the watch screens (Robolectric, no emulator).
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    // The layout tests read the tile layouts through their proto form, which the tiles library keeps off the compile classpath.
+    testImplementation(libs.androidx.wear.protolayout.proto)
     // ==== deps-wear:end ====
 
     testImplementation(libs.junit)

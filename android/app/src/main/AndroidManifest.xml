@@ -229,6 +229,251 @@
         <!-- ==== glance-home:end ==== -->
 
         <!-- ==== glance-extras:begin ==== -->
+        <!-- Lock screen and glanceable hub widgets (LS-01 ... LS-11) -->
+        <receiver
+            android:name=".widgets.lock.WeeklyGoalCompactReceiver"
+            android:exported="true"
+            android:label="@string/widget_weekly_goal_compact_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weekly_goal_compact_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.lock.DaysSinceReceiver"
+            android:exported="true"
+            android:label="@string/widget_days_since_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/days_since_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.lock.StreakReceiver"
+            android:exported="true"
+            android:label="@string/widget_streak_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/streak_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.lock.QuickStartReceiver"
+            android:exported="true"
+            android:label="@string/widget_quick_start_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/quick_start_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.lock.NextUpCompactReceiver"
+            android:exported="true"
+            android:label="@string/widget_next_up_compact_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/next_up_compact_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.lock.WeeklySetsCompactReceiver"
+            android:exported="true"
+            android:label="@string/widget_weekly_sets_compact_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weekly_sets_compact_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.lock.PrCompactReceiver"
+            android:exported="true"
+            android:label="@string/widget_pr_compact_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pr_compact_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.lock.OverloadCompactReceiver"
+            android:exported="true"
+            android:label="@string/widget_overload_compact_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/overload_compact_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.lock.InlineStatusWeekReceiver"
+            android:exported="true"
+            android:label="@string/widget_inline_week_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/inline_status_week_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.lock.InlineStatusSplitReceiver"
+            android:exported="true"
+            android:label="@string/widget_inline_split_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/inline_status_split_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.lock.InlineStatusRestReceiver"
+            android:exported="true"
+            android:label="@string/widget_inline_rest_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/inline_status_rest_widget_info" />
+        </receiver>
+
+        <!-- Wilder ideas (WI-01 ... WI-11) -->
+        <receiver
+            android:name=".widgets.extras.BodyMapReceiver"
+            android:exported="true"
+            android:label="@string/widget_body_map_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/body_map_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.extras.LogSetReceiver"
+            android:exported="true"
+            android:label="@string/widget_log_set_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/log_set_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.extras.PartnerReceiver"
+            android:exported="true"
+            android:label="@string/widget_partner_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/partner_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.extras.FormCueReceiver"
+            android:exported="true"
+            android:label="@string/widget_form_cue_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/form_cue_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.extras.LoadedBarReceiver"
+            android:exported="true"
+            android:label="@string/widget_loaded_bar_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/loaded_bar_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.extras.RestDayReceiver"
+            android:exported="true"
+            android:label="@string/widget_rest_day_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/rest_day_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.extras.StrengthRatioReceiver"
+            android:exported="true"
+            android:label="@string/widget_strength_ratio_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/strength_ratio_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.extras.YearInIronReceiver"
+            android:exported="true"
+            android:label="@string/widget_year_in_iron_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/year_in_iron_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.extras.ReadinessReceiver"
+            android:exported="true"
+            android:label="@string/widget_readiness_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/readiness_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.extras.PlateauReceiver"
+            android:exported="true"
+            android:label="@string/widget_plateau_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/plateau_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.extras.SessionTimelineReceiver"
+            android:exported="true"
+            android:label="@string/widget_session_timeline_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/session_timeline_widget_info" />
+        </receiver>
         <!-- ==== glance-extras:end ==== -->
 
         <!-- ==== system:begin (service, receivers, tile services, shortcuts activity) ==== -->
@@ -382,6 +627,19 @@
         <!-- ==== system:end ==== -->
 
         <!-- ==== wear:begin (Data Layer listener service) ==== -->
+        <!-- Wear OS: the watch app sends its commands here (WearProtocol.COMMAND_PATH, the path in the filter). Play services binds the
+             service from its own process, so it has to be exported; it is not a network endpoint and needs no permission. -->
+        <service
+            android:name=".wear.PhoneWearListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:host="*"
+                    android:pathPrefix="/pulse/command"
+                    android:scheme="wear" />
+            </intent-filter>
+        </service>
         <!-- ==== wear:end ==== -->
 
         <!-- Health Connect: the screen that explains why the app writes workouts. -->

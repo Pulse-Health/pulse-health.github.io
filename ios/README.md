@@ -10,13 +10,14 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (780 tests, 799 with the Combine
-> stand-in). The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow
-> `strength-ios` has compiled it with Xcode 16 for the iOS and watchOS simulators, run a 30-step UI flow through the real
-> iPhone app, rendered the Lock Screen, Dynamic Island and Watch screens, and re-run the app in dark mode, at large text
-> sizes and on an iPhone SE. Several rounds of adversarial review fixed what they found. What has **not** been tried is
-> anything that needs real hardware (Live Activity buttons, Watch heart rate and WatchConnectivity, notifications):
-> see [Verification status](#verification-status).
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (1151 tests on Linux, 1153 on macOS).
+> The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow `strength-ios`
+> has compiled it with Xcode 16 and Xcode 26 (the iPhone app with its widget extension, the Watch app with its widget
+> extension), run a 30-step UI flow through the real iPhone app, rendered the Lock Screen, Dynamic Island, Watch screens and
+> every widget (363 images), and re-run the app in dark mode, at large text sizes and on an iPhone SE. Several rounds of
+> adversarial review fixed what they found. What has **not** been tried is anything that needs real hardware or the system's
+> own widget surfaces (Live Activity buttons, widget gallery and configuration, Control Center, StandBy, Watch heart rate and
+> WatchConnectivity, notifications): see [Verification status](#verification-status).
 
 > **Repository note.** This directory lives in the `pulse-health.github.io` website repository, which GitHub Pages publishes from
 > the repository root. The root `_config.yml` excludes `ios/` from that build, so these files are not served on the website.
@@ -347,16 +348,23 @@ State at the last commit of this branch; the numbers come from the `strength-ios
 
 **Verified**
 
-* **Core (`PulseStrengthCore`)**: 780 unit tests (799 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
+* **Core (`PulseStrengthCore`)**: 1151 unit tests on Linux (job `core-linux`, also with the Combine stand-in) and 1153 on macOS (jobs `apple` and `xcode26`) pass:
   reducer, presenter, snapshot and summary builders, persistence, the phone <-> Watch sync protocol (acknowledgements, optimistic
   replay, delivery fuzzing with dropped, duplicated and reordered messages), exercise library and sample data.
 * **Compiles**: `xcodegen generate`, then `xcodebuild` of the iOS app (with the widget extension and the embedded Watch app) and of the
   Watch scheme for the simulators, without code signing (job `apple`). Xcode 16, deployment targets iOS 17.0 / watchOS 10.0, Swift 5 mode.
+  Jobs `apple` and `xcode26` (Xcode 26) both build the app with its widget extension (Live Activity, Home Screen, StandBy, iPad, Lock Screen,
+  extras, controls) and the Watch app with its widget extension; the device-SDK build embeds both extensions.
 * **Runs in a simulator** (job `visual`, artifact `strength-screens`): a 30-step XCUITest flow through the real app (start a workout, log
   sets, keypad, set detail, rest settings, options, form info, exercise list, picker with search and multi-select, create exercise,
   navigator, superset, undo, rest dock, pause/resume, finish, update-template alert, summary, history, exercise library and detail, empty
   workout, discard) with 55 screenshots; snapshot tests that render the Lock Screen and Dynamic Island (compact, minimal, expanded) for
   every phase and the Watch screens on five case sizes. The screenshots were compared with the design boards.
+* **Widgets render** (job `visual`, the same artifact): `PulseStrengthWidgetSnapshots`, `PulseStrengthWatchWidgetSnapshots` and
+  `PulseStrengthLiveSnapshots` draw the view of every catalogue id (`../widgets/SPEC.md`), light and dark, with the idealised preview data
+  and with the empty state, and the live states of a running workout: 128 iPhone widget images (`widget-*`), 15 Apple Watch widget
+  images (`watchwidget-*`) and 107 Live Activity images (`live-*`). They were looked at against the design canvas. They are drawings of the
+  views by `ImageRenderer`, not screenshots of the system's widgets (see below).
 * **Dark mode, large text, small phone** (job `matrix`): the same tour on an iPhone 16 Pro in dark mode, at accessibility-extra-large text,
   and on an iPhone SE (3rd generation, 375 x 667 pt). On the SE the workout screen fits without page scrolling (only the set list scrolls
   inside the card) and nothing leaves the screen. Text follows Dynamic Type on every screen; the dense workout screen and the keypad are
@@ -368,6 +376,10 @@ State at the last commit of this branch; the numbers come from the `strength-ios
 
 **Not verified** (be careful before shipping)
 
+* Everything the system does around a widget: the widget gallery and configuration, the container background (and its removal in StandBy, the
+  tinted and the clear Home Screen modes), the Smart Stack and the Lock Screen layout, widget reloads and the reload budget, App Intents
+  that run in an extension process, controls in Control Center and the Action button, a Live Activity's promotion, the Watch complications
+  on a real watch face. The renders have no container background, no timers and no accented rendering.
 * Anything on real hardware, see below. The simulator cannot show Live Activity buttons, Dynamic Island on a device, WatchConnectivity,
   Watch heart rate, HealthKit writes, or the rest notification. The Lock Screen and Dynamic Island screens are the SwiftUI views rendered
   directly (the same code the widget uses), not the system's presentation.
@@ -397,6 +409,11 @@ CI and the simulators cannot show any of these, and none of them has been tried:
   (Browse > Body Measurements > Weight) and disappears there when it is deleted in the app; a weight added in the Health app (or by a smart scale) appears under Settings > History as
   "Apple Health" after the app is opened again, cannot be swiped away, and counts as a weigh-in for the reminder; refusing "Weight" sharing shows the footer hint. Then open the detail
   of a barbell lift ("Relative strength") and of Push-up / Chest dip / Pull-up ("Best session load (est.)") with a weigh-in on record.
+* **Widgets, controls and live surfaces**: add every family on a device (Home Screen small / medium / large / extra large, Lock Screen circular /
+  rectangular / inline, StandBy) and check that a tap opens the right place; that the buttons (start, log set, nudge) work while the app is
+  suspended; the tinted and clear Home Screen modes; the controls in Control Center and on the Lock Screen; the Action button (log set, skip
+  rest, start next); a planned session (countdown on the Lock Screen and in the Dynamic Island, the notification at the start); the record flash
+  and the finish card of the Live Activity; the weekly goal after a change in the hub; and the Watch complications and Smart Stack cards.
 * Also worth a pass on a device: WatchConnectivity reachability and the "Watch not connected" / "Health access denied" banners,
   a workout written to Health by the phone when no Watch is used, Dynamic Island layouts on a 14 Pro or newer,
   VoiceOver in the active-workout screen, and Reduce Motion (form demos, heart beat).

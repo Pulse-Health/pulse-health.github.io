@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The rest countdown of the log-a-set widget (WI-02): a system Chronometer, which the launcher keeps ticking without the app running.
+  RestCountdown sets its base and switches it to counting down. Tabular figures keep the digits from jittering as they change.
+-->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rest_chronometer"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:fontFamily="sans-serif-medium"
+    android:fontFeatureSettings="tnum"
+    android:includeFontPadding="false"
+    android:textColor="@color/glance_extras_text"
+    android:textSize="32sp" />

@@ -1,4 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Pulse Strength</string>
+
+    <!-- Tiles (the picker shows the label and the description). -->
+    <string name="tile_next_up_label">Next up</string>
+    <string name="tile_next_up_description">Your next workout with a Start button.</string>
+    <string name="tile_workout_label">Workout</string>
+    <string name="tile_workout_description">Log sets and control the rest timer from your wrist.</string>
+    <string name="tile_record_label">Latest record</string>
+    <string name="tile_record_description">Your newest personal record.</string>
+    <string name="tile_lift_trend_label">Lift trend</string>
+    <string name="tile_lift_trend_description">The estimated one-rep max of a lift over its last sessions.</string>
+    <string name="tile_heart_rate_label">Heart rate</string>
+    <string name="tile_heart_rate_description">The heart rate of your last session, set by set.</string>
+
+    <!-- Complications (the watch face editor shows the label). -->
+    <string name="complication_weekly_goal_label">Weekly goal</string>
+    <string name="complication_days_since_label">Days since training</string>
+    <string name="complication_next_up_label">Next workout</string>
+    <string name="complication_start_label">Start workout</string>
+    <string name="complication_rest_label">Rest timer</string>
+    <string name="complication_streak_label">Week streak</string>
+    <string name="complication_weekly_sets_label">Weekly sets</string>
+
+    <!-- Ongoing Activity notification. -->
+    <string name="channel_workout_name">Running workout</string>
+    <string name="channel_workout_description">Keeps your workout on the watch face while it runs.</string>
 </resources>

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Text on the widget card for the one remote layout that cannot use a Glance colour provider (widget_rest_chronometer). Dark: values-night. -->
+    <color name="glance_extras_text">#FF000000</color>
+</resources>
