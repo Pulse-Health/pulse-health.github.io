@@ -597,7 +597,8 @@ public final class StrengthDataModel: WorkoutDataProviding {
     /// could not be read are never seeded over.
     ///
     /// Without a saved `preferences.json` the preferences are the defaults of a new install, with the weight unit that `deviceLocale`
-    /// calls for (the app passes `Locale.current`; nil, the default of tests and previews, means kilograms).
+    /// calls for (the app passes `Locale.current`; nil, the default of tests and previews, means kilograms). A directory that holds
+    /// templates, history or other data of an older build keeps kilograms whatever the region.
     public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false, now: Date = Date(), deviceLocale: Locale? = nil) {
         self.persistence = persistence
         self.deviceLocale = deviceLocale
@@ -746,6 +747,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
         // A file that exists but cannot be read counts as stored: it is left alone until the user saves new preferences (the
         // original is copied first, see `FileStrengthPersistence.write`).
         preferencesStored = persistence.hasPreferencesFile
+        let preferences = persistence.loadPreferences() ?? preferencesWithoutFile(of: persistence)
         data = StrengthData(
             templates: persistence.loadTemplates(),
             history: persistence.loadHistory(),
@@ -753,7 +755,7 @@ public final class StrengthDataModel: WorkoutDataProviding {
             personalBests: persistence.loadPersonalBests(),
             bodyWeights: persistence.loadBodyWeights(),
             weighIn: persistence.loadWeighInPreferences(),
-            preferences: persistence.loadPreferences() ?? StrengthDataModel.newInstallPreferences(deviceLocale),
+            preferences: preferences,
             historyIsIncomplete: historyWasIncomplete,
             usesDemoPreviousResults: wasDemo
         )
@@ -779,6 +781,14 @@ public final class StrengthDataModel: WorkoutDataProviding {
             }
         }
         refreshTemplateExercises()
+    }
+
+    /// The preferences when `preferences.json` could not be loaded. A directory that already holds the user's data without a
+    /// preferences file was written by a build that only knew kilograms: that user keeps kilograms (the region must not convert
+    /// their history on the upgrade) and can choose pounds in the settings. Only a directory without such data is a new install.
+    private func preferencesWithoutFile(of persistence: FileStrengthPersistence) -> StrengthPreferences {
+        if !persistence.hasPreferencesFile, persistence.hasUserDataFilesBesidesPreferences { return StrengthPreferences() }
+        return StrengthDataModel.newInstallPreferences(deviceLocale)
     }
 
     /// The preferences of a new install: the defaults with the unit that `deviceLocale` calls for (kilograms without a locale).

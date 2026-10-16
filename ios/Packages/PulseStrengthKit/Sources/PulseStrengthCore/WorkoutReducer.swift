@@ -237,12 +237,18 @@ private extension WorkoutReducer {
         let exercise = s.exercises[k].exercise
         var set = s.exercises[k].sets[i]
         if weightSteps != 0, exercise.tracksWeight, set.weightKg.isFinite {
-            // The steps are taken in the unit the user sees, from the weight as shown, so that a step up and a step down always
-            // return to the same displayed weight (the stored kilograms are rounded to 0.01 kg each time).
+            // The step is added to the stored kilograms, so that a step up and a step down return to the very same stored weight. Where
+            // the rounding to 0.01 kg would make the shown weight miss the step (about every tenth step in pounds), the step is taken
+            // from the shown weight instead, so that repeated steps never drift away from it.
             let unit = s.settings.weightUnit
-            let steps = Double(max(-1000, min(1000, weightSteps)))
-            let shown = unit.displayValue(kg: set.weightKg) + steps * exercise.weightStep(in: unit)
-            set.weightKg = roundedWeight(unit.toKg(shown)) ?? set.weightKg
+            let delta = Double(max(-1000, min(1000, weightSteps))) * exercise.weightStep(in: unit)
+            let target = unit.displayValue(kg: set.weightKg) + delta
+            let added = roundedWeight(set.weightKg + unit.toKg(delta))
+            if let added, abs(unit.displayValue(kg: added) - target) < 1e-6 {
+                set.weightKg = added
+            } else {
+                set.weightKg = roundedWeight(unit.toKg(target)) ?? set.weightKg
+            }
         }
         if repsSteps != 0 {
             let steps = max(-1000, min(1000, repsSteps))

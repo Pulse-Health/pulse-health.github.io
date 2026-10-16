@@ -672,7 +672,7 @@ public struct WeightFormatter: Equatable, Sendable {                  // every f
 
 | field | default | notes |
 |---|---|---|
-| `weightUnit` | kg (`init(locale:)`: `WeightUnit.defaultFor(locale:)`) | chosen from the region ONCE, when the preferences are first created, then stored |
+| `weightUnit` | kg (`init(locale:)`: `WeightUnit.defaultFor(locale:)`) | chosen from the region ONCE, when the preferences are first created on a new install (an install with older data starts with kg), then stored |
 | `autoStartRest`, `alertWhenRestEnds` | true | the `WorkoutSettings` of every new workout |
 | `soundWhenRestEnds`, `hapticsEnabled`, `keepScreenAwake`, `saveWorkoutsToHealth`, `estimateCalories` | true | read by the UI and the services |
 | `weeklyGoalSessions` | 4 | clamped to 1...14 by the property itself |
@@ -684,7 +684,9 @@ public struct WeightFormatter: Equatable, Sendable {                  // every f
   preference (and the weigh-in reminder) back to the defaults of a new install; `.all` removes the file.
 * **First creation.** Without a file the preferences are the defaults of a new install with the unit of `deviceLocale` (`StrengthStore` / `StrengthDataModel` `init(deviceLocale:)`; the app passes
   `Locale.current`, tests and previews pass nothing and get kilograms, so no test depends on the machine's region). Loading writes nothing; the first save of anything (and any
-  `updatePreferences`) writes the file, so the unit the region picked is kept if the region changes later. A damaged file is left alone until the user saves new preferences.
+  `updatePreferences`) writes the file, so the unit the region picked is kept if the region changes later. A directory that already holds the user's data (templates, history, custom exercises, personal
+  bests, body weights, weigh-in settings) but no preferences file was written by a build that only knew kilograms: it gets kilograms whatever the region, so the upgrade never converts a history
+  (the workout in progress and the acknowledged commands do not count as data). A damaged file is left alone until the user saves new preferences.
 * **Workouts.** `WorkoutEngine.start` passes the store's current preferences to `WorkoutFactory`, so the rest timer choices and the unit apply to every new workout
   (`WorkoutDataProviding.preferences`, default `StrengthPreferences()`). A rest timer toggle the user makes DURING a workout (`.setAutoStartRest`, `.setAlertWhenRestEnds`, from the phone, the Watch or the Live
   Activity) is saved back to the preferences by the authority, so the next workout starts the same way; a mirror never writes. `WorkoutController.updatePreferences(_:)` saves preferences

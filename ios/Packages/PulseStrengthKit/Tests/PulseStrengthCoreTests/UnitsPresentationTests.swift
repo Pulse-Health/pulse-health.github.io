@@ -457,6 +457,33 @@ final class WeightStepUnitsTests: XCTestCase {
         }
     }
 
+    func testAStepUpAndTheSameStepDownReturnToTheSameStoredWeightOfAKilogramWeight() {
+        for kg in [60.0, 100, 80, 50, 20, 62.5, 142.37, 0.01] {
+            for equipment in [Equipment.barbell, .bodyweight] {
+                var state = UF.state(unit: .lb)
+                state.exercises[0].exercise.equipment = equipment
+                state.exercises[0].sets[2].weightKg = kg
+                for steps in 1...40 {
+                    let back = nudged(nudged(state, steps), -steps)
+                    XCTAssertEqual(nextWeightKg(back), kg, "\(kg) kg, \(equipment), \(steps) steps")
+                }
+            }
+        }
+    }
+
+    func testAKilogramWeightNearARoundingTieComesBackToTheSameShownWeightAndAlmostTheSameStoredOne() {
+        // 75 kg is 165.347 lb: the step up has to take the shown weight, so the way back is not exact in kilograms but is never off by more than 0.04 kg.
+        var state = UF.state(unit: .lb)
+        state.exercises[0].sets[2].weightKg = 75
+        for steps in 1...40 {
+            let there = nudged(state, steps)
+            let back = nudged(there, -steps)
+            XCTAssertEqual(WeightUnit.lb.displayValue(kg: nextWeightKg(there)), 165.3 + 5 * Double(steps), accuracy: 1e-9, "\(steps) steps")
+            XCTAssertEqual(WeightUnit.lb.displayValue(kg: nextWeightKg(back)), 165.3, accuracy: 1e-9, "\(steps) steps back")
+            XCTAssertEqual(nextWeightKg(back), 75, accuracy: 0.04, "\(steps) steps back")
+        }
+    }
+
     func testOneStepAtATimeNeverDrifts() {
         var state = poundState(135)
         for _ in 0..<60 { state = nudged(state, 1) }

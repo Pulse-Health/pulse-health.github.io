@@ -231,6 +231,16 @@ public final class FileStrengthPersistence: @unchecked Sendable {
         return Self.dataFileNames.contains { FileManager.default.fileExists(atPath: url($0).path) }
     }
 
+    /// True when a file of the user's own data exists, `preferences.json` excepted (the workout in progress and the acknowledged
+    /// command ids are transient). A directory like that was written by a build that had no preferences file yet.
+    var hasUserDataFilesBesidesPreferences: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return Self.protectedFileNames.contains {
+            $0 != FileName.preferences && FileManager.default.fileExists(atPath: url($0).path)
+        }
+    }
+
     /// True when `personal-bests.json` exists.
     public var hasPersonalBestsFile: Bool {
         lock.lock()

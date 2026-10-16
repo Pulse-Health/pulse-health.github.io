@@ -267,6 +267,54 @@ final class PreferencesModelTests: XCTestCase {
         }
     }
 
+    func testADataDirectoryOfAnOlderBuildKeepsKilogramsInAPoundRegion() throws {
+        for (name, write): (String, (FileStrengthPersistence) throws -> Void) in [
+            ("templates", { try $0.saveTemplates([StarterTemplates.all[0]]) }),
+            ("history", { try $0.saveHistory([]) }),
+            ("custom exercises", { try $0.saveCustomExercises([]) }),
+            ("body weights", { try $0.saveBodyWeights([]) }),
+        ] {
+            let directory = makeDirectory(self)
+            let persistence = FileStrengthPersistence(directory: directory)
+            try write(persistence)
+            XCTAssertFalse(persistence.hasPreferencesFile, name)
+            try svcMain {
+                for locale in [enUS, Locale(identifier: "en_LR"), Locale(identifier: "my_MM")] {
+                    let model = StrengthDataModel(persistence: persistence, deviceLocale: locale)
+                    XCTAssertEqual(model.preferences, StrengthPreferences(), "\(name), \(locale.identifier)")
+                }
+                let model = StrengthDataModel(persistence: persistence, deviceLocale: enUS)
+                try model.saveTemplate(StarterTemplates.all[1]).get()
+            }
+            XCTAssertEqual(persistence.loadPreferences(), StrengthPreferences(), "\(name): the kilograms are stored with the next save")
+        }
+    }
+
+    func testTheUpgradedUserCanStillChooseThePounds() throws {
+        let persistence = FileStrengthPersistence(directory: makeDirectory(self))
+        try persistence.saveTemplates([StarterTemplates.all[0]])
+        try svcMain {
+            let model = StrengthDataModel(persistence: persistence, deviceLocale: enUS)
+            var preferences = model.preferences
+            preferences.weightUnit = .lb
+            try model.updatePreferences(preferences).get()
+        }
+        svcMain {
+            XCTAssertEqual(StrengthDataModel(persistence: persistence, deviceLocale: deDE).preferences.weightUnit, .lb)
+        }
+    }
+
+    func testOnlyTransientFilesDoNotMakeAnInstallAnOlderOne() throws {
+        let directory = makeDirectory(self)
+        let persistence = FileStrengthPersistence(directory: directory)
+        try Data("[]".utf8).write(to: directory.appendingPathComponent("acknowledged-commands.json"))
+        try Data("{}".utf8).write(to: directory.appendingPathComponent("active-workout.json"))
+        XCTAssertTrue(persistence.hasDataFiles)
+        svcMain {
+            XCTAssertEqual(StrengthDataModel(persistence: persistence, deviceLocale: enUS).preferences.weightUnit, .lb)
+        }
+    }
+
     func testStoredPreferencesAreNeverReplacedByTheFirstCreationOrALaterSave() throws {
         let directory = makeDirectory(self)
         let persistence = FileStrengthPersistence(directory: directory)
@@ -548,6 +596,33 @@ final class PreferencesWorkoutTests: XCTestCase {
         }
     }
 
+    func testEachRestChoiceCopiesItsOwnToggleWhateverTheOtherOneIs() throws {
+        let persistence = FileStrengthPersistence(directory: makeDirectory(self))
+        svcMain {
+            let model = StrengthDataModel(persistence: persistence)
+            let engine = WorkoutEngine(role: .authority, persistence: persistence, data: model, clock: { epoch })
+            engine.start(template: StarterTemplates.all[0])
+            XCTAssertEqual(engine.state?.settings, WorkoutSettings(autoStartRest: true, alertWhenRestEnds: true))
+
+            // Each action is sent while the other toggle of the workout has the opposite value, in both directions.
+            let steps: [(WorkoutAction, StrengthPreferences)] = [
+                (.setAlertWhenRestEnds(false), StrengthPreferences(autoStartRest: true, alertWhenRestEnds: false)),
+                (.setAutoStartRest(false), StrengthPreferences(autoStartRest: false, alertWhenRestEnds: false)),
+                (.setAlertWhenRestEnds(true), StrengthPreferences(autoStartRest: false, alertWhenRestEnds: true)),
+                (.setAutoStartRest(true), StrengthPreferences(autoStartRest: true, alertWhenRestEnds: true)),
+                (.setAutoStartRest(false), StrengthPreferences(autoStartRest: false, alertWhenRestEnds: true)),
+                (.setAlertWhenRestEnds(false), StrengthPreferences(autoStartRest: false, alertWhenRestEnds: false)),
+                (.setAutoStartRest(true), StrengthPreferences(autoStartRest: true, alertWhenRestEnds: false)),
+                (.setAlertWhenRestEnds(true), StrengthPreferences(autoStartRest: true, alertWhenRestEnds: true)),
+            ]
+            for (action, expected) in steps {
+                engine.send(action)
+                XCTAssertEqual(model.preferences, expected, "\(action)")
+                XCTAssertEqual(persistence.loadPreferences(), expected, "\(action) is saved")
+            }
+        }
+    }
+
     func testARestChoiceFromTheWatchIsRememberedByThePhone() throws {
         let persistence = FileStrengthPersistence(directory: makeDirectory(self))
         svcMain {
@@ -639,6 +714,17 @@ final class PreferencesStoreAndControllerTests: XCTestCase {
     ) -> (store: StrengthStore, controller: WorkoutController) {
         let store = StrengthStore(persistence: persistence, deviceLocale: deviceLocale)
         return (store, WorkoutController(store: store, persistence: persistence, role: role, recovery: DemoRecovery.provider, clock: { epoch }))
+    }
+
+    func testAnOlderBuildsTemplateStartsAWorkoutInKilogramsInTheUnitedStates() throws {
+        let persistence = FileStrengthPersistence(directory: makeDirectory(self))
+        try persistence.saveTemplates([StarterTemplates.all[0]])
+        svcMain {
+            let (store, controller) = makeController(persistence, deviceLocale: enUS)
+            XCTAssertEqual(store.preferences.weightUnit, .kg)
+            controller.startWorkout(template: StarterTemplates.all[0])
+            XCTAssertEqual(controller.state?.settings.weightUnit, .kg)
+        }
     }
 
     func testTheStorePublishesAndSavesThePreferences() throws {
