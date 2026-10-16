@@ -394,8 +394,16 @@ class SnapshotBuilderTests {
         StrengthJson.format.encodeToString(WorkoutSnapshot.serializer(), snap).toByteArray(Charsets.UTF_8).size
 
     /**
+     * [snap] without the live context (set dots, moments, superset, plates, coach tip, finish card): the flat part of the content. The
+     * live context has its own tests (`LiveMomentsTests`).
+     */
+    private fun flat(snap: WorkoutSnapshot): WorkoutSnapshot = snap.copy(
+        exerciseDoneSets = null, exerciseSetCount = null, moment = null, superset = null, plates = null, coachTip = null, finish = null,
+    )
+
+    /**
      * Swift: `testLiveActivitySizeSanity` (ActivityKit's 4 KB payload limit). Adapted: the Kotlin format has a single date encoding
-     * (ISO 8601), so the Swift "plain" and "iso8601" measurements collapse into one; both Swift limits are kept.
+     * (ISO 8601), so the Swift "plain" and "iso8601" measurements collapse into one; the Swift limits are kept.
      */
     @Test
     fun testLiveActivitySizeSanity() {
@@ -415,10 +423,13 @@ class SnapshotBuilderTests {
         )
         states.add(long)
         for ((index, state) in states.withIndex()) {
-            val snap = snapshot(state, 1458)
-            assertWithMessage("state $index").that(jsonSize(snap)).isLessThan(1500)
+            assertWithMessage("state $index").that(jsonSize(flat(snapshot(state, 1458)))).isLessThan(1500)
         }
-        assertThat(jsonSize(snapshot(PresFix.goldenState(), 1458))).isLessThan(1000)
+        assertThat(jsonSize(flat(snapshot(PresFix.goldenState(), 1458)))).isLessThan(1000)
+        // With the live context the same states stay far below the 4 KB limit of a Live Activity.
+        for ((index, state) in states.withIndex()) {
+            assertWithMessage("state $index with live context").that(jsonSize(snapshot(state, 1458))).isLessThan(2000)
+        }
     }
 
     @Test

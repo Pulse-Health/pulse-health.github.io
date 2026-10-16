@@ -259,6 +259,11 @@ internal object PresenterSupport {
         val e1RM: Double,
         /** A logged set that beat the running baseline by more than [recordMargin] (never without history). */
         val isRecord: Boolean,
+        /**
+         * The running baseline the set was measured against: the previous best raised by the logged sets before it. For a record this
+         * is the estimate it beat (the live record moment shows the difference).
+         */
+        val baselineBefore: Double,
     )
 
     /** Per-set analysis plus the final running baseline. */
@@ -324,8 +329,9 @@ internal object PresenterSupport {
             // A weight so large that the estimate overflows (a state not produced by the reducer) is not a usable estimate.
             if (!e1RM.isFinite()) e1RM = 0.0
             val isRecord = set.isDone && hasHistory && e1RM > baseline + recordMargin
+            val before = baseline
             if (set.isDone && e1RM > baseline) baseline = e1RM
-            result.add(SetAnalysis(e1RM = e1RM, isRecord = isRecord))
+            result.add(SetAnalysis(e1RM = e1RM, isRecord = isRecord, baselineBefore = before))
         }
         return Analysis(result, baseline)
     }

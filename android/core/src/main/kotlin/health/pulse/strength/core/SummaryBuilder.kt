@@ -23,7 +23,7 @@ object SummaryBuilder {
 
             for ((index, set) in entry.sets.withIndex()) {
                 if (!set.isDone) continue
-                sets.add(CompletedSet(type = set.type, weightKg = set.weightKg, reps = set.reps, rir = set.rir))
+                sets.add(CompletedSet(type = set.type, weightKg = set.weightKg, reps = set.reps, rir = set.rir, loggedAt = set.doneAt))
                 loggedSets += 1
                 set.rir?.let {
                     rirSum += it
@@ -96,6 +96,7 @@ object SummaryBuilder {
             exercises = exercises,
             personalRecords = records,
             muscleSets = muscleSets,
+            heartRateSeries = state.heartRateSeries.ifEmpty { null },
         )
     }
 

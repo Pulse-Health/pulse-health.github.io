@@ -63,9 +63,9 @@ class SystemWiringTest {
     }
 
     @Test
-    fun theActionButtonActivityIsExportedAndInvisible() {
+    fun theActionButtonActivityIsPrivateAndInvisible() {
         val info = app.packageManager.getActivityInfo(ComponentName(app, PrimaryActionActivity::class.java), 0)
-        assertThat(info.exported).isTrue()
+        assertThat(info.exported).isFalse()
         assertThat(info.flags and ActivityInfo.FLAG_EXCLUDE_FROM_RECENTS).isNotEqualTo(0)
         assertThat(info.flags and ActivityInfo.FLAG_NO_HISTORY).isNotEqualTo(0)
         assertThat(info.theme).isEqualTo(R.style.Theme_PulseTransparent)
@@ -80,11 +80,13 @@ class SystemWiringTest {
     }
 
     @Test
-    fun theLauncherAliasCarriesTheShortcuts() {
-        val alias = app.packageManager.getActivityInfo(ComponentName(app, "health.pulse.strength.LauncherAlias"), PackageManager.GET_META_DATA)
-        assertThat(alias.exported).isTrue()
-        assertThat(alias.targetActivity).isEqualTo("health.pulse.strength.MainActivity")
-        assertThat(alias.metaData.getInt("android.app.shortcuts")).isEqualTo(R.xml.shortcuts)
+    fun theLauncherActivityCarriesTheShortcutsAndThereIsOnlyOneLauncherEntry() {
+        val main = app.packageManager.getActivityInfo(ComponentName(app, "health.pulse.strength.MainActivity"), PackageManager.GET_META_DATA)
+        assertThat(main.exported).isTrue()
+        assertThat(main.metaData.getInt("android.app.shortcuts")).isEqualTo(R.xml.shortcuts)
+        val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER).setPackage(app.packageName)
+        assertThat(app.packageManager.queryIntentActivities(launcher, 0).map { it.activityInfo.name })
+            .containsExactly("health.pulse.strength.MainActivity")
     }
 
     @Test

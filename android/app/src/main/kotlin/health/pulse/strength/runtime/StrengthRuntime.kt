@@ -8,13 +8,13 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** Where every surface (widget, tile, notification, ...) reads the current [WidgetSnapshot]. */
 interface SnapshotSource {
-    /** Emits a new snapshot whenever data or the running workout changes. Never empty: uses the preview until real data exists. */
+    /** Emits a new snapshot whenever what it shows changes (data, settings, the running workout, the day). Never empty: a store without data gives the snapshot of an empty week. */
     val snapshot: StateFlow<WidgetSnapshot>
 
     fun current(): WidgetSnapshot = snapshot.value
 }
 
-/** What a surface may ask the workout engine to do (widgets/SPEC.md section 5). Every call returns after the change is applied. */
+/** What a surface may ask the workout engine to do (widgets/SPEC.md section 5). Every call returns after the change is applied and the snapshot shows it. */
 interface WorkoutCommands {
     suspend fun startNext()
     suspend fun startTemplate(templateId: String)
@@ -72,9 +72,9 @@ interface WorkoutCommands {
 }
 
 /**
- * The single entry point of the app's data layer for every surface. [init] runs once from `PulseApp`. Until the real runtime
- * (the owner `core`) replaces [PreviewRuntime], everything works on the idealised preview snapshot so surfaces can be built and
- * looked at independently.
+ * The single entry point of the app's data layer for every surface. [init] runs once from `PulseStrengthApplication`: the running app
+ * then works on a [LiveRuntime]; until then, and in previews and tests, everything works on the idealised preview snapshot of
+ * [PreviewRuntime], so surfaces can be built and looked at independently.
  */
 object StrengthRuntime {
     @Volatile
@@ -83,9 +83,19 @@ object StrengthRuntime {
     val snapshots: SnapshotSource get() = instance.snapshots
     val commands: WorkoutCommands get() = instance.commands
 
+    /**
+     * Brings the snapshot up to date with the clock, the time zone and the data, and publishes it. For whoever knows that time moved
+     * (the receiver for the new day, a changed clock or time zone, a restart of the device or an update of the app); the surfaces are
+     * not told, the caller does that with `Surfaces.refreshAll`.
+     */
+    suspend fun rebuild() = instance.rebuild()
+
     interface Runtime {
         val snapshots: SnapshotSource
         val commands: WorkoutCommands
+
+        /** Recomputes the snapshot for the current clock, time zone and data and publishes it; does not refresh the surfaces. Nothing to do for a runtime without a clock. */
+        suspend fun rebuild() {}
     }
 
     /** Called from `Application.onCreate`. Safe to call again (the first call wins). */
@@ -98,8 +108,11 @@ object StrengthRuntime {
 
     private var initialised = false
 
-    /** Test hook: replaces the runtime. */
+    /** Test hook: replaces the runtime. A [LiveRuntime] that is replaced stops following the app, so it cannot refresh surfaces during a later test. */
+    @Synchronized
     fun installForTest(runtime: Runtime) {
+        val replaced = instance
+        if (replaced !== runtime && replaced is LiveRuntime) replaced.close()
         instance = runtime
         initialised = true
     }

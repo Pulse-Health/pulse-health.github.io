@@ -55,6 +55,9 @@ object PlannedSessions {
         LiveCards.cancel(app, CardKind.PLANNED_DUE)
     }
 
+    /** The plan that is waiting, or null (the "Plan a session" sheet of the hub shows it). */
+    internal fun current(context: Context): PlannedSession? = store(context.applicationContext).read()
+
     /** Arms the stored plan again: after a reboot or an update of the app. */
     internal fun restore(context: Context) {
         val app = context.applicationContext
