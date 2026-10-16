@@ -474,13 +474,52 @@ latest weigh-in on or before the date, or the first one ever for earlier dates. 
 
 iOS (`PulseStrengthIOS`): `WeightReminderScheduler` (internal) subscribes to the store and keeps up to three non-repeating `UNCalendarNotificationTrigger` requests
 (`StrengthConfig.weightReminderIDPrefix` + ".0", ".1", ".2") in step with it; it is created by `StrengthAppEnvironment.live()` only (previews and UI tests have none: no
-notifications, no prompts) and refreshed when the app becomes active. The notification permission is requested when the user turns the reminder on
-(`StrengthAppEnvironment.requestWeightReminderPermission()`), not at launch. The notification carries a "Log weight" text-input action (category
+notifications, no prompts) and refreshed when the app becomes active. The weigh-in code does not ask for the notification permission at launch (the launch request of `PulseServices.requestPermissions()` is for the rest alert and also
+covers the reminder); turning the reminder on asks again if the user has not decided yet (`StrengthAppEnvironment.requestWeightReminderPermission()`). The notification carries a "Log weight" text-input action (category
 `weightReminderCategoryID`): a typed weight is recorded without opening the app, anything that does not parse opens the entry instead. Tapping the notification, or opening
 `pulse-strength://weight`, sets `StrengthAppEnvironment.showsWeightEntry`, which `PulseStrengthRootView` presents as `BodyWeightEntrySheet` (not while a workout is in progress).
 `UNUserNotificationCenter` has one delegate, so `StrengthNotificationDelegate.shared` serves the rest alert and the weigh-in reminder. Screens: `StrengthSettingsView` (hub "More" menu >
 Settings: weight, history with swipe to delete, reminder switch / frequency / time, next reminder date), `BodyWeightEntrySheet`, and the "Time to update your weight" card at the top of the hub
 while the reminder is on and a weigh-in is due (the in-app half of the reminder, for users who refused notifications).
+
+### 3.6 Plans, rep ranges, entry notes, plan import (`WorkoutPlan.swift`, `Models.swift`, `StrengthData.swift`, `WorkoutFactory.swift`)
+
+A **plan** is a rotation of saved templates, deliberately not a calendar: nothing in it knows a weekday.
+
+```swift
+public struct WorkoutPlan: Identifiable, Codable, Hashable, Sendable {
+    var id: UUID; var name: String
+    var templateIDs: [UUID]      // rotation order; an id without a template is passed over
+    var nextIndex: Int           // index into templateIDs of the workout that is next
+    var daysPerWeek: Int?        // only a target the hub shows next to "done in the last 7 days"
+    var isActive: Bool           // at most one plan is active
+}
+```
+
+* `nextWorkout(in:)` is the workout at `nextIndex` (the first existing one after it, wrapping). `advance(after:)` moves `nextIndex` to the
+  workout after the given template, so doing Push before Upper simply continues after Push. `skip(in:)` passes over the next workout.
+* `StrengthData.record` advances every plan that contains the finished workout's template, once per workout id (recording the same workout
+  again does not move the rotation again). A workout without a template changes no plan.
+* `StrengthData.nextTemplate()` is what the hub recommends: the active plan's next workout; without an active plan (or when none of its
+  templates exists) `TemplateRotation.next(in:)`, the rotation over all templates (the one after the most recently performed) that the hub
+  had before plans existed.
+* Plans are stored in `plans.json` (`FileStrengthPersistence.loadPlans/savePlans`, same lossy list reading as the other files).
+  `StrengthStore` publishes `plans` and offers `savePlan`, `activatePlan`, `deletePlan` (the templates stay), `skipNextWorkout`, `importPlan`.
+
+Two optional fields carry what a coach's plan says about a workout: `PlannedSet.repsMax` (a rep range: `reps` is the lower end,
+`repsText` prints "8–10") and `TemplateEntry.note` (technique cues, substitutions). Both are **optional on purpose**: the stores skip a list
+element that does not decode, so a new required key would have made every older saved template disappear. `WorkoutFactory.makeWorkout` copies
+the note into the workout exercise's note; `updatedTemplate` / `template(from:)` copy a non-blank note back, and `updatedTemplate` keeps a
+set's range until the reps done reach its top. The workout itself still has one target per set (`LoggedSet.reps`), so nothing in the Watch
+sync or the Live Activity changed.
+
+**Import.** `PlanBundle` (`version`, `plans`, `templates`, `customExercises`) is the file format of `yt_workout.py`'s `pulse-import.json`;
+the hub's "Import Plan…" (a `fileImporter` for JSON) calls `StrengthStore.importPlan(from:)`. `PlanBundle.decode` refuses a file that is not
+a bundle (`PlanImportError.unreadable`), is newer than `currentVersion` or holds no templates. `StrengthData.importBundle` then
+`sanitized()`s it (names trimmed, reps/weights/rest clamped to what the reducer accepts, a range only when its top is above its bottom,
+built-in exercises replaced by the library's definition, custom exercises never over a built-in id, unknown plan entries dropped) and merges
+by id: a known template is replaced but keeps its `lastPerformed`; a known plan keeps its place in the rotation and its active flag; a new
+plan becomes the active one. Importing the same file twice therefore changes nothing but the content it carries.
 
 ## 4. Verification policy
 

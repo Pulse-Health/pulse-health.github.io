@@ -1,7 +1,8 @@
 # The Swift sources, docs and exercise photos under ios/ are an app project, not part of the website:
 # keep them out of the GitHub Pages build so they are not published as public files.
-# The same goes for the Stripe billing server, contract and docs (billing/) and the Android client (android/).
+# legal-notices/ holds drafts of notices to users, not website pages.
+# billing/ is the Stripe billing server, its API contract, the Android billing client and their docs.
 exclude:
   - ios
+  - legal-notices
   - billing
-  - android

@@ -10,7 +10,7 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (700 tests, 716 with the Combine
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (780 tests, 799 with the Combine
 > stand-in). The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow
 > `strength-ios` has compiled it with Xcode 16 for the iOS and watchOS simulators, run a 30-step UI flow through the real
 > iPhone app, rendered the Lock Screen, Dynamic Island and Watch screens, and re-run the app in dark mode, at large text
@@ -288,6 +288,19 @@ exercises, two frames each. The app shows the line "Demo photos: Free Exercise D
 They are demo material: the real Pulse app may prefer licensed GIFs or video with a consistent look, which the media seam
 above allows without touching the rest of the feature.
 
+## Training plans and importing them
+
+A **plan** is a rotation of workouts (Upper, Lower, Push, Pull, Legs, then Upper again), not a calendar: it has no weekdays, so a
+missed day never leaves it behind. The Strength hub shows the active plan with its next workout tagged "next up", how many of its workouts
+were done in the last 7 days, and a "Skip" button; doing a workout moves the rotation to the one after it, and the "Start Workout" card
+recommends the plan's next workout. Workouts can carry rep ranges (8–10) and a note per exercise (technique cues).
+
+Plans come from a file: `tools/youtube-workouts/yt_workout.py` turns YouTube workout videos into `pulse-import.json`; put that file on
+the phone (AirDrop, Files) and choose **More › Import Plan…** in the Strength hub. Importing the same file again replaces the earlier copy
+and keeps your place in the rotation. Details: [ARCHITECTURE.md §3.6](ARCHITECTURE.md) and
+[tools/youtube-workouts/README.md](tools/youtube-workouts/README.md). The plan screens are compiled by CI's Xcode jobs; they have not
+been run on a device (the UI flow tests do not exercise them).
+
 ## Verification status
 
 State at the last commit of this branch; the numbers come from the `strength-ios` workflow
@@ -295,7 +308,7 @@ State at the last commit of this branch; the numbers come from the `strength-ios
 
 **Verified**
 
-* **Core (`PulseStrengthCore`)**: 700 unit tests (716 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
+* **Core (`PulseStrengthCore`)**: 780 unit tests (799 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
   reducer, presenter, snapshot and summary builders, persistence, the phone <-> Watch sync protocol (acknowledgements, optimistic
   replay, delivery fuzzing with dropped, duplicated and reordered messages), exercise library and sample data.
 * **Compiles**: `xcodegen generate`, then `xcodebuild` of the iOS app (with the widget extension and the embedded Watch app) and of the

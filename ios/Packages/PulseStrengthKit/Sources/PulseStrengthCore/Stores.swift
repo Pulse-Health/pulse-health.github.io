@@ -16,6 +16,7 @@ public final class FileStrengthPersistence: @unchecked Sendable {
         static let history = "history.json"
         static let customExercises = "custom-exercises.json"
         static let personalBests = "personal-bests.json"
+        static let plans = "plans.json"
         static let bodyWeights = "body-weights.json"
         static let weighInPreferences = "weigh-in-preferences.json"
         static let acknowledgedCommands = "acknowledged-commands.json"
@@ -84,6 +85,14 @@ public final class FileStrengthPersistence: @unchecked Sendable {
 
     /// Replaces the saved workout templates.
     public func saveTemplates(_ templates: [WorkoutTemplate]) throws { try write(templates, to: FileName.templates) }
+
+    // MARK: Plans
+
+    /// The saved training plans (empty when none or unreadable).
+    public func loadPlans() -> [WorkoutPlan] { readList(FileName.plans) }
+
+    /// Replaces the saved training plans.
+    public func savePlans(_ plans: [WorkoutPlan]) throws { try write(plans, to: FileName.plans) }
 
     // MARK: History
 

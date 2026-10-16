@@ -20,8 +20,8 @@ def ex(name, sets, **kw):
     return base
 
 
-def s(reps, weight=None, unit=None, type="normal"):
-    return {"type": type, "reps": reps, "weight": weight, "weight_unit": unit}
+def s(reps, weight=None, unit=None, type="normal", reps_max=None):
+    return {"type": type, "reps": reps, "reps_max": reps_max, "weight": weight, "weight_unit": unit}
 
 
 def extraction(*exercises, warnings=()):
@@ -140,11 +140,36 @@ class TemplateTests(unittest.TestCase):
                          "previousSets", "defaults", "cues", "barKg", "isCustom"}
         self.assertEqual(set(template), {"id", "name", "entries"})
         for entry in template["entries"]:
-            self.assertEqual({"id", "exercise", "plannedSets", "restSeconds"}, set(entry) - {"supersetGroup"})
+            self.assertEqual({"id", "exercise", "plannedSets", "restSeconds"}, set(entry) - {"supersetGroup", "note"})
             self.assertTrue(exercise_keys <= set(entry["exercise"]))
             for planned in entry["plannedSets"]:
-                self.assertEqual(set(planned), {"type", "weightKg", "reps"})
+                self.assertEqual(set(planned) - {"repsMax"}, {"type", "weightKg", "reps"})
         self.assertTrue(exercise_keys <= set(customs[0]))
+
+
+class RangeAndNoteTests(unittest.TestCase):
+    def build(self, *exercises):
+        return yw.build_template("w", "W", extraction(*exercises), LIBRARY)[0]
+
+    def test_a_rep_range_keeps_its_top_only_when_it_is_above_the_bottom(self):
+        template = self.build(ex("Bench", [s(8, reps_max=10), s(8, reps_max=8), s(8, reps_max=5), s(8), s(0, reps_max=99999)],
+                                 library_id="bench"))
+        sets = template["entries"][0]["plannedSets"]
+        self.assertEqual([x.get("repsMax") for x in sets], [10, None, None, None, yw.MAX_REPS])
+        self.assertEqual([x["reps"] for x in sets], [8, 8, 8, 8, 0])
+
+    def test_a_note_is_trimmed_and_blank_notes_are_left_out(self):
+        template = self.build(ex("Bench", [s(8)], library_id="bench", note="  Pause on the chest. "),
+                              ex("Squat", [s(8)], library_id="squat", note="   "),
+                              ex("Row", [s(8)], library_id="brow"))
+        entries = template["entries"]
+        self.assertEqual(entries[0]["note"], "Pause on the chest.")
+        self.assertNotIn("note", entries[1])
+        self.assertNotIn("note", entries[2])
+
+    def test_the_summary_shows_ranges(self):
+        template = self.build(ex("Bench", [s(8, reps_max=10)] * 2, library_id="bench"))
+        self.assertIn("2 x 8-10-8-10", yw.format_summary(template, {}, []).replace("/", "-"))
 
 
 class BatchFileTests(unittest.TestCase):
@@ -154,13 +179,26 @@ class BatchFileTests(unittest.TestCase):
             path.write_text("// comment\nhttps://youtu.be/aaaaaaaaaaa\n\n# Push day\nhttps://youtu.be/bbbbbbbbbbb\n"
                             "cccccccccc-\n# Legs\nhttps://www.youtube.com/playlist?list=PL1\n")
             self.assertEqual(yw.parse_batch(path), [
-                (None, ["https://youtu.be/aaaaaaaaaaa"]),
-                ("Push day", ["https://youtu.be/bbbbbbbbbbb", "cccccccccc-"]),
-                ("Legs", ["https://www.youtube.com/playlist?list=PL1"]),
+                yw.Job(None, ["https://youtu.be/aaaaaaaaaaa"]),
+                yw.Job("Push day", ["https://youtu.be/bbbbbbbbbbb", "cccccccccc-"]),
+                yw.Job("Legs", ["https://www.youtube.com/playlist?list=PL1"]),
             ])
             path.write_text("# X\nnot a url\n")
             with self.assertRaises(SystemExit):
                 yw.parse_batch(path)
+
+    def test_plan_directives(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "b.txt"
+            path.write_text("@plan UL/PPL\n@days 5\n# Upper\nhttps://youtu.be/aaaaaaaaaaa\n# Lower\nhttps://youtu.be/bbbbbbbbbbb\n"
+                            "@plan -\n# Solo\nhttps://youtu.be/ccccccccccc\n@plan Other\n# One\nhttps://youtu.be/ddddddddddd\n")
+            jobs = yw.parse_batch(path)
+            self.assertEqual([(j.name, j.plan, j.days) for j in jobs],
+                             [("Upper", "UL/PPL", 5), ("Lower", "UL/PPL", 5), ("Solo", None, None), ("One", "Other", None)])
+            for bad in ("@plan X\n@days 9\n# A\nhttps://youtu.be/aaaaaaaaaaa\n", "@days x\n"):
+                path.write_text(bad)
+                with self.assertRaises(SystemExit):
+                    yw.parse_batch(path)
 
     def test_playlist_detection(self):
         self.assertTrue(yw.is_playlist_url("https://www.youtube.com/playlist?list=PL1"))
@@ -174,6 +212,26 @@ class BatchFileTests(unittest.TestCase):
             urls = yw.expand_urls(["https://www.youtube.com/playlist?list=PL1", "https://youtu.be/zzz"], [])
         self.assertEqual(urls, ["https://www.youtube.com/watch?v=p1", "https://www.youtube.com/watch?v=p2",
                                 "https://youtu.be/zzz"])
+
+
+class CommittedOutputTests(unittest.TestCase):
+    """The checked-in UL/PPL files must be what the tool rebuilds from the checked-in extractions, and the Swift tests'
+    fixture must be the very same import file (they decode it with the app's own models)."""
+    OUT = Path(__file__).resolve().parent.parent / "out"
+    FIXTURE = (Path(__file__).resolve().parents[3] / "Packages/PulseStrengthKit/Tests/PulseStrengthCoreTests/Fixtures"
+               / "pulse-import-ulppl.json")
+
+    def test_rebuilding_reproduces_the_committed_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            for source in self.OUT.glob("*.extracted.json"):
+                (work / source.name).write_text(source.read_text())
+            self.assertEqual(yw.rebuild_outputs(work, LIBRARY), 5)
+            for name in ("templates.json", "custom-exercises.json", "plans.json", "pulse-import.json"):
+                self.assertEqual((work / name).read_text(), (self.OUT / name).read_text(), name)
+
+    def test_the_swift_fixture_is_the_committed_import_file(self):
+        self.assertEqual(self.FIXTURE.read_text(), (self.OUT / "pulse-import.json").read_text())
 
 
 class FakeYtDlp:
@@ -217,11 +275,11 @@ class PipelineTests(unittest.TestCase):
         ex("Battle rope", [s(30)], muscle="Arms", equipment="Other", tracking="duration", part=2),
     )
 
-    def run_job(self, out, name="Push day", args=None, urls=None):
+    def run_job(self, out, name="Push day", args=None, urls=None, plan=None, days=None):
         ytdlp = FakeYtDlp()
         with mock.patch.object(yw, "ytdlp", ytdlp), \
                 mock.patch.object(yw, "call_claude", return_value=self.ANSWER) as claude:
-            yw.process(name, urls or self.URLS, args or make_args(), LIBRARY, out, set())
+            yw.process(yw.Job(name, urls or self.URLS, plan, days), args or make_args(), LIBRARY, out, set())
         return ytdlp, claude
 
     def test_two_parts_become_one_workout(self):
@@ -275,7 +333,7 @@ class PipelineTests(unittest.TestCase):
             with mock.patch.object(yw, "ytdlp", FakeYtDlp()), \
                     mock.patch.object(yw, "call_claude", return_value=extraction()):
                 with self.assertRaises(yw.WorkoutError):
-                    yw.process("Empty", self.URLS, make_args(), LIBRARY, out, set())
+                    yw.process(yw.Job("Empty", self.URLS), make_args(), LIBRARY, out, set())
             self.assertFalse(list(out.glob("*.extracted.json")))
 
     def test_hand_edited_extraction_is_picked_up_by_rebuild(self):
@@ -296,7 +354,51 @@ class PipelineTests(unittest.TestCase):
             ytdlp = FakeYtDlp()
             with mock.patch.object(FakeYtDlp, "INFO", bare), mock.patch.object(yw, "ytdlp", ytdlp):
                 with self.assertRaisesRegex(yw.WorkoutError, "--vision"):
-                    yw.process("Silent", self.URLS[:1], make_args(), LIBRARY, Path(tmp), set())
+                    yw.process(yw.Job("Silent", self.URLS[:1]), make_args(), LIBRARY, Path(tmp), set())
+
+    def test_workouts_of_a_plan_form_one_rotation_and_one_import_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            for name in ("Upper", "Lower", "Push"):
+                self.run_job(out, name=name, plan="UL/PPL", days=5)
+            self.run_job(out, name="Solo")
+            self.assertEqual(yw.rebuild_outputs(out, LIBRARY), 4)
+
+            plans = json.loads((out / "plans.json").read_text())
+            self.assertEqual(len(plans), 1)
+            plan = plans[0]
+            templates = {t["name"]: t["id"] for t in json.loads((out / "templates.json").read_text())}
+            self.assertEqual(plan["name"], "UL/PPL")
+            self.assertEqual(plan["templateIDs"], [templates["Upper"], templates["Lower"], templates["Push"]],
+                             "the order the workouts were added, not alphabetical")
+            self.assertEqual((plan["nextIndex"], plan["daysPerWeek"], plan["isActive"]), (0, 5, False))
+            self.assertEqual(plan["id"], yw.plan_id("UL/PPL"))
+
+            bundle = json.loads((out / "pulse-import.json").read_text())
+            self.assertEqual(sorted(bundle), ["customExercises", "plans", "templates", "version"])
+            self.assertEqual(bundle["version"], 1)
+            self.assertEqual(bundle["plans"], plans)
+            self.assertEqual(len(bundle["templates"]), 4)
+            self.assertEqual([c["id"] for c in bundle["customExercises"]], ["custom-battle-rope"])
+
+    def test_redoing_a_workout_keeps_its_place_in_the_plan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            self.run_job(out, name="Upper", plan="P")
+            self.run_job(out, name="Lower", plan="P")
+            self.run_job(out, name="Upper", plan="P", args=make_args(force=True))
+            yw.rebuild_outputs(out, LIBRARY)
+            plan = json.loads((out / "plans.json").read_text())[0]
+            templates = {t["id"]: t["name"] for t in json.loads((out / "templates.json").read_text())}
+            self.assertEqual([templates[i] for i in plan["templateIDs"]], ["Upper", "Lower"])
+
+    def test_without_a_plan_the_import_file_has_workouts_only(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            self.run_job(out)
+            yw.rebuild_outputs(out, LIBRARY)
+            self.assertEqual(json.loads((out / "pulse-import.json").read_text())["plans"], [])
+            self.assertEqual(json.loads((out / "plans.json").read_text()), [])
 
     def test_frames_are_sent_as_labelled_images(self):
         video = yw.Video("v", "u", "T", "C", 100, "", [], [], "none", frames=[(30, b"\xff\xd8jpeg")])

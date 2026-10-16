@@ -21,9 +21,6 @@ struct StrengthSettingsView: View {
 
     @Environment(\.scenePhase) private var scenePhase
 
-    /// How many weigh-ins the history lists.
-    private static let historyLimit = 12
-
     init(environment: StrengthAppEnvironment) {
         self._store = ObservedObject(wrappedValue: environment.store)
         self.environment = environment
@@ -99,7 +96,8 @@ struct StrengthSettingsView: View {
 
     private var historySection: some View {
         let now = Date()
-        let entries = Array(store.bodyWeights.prefix(Self.historyLimit))
+        // Every weigh-in is listed, so every one entered here can be deleted.
+        let entries = store.bodyWeights
         return Section {
             ForEach(entries) { entry in
                 HStack {
