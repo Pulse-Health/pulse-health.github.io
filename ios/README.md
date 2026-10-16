@@ -34,6 +34,7 @@ ios/
   Packages/PulseStrengthKit/ Swift package (swift-tools-version 5.9, iOS 17 / watchOS 10 / macOS 14)
     Sources/
       PulseStrengthCore/       Foundation only: models, reducer, presenter, controller, store, sync, exercise library
+        Widgets/               the widget data contract (WidgetSnapshot, generated), its builder, the App Group snapshot store and command inbox, deep links
       PulseStrengthActivity/   iOS: ActivityAttributes + WorkoutCommandBus (linked by the app AND the widget extension)
       PulseStrengthIOS/        iOS: SwiftUI screens and sheets, Live Activity manager, notifications, HealthKit, Watch bridge
         Resources/ExerciseMedia/  25 exercises x 2 form-demo frames (JPEG)
@@ -41,13 +42,18 @@ ios/
     Tests/PulseStrengthCoreTests/
   Apps/
     PulseStrength/           iOS host app: @main entry point, Info.plist, entitlements, assets
-    PulseStrengthWidgets/    widget extension: @main WidgetBundle, Info.plist
+    PulseStrengthWidgets/    widget extension: @main WidgetBundle (Live Activity, Home Screen / StandBy, Lock Screen, extras, controls), Info.plist
+    PulseStrengthWatchWidgets/  watchOS widget extension: @main WidgetBundle of the Apple Watch complications and Smart Stack cards
     PulseStrengthWatch/      watchOS app: @main entry point, Info.plist, entitlements, assets
     Shared/Intents/          App Intents behind the Live Activity buttons (compiled into the app AND the extension)
-    Shared/LiveActivity/     Lock Screen and Dynamic Island views (compiled into the extension)
+    Shared/LiveActivity/     Lock Screen and Dynamic Island views, the extra Live Activity states, planned-session countdown, bench mode (compiled into the extension)
+    Shared/Widgets/          Common (theme, text rules), Home (Home Screen, StandBy, iPad), Lock (Lock Screen accessories), Extras, Watch (compiled into the extensions)
+    Shared/Controls/         Control Center and Lock Screen controls (compiled into the widget extension)
     PulseStrengthUITests/              UI test: walks the iPhone app in the simulator, one screenshot per step
     PulseStrengthLiveSnapshotTests/    test that draws the Lock Screen and Dynamic Island views into PNG files
     PulseStrengthWatchSnapshotTests/   test that draws the Watch pages into PNG files
+    PulseStrengthWidgetSnapshotTests/  test that draws the Home Screen, StandBy, Lock Screen and extra widgets into PNG files
+    PulseStrengthWatchWidgetSnapshotTests/  test that draws the Apple Watch widgets into PNG files
 .github/workflows/strength-ios.yml   (at the repository root) CI: Linux core tests + macOS Xcode builds + screenshots
 ```
 
@@ -220,6 +226,38 @@ after the first run.
 9. Clock-driven UI uses `TimelineView`; the Live Activity uses `Text(timerInterval:)` and a stale date, because a widget cannot tick.
 10. Contracts, file by file: [`ARCHITECTURE.md`](ARCHITECTURE.md).
 
+## Widgets, controls and live surfaces
+
+Besides the Live Activity, the package feeds the rest of the glanceable surfaces of the design "Pulse Strength Widget Ideas": Home Screen,
+StandBy and iPad widgets, Lock Screen accessories, extra "wilder idea" widgets, Control Center and Lock Screen controls, the Action button, the
+further Live Activity states (record flash, superset round, plate math, coach tip, finish card, planned-session countdown, bench mode) and the
+Apple Watch complications and Smart Stack cards. Every design has a stable catalogue id (`HS-01` ... `WI-11`). The catalogue, the exact rule behind
+every number and the platform mapping are in [`../widgets/SPEC.md`](../widgets/SPEC.md); [`../widgets/README.md`](../widgets/README.md) is the map
+of where each one lives on iOS and Android, and [`ARCHITECTURE.md` 5.7](ARCHITECTURE.md) has the contracts.
+
+* **One data contract.** `PulseStrengthCore/Widgets/WidgetSnapshot.generated.swift` (generated from `../widgets/tools/schema.py`, which also writes the Kotlin
+  twin for Android) is the only thing a surface reads. `WidgetSnapshotBuilder` turns the strength data into it; `WidgetPublisher` (iOS app) rebuilds it after
+  every change, writes it into the App Group (`WidgetSnapshotStore`), reloads every widget timeline and control, and `WatchWidgetSnapshotSender` hands the Watch
+  variant to the Watch over WatchConnectivity.
+* **Commands go the other way.** Buttons in widgets, controls and Live Activities are App Intents. The ones that change the workout (log set, skip rest, pause,
+  nudge, finish a rest, apply the coach tip) are `LiveActivityIntent`s: the system runs them in the app's process, which applies them through
+  `WidgetIntentDispatch` and `WorkoutCommandBus`. Should the system run one inside the extension, the command waits in the App Group inbox
+  (`WidgetCommandInbox`) and a Darwin notification wakes the app (`WidgetCommandDrain`). The ones that need the app on screen set `openAppWhenRun` and
+  leave a `pulse-strength://` link, which `PulseStrengthRootView` handles through `StrengthDeepLink` (`workout`, `start-next`, `start?template=`,
+  `start-empty?name=`, `exercise/<id>`, `hub`, `plates`, `weight`).
+* **Targets.** `PulseStrengthWidgets` composes `LiveActivityBundle`, `HomeWidgetBundle`, `LockWidgetBundle`, `ExtrasWidgetBundle` and `ControlsBundle`;
+  `PulseStrengthWatchWidgets`, embedded in the Watch app, composes the Watch bundles. The Action-button intent and the App Shortcuts are in the app target only
+  (`ForegroundContinuableIntent` does not exist in app extensions).
+* **App Group.** `group.<PULSE_APP_BUNDLE_ID>` is now declared by all four targets (app, widget extension, Watch app, Watch widget extension) and carries the
+  snapshot, the command inbox and the shared data. Enable the App Groups capability for that id in your developer account before running on a device; the CI
+  builds do not sign and need nothing. Without the container the app falls back to its own folder, and the widgets, which cannot read it, show their empty states.
+* **In the app.** The hub shows a weekly-goal stepper (1 to 7: the goal of the goal widgets and of the "Sessions" figure), a template's toolbar has
+  "Plan a session" (a countdown on the Lock Screen and in the Dynamic Island before the start, a notification at the start); `LiveActivityManager` flashes a
+  new record on the Live Activity for four seconds and turns the finished workout into the finish card.
+
+What the widgets assume: weights are in kilograms (the unit setting of the Pulse app is not handled), and the Watch widgets' "Start" opens the Watch app
+(a start request from the Watch to the phone does not exist yet). The training-block widget for iPad (`SB-03`) is only offered once the app supports iPad.
+
 ## Placeholders to replace
 
 Everything below is a stand-in until the feature lives inside the Pulse app.
@@ -228,7 +266,7 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | --- | --- | --- |
 | Bundle ids | `health.pulse.strength`, `.widgets`, `.watchkitapp` | `PULSE_APP_BUNDLE_ID` in `Config/Signing.xcconfig` (the Watch `Info.plist` reads it for `WKCompanionAppBundleIdentifier`) |
 | Notification id | `health.pulse.strength.rest` | `StrengthConfig.restNotificationID` (Core); only a label, it does not have to match the bundle id |
-| App Group | `group.health.pulse.strength` (not used by this standalone build: no entitlement) | `StrengthConfig.appGroupID` (Core); when sharing data with the Pulse app add the App Groups capability to the app (and the widget) and use the same id |
+| App Group | `group.health.pulse.strength` (`group.$(PULSE_APP_BUNDLE_ID)` in the four entitlements files) | `StrengthConfig.appGroupID` (Core) and the `*.entitlements` of the app, the widget extension, the Watch app and the Watch widget extension; enable the App Groups capability for it in your developer account |
 | Weigh-in notification ids | `health.pulse.strength.weight.0` ... `.2` (category `health.pulse.strength.weight.category`) | `StrengthConfig.weightReminderIDPrefix` / `weightReminderCategoryID` (Core); only labels |
 | URL scheme | `pulse-strength://workout`, `pulse-strength://weight` | `StrengthConfig.urlScheme` / `workoutURL` / `weightURL` and `CFBundleURLTypes` in `Apps/PulseStrength/Info.plist` |
 | Team | empty | `DEVELOPMENT_TEAM` in `Config/Signing.xcconfig` (or `Config/Signing.local.xcconfig`) |
@@ -276,9 +314,10 @@ own repository before using it for a product (then delete the `exclude` entry).
 
 | Target | Capability / setting |
 | --- | --- |
-| iOS app | HealthKit (reads heart rate and active energy, writes workouts; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
-| Widget extension | No capability; `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
-| Watch app | HealthKit; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). |
+| iOS app | HealthKit (reads heart rate and active energy, writes workouts; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); App Groups (`group.<bundle id>`: the widget snapshot and command inbox); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
+| Widget extension | App Groups (the same id as the app: it reads the snapshot and leaves commands); `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
+| Watch widget extension | App Groups (the same id); `NSExtension` point `com.apple.widgetkit-extension` (watchOS). It reads the snapshot the Watch app stores from the phone. |
+| Watch app | HealthKit; App Groups; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). |
 
 ## Exercise photos
 

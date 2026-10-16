@@ -12,7 +12,7 @@ class PulseServices(context: Context, private val controller: WorkoutController)
     val settings = PulseSettings(context)
     val foreground = AppForegroundTracker()
     val restAlerts = RestAlerts(context.applicationContext, controller, foreground, settings)
-    private val notifications = WorkoutNotificationEffect(context.applicationContext, restAlerts)
+    private val notifications = WorkoutNotificationEffect(context.applicationContext, restAlerts, savedToHealth = { settings.healthConnectEnabled.value })
     private val healthConnect = HealthConnectWorkoutWriter(context.applicationContext, settings)
 
     /** Called when the notification permission was just granted: shows the ongoing notification of the workout that is running. */

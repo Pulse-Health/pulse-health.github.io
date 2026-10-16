@@ -412,5 +412,19 @@
         <receiver
             android:name=".services.RestAlarmReceiver"
             android:exported="false" />
+
+        <!-- Midnight, a change of the clock or of the time zone, a restart and an update of the app: the widgets draw "today" and "N days ago"
+             from the snapshot, so it is built again then and every surface is refreshed (surfaces/DayChange.kt). BOOT_COMPLETED needs the
+             permission that the system region above declares. -->
+        <receiver
+            android:name=".surfaces.DayChangeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
