@@ -426,6 +426,47 @@ record, estimated 1RM 99), 15 days ago (W 50×8, 77.5×6 ×3); "Lower A · Quads
 (warm-up 50×8, warm-up 70×5, 82.5×6, 82.5×6, 85×6, rest 150), incline 3×28×10 (rest 90), ohp 3×45×8 (rest 120), lateral 3×8×15 and pushdown
 3×30×12 (both rest 60, superset A), crossover 3×15×12 (rest 60).
 
+### 3.5 `BodyWeight.swift` (area: body weight and the weigh-in reminder)
+
+The user's body weight, kept in kilograms like every weight of the feature, and the reminder that asks for regular updates. Foundation only, tested on Linux
+(`BodyWeightTests.swift`). Body weight is separate from the loads of the logged sets.
+
+```swift
+public struct BodyWeightEntry: Codable, Hashable, Sendable, Identifiable { public var id: UUID; public var date: Date; public var kg: Double }
+public enum BodyWeightRules {
+    public static let minimumKg: Double, maximumKg: Double               // 20 ... 500
+    public static func normalised(_ kg: Double) -> Double?              // rounded to 0.1; nil for NaN / infinite / out of range
+    public static func parse(_ text: String) -> Double?                 // "82.5", "82,5", " 82.5 kg "; nil for anything else
+}
+public enum WeighInInterval: String, Codable, CaseIterable, Identifiable { case weekly, everyTwoWeeks, monthly }
+public struct WeighInPreferences: Codable, Hashable, Sendable {          // off by default; a missing key in the file reads as its default
+    public var isEnabled: Bool; public var interval: WeighInInterval; public var hour: Int; public var minute: Int; public var enabledAt: Date?
+    public mutating func setEnabled(_ enabled: Bool, now: Date)          // turning on from off remembers `now` in enabledAt
+}
+public enum WeighInSchedule {                                            // pure: the caller passes the clock and the calendar
+    public static let maximumReminders = 3
+    public static func dueDate(lastWeighIn: Date?, preferences: WeighInPreferences, calendar: Calendar) -> Date?
+    public static func isDue(lastWeighIn: Date?, preferences: WeighInPreferences, now: Date, calendar: Calendar) -> Bool
+    public static func reminders(lastWeighIn: Date?, preferences: WeighInPreferences, now: Date, calendar: Calendar, count: Int) -> [Date]
+}
+```
+* `StrengthData` gains `bodyWeights` (newest first) and `weighIn`; `StrengthDataModel` / `StrengthStore` gain `recordBodyWeight(kg:date:)` (nil and nothing saved for an implausible
+  weight), `deleteBodyWeight(id:)`, `setWeighInPreferences(_:)`, `latestBodyWeight`, `isWeighInDue(now:)`. They are saved in `body-weights.json` and `weigh-in-preferences.json`
+  (an unreadable file reads as empty / the defaults). The demo seed does not touch them.
+* The reminder is **rolling**: it counts from the latest weigh-in (before the first one, from `enabledAt`) and is due one interval later at the chosen time of day, so logging a
+  weight moves the next reminder out. Reminder dates are `due`, `due + 1 interval`, ... (each counted from `due`, so a month-end does not drift), only those after `now`, at most three.
+  The clock time survives a daylight-saving change (calendar arithmetic).
+
+iOS (`PulseStrengthIOS`): `WeightReminderScheduler` (internal) subscribes to the store and keeps up to three non-repeating `UNCalendarNotificationTrigger` requests
+(`StrengthConfig.weightReminderIDPrefix` + ".0", ".1", ".2") in step with it; it is created by `StrengthAppEnvironment.live()` only (previews and UI tests have none: no
+notifications, no prompts) and refreshed when the app becomes active. The notification permission is requested when the user turns the reminder on
+(`StrengthAppEnvironment.requestWeightReminderPermission()`), not at launch. The notification carries a "Log weight" text-input action (category
+`weightReminderCategoryID`): a typed weight is recorded without opening the app, anything that does not parse opens the entry instead. Tapping the notification, or opening
+`pulse-strength://weight`, sets `StrengthAppEnvironment.showsWeightEntry`, which `PulseStrengthRootView` presents as `BodyWeightEntrySheet` (not while a workout is in progress).
+`UNUserNotificationCenter` has one delegate, so `StrengthNotificationDelegate.shared` serves the rest alert and the weigh-in reminder. Screens: `StrengthSettingsView` (hub "More" menu >
+Settings: weight, history with swipe to delete, reminder switch / frequency / time, next reminder date), `BodyWeightEntrySheet`, and the "Time to update your weight" card at the top of the hub
+while the reminder is on and a weigh-in is due (the in-app half of the reminder, for users who refused notifications).
+
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
@@ -506,7 +547,7 @@ sets list may scroll inside the card when there are many sets. The `ActiveSheet`
 three-button "Update template?" alert when `finishCheck.asksToUpdateTemplate`; then `controller.finish(updateTemplate:)` and `onFinished`.
 Rest end feedback: `UINotificationFeedbackGenerator` plus a VoiceOver "Rest over" announcement (`RestEndFeedback`, one helper) when the dock phase turns `.finished` while the app is active
 and `alertWhenRestEnds` is on. `ActiveWorkoutView` plays it while the workout screen is open, `PulseStrengthRootView` (on the in-progress bar) while the workout is minimised; the system
-notification stays suppressed in the foreground (`RestNotificationDelegate`). While the Watch banner state is on (not connected, Health denied) the header shows "–" and a still grey heart
+notification stays suppressed in the foreground (`StrengthNotificationDelegate`). While the Watch banner state is on (not connected, Health denied) the header shows "–" and a still grey heart
 instead of the last heart rate; the Health-denied banner button opens the Health app (`x-apple-health://`, undocumented) and falls back to the app's page in Settings.
 
 **Area "sheets"** (`Sheets/`):

@@ -14,18 +14,26 @@ public struct StrengthData: Equatable, Sendable {
     public var customExercises: [Exercise]
     /// Best estimated 1RM per exercise id.
     public var personalBests: [String: PersonalBest]
+    /// The user's body weight over time, newest first (see `BodyWeight.swift`).
+    public var bodyWeights: [BodyWeightEntry]
+    /// How often the app asks the user to update their weight.
+    public var weighIn: WeighInPreferences
 
-    /// Creates the data from its four collections.
+    /// Creates the data from its collections.
     public init(
         templates: [WorkoutTemplate] = [],
         history: [CompletedWorkout] = [],
         customExercises: [Exercise] = [],
-        personalBests: [String: PersonalBest] = [:]
+        personalBests: [String: PersonalBest] = [:],
+        bodyWeights: [BodyWeightEntry] = [],
+        weighIn: WeighInPreferences = WeighInPreferences()
     ) {
         self.templates = templates
         self.history = history
         self.customExercises = customExercises
         self.personalBests = personalBests
+        self.bodyWeights = bodyWeights
+        self.weighIn = weighIn
     }
 
     /// True when there are neither templates nor finished workouts (the condition for seeding demo data).
@@ -482,6 +490,29 @@ public final class StrengthDataModel: WorkoutDataProviding {
         data.history(for: exerciseID, now: now)
     }
 
+    /// Stores a body weight (kg, rounded to 0.1) and saves the weigh-ins. nil, and nothing saved, when `kg` is not a plausible body weight.
+    @discardableResult
+    public func recordBodyWeight(kg: Double, date: Date) -> BodyWeightEntry? {
+        guard let entry = data.recordBodyWeight(kg: kg, date: date) else { return nil }
+        persist(templates: false, history: false, customExercises: false, personalBests: false, bodyWeights: true)
+        return entry
+    }
+
+    /// Removes a weigh-in and saves the weigh-ins; false when there is none with that id.
+    @discardableResult
+    public func deleteBodyWeight(id: UUID) -> Bool {
+        guard data.deleteBodyWeight(id: id) else { return false }
+        persist(templates: false, history: false, customExercises: false, personalBests: false, bodyWeights: true)
+        return true
+    }
+
+    /// Replaces the weigh-in reminder preferences and saves them.
+    public func setWeighInPreferences(_ preferences: WeighInPreferences) {
+        guard data.weighIn != preferences else { return }
+        data.weighIn = preferences
+        persist(templates: false, history: false, customExercises: false, personalBests: false, weighIn: true)
+    }
+
     /// Re-reads everything from disk (no-op without persistence).
     public func reload() {
         guard persistence != nil else { return }
@@ -494,7 +525,9 @@ public final class StrengthDataModel: WorkoutDataProviding {
             templates: persistence.loadTemplates(),
             history: persistence.loadHistory(),
             customExercises: persistence.loadCustomExercises(),
-            personalBests: persistence.loadPersonalBests()
+            personalBests: persistence.loadPersonalBests(),
+            bodyWeights: persistence.loadBodyWeights(),
+            weighIn: persistence.loadWeighInPreferences()
         )
         cache = nil
     }
@@ -513,7 +546,14 @@ public final class StrengthDataModel: WorkoutDataProviding {
     /// Sets `lastPersistenceError` to the first error (nil when every requested file was written) and returns the error of the
     /// history file, nil when it was written or not requested.
     @discardableResult
-    private func persist(templates: Bool, history: Bool, customExercises: Bool, personalBests: Bool) -> Error? {
+    private func persist(
+        templates: Bool,
+        history: Bool,
+        customExercises: Bool,
+        personalBests: Bool,
+        bodyWeights: Bool = false,
+        weighIn: Bool = false
+    ) -> Error? {
         guard let persistence else {
             lastPersistenceError = nil
             return nil
@@ -533,6 +573,8 @@ public final class StrengthDataModel: WorkoutDataProviding {
         if history { historyError = attempt { try persistence.saveHistory(data.history) } }
         if customExercises { _ = attempt { try persistence.saveCustomExercises(data.customExercises) } }
         if personalBests { _ = attempt { try persistence.savePersonalBests(data.personalBests) } }
+        if bodyWeights { _ = attempt { try persistence.saveBodyWeights(data.bodyWeights) } }
+        if weighIn { _ = attempt { try persistence.saveWeighInPreferences(data.weighIn) } }
         lastPersistenceError = firstError
         return historyError
     }

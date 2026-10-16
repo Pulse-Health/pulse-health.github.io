@@ -25,6 +25,13 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// Apple Watch state worth telling the user about; the root view publishes it as `\.watchStatus`.
     @Published public var watchStatus: WatchStatus
 
+    /// True while the body weight entry should be on screen because the user tapped a weigh-in reminder (or the `pulse-strength://weight` link).
+    /// The root view presents the entry and clears the flag.
+    @Published public var showsWeightEntry = false
+
+    /// Keeps the weigh-in reminder notifications up to date; nil for previews and UI tests (no notifications, no permission prompts).
+    let weightReminders: WeightReminderScheduler?
+
     /// The live environment of the running app (persistence in Application Support or the App Group container, demo data when the store is empty).
     public static let shared: StrengthAppEnvironment = StrengthAppEnvironment.live()
 
@@ -34,7 +41,8 @@ public final class StrengthAppEnvironment: ObservableObject {
         controller: WorkoutController,
         services: PulseServices,
         hasSystemServices: Bool,
-        watchStatus: WatchStatus
+        watchStatus: WatchStatus,
+        weightReminders: WeightReminderScheduler?
     ) {
         self.persistence = persistence
         self.store = store
@@ -42,6 +50,7 @@ public final class StrengthAppEnvironment: ObservableObject {
         self.services = services
         self.hasSystemServices = hasSystemServices
         self.watchStatus = watchStatus
+        self.weightReminders = weightReminders
     }
 
     // MARK: Live
@@ -60,8 +69,10 @@ public final class StrengthAppEnvironment: ObservableObject {
             controller: controller,
             services: services,
             hasSystemServices: true,
-            watchStatus: services.watchStatus
+            watchStatus: services.watchStatus,
+            weightReminders: WeightReminderScheduler(store: store)
         )
+        environment.connectWeightReminders()
         environment.installCommandBus()
         environment.connectWatchStatus()
         // Last, so that the services (Live Activity re-attach, Watch sync) see the restored workout.
@@ -88,12 +99,47 @@ public final class StrengthAppEnvironment: ObservableObject {
             controller: controller,
             services: services,
             hasSystemServices: false,
-            watchStatus: .connected
+            watchStatus: .connected,
+            weightReminders: nil
         )
         if withActiveWorkout {
             controller.startWorkout(template: store.templates.first)
         }
         return environment
+    }
+
+    // MARK: Weigh-in reminder
+
+    /// Asks the user to enter their weight: presents the entry unless a workout is in progress (its screen would hide it; the hub card
+    /// stays until the user has weighed in).
+    public func requestWeightEntry() {
+        guard controller.state == nil else { return }
+        showsWeightEntry = true
+    }
+
+    /// Asks for the notification permission (call when the user turns the reminder on); true when notifications are allowed.
+    /// Previews have no notifications and answer true.
+    public func requestWeightReminderPermission() async -> Bool {
+        guard let reminders = weightReminders else { return true }
+        return await reminders.requestAuthorization()
+    }
+
+    /// True when the user has refused notifications, so the reminder can only show in the app.
+    public func weightReminderPermissionDenied() async -> Bool {
+        guard let reminders = weightReminders else { return false }
+        return await reminders.isDenied()
+    }
+
+    /// Brings the scheduled reminders up to date (call when the app becomes active).
+    public func refreshWeightReminders() {
+        weightReminders?.refresh()
+    }
+
+    private func connectWeightReminders() {
+        let reference = EnvironmentReference(self)
+        weightReminders?.onOpenEntry = {
+            reference.environment?.requestWeightEntry()
+        }
     }
 
     // MARK: Wiring

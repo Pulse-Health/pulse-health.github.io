@@ -229,7 +229,8 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | Bundle ids | `health.pulse.strength`, `.widgets`, `.watchkitapp` | `PULSE_APP_BUNDLE_ID` in `Config/Signing.xcconfig` (the Watch `Info.plist` reads it for `WKCompanionAppBundleIdentifier`) |
 | Notification id | `health.pulse.strength.rest` | `StrengthConfig.restNotificationID` (Core); only a label, it does not have to match the bundle id |
 | App Group | `group.health.pulse.strength` (not used by this standalone build: no entitlement) | `StrengthConfig.appGroupID` (Core); when sharing data with the Pulse app add the App Groups capability to the app (and the widget) and use the same id |
-| URL scheme | `pulse-strength://workout` | `StrengthConfig.urlScheme` / `workoutURL` and `CFBundleURLTypes` in `Apps/PulseStrength/Info.plist` |
+| Weigh-in notification ids | `health.pulse.strength.weight.0` ... `.2` (category `health.pulse.strength.weight.category`) | `StrengthConfig.weightReminderIDPrefix` / `weightReminderCategoryID` (Core); only labels |
+| URL scheme | `pulse-strength://workout`, `pulse-strength://weight` | `StrengthConfig.urlScheme` / `workoutURL` / `weightURL` and `CFBundleURLTypes` in `Apps/PulseStrength/Info.plist` |
 | Team | empty | `DEVELOPMENT_TEAM` in `Config/Signing.xcconfig` (or `Config/Signing.local.xcconfig`) |
 | Names, version | "Pulse Strength", 1.0.0 (1) | `CFBundleDisplayName` in the three `Info.plist` files, `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` in `project.yml` |
 | Permission texts | Health usage descriptions | `NSHealthShareUsageDescription` / `NSHealthUpdateUsageDescription` in the iOS and Watch `Info.plist` files |
@@ -275,7 +276,7 @@ own repository before using it for a product (then delete the `exclude` entry).
 
 | Target | Capability / setting |
 | --- | --- |
-| iOS app | HealthKit (reads heart rate and active energy, writes workouts); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); the notification permission is requested at runtime by `PulseServices.requestPermissions()`; URL type `pulse-strength`. No background mode is declared because none is needed. |
+| iOS app | HealthKit (reads heart rate and active energy, writes workouts); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
 | Widget extension | No capability; `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
 | Watch app | HealthKit; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). |
 
@@ -337,6 +338,9 @@ CI and the simulators cannot show any of these, and none of them has been tried:
   and the workout saved by the Watch when `usedWatch` is true.
 * **Rest notification**: the time-sensitive local notification at the end of the rest with the app in the background and the phone
   locked, its cancellation on skip, pause, finish and discard, the haptic when the rest ends in the foreground, and the Watch haptic.
+* **Weigh-in reminder**: Settings (hub "More" menu) > turn the reminder on (the permission prompt), pick a time a minute or two ahead, lock the phone and
+  wait: the notification, its "Log weight" text action (the weight appears in Settings > History and the reminder moves out by one interval), a tap that opens the
+  entry sheet, and the hub card when the permission was refused. Also change the time zone and the clock and bring the app to the foreground.
 * Also worth a pass on a device: WatchConnectivity reachability and the "Watch not connected" / "Health access denied" banners,
   a workout written to Health by the phone when no Watch is used, Dynamic Island layouts on a 14 Pro or newer,
   VoiceOver in the active-workout screen, and Reduce Motion (form demos, heart beat).

@@ -19,6 +19,10 @@ public final class StrengthStore: ObservableObject {
     @Published public private(set) var customExercises: [Exercise] = []
     /// Best estimated 1RM per exercise id.
     @Published public private(set) var personalBests: [String: PersonalBest] = [:]
+    /// The user's body weight over time, newest first.
+    @Published public private(set) var bodyWeights: [BodyWeightEntry] = []
+    /// How often the app asks the user to update their weight.
+    @Published public private(set) var weighIn = WeighInPreferences()
 
     private let model: StrengthDataModel
 
@@ -61,6 +65,36 @@ public final class StrengthStore: ObservableObject {
         model.history(for: exerciseID, now: now)
     }
 
+    /// The newest weigh-in.
+    public var latestBodyWeight: BodyWeightEntry? { bodyWeights.first }
+
+    /// True when the app should ask the user for a weight now (the reminder is on and the interval since the latest weigh-in is over).
+    public func isWeighInDue(now: Date, calendar: Calendar = .current) -> Bool {
+        model.data.isWeighInDue(now: now, calendar: calendar)
+    }
+
+    /// Stores a body weight (kg, rounded to 0.1) and saves it. nil when `kg` is not a plausible body weight.
+    @discardableResult
+    public func recordBodyWeight(kg: Double, date: Date = Date()) -> BodyWeightEntry? {
+        let entry = model.recordBodyWeight(kg: kg, date: date)
+        publish()
+        return entry
+    }
+
+    /// Removes a weigh-in; false when there is none with that id.
+    @discardableResult
+    public func deleteBodyWeight(id: UUID) -> Bool {
+        let removed = model.deleteBodyWeight(id: id)
+        publish()
+        return removed
+    }
+
+    /// Replaces the weigh-in reminder preferences and saves them.
+    public func setWeighInPreferences(_ preferences: WeighInPreferences) {
+        model.setWeighInPreferences(preferences)
+        publish()
+    }
+
     /// Re-reads everything from disk.
     public func reload() {
         model.reload()
@@ -74,6 +108,8 @@ public final class StrengthStore: ObservableObject {
         if history != data.history { history = data.history }
         if customExercises != data.customExercises { customExercises = data.customExercises }
         if personalBests != data.personalBests { personalBests = data.personalBests }
+        if bodyWeights != data.bodyWeights { bodyWeights = data.bodyWeights }
+        if weighIn != data.weighIn { weighIn = data.weighIn }
     }
 }
 
