@@ -1,7 +1,7 @@
 package health.pulse.strength.widgets.extras
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.GlanceModifier
@@ -16,7 +16,6 @@ import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.height
 import androidx.glance.layout.size
 import androidx.glance.text.FontWeight
-import androidx.glance.unit.ColorProvider
 import health.pulse.strength.core.widgets.DeepLinks
 import health.pulse.strength.core.widgets.WidgetSnapshot
 import health.pulse.strength.widgets.common.MaskImage
@@ -24,8 +23,11 @@ import health.pulse.strength.widgets.common.PulseWidget
 import health.pulse.strength.widgets.common.WidgetDimens
 import health.pulse.strength.widgets.common.toPx
 import health.pulse.strength.widgets.lock.Eyebrow
+import health.pulse.strength.widgets.lock.FitSafety
 import health.pulse.strength.widgets.lock.PulseText
+import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
+import health.pulse.strength.widgets.lock.rememberTextMeter
 
 /**
  * WI-08 Year in iron (2x2): the tonnes lifted this calendar year, the sessions behind them and twelve monthly bars with the current month
@@ -38,6 +40,7 @@ class YearInIronWidget : PulseWidget() {
         val size = LocalSize.current
         val roomy = size.width >= 140.dp
         val padding = if (roomy) WidgetDimens.padding else WidgetDimens.paddingCompact
+        val caption = TextFit.firstFitting(model.captions, (size.width - padding * 2 - FitSafety).value, rememberTextMeter(13.sp, bold = false))
         WidgetCard(
             description = model.description,
             link = DeepLinks.hub,
@@ -52,7 +55,7 @@ class YearInIronWidget : PulseWidget() {
                     PulseText(model.tonnes, if (roomy) 34.sp else 28.sp, weight = FontWeight.Bold, color = IronCard.text)
                     PulseText(" t", if (roomy) 18.sp else 15.sp, weight = FontWeight.Bold, color = IronCard.text)
                 }
-                PulseText(model.caption, 13.sp, color = IronCard.accent)
+                PulseText(caption, 13.sp, color = IronCard.accent)
                 Spacer(GlanceModifier.defaultWeight())
                 MonthBars(model.bars, size.width - padding * 2)
             }
@@ -60,7 +63,7 @@ class YearInIronWidget : PulseWidget() {
     }
 
     @Composable
-    private fun MonthBars(bars: List<ExtrasText.YearBar>, width: androidx.compose.ui.unit.Dp) {
+    private fun MonthBars(bars: List<ExtrasText.YearBar>, width: Dp) {
         val height = 28.dp
         val widthPx = width.toPx()
         val heightPx = height.toPx()
@@ -68,7 +71,7 @@ class YearInIronWidget : PulseWidget() {
         Box(modifier = modifier) {
             MaskImage(
                 ExtrasCharts.yearMask(bars, current = false, widthPx = widthPx, heightPx = heightPx),
-                ColorProvider(Color(0x8030D158)),
+                IronCard.dimAccent,
                 modifier,
                 contentDescription = "Tonnes per month this year, the current month highlighted",
             )

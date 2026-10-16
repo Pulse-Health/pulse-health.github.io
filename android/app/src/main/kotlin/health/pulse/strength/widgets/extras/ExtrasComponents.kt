@@ -217,7 +217,7 @@ internal fun SetDots(dots: List<DotState>, dotWidth: Dp) {
 }
 
 /** The gap after each set dot. */
-internal val DOT_GAP = 4.dp
+internal val DOT_GAP = LogSetModel.DOT_GAP_DP.dp
 
 /**
  * The rest countdown as a system `Chronometer`: the launcher redraws it every second without the app running, so the widget needs no

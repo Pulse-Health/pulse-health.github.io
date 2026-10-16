@@ -27,8 +27,11 @@ import health.pulse.strength.widgets.common.PulseWidget
 import health.pulse.strength.widgets.common.WidgetDimens
 import health.pulse.strength.widgets.common.toPx
 import health.pulse.strength.widgets.lock.Eyebrow
+import health.pulse.strength.widgets.lock.FitSafety
 import health.pulse.strength.widgets.lock.PulseText
+import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
+import health.pulse.strength.widgets.lock.rememberTextMeter
 import health.pulse.strength.widgets.lock.scaledSp
 
 /**
@@ -41,16 +44,30 @@ class ReadinessWidget : PulseWidget() {
         val model = ExtrasText.readiness(snapshot.readiness)
         val size = LocalSize.current
         val padding = WidgetDimens.padding
+        val ring = minOf(104.dp, size.height - padding * 2)
+        // The advice is set as large as it can be while all of it, the eyebrow and the line under it still fit (counted by wrapping it with
+        // the real font); in a short widget the advice shrinks first and the line under it ("From Pulse") goes before the advice is cut.
+        val textWidth = (size.width - padding * 2 - ring - RING_GAP - FitSafety).value
+        val adviceMeters = ExtrasText.adviceStyles.associate { it.adviceSp to rememberTextMeter(it.adviceSp.sp, bold = true) }
+        val detailMeters = ExtrasText.adviceStyles.mapNotNull { it.detailSp }.associateWith { rememberTextMeter(it.sp, bold = false) }
+        val layout = ExtrasText.adviceLayout(
+            room = (size.height - padding * 2).value,
+            adviceLines = { TextFit.lineCount(model.headline, textWidth, adviceMeters.getValue(it)) },
+            detailLines = { TextFit.lineCount(model.detail, textWidth, detailMeters.getValue(it)) },
+        )
+        val detailSp = layout.style.detailSp
         WidgetCard(description = model.description, link = DeepLinks.hub, padding = padding) {
             Row(modifier = GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                ReadinessRing(model, minOf(104.dp, size.height - padding * 2))
-                Spacer(GlanceModifier.width(16.dp))
+                ReadinessRing(model, ring)
+                Spacer(GlanceModifier.width(RING_GAP))
                 Column(modifier = GlanceModifier.defaultWeight()) {
-                    Eyebrow(model.eyebrow, color = GlanceTheme.colors.onPrimaryContainer)
-                    Spacer(GlanceModifier.height(4.dp))
-                    PulseText(model.headline, 17.sp, weight = FontWeight.Bold, maxLines = 3)
-                    Spacer(GlanceModifier.height(4.dp))
-                    PulseText(model.detail, 13.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 2)
+                    Eyebrow(model.eyebrow, size = ExtrasText.READINESS_EYEBROW_SP.sp, color = GlanceTheme.colors.onPrimaryContainer)
+                    Spacer(GlanceModifier.height(ExtrasText.READINESS_GAP_DP.dp))
+                    PulseText(model.headline, layout.style.adviceSp.sp, weight = FontWeight.Bold, maxLines = layout.maxLines)
+                    if (detailSp != null) {
+                        Spacer(GlanceModifier.height(ExtrasText.READINESS_GAP_DP.dp))
+                        PulseText(model.detail, detailSp.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 2)
+                    }
                 }
             }
         }
@@ -75,6 +92,10 @@ class ReadinessWidget : PulseWidget() {
                 }
             }
         }
+    }
+
+    private companion object {
+        val RING_GAP = 16.dp
     }
 }
 

@@ -116,20 +116,18 @@ internal object ExtrasText {
 
     // WI-04 form cue
 
-    data class CueText(val eyebrow: String, val cue: String, val footer: String, val link: String)
+    /** [shortEyebrow] is the lift alone, for a widget too small for "Form cue · Bench Press" on two lines. */
+    data class CueText(val eyebrow: String, val shortEyebrow: String, val cue: String, val footer: String, val link: String)
 
-    /** The type size of the cue: the short cues of the canvas are big, a long one is set smaller so more of it shows. */
-    fun cueTextSize(length: Int, roomy: Boolean): Float = when {
-        length <= 40 -> if (roomy) 17f else 15f
-        length <= 80 -> if (roomy) 14f else 13f
-        else -> 12f
-    }
+    /** The type sizes (sp) a cue may be set in, largest first: the short cues of the canvas are big, a long one is set smaller so more of it shows. */
+    fun cueTextSizes(roomy: Boolean): List<Float> = if (roomy) listOf(17f, 15f, 14f, 13f, 12f) else listOf(15f, 14f, 13f, 12f)
 
     fun formCue(cue: FormCue?): CueText = if (cue == null) {
-        CueText("Form cue", "Cues for your next workout show up here.", "", DeepLinks.hub)
+        CueText("Form cue", "Form cue", "Cues for your next workout show up here.", "", DeepLinks.hub)
     } else {
         CueText(
             eyebrow = "Form cue · ${cue.exerciseName}",
+            shortEyebrow = cue.exerciseName,
             cue = cue.cue,
             footer = "${cue.index} of ${cue.count} ${if (cue.count == 1) "cue" else "cues"}",
             link = DeepLinks.exercise(cue.exerciseID),
@@ -202,20 +200,29 @@ internal object ExtrasText {
         val shortEyebrow: String,
         val figure: String,
         val fraction: Float?,
-        val footer: String,
+        val footers: List<String>,
         val description: String,
-    )
+        val link: String,
+    ) {
+        /** The line under the figure in its longest wording; [footers] run from the longest to the shortest, and the widget shows the first that fits. */
+        val footer: String get() = footers.first()
+    }
 
     /** The lift against bodyweight with a bar toward the goal ratio, or the reason there is no ratio yet. */
     fun strengthRatio(ratio: StrengthRatio?): RatioModel {
         if (ratio == null) {
             return RatioModel(
                 eyebrow = "Strength ratio",
-                shortEyebrow = "Strength ratio",
+                shortEyebrow = "Strength",
                 figure = "–",
                 fraction = null,
-                footer = "Log bench, squat, deadlift or press to see your ratio.",
+                footers = listOf(
+                    "Log bench, squat, deadlift or press to see your ratio.",
+                    "Log a main lift to see your ratio.",
+                    "Log a main lift.",
+                ),
                 description = "Strength ratio: no main lift logged yet",
+                link = DeepLinks.hub,
             )
         }
         val eyebrow = "${ratio.exerciseName} / bodyweight"
@@ -228,8 +235,9 @@ internal object ExtrasText {
                 shortEyebrow = ratio.exerciseName,
                 figure = estimate,
                 fraction = null,
-                footer = "Add your bodyweight in Health Connect",
+                footers = listOf("Add your bodyweight in Health Connect", "Add your bodyweight"),
                 description = "${ratio.exerciseName}: estimated one-rep max $estimate. Add your bodyweight in Health Connect to see the ratio",
+                link = DeepLinks.weight,
             )
         }
         val goal = PulseFormat.number(ratio.goalRatio, 2)
@@ -239,8 +247,9 @@ internal object ExtrasText {
             shortEyebrow = ratio.exerciseName,
             figure = "$figure×",
             fraction = if (ratio.goalRatio > 0) (value / ratio.goalRatio).toFloat().coerceIn(0f, 1f) else 0f,
-            footer = "Goal $goal× · ${PulseFormat.kg(bodyweight)} kg",
+            footers = listOf("Goal $goal× · ${PulseFormat.kg(bodyweight)} kg", "Goal $goal×"),
             description = "${ratio.exerciseName} is $figure times your bodyweight of ${PulseFormat.kg(bodyweight)} kilograms. The goal is $goal times",
+            link = DeepLinks.exercise(ratio.exerciseID),
         )
     }
 
@@ -335,6 +344,46 @@ internal object ExtrasText {
             fraction = (readiness.score / 100f).coerceIn(0f, 1f),
             description = "Pulse readiness ${readiness.score} out of 100, ${readiness.label.lowercase()}. $headline",
         )
+    }
+
+    /** The type size of the eyebrow over the readiness advice, and the gap between the eyebrow, the advice and the line under it. */
+    const val READINESS_EYEBROW_SP = 12f
+    const val READINESS_GAP_DP = 4f
+
+    /** The most lines the line under the advice (its source, or the invitation to connect) may take. */
+    private const val MAX_DETAIL_LINES = 2
+
+    /** How the readiness advice is set: its type size, and the type size of the line under it (null: that line is left out). */
+    data class AdviceStyle(val adviceSp: Float, val detailSp: Float?)
+
+    /** The ways to set the advice from the most generous to the tightest: the advice is made smaller, and only then the line under it goes. */
+    val adviceStyles: List<AdviceStyle> = listOf(
+        AdviceStyle(17f, 13f),
+        AdviceStyle(15f, 12f),
+        AdviceStyle(15f, null),
+        AdviceStyle(13f, null),
+        AdviceStyle(12f, null),
+    )
+
+    /** [maxLines] is the number of lines the advice is allowed in [style]. */
+    data class AdviceLayout(val style: AdviceStyle, val maxLines: Int)
+
+    /**
+     * The first of [adviceStyles] in which the eyebrow, the whole advice and the line under it fit [room] dp of height. [adviceLines] and
+     * [detailLines] say how many lines the advice and the line under it take at a type size. When nothing fits, the tightest style is
+     * used with as many lines as the room holds, and the advice is cut with an ellipsis.
+     */
+    fun adviceLayout(room: Float, adviceLines: (Float) -> Int, detailLines: (Float) -> Int): AdviceLayout {
+        val fixed = TextFit.height(READINESS_EYEBROW_SP) + READINESS_GAP_DP
+        for (style in adviceStyles) {
+            val advice = adviceLines(style.adviceSp)
+            val detailSp = style.detailSp
+            val detail = if (detailSp == null) 0 else detailLines(detailSp)
+            val detailHeight = if (detailSp == null) 0f else READINESS_GAP_DP + TextFit.height(detailSp, detail)
+            if (detail <= MAX_DETAIL_LINES && fixed + TextFit.height(style.adviceSp, advice) + detailHeight <= room) return AdviceLayout(style, advice)
+        }
+        val tightest = adviceStyles.last()
+        return AdviceLayout(tightest, ((room - fixed) / TextFit.height(tightest.adviceSp)).toInt().coerceAtLeast(1))
     }
 
     // WI-10 plateau watch

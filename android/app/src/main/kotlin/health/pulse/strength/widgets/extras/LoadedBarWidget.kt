@@ -23,6 +23,7 @@ import health.pulse.strength.widgets.common.PulseWidget
 import health.pulse.strength.widgets.common.WidgetDimens
 import health.pulse.strength.widgets.lock.Eyebrow
 import health.pulse.strength.widgets.lock.PulseText
+import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
 
 /**
@@ -35,11 +36,16 @@ class LoadedBarWidget : PulseWidget() {
         val model = ExtrasText.loadedBar(snapshot.loadedBar)
         val layout = model?.layout ?: Barbell.layout(emptyList())
         val size = LocalSize.current
-        val padding = WidgetDimens.padding
-        val showEyebrow = size.height >= 130.dp
-        // What the text lines below the drawing need: the weight, the plates, a possible note, and the gaps between them.
-        val textHeight = (if (showEyebrow) 18.dp else 0.dp) + 24.dp + 16.dp + (if (model?.note != null) 14.dp else 0.dp) + 12.dp
-        val drawingHeight = (size.height - padding * 2 - textHeight).coerceIn(28.dp, Barbell.HEIGHT.dp)
+        val compact = size.height < ExtrasText.COMPACT_BELOW_DP.dp
+        val padding = if (compact) WidgetDimens.paddingCompact else WidgetDimens.padding
+        val showEyebrow = !compact
+        val totalSp = if (compact) 20f else 22f
+        // What the text below the drawing needs: the eyebrow, the weight, the plates (two lines when compact) and a possible note.
+        val textHeight = (if (showEyebrow) TextFit.height(12f) else 0f) +
+            TextFit.height(totalSp) +
+            TextFit.height(12f, if (compact) 2 else 1) +
+            (if (model?.note != null) TextFit.height(11f) else 0f) + 4f
+        val drawingHeight = (size.height - padding * 2 - textHeight.dp).coerceIn(24.dp, Barbell.HEIGHT.dp)
         WidgetCard(
             description = model?.description ?: "Loaded bar: no barbell lift is planned for today",
             link = DeepLinks.plates,
@@ -52,8 +58,8 @@ class LoadedBarWidget : PulseWidget() {
                     BarbellDrawing(layout, size.width - padding * 2, drawingHeight, model?.description)
                 }
                 if (model != null) {
-                    PulseText(model.total, 22.sp, weight = FontWeight.Bold)
-                    PulseText(model.perSide, 12.sp, color = GlanceTheme.colors.onSurfaceVariant)
+                    PulseText(model.total, totalSp.sp, weight = FontWeight.Bold)
+                    PulseText(model.perSide, 12.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = if (compact) 2 else 1)
                     model.note?.let { PulseText(it, 11.sp, color = GlanceTheme.colors.error) }
                 } else {
                     PulseText("No barbell lift today", 13.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 2)

@@ -16,29 +16,54 @@ import health.pulse.strength.core.widgets.WidgetSnapshot
 import health.pulse.strength.widgets.common.PulseWidget
 import health.pulse.strength.widgets.common.WidgetDimens
 import health.pulse.strength.widgets.lock.Eyebrow
+import health.pulse.strength.widgets.lock.FitSafety
 import health.pulse.strength.widgets.lock.PulseText
+import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
+import health.pulse.strength.widgets.lock.rememberTextMeter
 
-/** WI-04 Form cue (2x2): one coaching cue for the first lift of the next workout, with its place among the exercise's cues. */
+/**
+ * WI-04 Form cue (2x2): one coaching cue for the first lift of the next workout, with its place among the exercise's cues. The cue is set
+ * as large as it can be while all of it still fits (counted by wrapping it with the real font), and cut with an ellipsis only at the
+ * smallest size; a small widget keeps just the lift's name above it.
+ */
 class FormCueWidget : PulseWidget() {
     @Composable
     override fun Content(snapshot: WidgetSnapshot) {
         val cue = ExtrasText.formCue(snapshot.formCue)
-        val roomy = LocalSize.current.width >= 140.dp
+        val size = LocalSize.current
+        val roomy = size.width >= 140.dp
+        val compact = size.height < ExtrasText.COMPACT_BELOW_DP.dp
+        val padding = if (roomy) WidgetDimens.padding else WidgetDimens.paddingCompact
+        // What the cue may use: the height left under the eyebrow (two lines, or the lift's name on one) and above the footer.
+        val eyebrowHeight = TextFit.height(EYEBROW_SP, if (compact) 1 else 2)
+        val footerHeight = if (compact || cue.footer.isEmpty()) 0f else TextFit.height(FOOTER_SP)
+        val room = (size.height - padding * 2).value - eyebrowHeight - footerHeight - GAP
+        val width = (size.width - padding * 2 - FitSafety).value
+        val sizes = ExtrasText.cueTextSizes(roomy)
+        val meters = sizes.map { rememberTextMeter(it.sp, bold = true) }
+        fun linesAt(sp: Float) = (room / TextFit.height(sp)).toInt().coerceAtLeast(1)
+        val index = sizes.indices.firstOrNull { TextFit.lineCount(cue.cue, width, meters[it]) <= linesAt(sizes[it]) } ?: sizes.lastIndex
         WidgetCard(
             description = "${cue.eyebrow}. ${cue.cue} ${cue.footer}".trim(),
             link = cue.link,
-            padding = if (roomy) WidgetDimens.padding else WidgetDimens.paddingCompact,
+            padding = padding,
             contentAlignment = Alignment.TopStart,
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
-                Eyebrow(cue.eyebrow, color = ExtrasPalette.blueText, maxLines = 2)
+                Eyebrow(if (compact) cue.shortEyebrow else cue.eyebrow, size = EYEBROW_SP.sp, color = ExtrasPalette.blueText, maxLines = if (compact) 1 else 2)
                 Spacer(GlanceModifier.defaultWeight())
-                PulseText(cue.cue, if (roomy) 17.sp else 15.sp, weight = FontWeight.Bold, maxLines = if (roomy) 5 else 4)
+                PulseText(cue.cue, sizes[index].sp, weight = FontWeight.Bold, maxLines = linesAt(sizes[index]))
                 Spacer(GlanceModifier.defaultWeight())
-                if (cue.footer.isNotEmpty()) PulseText(cue.footer, 12.sp, color = GlanceTheme.colors.onSurfaceVariant)
+                if (!compact && cue.footer.isNotEmpty()) PulseText(cue.footer, FOOTER_SP.sp, color = GlanceTheme.colors.onSurfaceVariant)
             }
         }
+    }
+
+    private companion object {
+        const val EYEBROW_SP = 12f
+        const val FOOTER_SP = 12f
+        const val GAP = 4f
     }
 }
 

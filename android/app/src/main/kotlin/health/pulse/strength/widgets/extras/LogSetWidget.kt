@@ -25,8 +25,11 @@ import health.pulse.strength.widgets.common.Commands
 import health.pulse.strength.widgets.common.PulseActions
 import health.pulse.strength.widgets.common.PulseWidget
 import health.pulse.strength.widgets.lock.Eyebrow
+import health.pulse.strength.widgets.lock.FitSafety
 import health.pulse.strength.widgets.lock.PulseText
+import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
+import health.pulse.strength.widgets.lock.rememberTextMeter
 
 /**
  * WI-02 Log from the Home Screen (4x2, interactive): follows the running workout so a set can be adjusted and logged, and the rest timer
@@ -42,11 +45,12 @@ class LogSetWidget : PulseWidget() {
     override fun Content(snapshot: WidgetSnapshot) {
         val view = LogSetModel.of(snapshot, System.currentTimeMillis())
         val size = LocalSize.current
-        val layout = Metrics(wide = size.width >= 300.dp, tall = size.height >= 150.dp)
+        val padding = if (size.height < ExtrasText.COMPACT_BELOW_DP.dp) 10.dp else 12.dp
+        val layout = Metrics(size.width, padding, tall = size.height >= 150.dp)
         WidgetCard(
             description = null,
             link = if (view is LogSetView.Idle) DeepLinks.hub else DeepLinks.workout,
-            padding = if (size.height < 130.dp) 10.dp else 12.dp,
+            padding = padding,
             contentAlignment = Alignment.TopStart,
         ) {
             when (view) {
@@ -85,10 +89,15 @@ class LogSetWidget : PulseWidget() {
     }
 
     /** Sizes that depend on the width and height the launcher gave the widget. */
-    private class Metrics(wide: Boolean, val tall: Boolean) {
+    private class Metrics(width: Dp, padding: Dp, val tall: Boolean) {
+        private val wide = width >= 300.dp
+        val innerWidth: Dp = width - padding * 2
         val primaryButton: Dp = if (wide) 104.dp else 80.dp
         val smallButton: Dp = if (wide) 72.dp else 64.dp
         val countdownSp: Float = if (wide) 32f else 26f
+
+        /** What is left of a control row after the big button and the gap before it. */
+        val stepperWidth: Dp = innerWidth - primaryButton - 8.dp
     }
 
     private class ButtonSpec(val label: String, val action: Action, val icon: Int? = null)
@@ -115,6 +124,7 @@ class LogSetWidget : PulseWidget() {
         val adjusted = weight ?: view.reps
         val lighter = if (weight != null) Commands.nudge(-1, 0) else Commands.nudge(0, -1)
         val heavier = if (weight != null) Commands.nudge(1, 0) else Commands.nudge(0, 1)
+        val footerMeter = rememberTextMeter(12.sp, bold = false)
         Column(modifier = GlanceModifier.fillMaxSize()) {
             Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 PulseText(view.exercise, 15.sp, GlanceModifier.defaultWeight(), FontWeight.Bold)
@@ -122,26 +132,34 @@ class LogSetWidget : PulseWidget() {
             }
             Spacer(GlanceModifier.defaultWeight())
             Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                StepperPill(adjusted, lighter, heavier, GlanceModifier.defaultWeight())
+                StepperPill(adjusted, lighter, heavier, metrics.stepperWidth)
                 Spacer(GlanceModifier.width(8.dp))
                 PillButton("Log set", Commands.logNextSet(), GlanceModifier.width(metrics.primaryButton))
             }
             Spacer(GlanceModifier.defaultWeight())
             if (metrics.tall && weight != null) {
+                // The reps get a stepper of their own; the dots and the progress sit under the big button's column.
                 Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    StepperPill(view.reps, Commands.nudge(0, -1), Commands.nudge(0, 1), GlanceModifier.defaultWeight())
+                    StepperPill(view.reps, Commands.nudge(0, -1), Commands.nudge(0, 1), metrics.stepperWidth)
                     Spacer(GlanceModifier.width(8.dp))
                     Column(modifier = GlanceModifier.width(metrics.primaryButton)) {
-                        SetDots(view.dots)
-                        PulseText(view.footer, 12.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 2)
+                        SetDots(view.dots, LogSetModel.dotWidth(view.dots.size, metrics.primaryButton.value).dp)
+                        val progress = TextFit.firstFitting(view.progress, metrics.primaryButton.value - FitSafety.value, footerMeter)
+                        PulseText(progress, 12.sp, color = GlanceTheme.colors.onSurfaceVariant)
                     }
                 }
             } else {
+                val dotWidth = LogSetModel.dotWidth(view.dots.size, metrics.innerWidth.value * 0.4f)
+                val dotsWidth = view.dots.size * (dotWidth + LogSetModel.DOT_GAP_DP)
+                val gap = if (view.dots.isEmpty()) 0f else 8f
+                val room = metrics.innerWidth.value - dotsWidth - gap - FitSafety.value
+                // A weight exercise's reps are not in a stepper here, so they lead the line.
+                val repsNote = if (weight != null) "${view.reps.label} · " else ""
+                val lines = view.progress.map { repsNote + it } + listOf(if (weight != null) view.reps.label else "")
                 Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    SetDots(view.dots)
-                    if (view.dots.isNotEmpty()) Spacer(GlanceModifier.width(8.dp))
-                    val repsNote = if (weight != null) "${view.reps.label} · " else ""
-                    PulseText(repsNote + view.footer, 12.sp, GlanceModifier.defaultWeight(), color = GlanceTheme.colors.onSurfaceVariant)
+                    SetDots(view.dots, dotWidth.dp)
+                    if (view.dots.isNotEmpty()) Spacer(GlanceModifier.width(gap.dp))
+                    PulseText(TextFit.firstFitting(lines, room, footerMeter), 12.sp, GlanceModifier.defaultWeight(), color = GlanceTheme.colors.onSurfaceVariant)
                 }
             }
         }

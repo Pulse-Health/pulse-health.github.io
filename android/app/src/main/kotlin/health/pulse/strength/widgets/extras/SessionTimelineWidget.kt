@@ -29,12 +29,16 @@ import health.pulse.strength.widgets.common.MaskImage
 import health.pulse.strength.widgets.common.PulseWidget
 import health.pulse.strength.widgets.common.WidgetDimens
 import health.pulse.strength.widgets.common.toPx
+import health.pulse.strength.widgets.lock.FitSafety
 import health.pulse.strength.widgets.lock.PulseText
+import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
+import health.pulse.strength.widgets.lock.rememberTextMeter
 
 /**
  * WI-11 Session timeline (4x2): how the time of the last workout was spent as one bar of lifting, rest and long-rest stretches, a legend
- * of the kinds present, and "51 min · 38% under tension · 1 long break". Without set times it says so instead of drawing a bar.
+ * of the kinds present, and "51 min · 38% under tension · 1 long break" (the longest part of it that fits). Without set times it says so
+ * instead of drawing a bar.
  */
 class SessionTimelineWidget : PulseWidget() {
     @Composable
@@ -42,9 +46,12 @@ class SessionTimelineWidget : PulseWidget() {
         val session = snapshot.lastSession
         val model = ExtrasText.sessionTimeline(session)
         val size = LocalSize.current
-        val tight = size.height < 130.dp
+        val tight = size.height < ExtrasText.COMPACT_BELOW_DP.dp
         val padding = if (tight) 12.dp else WidgetDimens.padding
         val gap = if (tight) 6.dp else 8.dp
+        val innerWidth = size.width - padding * 2
+        val tailRoom = innerWidth - FitSafety - rememberTextMeter(13.sp, bold = true).width(model.headline).dp
+        val tail = TextFit.firstFitting(model.tails, tailRoom.value, rememberTextMeter(13.sp, bold = false))
         WidgetCard(description = model.description, link = DeepLinks.hub, padding = padding, contentAlignment = Alignment.TopStart) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
                 Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -53,7 +60,7 @@ class SessionTimelineWidget : PulseWidget() {
                 }
                 Spacer(GlanceModifier.height(gap))
                 if (model.hasBar && session != null) {
-                    TimelineBar(session.timeline, model.kinds, size.width - padding * 2, if (tight) 22.dp else 26.dp, model.description)
+                    TimelineBar(session.timeline, model.kinds, innerWidth, if (tight) 22.dp else 26.dp, model.description)
                     Spacer(GlanceModifier.height(gap))
                     Legend(model.kinds)
                 } else {
@@ -63,7 +70,7 @@ class SessionTimelineWidget : PulseWidget() {
                 if (model.headline.isNotEmpty()) {
                     Row(modifier = GlanceModifier.fillMaxWidth()) {
                         PulseText(model.headline, 13.sp, weight = FontWeight.Bold)
-                        PulseText(model.tail, 13.sp, GlanceModifier.defaultWeight(), color = GlanceTheme.colors.onSurfaceVariant)
+                        PulseText(tail, 13.sp, color = GlanceTheme.colors.onSurfaceVariant)
                     }
                 }
             }
@@ -84,14 +91,17 @@ class SessionTimelineWidget : PulseWidget() {
         }
     }
 
+    /** The kinds present, each a swatch and its word. An item is a row of its own: a flat row of all of them would pass Glance's ten children. */
     @Composable
     private fun Legend(kinds: List<TimelineKind>) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             kinds.forEachIndexed { index, kind ->
                 if (index > 0) Spacer(GlanceModifier.width(14.dp))
-                Box(modifier = GlanceModifier.size(10.dp).cornerRadius(3.dp).background(ExtrasPalette.timeline(kind))) {}
-                Spacer(GlanceModifier.width(5.dp))
-                PulseText(ExtrasText.timelineLabel(kind), 12.sp, color = GlanceTheme.colors.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = GlanceModifier.size(10.dp).cornerRadius(3.dp).background(ExtrasPalette.timeline(kind))) {}
+                    Spacer(GlanceModifier.width(5.dp))
+                    PulseText(ExtrasText.timelineLabel(kind), 12.sp, color = GlanceTheme.colors.onSurfaceVariant)
+                }
             }
         }
     }

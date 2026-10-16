@@ -17,6 +17,7 @@ import androidx.glance.appwidget.ExperimentalGlanceRemoteViewsApi
 import androidx.glance.appwidget.GlanceRemoteViews
 import androidx.test.core.app.ApplicationProvider
 import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth.assertWithMessage
 import health.pulse.strength.core.SnapshotPhase
 import health.pulse.strength.core.TrackingKind
 import health.pulse.strength.core.widgets.WidgetSnapshot
@@ -166,6 +167,38 @@ class WidgetRenderTest {
         return false
     }
 
+    /** The top-left corner of [this] in the coordinates of [root] (the widgets do not scroll or translate). */
+    private fun View.positionIn(root: View): Pair<Int, Int> {
+        var x = 0
+        var y = 0
+        var current: View = this
+        while (current !== root) {
+            x += current.left
+            y += current.top
+            current = current.parent as View
+        }
+        return x to y
+    }
+
+    /** True when the text of [this] is cut with an ellipsis, or does not fit its own box or the widget. */
+    private fun TextView.isCutOff(root: View): Boolean {
+        val textLayout = layout ?: return false
+        val ellipsized = (0 until textLayout.lineCount).any { textLayout.getEllipsisCount(it) > 0 }
+        val (x, y) = positionIn(root)
+        val clipped = textLayout.height > height - compoundPaddingTop - compoundPaddingBottom + 1
+        val outside = x < -1 || y < -1 || x + width > root.width + 1 || y + height > root.height + 1
+        return ellipsized || clipped || outside
+    }
+
+    /** The texts of [view] that are cut off, shortened or outside the widget. */
+    private fun cutOffTexts(view: View): List<CharSequence> =
+        view.descendants().filterIsInstance<TextView>().filter { it.text.isNotEmpty() && it.isCutOff(view) }.map { it.text }
+
+    /** What every widget must hold in the states that have short, known text: nothing is cut off, shortened or outside the widget. */
+    private fun checkFits(label: String, view: View) {
+        assertWithMessage("$label: text that does not fit").that(cutOffTexts(view)).isEmpty()
+    }
+
     private fun checkStructure(label: String, view: View, bitmap: Bitmap) {
         val views = view.descendants()
         // Something is drawn: not just the ground colour.
@@ -188,6 +221,7 @@ class WidgetRenderTest {
     }
 
     private fun renderEverything(mode: String) {
+        val misfits = mutableListOf<String>()
         for (scenario in scenarios) {
             for ((stateName, snapshot) in states()) {
                 for ((sizeName, size) in scenario.sizes) {
@@ -195,9 +229,13 @@ class WidgetRenderTest {
                     val name = "${scenario.name}-$stateName-$sizeName"
                     save(bitmap, mode, name)
                     checkStructure("$mode/$name", view, bitmap)
+                    // The long texts are meant to be shortened; every other state has to fit as it is.
+                    val cut = if (stateName == "long") emptyList() else cutOffTexts(view)
+                    if (cut.isNotEmpty()) misfits += "$mode/$name: $cut"
                 }
             }
         }
+        assertWithMessage("states with text that does not fit").that(misfits).isEmpty()
     }
 
     @Test
@@ -225,8 +263,53 @@ class WidgetRenderTest {
                 val (view, bitmap) = render(LogSetWidget(), WidgetFixtures.preview.copy(active = active), size)
                 save(bitmap, "light", "log-set-$name-$sizeName")
                 checkStructure("log-set-$name-$sizeName", view, bitmap)
+                checkFits("log-set-$name-$sizeName", view)
             }
         }
+    }
+
+    private fun texts(view: View): List<String> = view.descendants().filterIsInstance<TextView>().map { it.text.toString() }
+
+    @Test
+    fun theTimelineLegendNamesEveryKindOfTheBarEvenInTheSmallestWidget() {
+        for (size in fourByTwo.values) {
+            val (view, _) = render(SessionTimelineWidget(), WidgetFixtures.preview, size)
+            assertThat(texts(view)).containsAtLeast("Lifting", "Rest", "Long rest")
+        }
+    }
+
+    @Test
+    fun theTimelineSummaryKeepsTheLongestPartThatFits() {
+        val (wide, _) = render(SessionTimelineWidget(), WidgetFixtures.preview, DpSize(320.dp, 146.dp))
+        assertThat(texts(wide)).contains(" · 38% under tension · 1 long break")
+        val (narrow, _) = render(SessionTimelineWidget(), WidgetFixtures.preview, DpSize(250.dp, 110.dp))
+        val tail = texts(narrow).single { it.startsWith(" · 38%") }
+        assertThat(tail).isNotEqualTo(" · 38% under tension · 1 long break")
+    }
+
+    @Test
+    fun fourPartnerLinesAndTheSentenceUnderThemAllShow() {
+        val preview = WidgetFixtures.preview
+        val friends = listOf("Alexandria", "Bartholomew", "Cornelia").mapIndexed { index, name ->
+            preview.partners.first().copy(name = name, initials = name.take(2).uppercase(), completed = index + 1, closedWeek = false)
+        }
+        val (view, _) = render(PartnerWidget(), preview.copy(partners = friends + preview.partners), DpSize(320.dp, 240.dp))
+        assertThat(texts(view)).containsAtLeast("You", "AL", "BA", "CO", "Sam closed their week. Your turn.")
+    }
+
+    @Test
+    fun tenSetDotsDoNotPushTheProgressOutOfTheLogSetWidget() {
+        val active = WidgetFixtures.active().copy(exerciseSetCount = 10, exerciseDoneSets = 4)
+        val (view, _) = render(LogSetWidget(), WidgetFixtures.preview.copy(active = active), DpSize(320.dp, 146.dp))
+        assertThat(texts(view).any { it.startsWith("6 reps · 6 of 20 sets") }).isTrue()
+        checkFits("ten dots", view)
+    }
+
+    @Test
+    fun theLogSetStepperKeepsTheUnitWhenThereIsRoomAndTheNumberWhenThereIsNot() {
+        val weight = WidgetFixtures.preview.copy(active = WidgetFixtures.active())
+        assertThat(texts(render(LogSetWidget(), weight, DpSize(320.dp, 146.dp)).first)).contains("82.5 kg")
+        assertThat(texts(render(LogSetWidget(), weight, DpSize(250.dp, 110.dp)).first)).contains("82.5")
     }
 
     @Test
@@ -244,5 +327,27 @@ class WidgetRenderTest {
         val (view, _) = render(LogSetWidget(), WidgetFixtures.preview.copy(active = stale), DpSize(320.dp, 146.dp))
         assertThat(view.descendants().filterIsInstance<Chronometer>()).isEmpty()
         assertThat(view.descendants().filterIsInstance<TextView>().map { it.text.toString() }).contains("Log set")
+    }
+
+    @Test
+    fun theStrengthRatioAsksForTheBodyweightAtEverySizeWithoutCuttingIt() {
+        val preview = WidgetFixtures.preview
+        val noBodyweight = preview.copy(strengthRatio = preview.strengthRatio?.copy(bodyweightKg = null, ratio = null))
+        for ((sizeName, size) in twoByTwo) {
+            val (view, bitmap) = render(StrengthRatioWidget(), noBodyweight, size)
+            save(bitmap, "light", "strength-ratio-no-bodyweight-$sizeName")
+            checkFits("strength-ratio-no-bodyweight-$sizeName", view)
+            assertThat(texts(view)).contains("99 kg")
+        }
+    }
+
+    @Test
+    fun theReadinessAdviceIsShownWholeAtEverySizeWhileItFits() {
+        val advice = "Good sleep, steady HRV. Go for the top set."
+        for ((sizeName, size) in fourByTwo) {
+            val (view, _) = render(ReadinessWidget(), WidgetFixtures.preview, size)
+            assertThat(texts(view)).contains(advice)
+            checkFits("readiness-$sizeName", view)
+        }
     }
 }

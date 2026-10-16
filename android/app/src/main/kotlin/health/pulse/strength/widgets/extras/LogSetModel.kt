@@ -25,14 +25,17 @@ internal sealed interface LogSetView {
     /** No workout runs: offer to start the next template. */
     data class Idle(val title: String, val detail: String, val canStart: Boolean) : LogSetView
 
-    /** A set waits to be logged; [weight] is null for bodyweight and timed exercises. */
+    /**
+     * A set waits to be logged; [weight] is null for bodyweight and timed exercises. [progress] words how far the workout is, from the
+     * most to the least ("6 of 20 sets logged", "6 of 20 sets"), for the widget to pick the longest that fits.
+     */
     data class Logging(
         val exercise: String,
         val setLabel: String,
         val weight: StepperView?,
         val reps: StepperView,
         val dots: List<DotState>,
-        val footer: String,
+        val progress: List<String>,
     ) : LogSetView
 
     /** The rest timer has [remainingMillis] left; the widget counts it down by itself. [nextSet] is the set that follows. */
@@ -47,6 +50,11 @@ internal sealed interface LogSetView {
 
 internal object LogSetModel {
     private const val MAX_DOTS = 10
+    private const val MIN_DOT = 8f
+    private const val MAX_DOT = 22f
+
+    /** The gap in dp after each set dot. */
+    const val DOT_GAP_DP = 4f
 
     /** The state of the widget at [nowMillis] (epoch milliseconds): which controls make sense for the running workout. */
     fun of(snapshot: WidgetSnapshot, nowMillis: Long): LogSetView {
@@ -90,10 +98,14 @@ internal object LogSetModel {
                     StepperView("${active.repsText} ${active.repsUnit}", active.repsText, "Fewer reps", "More reps")
                 },
                 dots = dots(active.exerciseDoneSets, active.exerciseSetCount),
-                footer = progress,
+                progress = listOf(progress, "${active.loggedSets} of ${active.totalSets} sets"),
             )
         }
     }
+
+    /** The width in dp of one set dot when [count] of them share [availableDp] with a gap after each: between 8 and 22 dp. */
+    fun dotWidth(count: Int, availableDp: Float): Float =
+        if (count <= 0) MAX_DOT else (availableDp / count - DOT_GAP_DP).coerceIn(MIN_DOT, MAX_DOT)
 
     /** Logged sets, the one to log now, and those still to come; at most [MAX_DOTS] so a long exercise does not overflow the row. */
     fun dots(done: Int?, count: Int?): List<DotState> {

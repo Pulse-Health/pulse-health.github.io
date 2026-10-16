@@ -9,28 +9,35 @@ import androidx.glance.LocalSize
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Column
+import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.fillMaxWidth
 import androidx.glance.layout.height
+import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
+import androidx.glance.unit.ColorProvider
 import health.pulse.strength.R
 import health.pulse.strength.core.widgets.WidgetSnapshot
 import health.pulse.strength.widgets.common.PulseWidget
 import health.pulse.strength.widgets.common.WidgetDimens
 import health.pulse.strength.widgets.lock.Eyebrow
+import health.pulse.strength.widgets.lock.Glyph
 import health.pulse.strength.widgets.lock.PulseText
 import health.pulse.strength.widgets.lock.WidgetCard
 
 /**
  * WI-06 Rest-day swap (2x2): on a rest day the slot of the next workout shows a short recovery routine whose Start opens an empty
- * workout with its name; on a training day it shows the next template instead, so the widget is never empty.
+ * workout with its name; on a training day it shows the next template instead, so the widget is never empty. A card too short for a
+ * Start button keeps the word "Start" as a line of text: the whole card is the tap target either way.
  */
 class RestDayWidget : PulseWidget() {
     @Composable
     override fun Content(snapshot: WidgetSnapshot) {
         val card = ExtrasText.restDayCard(snapshot)
-        val roomy = LocalSize.current.width >= 140.dp
+        val size = LocalSize.current
+        val roomy = size.width >= 140.dp
+        val compact = size.height < ExtrasText.COMPACT_BELOW_DP.dp
         val padding = if (roomy) WidgetDimens.padding else WidgetDimens.paddingCompact
         when (card) {
             is ExtrasText.RestDayCard.Rest -> WidgetCard(
@@ -44,16 +51,20 @@ class RestDayWidget : PulseWidget() {
                     Eyebrow(card.reason, color = GlanceTheme.colors.onPrimaryContainer)
                     Spacer(GlanceModifier.defaultWeight())
                     PulseText(card.title, 17.sp, weight = FontWeight.Bold, maxLines = 2)
-                    PulseText(card.focus, 13.sp, color = GlanceTheme.colors.onPrimaryContainer, maxLines = 2)
-                    Spacer(GlanceModifier.height(8.dp))
-                    PillButton(
-                        label = "Start",
-                        action = null,
-                        modifier = GlanceModifier.fillMaxWidth(),
-                        fill = GlanceTheme.colors.surface,
-                        textColor = GlanceTheme.colors.onPrimaryContainer,
-                        height = 36.dp,
-                    )
+                    if (compact) {
+                        StartLine(GlanceTheme.colors.onPrimaryContainer)
+                    } else {
+                        PulseText(card.focus, 13.sp, color = GlanceTheme.colors.onPrimaryContainer, maxLines = 2)
+                        Spacer(GlanceModifier.height(8.dp))
+                        PillButton(
+                            label = "Start",
+                            action = null,
+                            modifier = GlanceModifier.fillMaxWidth(),
+                            fill = GlanceTheme.colors.surface,
+                            textColor = GlanceTheme.colors.onPrimaryContainer,
+                            height = 36.dp,
+                        )
+                    }
                 }
             }
             is ExtrasText.RestDayCard.Training -> WidgetCard(
@@ -66,9 +77,14 @@ class RestDayWidget : PulseWidget() {
                     Eyebrow("Training day")
                     Spacer(GlanceModifier.defaultWeight())
                     PulseText(card.name, 17.sp, weight = FontWeight.Bold, maxLines = 2)
-                    PulseText(card.detail, 13.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 2)
-                    Spacer(GlanceModifier.height(8.dp))
-                    PillButton(label = "Start", action = null, modifier = GlanceModifier.fillMaxWidth(), height = 36.dp, icon = R.drawable.ic_extras_play)
+                    if (compact) {
+                        StartLine(GlanceTheme.colors.primary)
+                    } else {
+                        // The exercises and the minutes on a line each, so a narrow card never breaks "~55 min" in two.
+                        PulseText(card.detail.replace(" · ", "\n"), 13.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 2)
+                        Spacer(GlanceModifier.height(8.dp))
+                        PillButton(label = "Start", action = null, modifier = GlanceModifier.fillMaxWidth(), height = 36.dp, icon = R.drawable.ic_extras_play)
+                    }
                 }
             }
             ExtrasText.RestDayCard.Empty -> WidgetCard(
@@ -78,12 +94,25 @@ class RestDayWidget : PulseWidget() {
                 contentAlignment = Alignment.TopStart,
             ) {
                 Column(modifier = GlanceModifier.fillMaxSize()) {
-                    Eyebrow("Rest-day swap")
+                    Eyebrow("Rest-day swap", maxLines = 2)
                     Spacer(GlanceModifier.defaultWeight())
                     PulseText("No plan yet", 17.sp, weight = FontWeight.Bold, maxLines = 2)
-                    PulseText("Create a workout in Pulse Strength.", 13.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 3)
+                    // A card too short for the sentence keeps the title: the tap opens the app either way.
+                    if (!compact) {
+                        PulseText("Create a workout in Pulse Strength.", 13.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 3)
+                    }
                 }
             }
+        }
+    }
+
+    /** "▸ Start" as text, for a card with no room for a button. */
+    @Composable
+    private fun StartLine(color: ColorProvider) {
+        Row(modifier = GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Glyph(R.drawable.ic_extras_play, 12.dp, color)
+            Spacer(GlanceModifier.width(6.dp))
+            PulseText("Start", 14.sp, weight = FontWeight.Bold, color = color)
         }
     }
 }

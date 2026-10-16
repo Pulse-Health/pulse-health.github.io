@@ -37,7 +37,9 @@ class BodyMapWidget : PulseWidget() {
     override fun Content(snapshot: WidgetSnapshot) {
         val bodyMap = snapshot.bodyMap
         val size = LocalSize.current
-        val padding = WidgetDimens.padding
+        // Below 130 dp the text column cannot hold the subtitle as well as the sentence, so the picture speaks for "front and back".
+        val compact = size.height < ExtrasText.COMPACT_BELOW_DP.dp
+        val padding = if (compact) WidgetDimens.paddingCompact else WidgetDimens.padding
         val message = ExtrasText.bodyMessage(bodyMap)
         val description = ExtrasText.bodyDescription(bodyMap)
         val aspect = BodyMapShapes.WIDTH / BodyMapShapes.HEIGHT
@@ -52,7 +54,7 @@ class BodyMapWidget : PulseWidget() {
                 Spacer(GlanceModifier.width(12.dp))
                 Column(modifier = GlanceModifier.defaultWeight().fillMaxHeight()) {
                     PulseText("This week", 15.sp, weight = FontWeight.Medium)
-                    PulseText("Front and back", 13.sp, color = GlanceTheme.colors.onSurfaceVariant)
+                    if (!compact) PulseText("Front and back", 13.sp, color = GlanceTheme.colors.onSurfaceVariant)
                     Spacer(GlanceModifier.defaultWeight())
                     PulseText(message.headline, 13.sp, weight = FontWeight.Bold, maxLines = 2)
                     if (message.detail.isNotEmpty()) {

@@ -14,6 +14,7 @@ import androidx.glance.layout.Row
 import androidx.glance.layout.Spacer
 import androidx.glance.layout.fillMaxSize
 import androidx.glance.layout.height
+import androidx.glance.layout.padding
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.TextAlign
@@ -21,7 +22,6 @@ import androidx.glance.unit.ColorProvider
 import health.pulse.strength.core.widgets.DeepLinks
 import health.pulse.strength.core.widgets.WidgetSnapshot
 import health.pulse.strength.widgets.common.PulseWidget
-import health.pulse.strength.widgets.common.WidgetDimens
 import health.pulse.strength.widgets.lock.MeterBar
 import health.pulse.strength.widgets.lock.PulseText
 import health.pulse.strength.widgets.lock.WidgetCard
@@ -34,7 +34,8 @@ class PartnerWidget : PulseWidget() {
     @Composable
     override fun Content(snapshot: WidgetSnapshot) {
         val size = LocalSize.current
-        val padding = if (size.height < 130.dp) 12.dp else WidgetDimens.padding
+        val layout = ExtrasText.partnerLayout(size.height.value)
+        val padding = layout.padding.dp
         if (snapshot.partners.isEmpty()) {
             WidgetCard(
                 description = "Training partners: invite a partner to share your weekly goal",
@@ -51,9 +52,10 @@ class PartnerWidget : PulseWidget() {
             }
             return
         }
-        val rows = ExtrasText.partnerRows(snapshot.week, snapshot.partners, ExtrasText.partnerRowCapacity(size.height.value))
+        val rows = ExtrasText.partnerRows(snapshot.week, snapshot.partners, layout.rows)
         val footer = ExtrasText.partnerFooter(snapshot.week, snapshot.partners)
-        val barWidth = size.width - padding * 2 - (AVATAR + GAP * 2 + COUNT)
+        val avatar = layout.avatar.dp
+        val barWidth = size.width - padding * 2 - (avatar + GAP * 2 + COUNT)
         val summary = rows.joinToString(". ") { "${it.label} ${it.completed} of ${it.goal}" }
         WidgetCard(
             description = "Training partners this week. $summary. $footer",
@@ -62,15 +64,16 @@ class PartnerWidget : PulseWidget() {
             contentAlignment = Alignment.TopStart,
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
-                PulseText("Training partners · this week", 15.sp, weight = FontWeight.Medium)
-                Spacer(GlanceModifier.height(8.dp))
+                PulseText("Training partners · this week", if (layout.showsFooter) 15.sp else 14.sp, weight = FontWeight.Medium)
+                Spacer(GlanceModifier.height(if (layout.showsFooter) 8.dp else 4.dp))
+                // The gap below a line is padding, not a spacer: Glance draws at most ten children per column.
                 for (row in rows) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(modifier = GlanceModifier.padding(bottom = (layout.rowSlot - layout.avatar).dp), verticalAlignment = Alignment.CenterVertically) {
                         Avatar(
                             label = row.label,
                             fill = if (row.isYou) GlanceTheme.colors.primary else GlanceTheme.colors.tertiary,
                             textColor = if (row.isYou) GlanceTheme.colors.onPrimary else ColorProvider(Color.White),
-                            size = AVATAR,
+                            size = avatar,
                         )
                         Spacer(GlanceModifier.width(GAP))
                         MeterBar(
@@ -90,16 +93,16 @@ class PartnerWidget : PulseWidget() {
                             align = TextAlign.End,
                         )
                     }
-                    Spacer(GlanceModifier.height(4.dp))
                 }
-                Spacer(GlanceModifier.defaultWeight())
-                PulseText(footer, 13.sp, color = GlanceTheme.colors.onSurfaceVariant, maxLines = 2)
+                if (layout.showsFooter) {
+                    Spacer(GlanceModifier.defaultWeight())
+                    PulseText(footer, 13.sp, color = GlanceTheme.colors.onSurfaceVariant)
+                }
             }
         }
     }
 
     private companion object {
-        val AVATAR = 30.dp
         val GAP = 10.dp
         val COUNT = 34.dp
     }
