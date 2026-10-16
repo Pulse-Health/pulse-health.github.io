@@ -7,7 +7,7 @@ PaymentSheet, on Kotlin + Jetpack Compose. It implements `billing/docs/client-de
 
 | Module | What | Depends on |
 | --- | --- | --- |
-| `billing-core` | Plain Kotlin/JVM: models, `BillingApi` on OkHttp, entitlement cache rule, `PurchaseCoordinator`, `BillingStrings` (de/en). No Android, no Stripe. | OkHttp, kotlinx.serialization, coroutines |
+| `billing-core` | Plain Kotlin/JVM: models, `BillingApi` on OkHttp, entitlement cache rule, `PurchaseCoordinator`, `BillingStrings` (de/en), `BillingFormat` (prices). No Android, no Stripe. | OkHttp, kotlinx.serialization, coroutines |
 | `billing-android` | Android library: `StripePaymentSheetPresenter`, `BillingViewModel`, `PaywallScreen`, `ManageSubscriptionScreen`, SharedPreferences cache. | `billing-core`, Stripe Android SDK, Compose Material3 |
 
 ## What the host app provides
@@ -35,8 +35,8 @@ The Pulse app has no sign-in and no Premium gate yet; do those first (see `billi
    project(":billing-android").projectDir = file("<path to>/billing/android/billing-android")
    ```
    and `implementation(project(":billing-android"))` in `app/build.gradle.kts`.
-2. **Version catalog.** Add what `gradle/libs.versions.toml` here has and the app lacks: `okhttp-mockwebserver` and
-   `lifecycle-runtime-compose` (tests and `collectAsStateWithLifecycle`), `browser`, `stripe-android`, and the plugin aliases
+2. **Version catalog.** Add what `gradle/libs.versions.toml` here has and the app lacks: `coroutines-core`, `okhttp-mockwebserver` (tests),
+   `lifecycle-runtime-compose` (`collectAsStateWithLifecycle`), `browser`, `stripe-android`, and the plugin aliases
    `android-library` and `kotlin-jvm`. All other versions are the app's own (see below). Run `./gradlew :app:dependencies` once:
    the Stripe SDK brings its own Compose dependencies, check that they did not move the app's Compose version.
 3. **Register the return link** in `AndroidManifest.xml` on the activity that should receive it, for example
@@ -74,7 +74,9 @@ The Pulse app has no sign-in and no Premium gate yet; do those first (see `billi
 * Where purchase is unavailable (region, platform, billing off) the paywall shows one neutral line and no link or hint to buy elsewhere.
 * The consent text and the buy-button label ("Zahlungspflichtig abonnieren") are in `BillingStrings`. The legal wording is a
   draft: have it reviewed (`billing/docs/legal.md`).
-* Prices are formatted from `unitAmount` and `currency` with the currency's default fraction digits.
+* Prices are formatted by `BillingFormat` from `unitAmount` and `currency` with **Stripe's minor-unit table** (zero-decimal: BIF CLP DJF GNF JPY
+  KMF KRW MGA PYG RWF UGX VND VUV XAF XOF XPF; three-decimal: BHD JOD KWD OMR TND; everything else 2), not `java.util.Currency`'s,
+  because the server's `unitAmount` follows Stripe's table. The iOS package has the same table.
 
 ## Build and test
 
