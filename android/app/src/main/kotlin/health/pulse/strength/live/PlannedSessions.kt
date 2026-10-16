@@ -3,6 +3,7 @@ package health.pulse.strength.live
 import android.content.Context
 import android.content.SharedPreferences
 import android.text.format.DateFormat
+import androidx.core.content.edit
 import health.pulse.strength.runtime.StrengthRuntime
 import java.util.Date
 
@@ -114,11 +115,17 @@ internal class PlannedSessionStore(private val prefs: SharedPreferences) {
     }
 
     fun write(plan: PlannedSession) {
-        prefs.edit().putString(KEY_TEMPLATE, plan.templateId).putLong(KEY_STARTS_AT, plan.startsAtMillis).apply()
+        prefs.edit {
+            putString(KEY_TEMPLATE, plan.templateId)
+            putLong(KEY_STARTS_AT, plan.startsAtMillis)
+        }
     }
 
     fun clear() {
-        prefs.edit().remove(KEY_TEMPLATE).remove(KEY_STARTS_AT).apply()
+        prefs.edit {
+            remove(KEY_TEMPLATE)
+            remove(KEY_STARTS_AT)
+        }
     }
 
     private companion object {

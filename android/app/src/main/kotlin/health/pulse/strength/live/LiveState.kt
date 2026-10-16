@@ -2,6 +2,7 @@ package health.pulse.strength.live
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 
 /**
  * What the workout notification has to remember across a restart of the process: the coach tip that the person answered with "Keep".
@@ -12,7 +13,7 @@ internal class LiveState private constructor(private val prefs: SharedPreference
     val dismissedCoachTip: String? get() = prefs.getString(KEY_DISMISSED_TIP, null)
 
     fun dismissCoachTip(setId: String) {
-        prefs.edit().putString(KEY_DISMISSED_TIP, setId).apply()
+        prefs.edit { putString(KEY_DISMISSED_TIP, setId) }
     }
 
     companion object {

@@ -1,5 +1,6 @@
 package health.pulse.strength.controls
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.drawable.Icon
@@ -98,9 +99,11 @@ abstract class PulseTileService(private val control: Control) : TileService() {
         if (isLocked) unlockAndRun { launch(intent) } else launch(intent)
     }
 
+    // Lint cannot see the version check: the Intent variant is only called below Android 14, where the PendingIntent one does not exist.
+    @SuppressLint("StartActivityAndCollapseDeprecated")
     private fun launch(intent: Intent) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            // Android 14 apps must hand the system a pending intent; the Intent variant throws for them.
+            // From Android 14 an app must hand the system a pending intent; the Intent variant throws.
             startActivityAndCollapse(PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
         } else {
             @Suppress("DEPRECATION")

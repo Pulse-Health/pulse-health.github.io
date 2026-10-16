@@ -32,7 +32,7 @@ class LiveDecorationsTest {
         assertThat(d.chipText).isEqualTo("4/5")
         // 9 earlier sets, the 5 sets of the shown exercise one by one, 6 later sets; 12 logged.
         assertThat(d.progress).isEqualTo(LiveProgress(12, listOf(9, 1, 1, 1, 1, 1, 6)))
-        assertThat(d.progress!!.max).isEqualTo(20)
+        assertThat(d.progress!!.segments.sum()).isEqualTo(20)
     }
 
     @Test
@@ -55,7 +55,7 @@ class LiveDecorationsTest {
         assertThat(d.progress).isEqualTo(LiveProgress(20, listOf(20)))
         val clamped = decoration(loggingSnapshot().copy(loggedSets = 2, exerciseDoneSets = 5)).progress!!
         assertThat(clamped.segments.all { it >= 1 }).isTrue()
-        assertThat(clamped.max).isEqualTo(20)
+        assertThat(clamped.segments.sum()).isEqualTo(20)
     }
 
     // endregion

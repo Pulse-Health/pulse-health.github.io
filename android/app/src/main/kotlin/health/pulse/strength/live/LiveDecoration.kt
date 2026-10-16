@@ -16,9 +16,7 @@ import java.time.Instant
 internal enum class LiveAccent { GREEN, GOLD }
 
 /** The segmented bar of the Android 16 progress style: [value] of the sum of [segments], each segment at least 1. */
-internal data class LiveProgress(val value: Int, val segments: List<Int>) {
-    val max: Int get() = segments.sum()
-}
+internal data class LiveProgress(val value: Int, val segments: List<Int>)
 
 /**
  * What LA-01 ... LA-10 add to the ongoing workout notification, which `WorkoutNotifications.ongoing` builds. A null or empty field
