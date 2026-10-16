@@ -13,6 +13,7 @@ private enum HubRoute: Hashable {
     case history
     case workout(UUID)
     case recovery
+    case settings
 }
 
 private enum HubEditorTarget: Identifiable {
@@ -45,6 +46,7 @@ private enum HubEditorTarget: Identifiable {
 public struct StrengthHubView: View {
     @ObservedObject private var store: StrengthStore
     @ObservedObject private var controller: WorkoutController
+    private let environment: StrengthAppEnvironment
     private let onStart: (WorkoutTemplate?) -> Void
     private let onResume: () -> Void
 
@@ -54,6 +56,7 @@ public struct StrengthHubView: View {
     @State private var showsImporter = false
     @State private var showsImportResult = false
     @State private var importMessage = ""
+    @State private var showsWeightEntry = false
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
@@ -64,6 +67,7 @@ public struct StrengthHubView: View {
     ) {
         self._store = ObservedObject(wrappedValue: environment.store)
         self._controller = ObservedObject(wrappedValue: environment.controller)
+        self.environment = environment
         self.onStart = onStart
         self.onResume = onResume
     }
@@ -74,6 +78,7 @@ public struct StrengthHubView: View {
         let now = Date()
         return ScrollView {
             VStack(spacing: 20) {
+                weighInCard(now: now)
                 recommendedCard(now: now)
                 startEmptyRow
                 planSection
@@ -108,6 +113,9 @@ public struct StrengthHubView: View {
         }
         .sheet(item: $editor) { (target: HubEditorTarget) in
             HubTemplateEditorSheet(store: store, template: template(for: target))
+        }
+        .sheet(isPresented: $showsWeightEntry) {
+            BodyWeightEntrySheet(store: store)
         }
         .alert("Workout in progress", isPresented: $showsBusyAlert) {
             Button("Resume") {
@@ -149,6 +157,11 @@ public struct StrengthHubView: View {
                 route = .library
             } label: {
                 Label("Exercise Library", systemImage: "magnifyingglass")
+            }
+            Button {
+                route = .settings
+            } label: {
+                Label("Settings", systemImage: "gearshape")
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -209,6 +222,52 @@ public struct StrengthHubView: View {
         } else {
             requestStart(template)
         }
+    }
+
+    // MARK: Weigh-in
+
+    /// "Time to update your weight": shown while the weigh-in reminder is on and a weigh-in is due. The in-app half of the reminder
+    /// (the notification may be refused or missed); it goes away as soon as the user has logged a weight.
+    @ViewBuilder
+    private func weighInCard(now: Date) -> some View {
+        if store.weighIn.isEnabled, store.isWeighInDue(now: now) {
+            Button {
+                showsWeightEntry = true
+            } label: {
+                weighInLabel(now: now)
+            }
+            .buttonStyle(PulsePlainButtonStyle())
+            .accessibilityIdentifier("hub-weigh-in")
+        }
+    }
+
+    private func weighInLabel(now: Date) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "scalemass.fill")
+                .font(.system(size: 26))
+                .foregroundStyle(PulseTheme.green)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Time to update your weight")
+                    .pulseFont(17, .semibold, relativeTo: .headline)
+                    .foregroundStyle(PulseTheme.ink)
+                Text(weighInSubtitle(now: now))
+                    .pulseFont(12, relativeTo: .footnote)
+                    .foregroundStyle(PulseTheme.inkSecondary)
+            }
+            Spacer(minLength: 8)
+            HubChevron()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+        .hubRowBackground()
+        .contentShape(Rectangle())
+    }
+
+    private func weighInSubtitle(now: Date) -> String {
+        guard let latest = store.latestBodyWeight else { return "Log your first weigh-in" }
+        return "Last " + NumberText.kg(latest.kg) + " kg · " + HubFormat.daysAgo(latest.date, now: now)
     }
 
     // MARK: Start empty workout
@@ -506,6 +565,8 @@ public struct StrengthHubView: View {
             HubWorkoutDetailView(store: store, workoutID: workoutID)
         case .recovery:
             HubRecoveryView(recovery: controller.recovery)
+        case .settings:
+            StrengthSettingsView(environment: environment)
         }
     }
 
