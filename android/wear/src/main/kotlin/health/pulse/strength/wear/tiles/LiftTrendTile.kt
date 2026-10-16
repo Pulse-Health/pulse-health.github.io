@@ -2,8 +2,6 @@ package health.pulse.strength.wear.tiles
 
 import android.content.Context
 import androidx.wear.protolayout.DeviceParametersBuilders.DeviceParameters
-import androidx.wear.protolayout.DimensionBuilders.dp
-import androidx.wear.protolayout.LayoutElementBuilders
 import androidx.wear.protolayout.LayoutElementBuilders.LayoutElement
 import androidx.wear.protolayout.ResourceBuilders
 import androidx.wear.protolayout.material.Typography
@@ -51,11 +49,7 @@ class LiftTrendTile : PulseTileService() {
                         ui.text("kg e1RM", Typography.TYPOGRAPHY_CAPTION2, TileColors.SECONDARY),
                     ),
                     ui.spacer(height = 4f),
-                    LayoutElementBuilders.Image.Builder()
-                        .setResourceId(SPARKLINE)
-                        .setWidth(dp(sparklineSize(ui.device).first))
-                        .setHeight(dp(sparklineSize(ui.device).second))
-                        .build(),
+                    ui.image(SPARKLINE, sparklineSize(ui.device).first, sparklineSize(ui.device).second).build(),
                 ),
                 secondary = ui.text(model.summary, Typography.TYPOGRAPHY_CAPTION2, TileColors.SECONDARY),
             ),

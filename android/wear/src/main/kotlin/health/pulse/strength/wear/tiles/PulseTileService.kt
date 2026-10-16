@@ -11,6 +11,7 @@ import androidx.wear.tiles.TileService
 import com.google.common.util.concurrent.ListenableFuture
 import health.pulse.strength.wear.data.WearRuntime
 import health.pulse.strength.wear.data.WearView
+import health.pulse.strength.wear.sync.SnapshotIngest
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
@@ -72,6 +73,7 @@ abstract class PulseTileService : TileService() {
     /** Answers one tile request: runs the command of [lastClickableId] (empty when no click caused the request), then builds the tile. */
     internal suspend fun respond(device: DeviceParameters, lastClickableId: String): TileBuilders.Tile {
         if (TileClicks.firstTime(lastClickableId)) onClick(TileClicks.actionOf(lastClickableId))
+        SnapshotIngest.ensureData(applicationContext)
         val plan = plan(TileUi(applicationContext, device), WearRuntime.view(), Instant.now())
         return TileBuilders.Tile.Builder()
             .setResourcesVersion(plan.resourcesVersion)

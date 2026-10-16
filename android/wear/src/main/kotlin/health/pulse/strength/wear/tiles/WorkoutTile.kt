@@ -11,7 +11,7 @@ import androidx.wear.protolayout.material.ProgressIndicatorColors
 import androidx.wear.protolayout.material.Text
 import androidx.wear.protolayout.material.Typography
 import health.pulse.strength.core.widgets.WidgetCommand
-import health.pulse.strength.core.widgets.WidgetCommands
+import health.pulse.strength.wear.data.WearCommands
 import health.pulse.strength.wear.data.WearRuntime
 import health.pulse.strength.wear.data.WearView
 import health.pulse.strength.wear.model.NextUpTileModel
@@ -142,14 +142,13 @@ class WorkoutTile : PulseTileService() {
         private const val RING_SHARE = 0.34f
         private const val RING_MIN = 60f
         private const val RING_MAX = 96f
-        private const val REST_STEP_SECONDS = 15
 
         /** The command behind a clickable of this tile; null for an action that is not a command. */
         fun commandFor(action: String): WidgetCommand? = when (action) {
-            ACTION_LOG -> WidgetCommand.of(WidgetCommands.LOG_NEXT_SET)
-            ACTION_SKIP_REST -> WidgetCommand.of(WidgetCommands.SKIP_REST)
-            ACTION_ADD_REST -> WidgetCommand.of(WidgetCommands.ADJUST_REST, WidgetCommands.ARG_SECONDS to REST_STEP_SECONDS.toString())
-            ACTION_RESUME -> WidgetCommand.of(WidgetCommands.RESUME)
+            ACTION_LOG -> WearCommands.logNextSet()
+            ACTION_SKIP_REST -> WearCommands.skipRest()
+            ACTION_ADD_REST -> WearCommands.adjustRest(WearCommands.REST_STEP_SECONDS)
+            ACTION_RESUME -> WearCommands.resume()
             else -> null
         }
     }

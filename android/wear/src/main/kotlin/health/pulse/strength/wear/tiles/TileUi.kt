@@ -96,11 +96,21 @@ internal class TileUi(val context: Context, val device: DeviceParameters) {
         .setWeight(if (bold) LayoutElementBuilders.FONT_WEIGHT_BOLD else LayoutElementBuilders.FONT_WEIGHT_NORMAL)
         .build()
 
-    /** A tinted drawable from [TileIcons], [size] dp square. */
-    fun icon(id: String, size: Float, tint: Int): LayoutElement = LayoutElementBuilders.Image.Builder()
+    /**
+     * An image of the tile's resources ([TileIcons], or one a tile adds in `resources`), [width] x [height] dp.
+     *
+     * The id based form is deprecated in ProtoLayout 1.4 in favour of resources registered in a `ProtoLayoutScope`, which needs a
+     * renderer that reports that capability. The tiles of this app have to render on Wear OS 4 and 5, so they stay with resource ids,
+     * which every renderer understands.
+     */
+    @Suppress("DEPRECATION")
+    fun image(id: String, width: Float, height: Float): LayoutElementBuilders.Image.Builder = LayoutElementBuilders.Image.Builder()
         .setResourceId(id)
-        .setWidth(dp(size))
-        .setHeight(dp(size))
+        .setWidth(dp(width))
+        .setHeight(dp(height))
+
+    /** A tinted drawable from [TileIcons], [size] dp square. */
+    fun icon(id: String, size: Float, tint: Int): LayoutElement = image(id, size, size)
         .setColorFilter(LayoutElementBuilders.ColorFilter.Builder().setTint(argb(tint)).build())
         .build()
 
