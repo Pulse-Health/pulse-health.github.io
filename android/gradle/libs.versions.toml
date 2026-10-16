@@ -64,6 +64,21 @@ kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTest" }
 
+# ==== libs-core:begin ====
+# ==== libs-core:end ====
+
+# ==== libs-host:begin ====
+# ==== libs-host:end ====
+
+# ==== libs-glance:begin ====
+# ==== libs-glance:end ====
+
+# ==== libs-system:begin ====
+# ==== libs-system:end ====
+
+# ==== libs-wear:begin ====
+# ==== libs-wear:end ====
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
