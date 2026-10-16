@@ -19,7 +19,8 @@ internal object SystemScope {
 
     /** Runs [block] after `goAsync()`, so a receiver can call suspending code. Failures are logged, never thrown into the system. */
     fun runAsync(receiver: BroadcastReceiver, block: suspend () -> Unit) {
-        val pending = receiver.goAsync()
+        // Null when the receiver is called directly instead of by the system (tests): there is nothing to finish then.
+        val pending: BroadcastReceiver.PendingResult? = receiver.goAsync()
         scope.launch {
             try {
                 if (withTimeoutOrNull(BROADCAST_BUDGET_MS) { block() } == null) Log.w(TAG, "Broadcast work timed out")
@@ -28,7 +29,7 @@ internal object SystemScope {
             } catch (e: Exception) {
                 Log.w(TAG, "Broadcast work failed", e)
             } finally {
-                pending.finish()
+                pending?.finish()
             }
         }
     }

@@ -152,11 +152,11 @@ internal fun BenchModeScreen(snapshot: WidgetSnapshot, forcedNight: Boolean?, is
 @Composable
 private fun TopBar(palette: BenchPalette, actions: BenchActions) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = actions.close) {
+        IconButton(onClick = actions.close, modifier = Modifier.size(48.dp)) {
             Icon(Icons.Filled.Close, contentDescription = "Close bench mode", tint = palette.secondary)
         }
         Spacer(Modifier.weight(1f))
-        TextButton(onClick = actions.openWorkout) {
+        TextButton(onClick = actions.openWorkout, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("Workout", color = palette.secondary, fontSize = 16.sp)
         }
     }
