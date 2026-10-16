@@ -35,6 +35,9 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// Exchanges the body weight with Apple Health when the user turned that on; nil for previews and UI tests (no Health access, no prompts).
     let healthSync: BodyWeightHealthSync?
 
+    /// The exercise whose detail a widget or control asked for (`pulse-strength://exercise/<id>`). The hub shows it and sets it back to nil.
+    @Published public var pendingExerciseID: String?
+
     /// A deep link that arrived from a widget, a control or the Action button through the command inbox (not as an opened URL). The root view
     /// handles it like `onOpenURL` and sets it back to nil.
     @Published public var pendingDeepLink: StrengthDeepLink?
