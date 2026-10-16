@@ -19,7 +19,7 @@ class WearMainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // A recreated activity (rotation of the font size, process restore) must not start a workout a second time.
+        // A recreated activity (a changed font size, a process restore) must not start a workout a second time.
         if (savedInstanceState == null) takeCommand(intent)
         setContent { PulseWearTheme { WearRoot(startRequests) } }
     }

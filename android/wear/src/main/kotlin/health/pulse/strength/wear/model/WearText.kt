@@ -72,6 +72,12 @@ internal object WearText {
     /** "3d" for the complications; "--" without any history. */
     fun daysShort(days: Int?): String = days?.let { "${max(0, it)}d" } ?: "--"
 
+    /** "5d ago" as the title of a small complication, or just "120d" when "ago" would not fit. */
+    fun daysAgoShort(days: Int): String {
+        val long = "${max(0, days)}d ago"
+        return if (long.length <= SHORT_LIMIT) long else daysShort(days)
+    }
+
     /** "Last workout 3 days ago" for a screen reader. */
     fun daysSpoken(days: Int?): String = when {
         days == null -> "No workouts yet"

@@ -91,6 +91,7 @@ androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "a
 # ==== libs-system:end ====
 
 # ==== libs-wear:begin ====
+androidx-wear-protolayout-proto = { module = "androidx.wear.protolayout:protolayout-proto", version.ref = "protolayout" }
 # ==== libs-wear:end ====
 
 [plugins]

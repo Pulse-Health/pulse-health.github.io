@@ -109,7 +109,7 @@ internal object ComplicationModels {
             nextUp == null -> TextContent(NO_VALUE, null, "No workout planned")
             else -> TextContent(
                 text = WearText.splitWord(nextUp.splitLabel),
-                title = nextUp.daysSince?.let { "${it}d ago" },
+                title = nextUp.daysSince?.let { WearText.daysAgoShort(it) },
                 description = "Next up: ${nextUp.splitLabel}" + (nextUp.daysSince?.let { ", last done ${WearText.daysAgo(it).lowercase()}" } ?: ""),
             )
         }
