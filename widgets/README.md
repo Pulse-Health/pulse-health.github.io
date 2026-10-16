@@ -50,9 +50,40 @@ Nothing in this folder has run on a device, a watch or an emulator. What has bee
 * **Apple code**: the `strength-ios` workflow compiles the app, the widget extension, the Watch app and the Watch widget extension with Xcode 16 and 26, and renders every widget
   view, light and dark, into PNGs (artifact `strength-screens`, files `widget-*`, `watchwidget-*`, `live-*`). The renders show layout, colour and text; they do not show the system's
   widget background, timers, StandBy tinting or any button behaviour.
-* **Kotlin core and Android**: `./gradlew :core:test :app:testDebugUnitTest :wear:testDebugUnitTest :app:lintDebug :wear:lintDebug` and the debug builds in `strength-android`.
+* **Kotlin core and Android**: `./gradlew :core:test :app:testDebugUnitTest :wear:testDebugUnitTest :app:lintDebug :wear:lintDebug` and the debug builds in `strength-android`
+  (877 core tests, which include the comparison with `fixtures/golden-sample.json`, 1181 app tests, 236 watch tests, lint without errors, R8 release builds of both apps).
+  The Glance widgets are inflated and drawn into PNGs by Robolectric (`app/build/screens/widgets*`); the Wear tiles and complications are checked as data.
 * **Not covered anywhere**: widget gallery and configuration flows, Smart Stack ranking, Control Center and Action button behaviour, Live Update promotion on Android 16,
   Wear OS tile and complication behaviour on a watch, App Intent execution from an extension process, and the Watch to phone round trips.
+
+## As built: where the implementation differs from the canvas
+
+The rules behind every number are fixed in `SPEC.md` (section 2 and "Readings of section 2 fixed by the Swift implementation"). These are the places where a
+surface differs from the canvas or from the mapping table, and why:
+
+**Android, Home Screen and tablet.** The template launcher has one button per row (a play badge) instead of a separate "Start" pill, so each row is one 48 dp
+target and one TalkBack action. SB-01 has no StandBy layout on Android: the same two widgets are offered in the `keyguard` category. HS-06 uses the dynamic-colour theme.
+Small sizes drop lines instead of overflowing. Glance corner radii work from Android 12 (API 31), so cards are square below.
+
+**Android, Lock Screen and extras.** While a workout runs, the quick-start and next-workout widgets (LS-04, LS-05, the inline ones) show and open the running workout.
+WI-02 has extra states (paused, all sets logged, rest over) so none is blank, and draws set dots where the canvas shows "last time 8, 7, 6", which is not in the snapshot.
+WI-06 shows the next template on a training day. WI-07 shows the estimated 1RM when there is no body weight. WI-03 and WI-09 show their "Invite a partner" / "Connect Pulse"
+states because the standalone build has no partners or readiness.
+
+**Android, live surfaces.** LA-01 ... LA-10 decorate the one ongoing notification (promoted notifications allow no custom views): colour is never the only carrier, the
+"current member" of a superset is written "(now)", the status-bar chip carries one text (heart rate wins over the set dots while logging). The coach tip has a third
+button, Skip. The planned-session alarms are inexact (no `SCHEDULE_EXACT_ALARM`), so "Time to train" can come minutes late in Doze. The Finish tile opens the running workout
+(the app asks for the confirmation) and the Rest tile opens bench mode. SB-04 (night mode) is the red palette of bench mode.
+
+**Android, Wear OS.** WA-03 is an ordinary tile (there are no relevance entries on Wear). The rest tile puts Skip before +15 s so the double-tap target is Skip. Tiles cannot
+hide, so the record tile says "Latest record" after 24 hours. The lift-trend sparkline is an inline image. From Wear OS 4 the rest gauge is live; on Wear OS 3 it shows the
+value of the last update and the countdown digits still tick. The Start complication opens the watch app, which asks the phone.
+
+**iOS.** The Watch widgets' "Start" opens the Watch app: a start request from the Watch to the phone does not exist yet. SB-03 needs iPad support in the host app. The widget
+renders are `ImageRenderer` drawings, so they show no container background, timers or tinting.
+
+**Both.** Weights are kilograms (the unit setting of the Pulse app is not handled). The Android data model has no training plans, rep ranges, entry notes or stored body weight
+(`nextUp` plan fields stay empty; the weekly goal is a setting, 1 to 7, default 4). Neither platform has readiness or partners without the wider Pulse app.
 
 ## Changing the contract
 
