@@ -251,6 +251,20 @@ internal fun rememberTextMeter(size: TextUnit, bold: Boolean): TextMeter {
 /** Width kept free when text is fitted, so a measurement that is a hair too small does not push the last character out. */
 internal val FitSafety: Dp = 4.dp
 
+/** An eyebrow wording (in capitals) and the lines it takes. */
+internal class FittedEyebrow(val text: String, val lines: Int)
+
+/**
+ * The first of [variants] that wraps into at most [maxLines] lines of [width] (the last one when none does), and the lines it then takes.
+ * Eyebrows are drawn in capitals, so the wordings are measured in capitals.
+ */
+@Composable
+internal fun fitEyebrow(variants: List<String>, width: Dp, maxLines: Int, size: TextUnit = 12.sp): FittedEyebrow {
+    val meter = rememberTextMeter(size, bold = true)
+    val text = TextFit.firstWithin(variants.map { it.uppercase() }, width.value, maxLines, meter)
+    return FittedEyebrow(text, TextFit.lineCount(text, width.value, meter).coerceAtMost(maxLines))
+}
+
 /**
  * The eyebrow / headline / detail stack of a 3x1 widget, with an optional glyph on the left. A headline that is too long is shortened
  * with an ellipsis, but the card's [CompactCard.titleSuffix] after it ("85 × 5") always stays whole.

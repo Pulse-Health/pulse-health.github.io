@@ -56,6 +56,17 @@ class PulseFormatTest {
     }
 
     @Test
+    fun aComputedWeightKeepsOneDecimalAndAPlateLoadKeepsTwo() {
+        assertThat(PulseFormat.estimate(99.1666)).isEqualTo("99.2")
+        assertThat(PulseFormat.estimate(99.0)).isEqualTo("99")
+        assertThat(PulseFormat.estimate(99.04)).isEqualTo("99")
+        assertThat(PulseFormat.kg(83.75)).isEqualTo("83.75")
+        assertThat(PulseFormat.signed(4.1666, maxDecimals = 1)).isEqualTo("+4.2")
+        assertThat(PulseFormat.signed(-0.04, maxDecimals = 1)).isEqualTo("0")
+        assertThat(PulseFormat.signed(1.25)).isEqualTo("+1.25")
+    }
+
+    @Test
     fun setsAndDurationsRead() {
         assertThat(PulseFormat.weightReps(85.0, 5)).isEqualTo("85 × 5")
         assertThat(PulseFormat.weightReps(82.5, 6)).isEqualTo("82.5 × 6")

@@ -20,6 +20,7 @@ import health.pulse.strength.widgets.lock.FitSafety
 import health.pulse.strength.widgets.lock.PulseText
 import health.pulse.strength.widgets.lock.TextFit
 import health.pulse.strength.widgets.lock.WidgetCard
+import health.pulse.strength.widgets.lock.fitEyebrow
 import health.pulse.strength.widgets.lock.rememberTextMeter
 import health.pulse.strength.widgets.lock.textHeight
 
@@ -36,11 +37,14 @@ class FormCueWidget : PulseWidget() {
         val roomy = size.width >= 140.dp
         val compact = textHeight() < ExtrasText.COMPACT_BELOW_DP.dp
         val padding = if (roomy) WidgetDimens.padding else WidgetDimens.paddingCompact
-        // What the cue may use: the height left under the eyebrow (two lines, or the lift's name on one) and above the footer.
-        val eyebrowHeight = TextFit.height(EYEBROW_SP, if (compact) 1 else 2)
+        val innerWidth = size.width - padding * 2
+        val textWidth = innerWidth - FitSafety
+        // The eyebrow is "Form cue · Bench Press", or the lift's name alone where that does not fit two lines (a small widget has only
+        // the name); it takes the lines it needs, and the cue may use the height left under it and above the footer.
+        val eyebrow = fitEyebrow(if (compact) listOf(cue.shortEyebrow) else listOf(cue.eyebrow, cue.shortEyebrow), innerWidth, MAX_EYEBROW_LINES)
         val footerHeight = if (compact || cue.footer.isEmpty()) 0f else TextFit.height(FOOTER_SP)
-        val room = (textHeight() - padding * 2).value - eyebrowHeight - footerHeight - GAP
-        val width = (size.width - padding * 2 - FitSafety).value
+        val room = (textHeight() - padding * 2).value - TextFit.height(EYEBROW_SP, eyebrow.lines) - footerHeight - GAP
+        val width = textWidth.value
         val sizes = ExtrasText.cueTextSizes(roomy)
         val meters = sizes.map { rememberTextMeter(it.sp, bold = true) }
         fun linesAt(sp: Float) = (room / TextFit.height(sp)).toInt().coerceAtLeast(1)
@@ -52,7 +56,7 @@ class FormCueWidget : PulseWidget() {
             contentAlignment = Alignment.TopStart,
         ) {
             Column(modifier = GlanceModifier.fillMaxSize()) {
-                Eyebrow(if (compact) cue.shortEyebrow else cue.eyebrow, size = EYEBROW_SP.sp, color = ExtrasPalette.blueText, maxLines = if (compact) 1 else 2)
+                Eyebrow(eyebrow.text, size = EYEBROW_SP.sp, color = ExtrasPalette.blueText, maxLines = eyebrow.lines)
                 Spacer(GlanceModifier.defaultWeight())
                 PulseText(cue.cue, sizes[index].sp, weight = FontWeight.Bold, maxLines = linesAt(sizes[index]))
                 Spacer(GlanceModifier.defaultWeight())
@@ -65,6 +69,7 @@ class FormCueWidget : PulseWidget() {
         const val EYEBROW_SP = 12f
         const val FOOTER_SP = 12f
         const val GAP = 4f
+        const val MAX_EYEBROW_LINES = 2
     }
 }
 
