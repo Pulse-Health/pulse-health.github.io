@@ -50,10 +50,14 @@ public enum WidgetSnapshotStore {
             templates: persistence.loadTemplates(),
             history: persistence.loadHistory(),
             customExercises: persistence.loadCustomExercises(),
-            personalBests: persistence.loadPersonalBests()
+            personalBests: persistence.loadPersonalBests(),
+            plans: persistence.loadPlans(),
+            bodyWeights: persistence.loadBodyWeights()
         )
         guard stored != nil || !data.isEmpty else { return nil }
-        var context = WidgetContext(weeklyGoal: stored?.week.goal ?? WidgetContext.defaultWeeklyGoal)
+        // The goal is the user's setting (an active plan's own target is applied by the builder); the stored snapshot only knows the
+        // goal that was in force, which may be the plan's.
+        var context = WidgetContext(weeklyGoal: persistence.loadSettings().weeklyGoal)
         context.bodyweightKg = stored?.strengthRatio?.bodyweightKg
         context.readiness = stored?.readiness
         context.partners = stored?.partners ?? []

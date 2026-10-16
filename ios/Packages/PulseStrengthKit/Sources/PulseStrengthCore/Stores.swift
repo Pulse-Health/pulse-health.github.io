@@ -20,6 +20,7 @@ public final class FileStrengthPersistence: @unchecked Sendable {
         static let bodyWeights = "body-weights.json"
         static let weighInPreferences = "weigh-in-preferences.json"
         static let acknowledgedCommands = "acknowledged-commands.json"
+        static let settings = "settings.json"
     }
 
     /// Stores files in `directory` (created when needed).
@@ -142,6 +143,21 @@ public final class FileStrengthPersistence: @unchecked Sendable {
     /// Replaces the weigh-in reminder preferences.
     public func saveWeighInPreferences(_ preferences: WeighInPreferences) throws {
         try write(preferences, to: FileName.weighInPreferences)
+    }
+
+    // MARK: Settings
+
+    /// The user's settings (the defaults when there is no file or it is unreadable).
+    public func loadSettings() -> StrengthSettings {
+        guard let data = read(FileName.settings),
+              let decoded = try? StrengthJSON.makeDecoder().decode(StrengthSettings.self, from: data)
+        else { return StrengthSettings() }
+        return decoded
+    }
+
+    /// Replaces the user's settings.
+    public func saveSettings(_ settings: StrengthSettings) throws {
+        try write(settings, to: FileName.settings)
     }
 
     // MARK: File access
