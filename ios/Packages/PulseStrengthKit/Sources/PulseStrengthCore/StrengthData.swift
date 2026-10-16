@@ -290,6 +290,7 @@ public extension StrengthData {
             volumeLast30Days: volume,
             sessionsLast30Days: recent.count,
             records: records(for: tracking, sessions: sessions, bestE1RM: bestValue, bestDate: bestDate, bestSetText: bestSetText)
+                + bodyWeightRecords(for: exerciseID, tracking: tracking, sessions: sessions, bestE1RM: tracking == .weightReps ? bestValue : 0, bestDate: bestDate)
         )
     }
 }
@@ -403,6 +404,51 @@ private extension StrengthData {
         return rows
     }
 
+    /// The record rows that need the user's body weight (none without a weigh-in):
+    /// * barbell lifts: "Relative strength", the best estimated 1RM as a multiple of the body weight on the day it was set;
+    /// * push-ups, chest dips and pull-ups (`BodyweightLoad`): "Best session load (est.)", the working reps times the share of the
+    ///   body weight one rep moves times the body weight of that session (the session with the most wins; the newest on a tie).
+    func bodyWeightRecords(
+        for exerciseID: String,
+        tracking: TrackingKind,
+        sessions: [SessionItem],
+        bestE1RM: Double,
+        bestDate: Date?
+    ) -> [ExerciseRecordRow] {
+        guard !bodyWeights.isEmpty else { return [] }
+        switch tracking {
+        case .weightReps:
+            let exercise = ExerciseLibrary.exercise(id: exerciseID) ?? customExercises.first { $0.id == exerciseID }
+            guard bestE1RM > 0, exercise?.equipment == .barbell,
+                  let weight = bodyWeightKg(at: bestDate ?? sessions.first?.session.date ?? Date()), weight > 0
+            else { return [] }
+            return [ExerciseRecordRow(
+                id: "relativeStrength",
+                label: "Relative strength",
+                value: BodyWeightRules.multipleText(bestE1RM / weight) + " bodyweight",
+                date: bestDate
+            )]
+        case .repsOnly:
+            guard let factor = BodyweightLoad.factor(exerciseID: exerciseID) else { return [] }
+            var best: (load: Double, date: Date)?
+            for item in sessions {
+                guard let weight = bodyWeightKg(at: item.session.date) else { continue }
+                let reps = item.session.sets.reduce(0) { $0 + ($1.type == .warmup ? 0 : $1.reps) }
+                let load = Double(reps) * factor * weight
+                if load > (best?.load ?? 0) { best = (load, item.session.date) }
+            }
+            guard let best else { return [] }
+            return [ExerciseRecordRow(
+                id: "bodyweightLoad",
+                label: "Best session load (est.)",
+                value: NumberText.thousands(best.load) + " kg",
+                date: best.date
+            )]
+        case .duration:
+            return []
+        }
+    }
+
     /// The working (non-warm-up, weight above zero) weight used in the most sets; the heavier one on a tie.
     func commonWorkingWeight(in sessions: [SessionItem]) -> Double? {
         var counts: [Double: Int] = [:]
@@ -498,7 +544,19 @@ public final class StrengthDataModel: WorkoutDataProviding {
         return entry
     }
 
-    /// Removes a weigh-in and saves the weigh-ins; false when there is none with that id.
+    /// Adds the body weights read from Apple Health that are not here yet (see `StrengthData.mergeHealthBodyWeights`) and saves
+    /// them; returns how many were added.
+    @discardableResult
+    public func importHealthBodyWeights(_ samples: [HealthBodyWeightSample]) -> Int {
+        let added = data.mergeHealthBodyWeights(samples)
+        if added > 0 {
+            persist(templates: false, history: false, customExercises: false, personalBests: false, bodyWeights: true)
+        }
+        return added
+    }
+
+    /// Removes a weigh-in that was entered here and saves the weigh-ins; false when there is none with that id
+    /// or when it was read from Apple Health (those cannot be deleted here).
     @discardableResult
     public func deleteBodyWeight(id: UUID) -> Bool {
         guard data.deleteBodyWeight(id: id) else { return false }

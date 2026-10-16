@@ -416,3 +416,297 @@ final class BodyWeightDataTests: XCTestCase {
     }
 #endif
 }
+
+// MARK: - Apple Health (phase 2)
+
+final class BodyWeightHealthTests: XCTestCase {
+    private func makePersistence() -> FileStrengthPersistence {
+        let persistence = FileStrengthPersistence.temporary()
+        let directory = persistence.directory
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+        return persistence
+    }
+
+    private func sample(_ n: Int, kg: Double, _ date: Date, external: UUID? = nil) -> HealthBodyWeightSample {
+        HealthBodyWeightSample(sampleID: SvcSyncFix.uuid(9000 + n), externalID: external, date: date, kg: kg)
+    }
+
+    // MARK: Entries
+
+    func testAnEntryEnteredHereIsAppSourcedByDefault() {
+        let entry = BodyWeightEntry(date: BW.date(2026, 10, 1), kg: 80)
+        XCTAssertEqual(entry.source, .app)
+        XCTAssertNil(entry.healthSampleID)
+    }
+
+    func testEntryRoundTripKeepsSourceAndHealthSample() throws {
+        let entry = BodyWeightEntry(
+            id: SvcSyncFix.uuid(1), date: BW.date(2026, 10, 1), kg: 81.2, source: .health, healthSampleID: SvcSyncFix.uuid(2)
+        )
+        let data = try StrengthJSON.makeEncoder().encode(entry)
+        XCTAssertEqual(try StrengthJSON.makeDecoder().decode(BodyWeightEntry.self, from: data), entry)
+    }
+
+    func testAnEntryFromBeforeThoseFieldsReadsAsEnteredHere() throws {
+        let appOnly = BodyWeightEntry(id: SvcSyncFix.uuid(1), date: BW.date(2026, 10, 1), kg: 80)
+        let encoded = String(decoding: try StrengthJSON.makeEncoder().encode(appOnly), as: UTF8.self)
+        // The file of phase 1 has neither key: remove them from today's output to build it.
+        let oldJSON = encoded.replacingOccurrences(of: ",\"source\":\"app\"", with: "")
+            .replacingOccurrences(of: "\"source\":\"app\",", with: "")
+        XCTAssertFalse(oldJSON.contains("source"))
+        let decoded = try StrengthJSON.makeDecoder().decode(BodyWeightEntry.self, from: Data(oldJSON.utf8))
+        XCTAssertEqual(decoded, appOnly)
+    }
+
+    func testAnUnknownSourceReadsAsEnteredHere() throws {
+        let appOnly = BodyWeightEntry(id: SvcSyncFix.uuid(1), date: BW.date(2026, 10, 1), kg: 80)
+        let encoded = String(decoding: try StrengthJSON.makeEncoder().encode(appOnly), as: UTF8.self)
+        let odd = encoded.replacingOccurrences(of: "\"source\":\"app\"", with: "\"source\":\"scale\"")
+        XCTAssertTrue(odd.contains("scale"))
+        XCTAssertEqual(try StrengthJSON.makeDecoder().decode(BodyWeightEntry.self, from: Data(odd.utf8)), appOnly)
+    }
+
+    func testSyncWithHealthIsOffByDefaultAndSurvivesTheFile() throws {
+        XCTAssertFalse(WeighInPreferences().syncWithHealth)
+        let old = Data(#"{"isEnabled":true,"interval":"weekly","hour":8,"minute":0}"#.utf8)
+        XCTAssertFalse(try StrengthJSON.makeDecoder().decode(WeighInPreferences.self, from: old).syncWithHealth)
+
+        let on = WeighInPreferences(syncWithHealth: true)
+        let data = try StrengthJSON.makeEncoder().encode(on)
+        XCTAssertTrue(try StrengthJSON.makeDecoder().decode(WeighInPreferences.self, from: data).syncWithHealth)
+    }
+
+    // MARK: Merge
+
+    func testMergeAddsHealthWeightsNewestFirstAmongTheOnesEnteredHere() {
+        var data = StrengthData()
+        data.recordBodyWeight(kg: 80, date: BW.date(2026, 10, 8, 7))
+        let added = data.mergeHealthBodyWeights([
+            sample(1, kg: 81.04, BW.date(2026, 10, 1, 7)),
+            sample(2, kg: 79.5, BW.date(2026, 10, 15, 7))
+        ])
+        XCTAssertEqual(added, 2)
+        XCTAssertEqual(data.bodyWeights.map { $0.kg }, [79.5, 80, 81.0])
+        XCTAssertEqual(data.bodyWeights.map { $0.source }, [.health, .app, .health])
+        XCTAssertEqual(data.bodyWeights[0].healthSampleID, SvcSyncFix.uuid(9002))
+    }
+
+    func testReadingTheSameSamplesAgainAddsNothing() {
+        var data = StrengthData()
+        let samples = [sample(1, kg: 81, BW.date(2026, 10, 1)), sample(2, kg: 80, BW.date(2026, 10, 8))]
+        XCTAssertEqual(data.mergeHealthBodyWeights(samples), 2)
+        let before = data
+        XCTAssertEqual(data.mergeHealthBodyWeights(samples), 0)
+        XCTAssertEqual(data, before)
+    }
+
+    func testASampleTheAppSavedToHealthItselfIsNotReadBack() {
+        var data = StrengthData()
+        let entry = data.recordBodyWeight(kg: 80, date: BW.date(2026, 10, 1, 7))!
+        let echo = sample(1, kg: 80, BW.date(2026, 10, 1, 7), external: entry.id)
+        XCTAssertEqual(data.mergeHealthBodyWeights([echo]), 0)
+        XCTAssertEqual(data.bodyWeights.count, 1)
+        XCTAssertEqual(data.bodyWeights[0].source, .app)
+    }
+
+    func testAnImplausibleHealthWeightIsSkippedAndTheRestStillMerge() {
+        var data = StrengthData()
+        let added = data.mergeHealthBodyWeights([
+            sample(1, kg: 0, BW.date(2026, 10, 1)),
+            sample(2, kg: .nan, BW.date(2026, 10, 2)),
+            sample(3, kg: 1200, BW.date(2026, 10, 3)),
+            sample(4, kg: 78, BW.date(2026, 10, 4))
+        ])
+        XCTAssertEqual(added, 1)
+        XCTAssertEqual(data.bodyWeights.map { $0.kg }, [78])
+    }
+
+    func testEntriesFromHealthCannotBeDeletedHereButTheOnesEnteredHereCan() {
+        var data = StrengthData()
+        let own = data.recordBodyWeight(kg: 80, date: BW.date(2026, 10, 8))!
+        data.mergeHealthBodyWeights([sample(1, kg: 81, BW.date(2026, 10, 1))])
+        let fromHealth = data.bodyWeights.first { $0.source == .health }!
+        XCTAssertFalse(data.deleteBodyWeight(id: fromHealth.id))
+        XCTAssertEqual(data.bodyWeights.count, 2)
+        XCTAssertTrue(data.deleteBodyWeight(id: own.id))
+        XCTAssertEqual(data.bodyWeights.map { $0.source }, [.health])
+    }
+
+    func testAWeightReadFromHealthPushesTheNextReminderOut() {
+        var data = StrengthData()
+        data.weighIn = BW.on(.weekly, enabledAt: BW.date(2026, 10, 1))
+        let calendar = BW.utc
+        XCTAssertTrue(data.isWeighInDue(now: BW.date(2026, 10, 9), calendar: calendar))
+        data.mergeHealthBodyWeights([sample(1, kg: 80, BW.date(2026, 10, 9, 6))])
+        XCTAssertFalse(data.isWeighInDue(now: BW.date(2026, 10, 9, 7), calendar: calendar))
+    }
+
+    func testTheModelSavesImportedWeights() {
+        let persistence = makePersistence()
+        svcMain {
+            let model = StrengthDataModel(persistence: persistence)
+            XCTAssertEqual(model.importHealthBodyWeights([]), 0)
+            XCTAssertEqual(persistence.loadBodyWeights(), [], "nothing added: nothing written")
+            XCTAssertEqual(model.importHealthBodyWeights([self.sample(1, kg: 82, BW.date(2026, 10, 1))]), 1)
+            XCTAssertEqual(persistence.loadBodyWeights().map { $0.source }, [.health])
+        }
+        svcMain {
+            let reopened = StrengthDataModel(persistence: persistence)
+            XCTAssertEqual(reopened.data.bodyWeights.first?.healthSampleID, SvcSyncFix.uuid(9001))
+            XCTAssertFalse(reopened.deleteBodyWeight(id: SvcSyncFix.uuid(9001)))
+        }
+    }
+
+#if canImport(Combine) || PULSE_COMBINE_SHIM
+    func testTheStoreTellsTheHealthLayerAboutSavesAndRemovalsButNotAboutImports() {
+        svcMain {
+            let store = StrengthStore(persistence: nil)
+            var saved: [BodyWeightEntry] = []
+            var removed: [BodyWeightEntry] = []
+            store.onBodyWeightSaved = { saved.append($0) }
+            store.onBodyWeightRemoved = { removed.append($0) }
+
+            XCTAssertNil(store.recordBodyWeight(kg: 3, date: BW.date(2026, 10, 1)))
+            XCTAssertEqual(saved, [], "a refused weight is not saved anywhere")
+
+            let entry = store.recordBodyWeight(kg: 82, date: BW.date(2026, 10, 1, 7))!
+            XCTAssertEqual(saved, [entry])
+
+            XCTAssertEqual(store.importHealthBodyWeights([self.sample(1, kg: 81, BW.date(2026, 9, 24))]), 1)
+            XCTAssertEqual(saved, [entry], "weights read from Health are not saved back")
+            XCTAssertEqual(store.bodyWeights.count, 2)
+
+            XCTAssertFalse(store.deleteBodyWeight(id: SvcSyncFix.uuid(9001)), "a Health weight cannot be deleted")
+            XCTAssertFalse(store.deleteBodyWeight(id: UUID()))
+            XCTAssertEqual(removed, [])
+            XCTAssertTrue(store.deleteBodyWeight(id: entry.id))
+            XCTAssertEqual(removed, [entry])
+        }
+    }
+#endif
+}
+
+// MARK: - Using the weight (phase 3)
+
+final class BodyWeightUseTests: XCTestCase {
+    private typealias F = SvcDataFix
+
+    private func weights(_ entries: [(Date, Double)]) -> [BodyWeightEntry] {
+        entries.enumerated().map { BodyWeightEntry(id: SvcSyncFix.uuid(8000 + $0.offset), date: $0.element.0, kg: $0.element.1) }
+            .sorted { $0.date > $1.date }
+    }
+
+    func testTheBodyWeightInForceIsTheLatestOnOrBeforeTheDate() {
+        let data = StrengthData(bodyWeights: weights([(BW.date(2026, 10, 1), 82), (BW.date(2026, 10, 10), 80)]))
+        XCTAssertEqual(data.bodyWeightKg(at: BW.date(2026, 10, 5)), 82)
+        XCTAssertEqual(data.bodyWeightKg(at: BW.date(2026, 10, 10)), 80)
+        XCTAssertEqual(data.bodyWeightKg(at: BW.date(2026, 12, 1)), 80)
+    }
+
+    func testBeforeTheFirstWeighInTheFirstOneStandsIn() {
+        let data = StrengthData(bodyWeights: weights([(BW.date(2026, 10, 1), 82), (BW.date(2026, 10, 10), 80)]))
+        XCTAssertEqual(data.bodyWeightKg(at: BW.date(2026, 1, 1)), 82)
+        XCTAssertNil(StrengthData().bodyWeightKg(at: BW.date(2026, 1, 1)))
+    }
+
+    func testOnlyTheBodyweightExercisesHaveAShare() {
+        XCTAssertEqual(BodyweightLoad.factor(exerciseID: "pullup"), 1.0)
+        XCTAssertEqual(BodyweightLoad.factor(exerciseID: "pushup"), 0.64)
+        XCTAssertEqual(BodyweightLoad.factor(exerciseID: "dips"), 0.95)
+        XCTAssertNil(BodyweightLoad.factor(exerciseID: "bench"))
+        XCTAssertNil(BodyweightLoad.factor(exerciseID: "custom-pushup"))
+        for id in ["pushup", "dips", "pullup"] {
+            XCTAssertEqual(ExerciseLibrary.exercise(id: id)?.tracking, .repsOnly, "\(id) must be a reps-only exercise")
+        }
+    }
+
+    func testMultipleText() {
+        XCTAssertEqual(BodyWeightRules.multipleText(1.4583), "1.5×")
+        XCTAssertEqual(BodyWeightRules.multipleText(2), "2.0×")
+        XCTAssertEqual(BodyWeightRules.multipleText(0.04), "0.0×")
+        XCTAssertEqual(BodyWeightRules.multipleText(.nan), "–")
+        XCTAssertEqual(BodyWeightRules.multipleText(-1), "–")
+    }
+
+    // MARK: Relative strength
+
+    func testABarbellLiftShowsItsBestE1RMAsAMultipleOfTheBodyWeightOfThatDay() {
+        let benchDay = F.daysAgo(3)
+        let workout = F.workout(1, finishedAt: benchDay, [F.entry("bench", [F.work(100, 5)], n: 1)])      // e1RM 116.67
+        let data = StrengthData(
+            history: [workout],
+            bodyWeights: weights([(F.daysAgo(30), 90), (F.daysAgo(10), 80), (F.daysAgo(1), 70)])
+        )
+        let rows = data.history(for: "bench", now: F.now).records
+        let row = rows.first { $0.id == "relativeStrength" }
+        XCTAssertEqual(row?.label, "Relative strength")
+        XCTAssertEqual(row?.value, "1.5× bodyweight", "116.7 / 80 (the weight in force on the day), not the latest 70")
+        XCTAssertEqual(row?.date, benchDay)
+        XCTAssertEqual(rows.last?.id, "relativeStrength", "it follows the usual rows")
+    }
+
+    func testNoRelativeStrengthWithoutABodyWeightOrForADumbbellLift() {
+        let day = F.daysAgo(3)
+        let workout = F.workout(1, finishedAt: day, [
+            F.entry("bench", [F.work(100, 5)], n: 1),
+            F.entry("dbcurl", [F.work(20, 10)], n: 2)
+        ])
+        let without = StrengthData(history: [workout])
+        XCTAssertNil(without.history(for: "bench", now: F.now).records.first { $0.id == "relativeStrength" })
+
+        let with = StrengthData(history: [workout], bodyWeights: weights([(F.daysAgo(20), 80)]))
+        XCTAssertNil(with.history(for: "dbcurl", now: F.now).records.first { $0.id == "relativeStrength" })
+        XCTAssertNotNil(with.history(for: "bench", now: F.now).records.first { $0.id == "relativeStrength" })
+    }
+
+    func testTheRecordsAreUnchangedWithoutAnyBodyWeight() {
+        let workout = F.workout(1, finishedAt: F.daysAgo(3), [F.entry("bench", [F.work(100, 5)], n: 1)])
+        let plain = StrengthData(history: [workout]).history(for: "bench", now: F.now)
+        var withWeight = StrengthData(history: [workout])
+        withWeight.recordBodyWeight(kg: 80, date: F.daysAgo(20))
+        let extended = withWeight.history(for: "bench", now: F.now)
+        XCTAssertEqual(Array(extended.records.dropLast()), plain.records)
+        XCTAssertEqual(extended.sessions, plain.sessions)
+        XCTAssertEqual(extended.bestE1RM, plain.bestE1RM)
+    }
+
+    // MARK: Bodyweight load
+
+    func testAPullUpSessionLoadIsTheWorkingRepsTimesTheBodyWeightOfThatSession() {
+        let early = F.workout(1, finishedAt: F.daysAgo(20), [F.entry("pullup", [F.work(0, 8), F.work(0, 6)], n: 1)])      // 14 reps at 82
+        let late = F.workout(2, finishedAt: F.daysAgo(5), [F.entry("pullup", [F.work(0, 5), F.work(0, 5), CompletedSet(type: .warmup, weightKg: 0, reps: 10)], n: 2)])
+        let data = StrengthData(history: [late, early], bodyWeights: weights([(F.daysAgo(40), 82), (F.daysAgo(10), 78)]))
+        let row = data.history(for: "pullup", now: F.now).records.first { $0.id == "bodyweightLoad" }
+        // early: 14 x 1.0 x 82 = 1,148 kg; late: 10 x 1.0 x 78 = 780 kg (the warm-up does not count).
+        XCTAssertEqual(row?.label, "Best session load (est.)")
+        XCTAssertEqual(row?.value, "1,148 kg")
+        XCTAssertEqual(row?.date, F.daysAgo(20))
+    }
+
+    func testPushUpsAndDipsUseTheirOwnShare() {
+        let day = F.daysAgo(3)
+        let workout = F.workout(1, finishedAt: day, [
+            F.entry("pushup", [F.work(0, 20), F.work(0, 20)], n: 1),
+            F.entry("dips", [F.work(0, 10)], n: 2)
+        ])
+        let data = StrengthData(history: [workout], bodyWeights: weights([(F.daysAgo(20), 100)]))
+        XCTAssertEqual(data.history(for: "pushup", now: F.now).records.first { $0.id == "bodyweightLoad" }?.value, "2,560 kg")     // 40 x 0.64 x 100
+        XCTAssertEqual(data.history(for: "dips", now: F.now).records.first { $0.id == "bodyweightLoad" }?.value, "950 kg")        // 10 x 0.95 x 100
+    }
+
+    func testNoBodyweightLoadWithoutAShareOrAWeightOrForADuration() {
+        let day = F.daysAgo(3)
+        let workout = F.workout(1, finishedAt: day, [
+            F.entry("hlr", [F.work(0, 12)], n: 1),
+            F.entry("plank", [F.work(0, 60)], n: 2),
+            F.entry("pullup", [F.work(0, 8)], n: 3)
+        ])
+        let with = StrengthData(history: [workout], bodyWeights: weights([(F.daysAgo(20), 80)]))
+        XCTAssertNil(with.history(for: "hlr", now: F.now).records.first { $0.id == "bodyweightLoad" })
+        XCTAssertNil(with.history(for: "plank", now: F.now).records.first { $0.id == "bodyweightLoad" })
+        XCTAssertNotNil(with.history(for: "pullup", now: F.now).records.first { $0.id == "bodyweightLoad" })
+
+        let without = StrengthData(history: [workout])
+        XCTAssertNil(without.history(for: "pullup", now: F.now).records.first { $0.id == "bodyweightLoad" })
+    }
+}

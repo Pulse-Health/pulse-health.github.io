@@ -24,6 +24,11 @@ public final class StrengthStore: ObservableObject {
     /// How often the app asks the user to update their weight.
     @Published public private(set) var weighIn = WeighInPreferences()
 
+    /// Called after the user's weigh-in was stored (not for weights read from Apple Health). The Health layer saves it to Health.
+    public var onBodyWeightSaved: ((BodyWeightEntry) -> Void)?
+    /// Called after a weigh-in that was entered here was deleted. The Health layer removes it from Health.
+    public var onBodyWeightRemoved: ((BodyWeightEntry) -> Void)?
+
     private let model: StrengthDataModel
 
     /// Loads the saved data from `persistence` (nil keeps everything in memory); `seedDemoData` fills an empty store with demo data.
@@ -78,14 +83,25 @@ public final class StrengthStore: ObservableObject {
     public func recordBodyWeight(kg: Double, date: Date = Date()) -> BodyWeightEntry? {
         let entry = model.recordBodyWeight(kg: kg, date: date)
         publish()
+        if let entry { onBodyWeightSaved?(entry) }
         return entry
     }
 
-    /// Removes a weigh-in; false when there is none with that id.
+    /// Adds the body weights read from Apple Health that are not here yet; returns how many were added.
+    @discardableResult
+    public func importHealthBodyWeights(_ samples: [HealthBodyWeightSample]) -> Int {
+        let added = model.importHealthBodyWeights(samples)
+        publish()
+        return added
+    }
+
+    /// Removes a weigh-in that was entered here; false when there is none with that id, or when it was read from Apple Health.
     @discardableResult
     public func deleteBodyWeight(id: UUID) -> Bool {
+        let entry = bodyWeights.first { $0.id == id }
         let removed = model.deleteBodyWeight(id: id)
         publish()
+        if removed, let entry { onBodyWeightRemoved?(entry) }
         return removed
     }
 

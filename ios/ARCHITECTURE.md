@@ -457,6 +457,21 @@ public enum WeighInSchedule {                                            // pure
   weight moves the next reminder out. Reminder dates are `due`, `due + 1 interval`, ... (each counted from `due`, so a month-end does not drift), only those after `now`, at most three.
   The clock time survives a daylight-saving change (calendar arithmetic).
 
+**Apple Health (phase 2).** `BodyWeightEntry` has `source` (`.app`, entered here / `.health`, read from Health; a file without the key reads as `.app`) and `healthSampleID`.
+`WeighInPreferences.syncWithHealth` (off by default) turns the exchange on. `StrengthData.mergeHealthBodyWeights(_:)` adds `HealthBodyWeightSample`s that are new: a sample is skipped when
+its `sampleID` was already read, when its `externalID` (`HKMetadataKeyExternalUUID`) is the id of an entry that is here (the app saved it to Health itself), or when the weight is not
+plausible. Entries read from Health are read-only (`deleteBodyWeight` returns false for them: the app cannot delete other apps' samples, and the next read would bring them back); an
+imported weight also counts as a weigh-in for the reminder. `StrengthStore` reports the user's own weigh-ins through `onBodyWeightSaved` / `onBodyWeightRemoved` (not the imported ones)
+and `StrengthStore.importHealthBodyWeights(_:)`. iOS: `BodyWeightHealthSync` (internal, live environment only) requests `bodyMass` share + read when the user turns the sync on (not at
+launch), saves each new weigh-in as an `HKQuantitySample` tagged with the entry id, deletes that sample when the entry is deleted, and reads the newest 400 body-mass samples
+(`HKSampleQueryDescriptor`) at launch, when the app becomes active and when the sync is turned on. HealthKit hides whether READ access was refused; Settings only reports a refused save.
+Info.plist: both Health usage strings mention body weight.
+
+**Using the weight (phase 3).** Record rows of the exercise detail ("Personal Records"), added by `StrengthData.history(for:now:)` only when there is a weigh-in:
+barbell lifts get "Relative strength" (the best estimated 1RM divided by the body weight in force on the day it was set, "1.5× bodyweight"); push-up, chest dip and pull-up
+(`BodyweightLoad.factor`: 0.64, 0.95, 1.0, rough estimates) get "Best session load (est.)" (working reps x share x the body weight in force on the session day). `bodyWeightKg(at:)` is the
+latest weigh-in on or before the date, or the first one ever for earlier dates. Workout volume, personal bests and the summary are unchanged (bodyweight exercises still count 0 kg there).
+
 iOS (`PulseStrengthIOS`): `WeightReminderScheduler` (internal) subscribes to the store and keeps up to three non-repeating `UNCalendarNotificationTrigger` requests
 (`StrengthConfig.weightReminderIDPrefix` + ".0", ".1", ".2") in step with it; it is created by `StrengthAppEnvironment.live()` only (previews and UI tests have none: no
 notifications, no prompts) and refreshed when the app becomes active. The notification permission is requested when the user turns the reminder on

@@ -2,6 +2,14 @@ import Foundation
 
 // MARK: - Entry
 
+/// Where a weigh-in came from.
+public enum BodyWeightSource: String, Codable, Hashable, Sendable {
+    /// Entered in this app (or through the "Log weight" action of the reminder notification).
+    case app
+    /// Read from Apple Health (a smart scale, the Health app, another app). Read-only here: Health owns it.
+    case health
+}
+
 /// One weigh-in: the user's body weight on a day.
 ///
 /// Body weight is kept in kilograms like every other weight of the feature. It is separate from the weights of the
@@ -10,11 +18,30 @@ public struct BodyWeightEntry: Codable, Hashable, Sendable, Identifiable {
     public var id: UUID
     public var date: Date
     public var kg: Double
+    public var source: BodyWeightSource
+    /// The `HKSample` uuid of an entry that was read from Health; nil for the entries entered here.
+    public var healthSampleID: UUID?
 
-    public init(id: UUID = UUID(), date: Date, kg: Double) {
+    public init(id: UUID = UUID(), date: Date, kg: Double, source: BodyWeightSource = .app, healthSampleID: UUID? = nil) {
         self.id = id
         self.date = date
         self.kg = kg
+        self.source = source
+        self.healthSampleID = healthSampleID
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, date, kg, source, healthSampleID
+    }
+
+    // `source` and `healthSampleID` came later: a file written before them reads as entered in the app. An unknown source reads the same way.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UUID.self, forKey: .id)
+        self.date = try container.decode(Date.self, forKey: .date)
+        self.kg = try container.decode(Double.self, forKey: .kg)
+        self.source = (try? container.decodeIfPresent(BodyWeightSource.self, forKey: .source)) ?? .app
+        self.healthSampleID = try container.decodeIfPresent(UUID.self, forKey: .healthSampleID)
     }
 }
 
@@ -48,6 +75,31 @@ public enum BodyWeightRules {
         guard separators <= 1, trimmed.allSatisfy({ $0.isASCII && ($0.isNumber || $0 == "." || $0 == ",") }) else { return nil }
         guard let value = Double(trimmed.replacingOccurrences(of: ",", with: ".")) else { return nil }
         return normalised(value)
+    }
+
+    /// "1.4×": a ratio with one decimal, written by hand like every number of the feature (no locale dependence).
+    public static func multipleText(_ ratio: Double) -> String {
+        guard ratio.isFinite, ratio >= 0 else { return "–" }
+        let tenths = Int((ratio * 10).rounded())
+        return String(tenths / 10) + "." + String(tenths % 10) + "×"
+    }
+}
+
+// MARK: - Bodyweight exercises
+
+/// How much of the body weight an exercise moves, for the exercises that are done with the body as the load.
+///
+/// Rough, published biomechanics estimates (a push-up loads the hands with roughly two thirds of the body, a pull-up lifts all of it);
+/// the app shows what it derives from them as estimates ("est."). An exercise without a factor (custom ones included) gets no estimate.
+public enum BodyweightLoad {
+    /// The share (0...1) of the body weight that moves in one rep; nil when the app has no estimate for the exercise.
+    public static func factor(exerciseID: String) -> Double? {
+        switch exerciseID {
+        case "pushup": return 0.64
+        case "dips": return 0.95
+        case "pullup": return 1.0
+        default: return nil
+        }
     }
 }
 
@@ -89,24 +141,28 @@ public struct WeighInPreferences: Codable, Hashable, Sendable {
     public var minute: Int
     /// When the reminder was last turned on: the first reminder counts from here while there is no weigh-in yet.
     public var enabledAt: Date?
+    /// True when body weights are exchanged with Apple Health: new weigh-ins are saved to Health and Health's weights are added here.
+    public var syncWithHealth: Bool
 
     public init(
         isEnabled: Bool = false,
         interval: WeighInInterval = .weekly,
         hour: Int = 8,
         minute: Int = 0,
-        enabledAt: Date? = nil
+        enabledAt: Date? = nil,
+        syncWithHealth: Bool = false
     ) {
         self.isEnabled = isEnabled
         self.interval = interval
         self.hour = min(max(hour, 0), 23)
         self.minute = min(max(minute, 0), 59)
         self.enabledAt = enabledAt
+        self.syncWithHealth = syncWithHealth
     }
 
     // A missing key reads as its default, so a file written by an older version keeps the choices it does contain.
     private enum CodingKeys: String, CodingKey {
-        case isEnabled, interval, hour, minute, enabledAt
+        case isEnabled, interval, hour, minute, enabledAt, syncWithHealth
     }
 
     public init(from decoder: Decoder) throws {
@@ -116,7 +172,8 @@ public struct WeighInPreferences: Codable, Hashable, Sendable {
             interval: try container.decodeIfPresent(WeighInInterval.self, forKey: .interval) ?? .weekly,
             hour: try container.decodeIfPresent(Int.self, forKey: .hour) ?? 8,
             minute: try container.decodeIfPresent(Int.self, forKey: .minute) ?? 0,
-            enabledAt: try container.decodeIfPresent(Date.self, forKey: .enabledAt)
+            enabledAt: try container.decodeIfPresent(Date.self, forKey: .enabledAt),
+            syncWithHealth: try container.decodeIfPresent(Bool.self, forKey: .syncWithHealth) ?? false
         )
     }
 
@@ -232,11 +289,61 @@ public extension StrengthData {
         return entry
     }
 
-    /// Removes a weigh-in; false when there is none with that id.
+    /// Removes a weigh-in that was entered here; false when there is none with that id, or when it was read from Apple Health
+    /// (Health owns those: the app cannot delete them there, and would read them again at the next sync).
     @discardableResult
     mutating func deleteBodyWeight(id: UUID) -> Bool {
-        let before = bodyWeights.count
-        bodyWeights.removeAll { $0.id == id }
-        return bodyWeights.count != before
+        guard let index = bodyWeights.firstIndex(where: { $0.id == id }), bodyWeights[index].source == .app else { return false }
+        bodyWeights.remove(at: index)
+        return true
+    }
+
+    /// Adds the body weights read from Apple Health that are not here yet; returns how many it added.
+    ///
+    /// A sample is skipped when it was already read (same `healthSampleID`), when it is one this app saved to Health itself (its
+    /// `externalID` is the id of an entry that is here), or when its weight is not plausible. Entries entered here are never changed.
+    @discardableResult
+    mutating func mergeHealthBodyWeights(_ samples: [HealthBodyWeightSample]) -> Int {
+        var knownSamples = Set(bodyWeights.compactMap { $0.healthSampleID })
+        let ownEntryIDs = Set(bodyWeights.map { $0.id })
+        var added = 0
+        for sample in samples {
+            if knownSamples.contains(sample.sampleID) { continue }
+            if let externalID = sample.externalID, ownEntryIDs.contains(externalID) { continue }
+            guard let kg = BodyWeightRules.normalised(sample.kg) else { continue }
+            let entry = BodyWeightEntry(id: sample.sampleID, date: sample.date, kg: kg, source: .health, healthSampleID: sample.sampleID)
+            bodyWeights.removeAll { $0.id == entry.id }
+            let index = bodyWeights.firstIndex { $0.date <= entry.date } ?? bodyWeights.endIndex
+            bodyWeights.insert(entry, at: index)
+            knownSamples.insert(sample.sampleID)
+            added += 1
+        }
+        return added
+    }
+
+    /// The body weight in force on `date`: the latest weigh-in on or before it, or the first one ever when `date` is before all of them.
+    /// nil without any weigh-in.
+    func bodyWeightKg(at date: Date) -> Double? {
+        if let entry = bodyWeights.first(where: { $0.date <= date }) { return entry.kg }
+        return bodyWeights.last?.kg
+    }
+}
+
+// MARK: - Apple Health
+
+/// A body-mass sample read from Apple Health, reduced to what the merge needs.
+public struct HealthBodyWeightSample: Hashable, Sendable {
+    /// The `HKSample` uuid.
+    public var sampleID: UUID
+    /// `HKMetadataKeyExternalUUID` of the sample: the id of the entry this app saved it for; nil for samples of other apps.
+    public var externalID: UUID?
+    public var date: Date
+    public var kg: Double
+
+    public init(sampleID: UUID, externalID: UUID? = nil, date: Date, kg: Double) {
+        self.sampleID = sampleID
+        self.externalID = externalID
+        self.date = date
+        self.kg = kg
     }
 }

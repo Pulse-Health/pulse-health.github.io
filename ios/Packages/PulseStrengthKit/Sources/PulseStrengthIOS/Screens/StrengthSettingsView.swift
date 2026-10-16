@@ -2,10 +2,12 @@
 import SwiftUI
 import PulseStrengthCore
 
-/// Settings of the strength feature (opened from the hub's "More" menu): the user's body weight with its history, and the
-/// weigh-in reminder (on/off, how often, at what time).
+/// Settings of the strength feature (opened from the hub's "More" menu): the user's body weight with its history, the
+/// weigh-in reminder (on/off, how often, at what time) and the Apple Health sync.
 ///
-/// * Tapping the weight opens `BodyWeightEntrySheet`; a history row swipes away (delete).
+/// * Tapping the weight opens `BodyWeightEntrySheet`; a history row entered here swipes away (delete). A row read from Apple Health
+///   says so and stays: Health owns it.
+/// * Turning "Sync with Apple Health" on asks for the Health permission right then and reads the weights Health already has.
 /// * Turning the reminder on asks for the notification permission right then (not at launch). If the user refuses, the reminder
 ///   still shows as a card on the hub, and the footer says how to allow notifications.
 @MainActor
@@ -15,6 +17,7 @@ struct StrengthSettingsView: View {
 
     @State private var showsEntry = false
     @State private var notificationsDenied = false
+    @State private var healthCannotSave = false
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -35,6 +38,7 @@ struct StrengthSettingsView: View {
                 historySection
             }
             reminderSection
+            healthSection
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
@@ -99,19 +103,27 @@ struct StrengthSettingsView: View {
         return Section {
             ForEach(entries) { entry in
                 HStack {
-                    Text(NumberText.kg(entry.kg) + " kg")
-                        .pulseNumber(17, .semibold, relativeTo: .body)
-                        .foregroundStyle(PulseTheme.ink)
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(NumberText.kg(entry.kg) + " kg")
+                            .pulseNumber(17, .semibold, relativeTo: .body)
+                            .foregroundStyle(PulseTheme.ink)
+                        if entry.source == .health {
+                            Text("Apple Health")
+                                .pulseFont(12, relativeTo: .footnote)
+                                .foregroundStyle(PulseTheme.inkSecondary)
+                        }
+                    }
                     Spacer(minLength: 8)
                     Text(StrengthResultText.monthDay(entry.date, now: now))
                         .pulseFont(15, relativeTo: .subheadline)
                         .foregroundStyle(PulseTheme.inkSecondary)
                 }
                 .listRowBackground(PulseTheme.card)
+                .deleteDisabled(entry.source == .health)
                 .accessibilityElement(children: .combine)
             }
             .onDelete { (offsets: IndexSet) in
-                for index in offsets where entries.indices.contains(index) {
+                for index in offsets where entries.indices.contains(index) && entries[index].source == .app {
                     store.deleteBodyWeight(id: entries[index].id)
                 }
             }
@@ -146,6 +158,59 @@ struct StrengthSettingsView: View {
             Text(reminderFooter)
         }
     }
+
+    // MARK: Apple Health
+
+    private var healthSection: some View {
+        Section {
+            Toggle("Sync with Apple Health", isOn: healthBinding)
+                .tint(PulseTheme.green)
+                .disabled(!environment.isHealthSyncAvailable)
+                .listRowBackground(PulseTheme.card)
+                .accessibilityIdentifier("settings-health-toggle")
+        } header: {
+            Text("Apple Health")
+        } footer: {
+            Text(healthFooter)
+        }
+    }
+
+    private var healthFooter: String {
+        if !environment.isHealthSyncAvailable {
+            return "Apple Health is not available on this device."
+        }
+        var text = "Saves the weights you enter to Apple Health and adds the weights Health already has, for example from a smart scale. "
+            + "Weights that come from Health can only be removed in the Health app."
+        if store.weighIn.syncWithHealth, healthCannotSave {
+            text += "\nPulse Strength may not save to Health yet. Allow Weight under Health > Data Access & Devices > Pulse Strength."
+        }
+        return text
+    }
+
+    private var healthBinding: Binding<Bool> {
+        Binding<Bool>(
+            get: { store.weighIn.syncWithHealth },
+            set: { (enabled: Bool) in
+                setHealthSync(enabled)
+            }
+        )
+    }
+
+    private func setHealthSync(_ enabled: Bool) {
+        var preferences = store.weighIn
+        preferences.syncWithHealth = enabled
+        store.setWeighInPreferences(preferences)
+        guard enabled else {
+            healthCannotSave = false
+            return
+        }
+        Task {
+            let canSave = await environment.startHealthSync()
+            healthCannotSave = !canSave
+        }
+    }
+
+    // MARK: Reminder footer
 
     private var reminderFooter: String {
         let preferences = store.weighIn

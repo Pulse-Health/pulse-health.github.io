@@ -32,6 +32,9 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// Keeps the weigh-in reminder notifications up to date; nil for previews and UI tests (no notifications, no permission prompts).
     let weightReminders: WeightReminderScheduler?
 
+    /// Exchanges the body weight with Apple Health when the user turned that on; nil for previews and UI tests (no Health access, no prompts).
+    let healthSync: BodyWeightHealthSync?
+
     /// The live environment of the running app (persistence in Application Support or the App Group container, demo data when the store is empty).
     public static let shared: StrengthAppEnvironment = StrengthAppEnvironment.live()
 
@@ -42,7 +45,8 @@ public final class StrengthAppEnvironment: ObservableObject {
         services: PulseServices,
         hasSystemServices: Bool,
         watchStatus: WatchStatus,
-        weightReminders: WeightReminderScheduler?
+        weightReminders: WeightReminderScheduler?,
+        healthSync: BodyWeightHealthSync?
     ) {
         self.persistence = persistence
         self.store = store
@@ -51,6 +55,7 @@ public final class StrengthAppEnvironment: ObservableObject {
         self.hasSystemServices = hasSystemServices
         self.watchStatus = watchStatus
         self.weightReminders = weightReminders
+        self.healthSync = healthSync
     }
 
     // MARK: Live
@@ -70,9 +75,11 @@ public final class StrengthAppEnvironment: ObservableObject {
             services: services,
             hasSystemServices: true,
             watchStatus: services.watchStatus,
-            weightReminders: WeightReminderScheduler(store: store)
+            weightReminders: WeightReminderScheduler(store: store),
+            healthSync: BodyWeightHealthSync.make(store: store)
         )
         environment.connectWeightReminders()
+        environment.connectHealthSync()
         environment.installCommandBus()
         environment.connectWatchStatus()
         // Last, so that the services (Live Activity re-attach, Watch sync) see the restored workout.
@@ -100,7 +107,8 @@ public final class StrengthAppEnvironment: ObservableObject {
             services: services,
             hasSystemServices: false,
             watchStatus: .connected,
-            weightReminders: nil
+            weightReminders: nil,
+            healthSync: nil
         )
         if withActiveWorkout {
             controller.startWorkout(template: store.templates.first)
@@ -130,9 +138,40 @@ public final class StrengthAppEnvironment: ObservableObject {
         return await reminders.isDenied()
     }
 
-    /// Brings the scheduled reminders up to date (call when the app becomes active).
-    public func refreshWeightReminders() {
+    /// Brings the scheduled reminders up to date and, when the Health sync is on, reads the new body weights of Health
+    /// (call when the app becomes active).
+    public func refreshOnActive() {
         weightReminders?.refresh()
+        guard let sync = healthSync else { return }
+        Task {
+            await sync.readFromHealth()
+        }
+    }
+
+    // MARK: Apple Health body weight
+
+    /// False when this device has no Health (previews, UI tests, iPads): the switch in Settings is then disabled.
+    public var isHealthSyncAvailable: Bool {
+        healthSync?.isAvailable ?? false
+    }
+
+    /// Turns the sync on: asks for the Health permission, then reads the weights Health already has.
+    /// True when the app may save to Health (a refused READ cannot be seen, only a refused save).
+    public func startHealthSync() async -> Bool {
+        guard let sync = healthSync else { return false }
+        let canSave = await sync.requestAuthorization()
+        await sync.readFromHealth()
+        return canSave
+    }
+
+    private func connectHealthSync() {
+        guard let sync = healthSync else { return }
+        store.onBodyWeightSaved = { [weak sync] (entry: BodyWeightEntry) in
+            sync?.save(entry)
+        }
+        store.onBodyWeightRemoved = { [weak sync] (entry: BodyWeightEntry) in
+            sync?.remove(entry)
+        }
     }
 
     private func connectWeightReminders() {

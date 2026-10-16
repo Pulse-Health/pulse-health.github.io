@@ -69,10 +69,14 @@ public struct PulseStrengthRootView: View {
         .task {
             await requestPermissions()
         }
+        .task {
+            // The launch itself: `onChange` below only sees the changes after it.
+            environment.refreshOnActive()
+        }
         .onChange(of: scenePhase) { _, phase in
-            // A delivered reminder leaves the list of future ones, and the clock or time zone may have changed.
+            // A delivered reminder leaves the list of future ones, the clock or time zone may have changed, and Health may have new weights.
             if phase == .active {
-                environment.refreshWeightReminders()
+                environment.refreshOnActive()
             }
         }
     }
