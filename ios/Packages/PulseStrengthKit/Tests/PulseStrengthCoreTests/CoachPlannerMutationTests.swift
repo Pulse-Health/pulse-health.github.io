@@ -105,9 +105,14 @@ final class CoachPlannerMutationTests: XCTestCase {
         XCTAssertEqual(verdict(config: strict), .addRep)
 
         XCTAssertEqual(verdict(at: now.addingTimeInterval(60 * 86_400)), .hold, "60 days later it is a break")
-        // A break holds the weight; sets that already have it leave nothing to apply, so there is no suggestion at all.
+        // After a break the person is told what they did last time and to ease back in, whether or not the sets match: a line without
+        // an Apply button, so the plan is never raised to the old weight.
         let matching = entry(crossover, [LoggedSet(weightKg: 40, reps: 10), LoggedSet(weightKg: 40, reps: 10)])
-        XCTAssertNil(CoachPlanner.suggestion(for: matching, history: history, audience: .adult, now: now.addingTimeInterval(60 * 86_400)))
+        let later = now.addingTimeInterval(60 * 86_400)
+        let note = CoachPlanner.suggestion(for: matching, history: history, audience: .adult, now: later)
+        XCTAssertEqual(note?.line.headline, "Last time: 40 kg × 10")
+        XCTAssertEqual(note?.actions, [])
+        XCTAssertEqual(CoachPlanner.suggestion(for: current, history: history, audience: .adult, now: later)?.actions, [])
     }
 
     func testApplyTouchesOnlyPendingNormalSetsAndNeverDropOrFailureSets() throws {
@@ -189,11 +194,11 @@ final class CoachPlannerMutationTests: XCTestCase {
                 exerciseID: "bench", verdict: .hold, targetWeightKg: 80, targetReps: 6, reasons: reasons
             ))?.detail
         }
-        let breakText = "It has been a while since your last session."
+        let breakText = "It has been a while since your last session, so ease back in."
         let failureText = "Last session ended close to failure."
         let droppingText = "Reps have been dropping at this weight."
         let waitingText = "One more clean session at this weight before moving up."
-        let moderateText = "Move up once sets feel easier (RIR 2 or more)."
+        let moderateText = "Move up once most sets feel easier (RIR 2 or more)."
 
         XCTAssertEqual(detail([.lastSessionNearFailure, .returningAfterBreak]), breakText)
         XCTAssertEqual(detail([.returningAfterBreak, .lastSessionNearFailure]), breakText)

@@ -53,6 +53,10 @@ public enum TemplateWriter {
 
         case .hold:
             guard let target = target(recommendation) else { return nil }
+            // After a long break "stay" would be wrong: the person is not at that weight any more.
+            if reasons.contains(.returningAfterBreak) {
+                return CoachLine(headline: "Last time: " + target, detail: "It has been a while since your last session, so ease back in.")
+            }
             return CoachLine(headline: "Stay at " + target, detail: holdDetail(reasons, minimumRIR: minimumRIR))
         }
     }
@@ -64,13 +68,18 @@ public enum TemplateWriter {
     }
 
     private static func holdDetail(_ reasons: [ReasonCode], minimumRIR: String) -> String? {
-        if reasons.contains(.returningAfterBreak) { return "It has been a while since your last session." }
+        if reasons.contains(.returningAfterBreak) { return "It has been a while since your last session, so ease back in." }
         if reasons.contains(.lastSessionNearFailure) { return "Last session ended close to failure." }
-        if reasons.contains(.repsFellAtSameLoad) { return "Reps have been dropping at this weight." }
+        if reasons.contains(.repsFellAtSameLoad) {
+            if reasons.contains(.reduceExceedsCap) {
+                return "Reps have been dropping, but the smallest step down is a big change, so choose your own weight."
+            }
+            return "Reps have been dropping at this weight."
+        }
         if reasons.contains(.awaitingSecondCleanSession) { return "One more clean session at this weight before moving up." }
-        if reasons.contains(.moderateEffort) { return "Move up once sets feel easier (RIR \(minimumRIR) or more)." }
+        if reasons.contains(.moderateEffort) { return "Move up once most sets feel easier (RIR \(minimumRIR) or more)." }
         // The two limits below end in a hold the person could otherwise never get out of without being told why.
-        if reasons.contains(.stepExceedsCap) { return "The next step up is a big jump, so choose your own weight or keep adding reps." }
+        if reasons.contains(.stepExceedsCap) { return "The next step up is a big jump, so choose your own weight." }
         if reasons.contains(.lighterWeekDue) { return "A lighter week is due, but the smallest step down is a big change, so choose your own weight." }
         if reasons.contains(.reduceExceedsCap) { return "The smallest step down is a big change, so choose your own weight." }
         return nil

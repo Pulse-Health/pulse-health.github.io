@@ -99,10 +99,15 @@ final class CoachPlannerTests: XCTestCase {
         XCTAssertEqual(line(.reduce, [.repsFellAtSameLoad], weight: 77.5, reps: 5)?.sentence, "77.5 kg × 5. Reps fell at the same weight twice.")
         XCTAssertEqual(line(.reduce, [.lighterWeekDue], weight: 70)?.detail, "A lighter week after several increases in a row.")
         XCTAssertEqual(line(.hold, [.lastSessionNearFailure], weight: 80)?.sentence, "Stay at 80 kg × 6. Last session ended close to failure.")
-        XCTAssertEqual(line(.hold, [.returningAfterBreak])?.detail, "It has been a while since your last session.")
+        XCTAssertEqual(line(.hold, [.returningAfterBreak])?.headline, "Last time: 82.5 kg × 6")
+        XCTAssertEqual(line(.hold, [.returningAfterBreak])?.detail, "It has been a while since your last session, so ease back in.")
         XCTAssertEqual(line(.hold, [.repsFellAtSameLoad])?.detail, "Reps have been dropping at this weight.")
-        XCTAssertEqual(line(.hold, [.moderateEffort])?.detail, "Move up once sets feel easier (RIR 2 or more).")
-        XCTAssertEqual(line(.hold, [.stepExceedsCap])?.detail, "The next step up is a big jump, so choose your own weight or keep adding reps.")
+        XCTAssertEqual(line(.hold, [.moderateEffort])?.detail, "Move up once most sets feel easier (RIR 2 or more).")
+        XCTAssertEqual(line(.hold, [.stepExceedsCap])?.detail, "The next step up is a big jump, so choose your own weight.")
+        XCTAssertEqual(
+            line(.hold, [.repsFellAtSameLoad, .reduceExceedsCap])?.detail,
+            "Reps have been dropping, but the smallest step down is a big change, so choose your own weight."
+        )
         XCTAssertEqual(line(.hold, [.lighterWeekDue, .reduceExceedsCap])?.detail, "A lighter week is due, but the smallest step down is a big change, so choose your own weight.")
         XCTAssertEqual(line(.hold, [.reduceExceedsCap])?.detail, "The smallest step down is a big change, so choose your own weight.")
         XCTAssertNil(line(.hold, [.suspectSetExcluded])?.detail)

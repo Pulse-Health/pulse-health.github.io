@@ -8,8 +8,10 @@ import PulseStrengthCore
 ///
 /// Without something to apply (the "Log RIR" hint) there is no button.
 ///
-/// `isCompact` drops the reason line (it stays available to VoiceOver as the hint) for the moments the card is short of room: a rest
-/// is running, the text is large, or the exercise has many sets. The hub card always shows the reason.
+/// `isCompact` drops the reason line of a note that has no button (it stays available to VoiceOver as the hint) for the moments the
+/// card is short of room: a rest is running, the text is large, or the exercise has many sets. With an "Apply" button the row is as
+/// tall as the button anyway, so the reason stays: it is what says why the weight goes down or the reps go up. The hub card always
+/// shows the reason.
 struct CoachSuggestionView: View {
     let line: CoachLine
     let canApply: Bool
@@ -29,6 +31,8 @@ struct CoachSuggestionView: View {
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
             texts
+                // The button brings the row's height; the words keep their own room from the edge of the wash.
+                .padding(.vertical, canApply ? 6 : 0)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if canApply {
                 applyButton
@@ -43,6 +47,8 @@ struct CoachSuggestionView: View {
         )
     }
 
+    private var showsDetail: Bool { !(isCompact && !canApply) }
+
     private var texts: some View {
         VStack(alignment: .leading, spacing: 2) {
             let title: Text = Text("Next time · ").fontWeight(.semibold) + Text(verbatim: line.headline).fontWeight(.semibold)
@@ -50,7 +56,7 @@ struct CoachSuggestionView: View {
                 .font(.system(size: textSize))
                 .foregroundStyle(PulseTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
-            if let detail = line.detail, !isCompact {
+            if let detail = line.detail, showsDetail {
                 // Ink at 75 % rather than the secondary grey: the grey is 4.2:1 on this tinted fill in dark mode.
                 Text(verbatim: detail)
                     .font(.system(size: textSize - 1))
@@ -59,7 +65,7 @@ struct CoachSuggestionView: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityHint(isCompact ? (line.detail ?? "") : "")
+        .accessibilityHint(showsDetail ? "" : (line.detail ?? ""))
     }
 
     private var applyButton: some View {
@@ -75,7 +81,8 @@ struct CoachSuggestionView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(PulsePlainButtonStyle())
-        .accessibilityLabel("Apply " + line.headline)
+        .accessibilityLabel("Apply to sets")
+        .accessibilityValue(line.headline)
         .accessibilityIdentifier("coach-apply")
     }
 }

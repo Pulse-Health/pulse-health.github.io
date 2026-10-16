@@ -47,7 +47,7 @@ struct ExerciseCardView: View {
             suggestionSection(suggestion)
             // The record tip says "85 kg × 6 would beat your best" while the coach may say "stay at 80" or "go lighter": it is shown
             // only when the coach has no weight to name. It follows the audience and the muscles the person asked to avoid.
-            tipSection(for: entry, hiddenBy: suggestion)
+            tipSection(for: entry, suggestion: suggestion)
         }
         .frame(maxWidth: .infinity)
         .padding(12)
@@ -244,11 +244,27 @@ struct ExerciseCardView: View {
     }
 
     @ViewBuilder
-    private func tipSection(for entry: WorkoutExercise?, hiddenBy suggestion: WorkoutSuggestion?) -> some View {
+    private func tipSection(for entry: WorkoutExercise?, suggestion: WorkoutSuggestion?) -> some View {
         let allowed = entry.map { audience.allowsPersonalRecordTip(for: $0.exercise.muscle) } ?? audience.showsPersonalRecordTips
-        if allowed, suggestion?.recommendation.verdict.hasTarget != true, let tip = card.coachTip {
+        if allowed, let tip = card.coachTip, !coachNamesAWeight(entry, suggestion: suggestion) {
             CoachTipView(text: tip)
         }
+    }
+
+    /// Whether the coach has a weight for this exercise, with or without something to apply: after "Apply", or when the plan already
+    /// is what the coach says, the suggestion row is gone but the coach has not changed its mind. The engine is only asked when the
+    /// tip would otherwise be shown.
+    private func coachNamesAWeight(_ entry: WorkoutExercise?, suggestion: WorkoutSuggestion?) -> Bool {
+        if suggestion?.recommendation.verdict.hasTarget == true { return true }
+        guard let entry, let state = controller.state else { return false }
+        let recommendation = CoachPlanner.recommendation(
+            for: entry,
+            history: controller.store.history(for: entry.exercise.id, now: state.startedAt),
+            workoutName: state.name,
+            audience: audience,
+            now: state.startedAt
+        )
+        return recommendation?.verdict.hasTarget == true
     }
 
     /// "Next time · 82.5 kg × 6" from the progression engine, before the first set of the exercise is logged.
@@ -264,8 +280,9 @@ struct ExerciseCardView: View {
         }
     }
 
-    /// The reason line is left out while a rest runs (the dock needs the room, as for the record tip), at large text sizes, and
-    /// for exercises with many sets, where the extra line would push the last set row out of the table.
+    /// A note without a button drops its reason line while a rest runs (the dock needs the room, as for the record tip), at large
+    /// text sizes, and for exercises with many sets, where the extra line would push the last set row out of the table. A suggestion
+    /// with an "Apply" button keeps it: the button sets the row's height anyway, and the reason says why the weight goes down.
     private var isCompactSuggestion: Bool {
         controller.state?.rest != nil || dynamicTypeSize >= .xLarge || card.rows.count > 4
     }
@@ -305,7 +322,11 @@ struct ExerciseCardView: View {
         for action in current.actions {
             controller.send(action)
         }
-        UIAccessibility.post(notification: .announcement, argument: "Applied " + current.line.headline)
+        var announcement = "Sets changed"
+        if let weight = current.recommendation.targetWeightKg, let reps = current.recommendation.targetReps {
+            announcement += " to \(NumberText.kg(weight)) kilograms, \(reps) reps"
+        }
+        UIAccessibility.post(notification: .announcement, argument: announcement)
     }
 
     /// Check circle: logs or un-logs the set with an impact haptic.

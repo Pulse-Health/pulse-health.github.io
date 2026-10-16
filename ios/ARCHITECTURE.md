@@ -535,16 +535,21 @@ proposal records the decision not to use on-device models.
   stored with it); warm-ups, drop sets and values outside 0.5 <= kg <= 2000, 0 < reps <= 999 are ignored (999 is the most the reducer
   stores). A session is summarised at its heaviest working weight: mean reps, mean RIR, the share of those sets that have one
   (`coverage`) and the share with RIR >= `progressMinimumRIR` (`comfortableShare`).
-  *Typo guard.* A set is dropped as a typo when its estimated 1RM is more than `suspectRatio` (1.25) times the median of the last six
-  per-session bests **and** more than that times the best of the next older session, so a lifter who climbs every session is not
-  mistaken for a typo. That needs three recent sessions; with exactly two whose bests are further apart than `suspectRatio` the engine
-  says nothing (`insufficientData`, `suspectSetExcluded`), because it cannot tell which one is right.
+  *Typo guard.* Only the recent run of sessions (below) says what is typical. A set is a suspect when its estimated 1RM is more than
+  `suspectRatio` (1.25, compared with a 1e-9 slack so an exact 1.25 on paper is never decided by rounding) times the median of the last
+  six session bests **and** either more than that times the best of the next older session (so a lifter who climbs every session is
+  not mistaken for a typo) or more than that times the best of the other sets of its own session (a rep typo stands out from its
+  neighbours). Suspects are dropped, except that two or more of them making up at least half of a session agree with each other and
+  are kept (a beginner moving from the empty bar to a working weight has not made three identical typos). That needs three recent
+  sessions; with exactly two whose bests are further apart than `suspectRatio` the engine says nothing (`insufficientData`,
+  `suspectSetExcluded`) unless the higher session's sets agree with each other, because it cannot tell which one is right.
   *Rules, in this order:* an invalid `CoachConfig` (NaN or out-of-range caps), an audience that avoids the muscle, an exercise that is
   not weight x reps, or fewer than two valid sessions → `insufficientData` (nothing is shown); more than `breakDays` since the last
-  session (or a date that is not a number) → `hold` (`returningAfterBreak`). The rest uses only the **recent run**: the newest sessions
-  with no gap longer than `breakDays` between neighbours. One session in the run (the first one back after a layoff) → `hold`
-  (`awaitingSecondCleanSession`). `lighterWeekAfterIncreases` consecutive increases with effort data below `lighterWeekMaximumRIR`
-  (3.0; a beginner adding weight with reps to spare is not tired) → `reduce` (`lighterWeekDue`); reps fell by more than
+  session (or a date that is not a number) → `hold` (`returningAfterBreak`); `breakDays` carries half a day of slack, so four weeks to
+  the hour is still four weeks. The rest uses only the **recent run**: the newest sessions with no gap longer than `breakDays`
+  between neighbours. One session in the run (the first one back after a layoff) → `hold`
+  (`awaitingSecondCleanSession`). `lighterWeekAfterIncreases` consecutive increases with effort data at or below `lighterWeekMaximumRIR`
+  (2.0; a beginner adding weight with reps to spare is not tired) → `reduce` (`lighterWeekDue`); reps fell by more than
   `repsFallTolerance` at the same weight in two consecutive sessions → `reduce` when the last session ended at mean RIR <=
   `holdMaximumRIR`, else `hold`; coverage below `effortCoverage` → `noEffortData`; mean RIR <= `holdMaximumRIR` → `hold`
   (`lastSessionNearFailure`); mean RIR below `progressMinimumRIR`, or fewer than `comfortableSetShare` (2/3) of the sets at
@@ -562,8 +567,16 @@ proposal records the decision not to use on-device models.
   lift trained on a heavy day and a light day is not compared with itself; it stops scanning once `limit` targets are found. A single
   "Log RIR" hint only when nothing else is available. **`CoachPlanner.suggestion(for:history:workoutName:audience:config:now:)`**: for one
   exercise of the running workout, only before its first set is logged and only when applying would change something; `actions` are the
-  existing `.setWeight` / `.setReps` actions for the **top group** of the pending `.normal` sets (those at the heaviest pending weight):
-  back-off sets, ramps and pyramids keep their plan, and warm-ups, drop sets and failure sets are never touched. Apply cannot be undone.
+  existing `.setWeight` / `.setReps` actions for the **top group** of the pending sets (those at the heaviest pending weight, counting
+  to-failure sets because the engine judges the heaviest set, changing only the `.normal` ones): back-off sets, ramps and pyramids keep
+  their plan, and warm-ups, drop sets and failure sets are never touched. Apply cannot be undone. A target whose weight is more than
+  `maximumPlanDeviation` (20 %) from the weight the person planned for those sets is not offered (and not shown on the hub against the
+  template's planned weight): a far-off target means the history belongs to another scheme (heavy and light day, a new template). After a
+  long break the card shows "Last time: 140 kg × 5 … ease back in" without an Apply button, whatever the plan says.
+  `CoachPlanner.recommendation(for:...)` returns the engine's answer for an exercise even when there is nothing to apply; the card uses it
+  to keep the record tip away while the coach has named a weight (after "Apply", or when the plan already is the target). The history
+  is scoped to the workout's name only when at least two sessions carry the name and the newest of them is within `breakDays` of the
+  newest session of the lift in any workout.
 * **`HubNoteBuilder.message(template:exercise:recovery:audience:includeTarget:)`**: the hub card's coach note, moved out of
   `StrengthHubView` (it had no test). The readiness sentence is built only when `recovery` is non-nil (the hub passes nil while
   `WorkoutController.isUsingDemoRecovery`) and never names a muscle the person avoids. The "Aim for" sentence is the old record chase: it

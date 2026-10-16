@@ -290,6 +290,12 @@ real climb and was blind with two sessions; holds at a cap had no explanation; t
 `CoachConfig` silently removed a cap; the hub "Aim for" sentence ignored the audience and contradicted the "Next time" line; and several iOS
 points (room on a small screen, VoiceOver, contrast, tap target, date pinned to the workout start, Apply recomputed at the tap).
 
+A second review of those fixes found more, fixed the same way (`CoachSecondReviewTests`): Apply still reached back-off sets behind a
+heavier to-failure set; the record tip came back right after "Apply"; the typo guard missed rep typos when the older session was
+stronger, erased a genuinely heavier session whose sets agreed, ignored recency and had no tolerance at exactly 1.25; a stale workout name
+hid recent training and the other day's weight reached Apply in a split's first sessions (now a plan check); "Stay at" was the wrong word
+after a layoff; the 28-day boundary flipped on the time of day; and the lighter week still fired for a typical beginner.
+
 *Found, not fixed, because each is a policy decision for a qualified coach:*
 * **Light lifts only ever gain reps.** With a 7.5 % cap (5 % when the age is unknown) the 2 to 2.5 kg steps are "too big a jump" for
   barbells under 33 kg (50 kg), dumbbells under 27 kg (40 kg) and most isolation work; the target climbs to 30 reps and then holds, now with
@@ -301,6 +307,8 @@ points (room on a small screen, VoiceOver, contrast, tap target, date pinned to 
   fallback such as "all planned reps in two sessions" needs the planned reps. **Break handling:** a long layoff holds at the old weight; coaches
   restart at 60 to 90 %. **Targets from the mean:** one bad set lowers the next target by a rep.
 * **Wording.** "RIR" and "clean session" are not explained; a decrease and an increase read alike on the card.
+* **Same-day sessions and rep typos on high-rep lifts.** Two workouts logged on one day count as two sessions; a typo in the reps of a
+  lift done above ten reps cannot be seen by the typo guard (a weight typo is stopped by the plan check).
 * **The PR-chase "Aim for" arithmetic** still starts from the all-time best estimated 1RM, so one typo set can inflate it (the engine's typo
   guard does not apply); it is now hidden whenever the engine names a weight, for minors and for avoided muscles.
 

@@ -156,19 +156,26 @@ public struct CoachConfig: Equatable, Sendable {
     public var maximumJumpFraction = 0.075
     /// The same for minors and unknown audiences.
     public var maximumJumpFractionRestricted = 0.05
-    /// More days than this since the last session counts as returning after a break.
+    /// More days than this since the last session counts as returning after a break (with half a day of slack). The sessions that
+    /// count as "the last two" must also lie this close to each other.
     public var breakDays = 28
     /// Reps above which a set is not trusted when building the reference for the suspect-set check.
     public var maximumRepsForReference = 10
-    /// A set whose estimated 1RM is more than this many times the lifter's recent typical best is treated as a typo and ignored.
+    /// A set whose estimated 1RM is more than this many times the lifter's recent typical best is treated as a typo and ignored,
+    /// when it also jumped from the session before or stands out from the other sets of its own session. Suspects that agree with
+    /// each other (two or more, at least half of the session) are kept.
     public var suspectRatio = 1.25
     /// This many consecutive sessions with a higher weight than the one before → suggest a lighter week. 0 turns it off.
     public var lighterWeekAfterIncreases = 6
-    /// A lighter week is only suggested when the last session's mean reps in reserve is below this: someone adding weight every
-    /// session with reps to spare (a beginner) is not tired, so a streak of increases alone is no reason to back off.
-    public var lighterWeekMaximumRIR = 3.0
+    /// A lighter week is only suggested when the last session's mean reps in reserve is at most this: someone adding weight every
+    /// session with reps to spare (a beginner at RIR 3) is not tired, so a streak of increases alone is no reason to back off.
+    public var lighterWeekMaximumRIR = 2.0
     /// Largest rep target "add a rep" may reach. Past it the engine holds, and says that the next step up is a big jump.
     public var maximumTargetReps = 30
+    /// A suggestion whose weight differs from the weight the person planned for the sets it would change by more than this share
+    /// (of the larger of the two) is not shown: the plan is the person's intent, and a far-off target means the history belongs to
+    /// another scheme (a heavy day and a light day, a new template, a comeback after a layoff). Not applied to a plan of 0 kg.
+    public var maximumPlanDeviation = 0.2
     /// Weight increment per equipment (kg). Falls back to the exercise's keypad step when an entry is missing.
     public var incrementsKg: [Equipment: Double] = [
         .barbell: 2.5, .dumbbell: 2, .cable: 2.5, .machine: 2.5, .bodyweight: 1, .other: 1,
@@ -185,6 +192,7 @@ public struct CoachConfig: Equatable, Sendable {
         guard effortCoverage.isFinite, effortCoverage > 0, effortCoverage <= 1 else { return false }
         guard comfortableSetShare.isFinite, comfortableSetShare > 0, comfortableSetShare <= 1 else { return false }
         guard suspectRatio.isFinite, suspectRatio > 1 else { return false }
+        guard maximumPlanDeviation.isFinite, maximumPlanDeviation > 0, maximumPlanDeviation <= 1 else { return false }
         let efforts = [progressMinimumRIR, holdMaximumRIR, lighterWeekMaximumRIR, repsFallTolerance]
         return efforts.allSatisfy { $0.isFinite && $0 >= 0 }
     }

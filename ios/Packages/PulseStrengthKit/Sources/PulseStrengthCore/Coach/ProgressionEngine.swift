@@ -26,6 +26,14 @@ public enum ProgressionEngine {
     /// A session dated more than this far after `now` is a clock error and is ignored.
     private static let clockSkewAllowance: TimeInterval = 86_400
 
+    /// Ratios are compared with this relative slack, so a ratio that is exactly the limit on paper (50 kg after 40 kg at 1.25) is on
+    /// the same side whatever floating point does to it.
+    private static let ratioEpsilon = 1e-9
+
+    /// Half a day of slack on the break length: four weeks to the hour is still four weeks, whatever time of day the person trains
+    /// or the clocks do.
+    private static let breakTolerance = 0.5
+
     /// Two weights closer than this (kg) are the same weight.
     private static let sameWeightTolerance = 0.005
 
@@ -75,7 +83,7 @@ public enum ProgressionEngine {
         // The sessions that count as "recent": the newest ones with no gap longer than the break between them.
         var recent = 1
         while recent < prepared.sessions.count,
-              gapDays(prepared.sessions[recent].date, prepared.sessions[recent - 1].date) <= Double(config.breakDays) {
+              gapDays(prepared.sessions[recent].date, prepared.sessions[recent - 1].date) <= Double(config.breakDays) + breakTolerance {
             recent += 1
         }
         let sessions = Array(prepared.sessions.prefix(recent))
@@ -98,7 +106,7 @@ public enum ProgressionEngine {
 
         // 1. A long break: do not progress from old numbers. A date that is not a number counts as a break too.
         let daysSince = gapDays(latest.date, now)
-        if !daysSince.isFinite || daysSince > Double(config.breakDays) {
+        if !daysSince.isFinite || daysSince > Double(config.breakDays) + breakTolerance {
             return hold([.returningAfterBreak])
         }
         // The newest session is the first one back after a layoff: it cannot be one of two comparable sessions.
@@ -107,9 +115,9 @@ public enum ProgressionEngine {
         }
         let previous = sessions[1]
 
-        // 2. Many increases in a row: a lighter week, but only for someone who is actually working hard.
+        // 2. Many increases in a row: a lighter week, but only for someone who is actually working hard (mean RIR at most 2).
         if config.lighterWeekAfterIncreases > 0,
-           let effort = latest.meanRIR, latest.coverage >= config.effortCoverage, effort < config.lighterWeekMaximumRIR {
+           let effort = latest.meanRIR, latest.coverage >= config.effortCoverage, effort <= config.lighterWeekMaximumRIR {
             var streak = 0
             var index = 0
             while index + 1 < count, sessions[index].load > sessions[index + 1].load + sameWeightTolerance {
@@ -224,10 +232,16 @@ public enum ProgressionEngine {
     /// Working-set summaries, newest first, after dropping sets that are far above the lifter's recent best (a typo such as 6 reps
     /// entered as 16).
     ///
-    /// A set is dropped when its estimated 1RM is more than `suspectRatio` times the median of the last six session bests **and**
-    /// more than that times the best of the next older session, so a lifter who really is getting stronger every session (each step
-    /// small, the median lagging behind) is not mistaken for a typo. Three recent sessions are needed to know what "typical" is. With
-    /// exactly two, nothing can be dropped, so two sessions whose bests are further apart than `suspectRatio` are reported as an
+    /// Only the **recent run** (the newest sessions with no gap longer than `breakDays` between neighbours) says what is typical; a
+    /// session from last year is no reference for this month. A set is a suspect when its estimated 1RM is more than `suspectRatio`
+    /// times the median of the last six session bests of the run **and** either more than that times the best of the next older
+    /// session (a lifter who really gets stronger every session is not a typo: each step is small, only the median lags behind) or
+    /// more than that times the best of the other sets of its own session (a rep typo stands out from its neighbours). Suspects are
+    /// dropped, except that two or more of them that make up at least half of a session's sets agree with each other and are kept: a
+    /// beginner who moves from the empty bar to a working weight has not made three identical typos.
+    ///
+    /// Three sessions of the run are needed to know what "typical" is. With exactly two whose bests are further apart than
+    /// `suspectRatio`, nothing can be dropped, so unless the higher session's sets agree with each other the pair is reported as an
     /// `unresolvedJump` and the engine stays silent.
     private static func prepare(
         _ input: [ExerciseSession], _ config: CoachConfig, now: Date
@@ -246,28 +260,59 @@ public enum ProgressionEngine {
         let sessions = ordered.map { $0.element }.filter { seen.insert($0.id).inserted }
 
         let working = sessions.map { workingSets($0) }
-        let bests: [Double] = working.map { sets in
-            sets.filter { $0.reps <= config.maximumRepsForReference }.map { e1RM($0) }.max() ?? 0
+        let values: [[Double]] = working.map { sets in sets.map { e1RM($0) } }
+        let bests: [Double] = working.indices.map { index in
+            working[index].indices.filter { working[index][$0].reps <= config.maximumRepsForReference }
+                .map { values[index][$0] }.max() ?? 0
         }
-        let typicalBests = bests.prefix(6).filter { $0 > 0 }
-        let reference: Double? = typicalBests.count >= 3 ? median(Array(typicalBests)) : nil
+
+        // The recent run: where the chain of sessions (with working sets) is first broken by a long gap.
+        var runEnd = 0
+        var previousDate: Date?
+        for index in working.indices where !working[index].isEmpty {
+            if let previousDate, gapDays(sessions[index].date, previousDate) > Double(config.breakDays) + breakTolerance { break }
+            previousDate = sessions[index].date
+            runEnd = index + 1
+        }
+
+        let ratio = config.suspectRatio * (1 + ratioEpsilon)
+        let window = Array(bests.prefix(min(6, runEnd)))
+        let typicalBests = window.filter { $0 > 0 }
+        let reference: Double? = typicalBests.count >= 3 ? median(typicalBests) : nil
+
+        /// Sets of session `index` that are above `limit`, as flags.
+        func above(_ limit: Double, in index: Int) -> [Bool] { values[index].map { $0 > limit } }
+        /// Several suspects that make up at least half of the session agree with each other, so they are not typos.
+        func corroborated(_ flags: [Bool]) -> Bool {
+            let count = flags.filter { $0 }.count
+            return count >= 2 && count * 2 >= flags.count
+        }
 
         var unresolved = false
-        if typicalBests.count == 2, let high = typicalBests.max(), let low = typicalBests.min(), high > config.suspectRatio * low {
-            unresolved = true
+        if typicalBests.count == 2, let high = typicalBests.max(), let low = typicalBests.min(), high > ratio * low,
+           let highIndex = window.firstIndex(of: high) {
+            unresolved = !corroborated(above(ratio * low, in: highIndex))
         }
 
         var excluded = 0
         var result: [Summary] = []
         for (index, sets) in working.enumerated() {
             var kept = sets
-            if let reference, reference > 0 {
-                let older = index + 1 < bests.count ? bests[index + 1] : 0
-                kept = sets.filter { set in
-                    let value = e1RM(set)
-                    let farAboveTypical = value > config.suspectRatio * reference
-                    let jumpedFromOlder = older <= 0 || value > config.suspectRatio * older
-                    return !(farAboveTypical && jumpedFromOlder)
+            if let reference, reference > 0, index < runEnd {
+                let older = index + 1 < runEnd ? bests[index + 1] : 0
+                var flags: [Bool] = []
+                for (position, value) in values[index].enumerated() {
+                    var suspect = false
+                    if value > ratio * reference {
+                        let jumpedFromOlder = older <= 0 || value > ratio * older
+                        let others = values[index].enumerated().filter { $0.offset != position }.map { $0.element }
+                        let standsOut = (others.max()).map { value > ratio * $0 } ?? false
+                        suspect = jumpedFromOlder || standsOut
+                    }
+                    flags.append(suspect)
+                }
+                if !corroborated(flags) {
+                    kept = zip(sets, flags).filter { !$0.1 }.map { $0.0 }
                 }
                 excluded += sets.count - kept.count
             }

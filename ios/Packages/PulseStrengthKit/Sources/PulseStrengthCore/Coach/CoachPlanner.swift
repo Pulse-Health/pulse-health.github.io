@@ -29,12 +29,14 @@ public struct WorkoutSuggestion: Equatable, Sendable {
 }
 
 extension ExerciseHistory {
-    /// The sessions of one workout (by name) when at least `minimum` of them exist, else the whole history.
+    /// The sessions of one workout (by name) when at least `minimum` of them exist and they are not stale, else the whole history.
     ///
     /// The same lift is often trained in two workouts with different schemes (heavy and light days, upper A and B). Judged together,
     /// the engine would compare a heavy day with a light day and never see two sessions of the same kind. Names are compared without
-    /// case and surrounding spaces; a name nobody has used leaves the history unchanged.
-    func scoped(toWorkoutNamed name: String?, minimum: Int = 2) -> ExerciseHistory {
+    /// case and surrounding spaces; a name nobody has used leaves the history unchanged. When the newest session of this workout is
+    /// more than `breakDays` older than the newest session of the lift in any workout, the lift has been trained since in another
+    /// workout and the whole history is used, so a two-year-old "Chest day" cannot hide last week's training.
+    func scoped(toWorkoutNamed name: String?, minimum: Int = 2, breakDays: Int = 28) -> ExerciseHistory {
         guard let name else { return self }
         let wanted = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !wanted.isEmpty else { return self }
@@ -42,6 +44,10 @@ extension ExerciseHistory {
             $0.workoutName.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == wanted
         }
         guard matching.count >= minimum else { return self }
+        if let newestOfWorkout = matching.map({ $0.date }).max(), let newestOverall = sessions.map({ $0.date }).max(),
+           newestOverall.timeIntervalSince(newestOfWorkout) > Double(breakDays) * 86_400 {
+            return self
+        }
         var scoped = self
         scoped.sessions = matching
         return scoped
@@ -52,9 +58,11 @@ extension ExerciseHistory {
 public enum CoachPlanner {
     /// The hub card's "Next time" lines: the first `limit` exercises of `template` that have something to aim for.
     ///
-    /// Each exercise is judged on the sessions of this template (see `ExerciseHistory.scoped(toWorkoutNamed:)`). When none has a
-    /// target, a single "Log RIR" hint is returned for the first exercise that lacks effort data, so the lines nudge without
-    /// nagging. Exercises that appear twice are listed once. A `limit` of zero or less returns nothing.
+    /// Each exercise is judged on the sessions of this template's workout name when there are at least two (see
+    /// `ExerciseHistory.scoped`). A line whose weight is far from the weight the template plans for that exercise
+    /// (`CoachConfig.maximumPlanDeviation`) is left out. When none has a target, a single "Log RIR" hint is returned for the first
+    /// exercise that lacks effort data, so the lines nudge without nagging. Exercises that appear twice are listed once. A `limit`
+    /// of zero or less returns nothing.
     public static func nextTime(
         for template: WorkoutTemplate,
         exercise: (String) -> Exercise?,
@@ -73,12 +81,14 @@ public enum CoachPlanner {
             guard seen.insert(id).inserted else { continue }
             let current = exercise(id) ?? entry.exercise
             let recommendation = ProgressionEngine.recommend(
-                for: current, history: history(id).scoped(toWorkoutNamed: template.name),
+                for: current, history: history(id).scoped(toWorkoutNamed: template.name, breakDays: config.breakDays),
                 audience: audience, config: config, now: now
             )
-            guard let line = TemplateWriter.line(for: recommendation, config: config) else { continue }
+            guard let line = lineFor(recommendation, config: config) else { continue }
             let item = NextTimeItem(exerciseName: current.name, recommendation: recommendation, line: line)
             if recommendation.verdict.hasTarget {
+                let planned = entry.plannedSets.filter { $0.type == .normal }.map { $0.weightKg }.max() ?? 0
+                guard fitsPlan(recommendation, plannedKg: planned, config: config) else { continue }
                 targets.append(item)
                 // Enough lines: neither the rest of the template nor a hint is needed.
                 if targets.count >= limit { return targets }
@@ -90,13 +100,32 @@ public enum CoachPlanner {
         return targets
     }
 
+    /// What the engine says about one exercise of the running workout, whatever the sets look like, or nil for an exercise without a
+    /// weight. The card uses it to decide whether the "beat your best" tip would contradict the coach.
+    public static func recommendation(
+        for entry: WorkoutExercise,
+        history: ExerciseHistory,
+        workoutName: String? = nil,
+        audience: AudienceProfile = .unknown,
+        config: CoachConfig = CoachConfig(),
+        now: Date
+    ) -> Recommendation? {
+        guard entry.exercise.tracksWeight else { return nil }
+        return ProgressionEngine.recommend(
+            for: entry.exercise, history: history.scoped(toWorkoutNamed: workoutName, breakDays: config.breakDays),
+            audience: audience, config: config, now: now
+        )
+    }
+
     /// The suggestion for one exercise of the running workout, or nil when there is nothing useful to show.
     ///
     /// Shown only before the first set is logged, and judged on the sessions of the same workout (`workoutName`) when there are at
-    /// least two. A target is shown only when applying it would change something; the "Log RIR" hint is shown without actions.
+    /// least two. A target is shown only when applying it would change something and is not far from the plan (see `nextTime`); the
+    /// "Log RIR" hint and the note after a long break are shown without actions.
     ///
-    /// Apply changes the **top group** of the pending `.normal` sets: the sets at the heaviest pending weight. Lighter back-off sets,
-    /// pyramids and ramps keep what the person planned, and warm-ups, drop sets and failure sets are never touched.
+    /// Apply changes the **top group** of the pending sets: the sets at the heaviest pending weight, counting to-failure sets (the
+    /// engine judges the heaviest set) but changing only the `.normal` ones. Lighter back-off sets, pyramids and ramps keep what the
+    /// person planned, and warm-ups, drop sets and failure sets are never touched.
     public static func suggestion(
         for entry: WorkoutExercise,
         history: ExerciseHistory,
@@ -105,23 +134,28 @@ public enum CoachPlanner {
         config: CoachConfig = CoachConfig(),
         now: Date
     ) -> WorkoutSuggestion? {
-        guard entry.exercise.tracksWeight, entry.doneCount == 0 else { return nil }
-        let recommendation = ProgressionEngine.recommend(
-            for: entry.exercise, history: history.scoped(toWorkoutNamed: workoutName),
-            audience: audience, config: config, now: now
-        )
-        guard let line = TemplateWriter.line(for: recommendation, config: config) else { return nil }
+        guard entry.doneCount == 0,
+              let recommendation = Self.recommendation(
+                  for: entry, history: history, workoutName: workoutName, audience: audience, config: config, now: now
+              ),
+              let line = lineFor(recommendation, config: config)
+        else { return nil }
 
         guard recommendation.verdict.hasTarget,
               let weight = recommendation.targetWeightKg, let reps = recommendation.targetReps
         else {
             return WorkoutSuggestion(recommendation: recommendation, line: line, actions: [])
         }
+        // After a long break the person is told what they did last time and to ease back in; the plan is never raised to it.
+        if recommendation.reasons.contains(.returningAfterBreak) {
+            return WorkoutSuggestion(recommendation: recommendation, line: line, actions: [])
+        }
 
-        let pending = entry.sets.filter { !$0.isDone && $0.type == .normal }
+        let pending = entry.sets.filter { !$0.isDone && ($0.type == .normal || $0.type == .failure) }
         let topWeight = pending.map { $0.weightKg }.max() ?? 0
+        guard fitsPlan(recommendation, plannedKg: topWeight, config: config) else { return nil }
         var actions: [WorkoutAction] = []
-        for set in pending where abs(set.weightKg - topWeight) <= 0.005 {
+        for set in pending where set.type == .normal && abs(set.weightKg - topWeight) <= 0.005 {
             if abs(set.weightKg - weight) > 0.005 {
                 actions.append(.setWeight(exerciseID: entry.id, setID: set.id, kg: weight))
             }
@@ -132,5 +166,17 @@ public enum CoachPlanner {
         // Already matches the plan: nothing to apply, nothing to say.
         if actions.isEmpty { return nil }
         return WorkoutSuggestion(recommendation: recommendation, line: line, actions: actions)
+    }
+
+    private static func lineFor(_ recommendation: Recommendation, config: CoachConfig) -> CoachLine? {
+        TemplateWriter.line(for: recommendation, config: config)
+    }
+
+    /// Whether the recommended weight is close enough to the planned weight to be about the same scheme. A plan of 0 kg (an imported
+    /// template that has no weights yet) and a recommendation after a long break are always fine.
+    private static func fitsPlan(_ recommendation: Recommendation, plannedKg: Double, config: CoachConfig) -> Bool {
+        guard let weight = recommendation.targetWeightKg, plannedKg > 0 else { return true }
+        if recommendation.reasons.contains(.returningAfterBreak) { return true }
+        return abs(weight - plannedKg) <= config.maximumPlanDeviation * max(weight, plannedKg)
     }
 }

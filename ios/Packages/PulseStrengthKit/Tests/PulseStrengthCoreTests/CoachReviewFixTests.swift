@@ -57,9 +57,9 @@ final class CoachReviewFixTests: XCTestCase {
 
     func testTheTopGroupIsFoundAmongPendingSetsOnly() throws {
         let clean = [session(3, 100, reps: [5], rir: [3]), session(10, 100, reps: [5], rir: [3])]
-        // A warm-up at 100 kg and a failure set at 120 kg are not part of the working plan.
+        // A warm-up at 100 kg and a drop set at 120 kg are not part of the working plan.
         let current = entry(bench, [
-            LoggedSet(type: .warmup, weightKg: 100, reps: 5), LoggedSet(type: .failure, weightKg: 120, reps: 3),
+            LoggedSet(type: .warmup, weightKg: 100, reps: 5), LoggedSet(type: .drop, weightKg: 120, reps: 3),
             LoggedSet(weightKg: 90, reps: 5), LoggedSet(weightKg: 90, reps: 5),
         ])
         let suggestion = try XCTUnwrap(CoachPlanner.suggestion(for: current, history: history(clean), audience: .adult, now: now))
@@ -266,12 +266,27 @@ final class CoachReviewFixTests: XCTestCase {
         XCTAssertFalse(result.reasons.contains(.suspectSetExcluded))
     }
 
-    func testASingleDoubledSessionIsStillAnOutlier() {
-        // Five light sessions and a session at double the weight right after them is a jump, not a trend: it is ignored.
-        let sessions = [session(3, 100)] + (1...5).map { session(3 + $0 * 7, 50) }
+    func testASingleDoubledSetIsStillAnOutlier() {
+        // Five light sessions and, right after them, one set at double the weight among normal ones: a typo, ignored.
+        let typo = ExerciseSession(
+            id: UUID(), date: CoachFix.date(daysAgo: 3), workoutName: "Workout",
+            sets: CoachFix.sets(50, [6, 6], rir: [3, 3]) + [CoachFix.set(100, 6, 3)], isPersonalRecord: false
+        )
+        let sessions = [typo] + (1...5).map { session(3 + $0 * 7, 50) }
         let result = CoachFix.recommend(bench, sessions)
         XCTAssertTrue(result.reasons.contains(.suspectSetExcluded))
+        XCTAssertEqual(result.verdict, .progress, "judged on the two normal sets, which match the session before")
         XCTAssertEqual(result.targetWeightKg, 52.5)
+    }
+
+    func testAWholeSessionAtADoubledWeightIsKeptBecauseItsSetsAgree() {
+        // A beginner moves from the empty bar to a working weight: three sets that agree with each other are not three typos.
+        let sessions = [session(3, 40, reps: [5, 5, 5])] + (1...3).map { session(3 + $0 * 3, 20, reps: [5, 5, 5], rir: [4, 4, 4]) }
+        let result = CoachFix.recommend(CoachFix.lib("squat"), sessions)
+        XCTAssertFalse(result.reasons.contains(.suspectSetExcluded))
+        XCTAssertEqual(result.verdict, .hold)
+        XCTAssertEqual(result.targetWeightKg, 40, "what the person lifted yesterday, not the light sessions before it")
+        XCTAssertEqual(result.reasons, [.awaitingSecondCleanSession])
     }
 
     // MARK: Words
@@ -284,7 +299,7 @@ final class CoachReviewFixTests: XCTestCase {
         XCTAssertEqual(TemplateWriter.line(for: progress)?.detail, "Two clean sessions at RIR 2 or more.")
         config.progressMinimumRIR = 2.5
         let hold = Recommendation(exerciseID: "bench", verdict: .hold, targetWeightKg: 80, targetReps: 6, reasons: [.moderateEffort])
-        XCTAssertEqual(TemplateWriter.line(for: hold, config: config)?.detail, "Move up once sets feel easier (RIR 2.5 or more).")
+        XCTAssertEqual(TemplateWriter.line(for: hold, config: config)?.detail, "Move up once most sets feel easier (RIR 2.5 or more).")
     }
 
     func testThePlannerPassesTheConfigurationToTheWriter() throws {
