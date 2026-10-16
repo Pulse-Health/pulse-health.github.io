@@ -1,5 +1,6 @@
 package health.pulse.strength.services
 
+import android.annotation.SuppressLint
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -85,12 +86,16 @@ class RestAlerts(
         if (Build.VERSION.SDK_INT >= 34) scheduleListener(manager, remaining)
         if (canScheduleExactPendingIntent(manager)) {
             val trigger = elapsedRealtime() + remaining
-            attempt("exact alarm") {
-                manager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, alarmIntent(endsAtMillis))
-            }
+            attempt("exact alarm") { setExactAlarm(manager, trigger, endsAtMillis) }
         } else {
             scheduleApproaching(manager, endsAtMillis, remaining)
         }
+    }
+
+    /** Only called before Android 12, or when `canScheduleExactAlarms()` says that the app may set an exact alarm. */
+    @SuppressLint("MissingPermission")
+    private fun setExactAlarm(manager: AlarmManager, trigger: Long, endsAtMillis: Long) {
+        manager.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, alarmIntent(endsAtMillis))
     }
 
     /** The exact in-process listener alarm (Android 14+; no permission). */

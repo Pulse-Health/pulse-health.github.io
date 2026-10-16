@@ -7,11 +7,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import health.pulse.strength.MainActivity
 import health.pulse.strength.R
 import health.pulse.strength.core.NumberText
@@ -173,7 +173,7 @@ object WorkoutNotifications {
         // The set is part of the intent's identity (its data): FLAG_UPDATE_CURRENT would otherwise rewrite the one shared PendingIntent
         // to the next set on every refresh, and a stale tap on the old button would log the next set as well.
         val pending = receiverIntent(context, ACTION_LOG_SET, 1) {
-            data = Uri.parse("pulse-strength://log/$setID")
+            data = "pulse-strength://log/$setID".toUri()
             putExtra(EXTRA_EXERCISE_ID, exerciseID.toString())
             putExtra(EXTRA_SET_ID, setID.toString())
         }
