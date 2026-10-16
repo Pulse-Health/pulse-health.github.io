@@ -10,6 +10,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.boolean
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
@@ -38,10 +39,13 @@ class OkHttpBillingApiTest {
 
     private lateinit var api: OkHttpBillingApi
 
+    // No silent retry of a dropped connection and no long waits: a test that hangs should fail within seconds.
+    private val client = OkHttpClient.Builder().retryOnConnectionFailure(false).callTimeout(5, TimeUnit.SECONDS).build()
+
     @Before
     fun setUp() {
         server = MockWebServer().apply { start() }
-        api = OkHttpBillingApi(server.url("/").toString(), provider)
+        api = OkHttpBillingApi(server.url("/").toString(), provider, client)
     }
 
     @After
@@ -54,7 +58,7 @@ class OkHttpBillingApiTest {
 
     private fun fixture(name: String, code: Int = 200) = json(Fixtures.text(name), code)
 
-    private fun takeRequest(): RecordedRequest = server.takeRequest(5, TimeUnit.SECONDS) ?: fail("No request arrived").let { error("unreachable") }
+    private fun takeRequest(): RecordedRequest = server.takeRequest(5, TimeUnit.SECONDS) ?: throw AssertionError("No request arrived")
 
     private fun RecordedRequest.bodyJson(): JsonObject = Json.parseToJsonElement(body.readUtf8()).jsonObject
 
@@ -195,7 +199,7 @@ class OkHttpBillingApiTest {
 
     @Test
     fun aBaseUrlWithAPathPrefixKeepsItsPrefix() = runBlocking<Unit> {
-        val prefixed = OkHttpBillingApi(server.url("/api/").toString(), provider)
+        val prefixed = OkHttpBillingApi(server.url("/api/").toString(), provider, client)
         server.enqueue(fixture("entitlement_none.json"))
 
         prefixed.entitlement()
@@ -271,7 +275,7 @@ class OkHttpBillingApiTest {
 
     @Test
     fun noRequestIsSentWhenThereIsNoSessionToken() = runBlocking<Unit> {
-        val signedOut = OkHttpBillingApi(server.url("/").toString(), SessionTokenProvider { throw IllegalStateException("signed out") })
+        val signedOut = OkHttpBillingApi(server.url("/").toString(), SessionTokenProvider { throw IllegalStateException("signed out") }, client)
 
         val error = expectApiError { signedOut.entitlement() }
 
@@ -281,7 +285,7 @@ class OkHttpBillingApiTest {
 
     @Test
     fun noRequestIsSentWithABlankToken() = runBlocking<Unit> {
-        val blank = OkHttpBillingApi(server.url("/").toString(), SessionTokenProvider { "  " })
+        val blank = OkHttpBillingApi(server.url("/").toString(), SessionTokenProvider { "  " }, client)
 
         expectApiError { blank.entitlement() }
 
@@ -354,11 +358,12 @@ class OkHttpBillingApiTest {
 
     @Test
     fun aServerThatIsNotThereIsANetworkError() = runBlocking<Unit> {
-        val url = server.url("/").toString()
-        server.shutdown()
+        val gone = MockWebServer().apply { start() }
+        val url = gone.url("/").toString()
+        gone.shutdown()
 
         try {
-            OkHttpBillingApi(url, provider).entitlement()
+            OkHttpBillingApi(url, provider, client).entitlement()
             fail("Expected a network error")
         } catch (e: BillingError.Network) {
             // expected

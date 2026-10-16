@@ -13,19 +13,19 @@ class ContractFixturesTest {
 
     /** Every fixture must be listed here, so a new fixture cannot be added to the contract without a client model. */
     private val parsers: Map<String, (String) -> Any> = mapOf(
-        "offers_available.json" to { json -> BillingJson.decodeFromString(Offers.serializer(), json) },
-        "offers_unavailable_region.json" to { json -> BillingJson.decodeFromString(Offers.serializer(), json) },
-        "entitlement_none.json" to { json -> BillingJson.decodeFromString(EntitlementResponse.serializer(), json) },
-        "entitlement_active.json" to { json -> BillingJson.decodeFromString(EntitlementResponse.serializer(), json) },
-        "entitlement_canceling.json" to { json -> BillingJson.decodeFromString(EntitlementResponse.serializer(), json) },
-        "entitlement_past_due.json" to { json -> BillingJson.decodeFromString(EntitlementResponse.serializer(), json) },
-        "subscription_payment.json" to { json -> BillingJson.decodeFromString(CreateSubscriptionResponse.serializer(), json) },
-        "subscription_trial_setup.json" to { json -> BillingJson.decodeFromString(CreateSubscriptionResponse.serializer(), json) },
-        "portal.json" to { json -> BillingJson.decodeFromString(PortalResponse.serializer(), json) },
-        "account_deleted.json" to { json -> BillingJson.decodeFromString(AccountDeletedResponse.serializer(), json) },
-        "error_already_subscribed.json" to { json -> BillingJson.decodeFromString(ErrorResponse.serializer(), json) },
-        "error_purchase_not_available.json" to { json -> BillingJson.decodeFromString(ErrorResponse.serializer(), json) },
-        "error_consent_required.json" to { json -> BillingJson.decodeFromString(ErrorResponse.serializer(), json) },
+        "offers_available.json" to { json: String -> BillingJson.decodeFromString(Offers.serializer(), json) },
+        "offers_unavailable_region.json" to { json: String -> BillingJson.decodeFromString(Offers.serializer(), json) },
+        "entitlement_none.json" to { json: String -> BillingJson.decodeFromString(EntitlementResponse.serializer(), json) },
+        "entitlement_active.json" to { json: String -> BillingJson.decodeFromString(EntitlementResponse.serializer(), json) },
+        "entitlement_canceling.json" to { json: String -> BillingJson.decodeFromString(EntitlementResponse.serializer(), json) },
+        "entitlement_past_due.json" to { json: String -> BillingJson.decodeFromString(EntitlementResponse.serializer(), json) },
+        "subscription_payment.json" to { json: String -> BillingJson.decodeFromString(CreateSubscriptionResponse.serializer(), json) },
+        "subscription_trial_setup.json" to { json: String -> BillingJson.decodeFromString(CreateSubscriptionResponse.serializer(), json) },
+        "portal.json" to { json: String -> BillingJson.decodeFromString(PortalResponse.serializer(), json) },
+        "account_deleted.json" to { json: String -> BillingJson.decodeFromString(AccountDeletedResponse.serializer(), json) },
+        "error_already_subscribed.json" to { json: String -> BillingJson.decodeFromString(ErrorResponse.serializer(), json) },
+        "error_purchase_not_available.json" to { json: String -> BillingJson.decodeFromString(ErrorResponse.serializer(), json) },
+        "error_consent_required.json" to { json: String -> BillingJson.decodeFromString(ErrorResponse.serializer(), json) },
     )
 
     @Test

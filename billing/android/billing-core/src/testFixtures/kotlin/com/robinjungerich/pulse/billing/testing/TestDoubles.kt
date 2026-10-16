@@ -83,6 +83,7 @@ class FakeBillingApi : BillingApi {
     val portalResults = ArrayDeque<Result<String>>()
 
     val offersCalls = mutableListOf<String?>()
+    val portalCalls = mutableListOf<String>()
     val startCalls = mutableListOf<StartCall>()
     var syncCalls = 0
     var deleteCalls = 0
@@ -114,7 +115,10 @@ class FakeBillingApi : BillingApi {
 
     override suspend fun resume(): EntitlementResponse = resumeResults.removeFirst().getOrThrow()
 
-    override suspend fun portalUrl(returnUrl: String): String = portalResults.removeFirst().getOrThrow()
+    override suspend fun portalUrl(returnUrl: String): String {
+        portalCalls += returnUrl
+        return portalResults.removeFirst().getOrThrow()
+    }
 
     override suspend fun deleteAccount() {
         deleteCalls++
