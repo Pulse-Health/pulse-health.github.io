@@ -421,8 +421,9 @@ class UIDriver {
 
     /// Taps the element (waiting for it first). A missing element is a failure when `required`.
     /// `scrollUp` swipes the screen up (at most 6 times) until the element is hittable.
+    /// `coordinateFallback`: see `press`.
     @discardableResult
-    func tap(_ target: Target, timeout: TimeInterval = 10, required: Bool = true, scrollUp: Bool = false) -> Bool {
+    func tap(_ target: Target, timeout: TimeInterval = 10, required: Bool = true, scrollUp: Bool = false, coordinateFallback: Bool = false) -> Bool {
         guard var element = waitFor(target, timeout: timeout) else {
             if required {
                 fail("Not found within " + String(Int(timeout)) + " s: " + target.summary)
@@ -459,7 +460,7 @@ class UIDriver {
                 return false
             }
         }
-        return press(element)
+        return press(element, coordinateFallback: coordinateFallback)
     }
 
     /// Taps the first of the targets that exists (they are tried in this order on every poll): a control with its own
@@ -479,13 +480,38 @@ class UIDriver {
     /// the centre of an element that is not hittable could land on a key of the keyboard or on the rest dock.
     /// An element that vanished since it was found (a dialog closing, a dock sliding away) would make XCTest end the
     /// test, so it is checked first. Returns false (and records a failure when `failIfGone`) in that case.
+    ///
+    /// `coordinateFallback`: for a control that is on the screen and not covered by anything but for which XCTest still finds no
+    /// point to tap (`isHittable` is false because the control's own text or icon, a child with the same frame, covers all of it,
+    /// as with a toolbar button on iOS 18), tap the middle of its frame by coordinate instead of handing it to XCTest, whose
+    /// failure ends the whole test. The touch is a real one that the app hit-tests itself: a control that really is covered does
+    /// not react, and the step fails on what it expected next. Only for a control whose middle is on the screen. It is not for
+    /// controls inside a scroll view that may be scrolled under something else (XCTest has to scroll to those). Such a tap is
+    /// written under the step in the log.
     @discardableResult
-    func press(_ element: XCUIElement, failIfGone: Bool = true) -> Bool {
+    func press(_ element: XCUIElement, failIfGone: Bool = true, coordinateFallback: Bool = false) -> Bool {
         guard element.exists else {
             if failIfGone {
                 fail("The element to tap vanished between finding it and tapping it")
             }
             return false
+        }
+        if coordinateFallback && !element.isHittable {
+            // A button that is still sliding or fading in has no hit point yet: give it a moment before tapping blind.
+            pause(0.4)
+            guard element.exists else {
+                if failIfGone {
+                    fail("The element to tap vanished while it was waited for to become hittable")
+                }
+                return false
+            }
+            let frame = element.frame
+            if !element.isHittable && frame.width > 0 && frame.height > 0 && app.frame.contains(CGPoint(x: frame.midX, y: frame.midY)) {
+                let name = element.identifier.isEmpty ? element.label : element.identifier
+                note("XCTest found no point to tap on '" + name + "' (frame " + String(describing: frame) + "): tapped its middle by coordinate")
+                element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+                return true
+            }
         }
         element.tap()
         return true
