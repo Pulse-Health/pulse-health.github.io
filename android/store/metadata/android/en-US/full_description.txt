@@ -1,0 +1,29 @@
+Pulse Strength is a focused gym and strength tracker. Pick a template or start empty, log every set in seconds, rest on time and watch your lifts go up.
+
+LOG FAST
+• A clear set table with your previous results next to every set
+• Number keypad with quick − / + steppers and a plate calculator for barbell lifts
+• Warm-up, drop and to-failure sets, reps in reserve, notes and supersets
+• Undo for a removed exercise or a deleted set
+
+REST ON TIME
+• The rest timer starts automatically after each set; add or remove 15 seconds or skip it
+• Control the workout from the lock screen: the notification shows your next set with Log set and rest buttons
+• A sound and vibration tell you when the rest is over, even with the app in the background
+
+BEAT YOUR BESTS
+• Personal records are flagged the moment you set them, based on your estimated one-rep max
+• A coach tip shows the weight that would beat your best on your last set
+• Exercise history with an estimated-1RM trend chart, best sets and records
+• A summary after every workout: volume, sets per muscle group and new PRs
+
+BUILT-IN EXERCISE LIBRARY
+• 36 exercises with how-to cues, plus your own custom exercises
+• Muscle recovery estimates which muscle groups are ready from the sets you log (a rule of thumb, not medical advice)
+
+PRIVATE BY DESIGN
+• Works fully offline: no account, no ads, no tracking and no internet permission
+• Your workouts stay on your phone (and in your Android backup, if you use one)
+• Optional Health Connect: save finished workouts as strength-training sessions. Pulse Strength only writes to Health Connect and never reads your health data
+
+Weights are in kilograms.
