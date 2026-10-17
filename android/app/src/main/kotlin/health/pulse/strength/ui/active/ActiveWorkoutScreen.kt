@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -53,11 +55,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -73,6 +77,7 @@ import health.pulse.strength.ui.KeypadField
 import health.pulse.strength.ui.PickerMode
 import health.pulse.strength.ui.components.DumbbellGlyph
 import health.pulse.strength.ui.components.KeepScreenOn
+import health.pulse.strength.ui.components.LocalPulseClock
 import health.pulse.strength.ui.components.rememberNow
 import health.pulse.strength.ui.sheets.ExerciseListSheet
 import health.pulse.strength.ui.sheets.ExerciseOptionsDialog
@@ -247,8 +252,12 @@ internal fun ActiveWorkoutHost(
     val workoutState by controller.state.collectAsState()
     val saveFailure by controller.persistenceError.collectAsState()
     val nowState = rememberNow()
-    val now = nowState.value
-    val presentation = remember(workoutState, now) { controller.presentation(now) }
+    val clock = LocalPulseClock.current
+    // The ticker only moves the idle seconds. After an action the reducer has stamped the rest's end (or the resume) with the real
+    // clock, while the last tick is up to a second old: the presentation is built at the real time of every change, so a fresh
+    // 2:30 rest does not show 2:31 for a moment and Resume does not jump up.
+    val tick = nowState.value
+    val presentation = remember(workoutState, tick, clock) { controller.presentation(clock.now()) }
     val onAction = remember(controller) { { action: WorkoutAction -> controller.send(action) } }
 
     // Set once the workout is finished or discarded here, so the empty state that follows does not minimise as well.
@@ -431,8 +440,12 @@ private fun ActiveContent(
         //  * scrolling header (little height left for the card, e.g. a small phone with big text): the header scrolls away with
         //    the page so the card and the dock keep the room.
         val fontScale = LocalDensity.current.fontScale.coerceIn(1f, 2f)
-        val sideDock = maxWidth >= SideDockMinWidth && maxWidth > maxHeight
         val insets = WindowInsets.safeDrawing.asPaddingValues()
+        // The card gets what the pane and the start inset leave (the end inset is inside the pane); with less than
+        // SideDockMinCardWidth its set rows have no room for the Previous column.
+        val cardBesideDock = maxWidth - SideDockPaneWidth - insets.calculateStartPadding(LocalLayoutDirection.current) -
+            PulseMetrics.screenInset * 2
+        val sideDock = maxWidth > maxHeight && cardBesideDock >= SideDockMinCardWidth
         val headerEstimate = 100.dp + 45.dp * (fontScale - 1f) + insets.calculateTopPadding()
         val dockEstimate = when {
             shownDock == null -> 0.dp
@@ -451,6 +464,8 @@ private fun ActiveContent(
             )
         }
         val dockBelowMain = shownDock != null && !sideDock
+        // Beside the dock the pane takes the end inset (the nav bar or cut-out on that side); the page keeps only the start one.
+        val pageSides = if (sideDock) WindowInsetsSides.Start else WindowInsetsSides.Horizontal
         val navigatorBar: @Composable (ActiveWorkoutPresentation.Navigator) -> Unit = { shownNavigator ->
             NavigatorBar(
                 navigator = shownNavigator,
@@ -471,6 +486,7 @@ private fun ActiveContent(
                     isEmpty = presentation.isEmpty,
                     bottomPadding = bottomPadding,
                     insetBottom = !dockBelowMain,
+                    horizontalInsets = pageSides,
                     scrollingHeader = if (pinHeader) null else header,
                     actions = actions,
                     onAction = onAction,
@@ -485,9 +501,7 @@ private fun ActiveContent(
                         Modifier
                             .fillMaxWidth()
                             .windowInsetsPadding(
-                                WindowInsets.safeDrawing.only(
-                                    if (dockBelowMain) WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom,
-                                ),
+                                WindowInsets.safeDrawing.only(if (dockBelowMain) pageSides else pageSides + WindowInsetsSides.Bottom),
                             )
                             .padding(
                                 start = PulseMetrics.screenInset,
@@ -504,14 +518,18 @@ private fun ActiveContent(
 
         Column(Modifier.fillMaxSize()) {
             if (pinHeader) header()
-            if (saveFailed) SaveWarning(Modifier.align(Alignment.CenterHorizontally))
+            // Without the pinned header above it the warning is the top of the window and takes the status bar; the page below (whose
+            // header then scrolls) does not take it a second time.
+            val warningAtTop = saveFailed && !pinHeader
+            if (saveFailed) SaveWarning(Modifier.align(Alignment.CenterHorizontally), insetTop = warningAtTop)
+            val belowWarning = if (warningAtTop) Modifier.consumeWindowInsets(WindowInsets.safeDrawing.only(WindowInsetsSides.Top)) else Modifier
             if (sideDock) {
                 Row(Modifier.weight(1f).fillMaxWidth()) {
                     main(Modifier.weight(1f).fillMaxHeight())
                     // The side pane: the navigator and the rest dock, one above the other (they scroll when the window is very short).
                     Column(
                         Modifier
-                            .width(SideDockWidth + 14.dp)
+                            .width(SideDockPaneWidth)
                             .fillMaxHeight()
                             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.End + WindowInsetsSides.Bottom))
                             .verticalScroll(rememberScrollState())
@@ -523,7 +541,7 @@ private fun ActiveContent(
                     }
                 }
             } else {
-                main(Modifier.weight(1f))
+                main(Modifier.weight(1f).then(belowWarning))
                 AnimatedAppearance(value = shownDock) { visibleDock ->
                     Box(
                         Modifier
@@ -538,11 +556,14 @@ private fun ActiveContent(
     }
 }
 
-/** Narrowest window that puts the rest dock beside the card (when it is also wider than tall). */
-private val SideDockMinWidth = 560.dp
-
 /** Width of the rest dock when it sits beside the card. */
 private val SideDockWidth = 340.dp
+
+/** Width of the side pane: the dock, its 14 dp margin and the end inset of the window. */
+private val SideDockPaneWidth = SideDockWidth + 14.dp
+
+/** Narrowest card the dock may be put beside (when the window is also wider than tall); a narrower one has no room for Previous. */
+private val SideDockMinCardWidth = 380.dp
 
 /** Height the card area must keep (beside a pinned header and dock) before the header is allowed to scroll away instead. */
 private val MinPinnedMainHeight = 220.dp
@@ -552,7 +573,7 @@ private val MinPinnedMainHeight = 220.dp
  * is too short for the card, centred and at most [PulseMetrics.maxContentWidth] wide. On a normal phone the card gets the rest of the
  * height and only its set rows scroll. With [scrollingHeader] the header is the first thing of the scrolling page and the card takes
  * its natural height. The page ends [bottomPadding] below the card, and above the navigation bar when [insetBottom] is set (it runs
- * to the bottom edge of the window).
+ * to the bottom edge of the window). Of the horizontal window insets the page keeps those of [horizontalInsets].
  */
 @Composable
 private fun MainArea(
@@ -562,6 +583,7 @@ private fun MainArea(
     isEmpty: Boolean,
     bottomPadding: Dp,
     insetBottom: Boolean,
+    horizontalInsets: WindowInsetsSides,
     scrollingHeader: (@Composable () -> Unit)?,
     actions: ExerciseCardActions,
     onAction: (WorkoutAction) -> Unit,
@@ -587,9 +609,7 @@ private fun MainArea(
                 Modifier
                     .fillMaxWidth()
                     .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(
-                            if (insetBottom) WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom else WindowInsetsSides.Horizontal,
-                        ),
+                        WindowInsets.safeDrawing.only(if (insetBottom) horizontalInsets + WindowInsetsSides.Bottom else horizontalInsets),
                     )
                     .padding(start = PulseMetrics.screenInset, end = PulseMetrics.screenInset, top = topPadding, bottom = bottomPadding),
             ) {
@@ -724,7 +744,11 @@ private fun ColumnScope.MoreMenuItems(
 /** One button of a dialog; [destructive] ones are red. */
 internal class DialogAction(val label: String, val tag: String, val destructive: Boolean = false, val onClick: () -> Unit)
 
-/** An AlertDialog whose buttons are stacked, so three choices with long names fit on any window. */
+/**
+ * An AlertDialog whose buttons are stacked, so three choices with long names fit on any window. The buttons keep their room; on a
+ * window that is short for the text size (a phone held sideways with big text) the message scrolls in what is left and the title
+ * stops at two lines, so the dialog never cuts the message off without a way to read it.
+ */
 @Composable
 internal fun StackedAlertDialog(title: String, message: String, actions: List<DialogAction>, onDismiss: () -> Unit) {
     val colors = PulseTheme.colors
@@ -734,8 +758,8 @@ internal fun StackedAlertDialog(title: String, message: String, actions: List<Di
         titleContentColor = colors.ink,
         textContentColor = colors.inkSecondary,
         shape = RoundedCornerShape(22.dp),
-        title = { Text(title) },
-        text = { Text(message) },
+        title = { Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        text = { Text(message, Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
                 for (action in actions) {

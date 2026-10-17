@@ -13,6 +13,16 @@ class ActiveSmallPhoneScreenshotTest : ActiveScreenshotScenarios("small")
 @Config(qualifiers = "w891dp-h411dp-land-xxhdpi")
 class ActiveLandscapeScreenshotTest : ActiveScreenshotScenarios("landscape", topDp = 24, bottomDp = 0, leftDp = 48)
 
+/** The active-workout states on a phone held sideways that is too narrow for the dock beside the card (640 x 360 dp, bar on the right). */
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "w640dp-h360dp-land-xxhdpi")
+class ActiveShortLandscapeScreenshotTest : ActiveScreenshotScenarios("landscape-short", topDp = 24, bottomDp = 0, rightDp = 48)
+
+/** The active-workout states in a 600 x 480 dp window (a split screen on a large screen). */
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "w600dp-h480dp-xhdpi")
+class ActiveSplitWindowScreenshotTest : ActiveScreenshotScenarios("split", topDp = 24, bottomDp = 24)
+
 /** The active-workout states on an 800 x 1280 dp tablet. */
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w800dp-h1280dp-xhdpi")

@@ -42,6 +42,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
@@ -54,6 +56,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import health.pulse.strength.core.ActiveWorkoutPresentation
@@ -75,6 +78,9 @@ private val CheckColumn = 48.dp
 private val ColumnGap = 6.dp
 private val RowInset = 10.dp
 
+/** Narrowest the Previous column may get; with less room it is hidden (its figures and the PR / RIR tags would only be clipped). */
+private val PreviousMinWidth = 44.dp
+
 /** Gap between two rows of the table. */
 internal val SetRowGap = 3.dp
 
@@ -89,21 +95,18 @@ internal val SetRowHeight = 48.dp
  */
 @Composable
 internal fun SetTableHeader(weightTitle: String, repsTitle: String, modifier: Modifier = Modifier) {
-    Row(
+    SetColumns(
         modifier = modifier
             .fillMaxWidth()
             .padding(start = RowInset)
             .heightIn(min = 16.dp)
             .clearAndSetSemantics { },
-        horizontalArrangement = Arrangement.spacedBy(ColumnGap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ColumnTitle("Set", Modifier.width(BadgeColumn), TextAlign.Start)
-        ColumnTitle("Previous", Modifier.weight(1f), TextAlign.Start)
-        ColumnTitle(weightTitle, Modifier.width(WeightColumn), TextAlign.Center)
-        ColumnTitle(repsTitle, Modifier.width(RepsColumn), TextAlign.Center)
-        Spacer(Modifier.width(CheckColumn))
-    }
+        badge = { ColumnTitle("Set", Modifier.width(BadgeColumn), TextAlign.Start) },
+        previous = { ColumnTitle("Previous", Modifier, TextAlign.Start) },
+        weight = { ColumnTitle(weightTitle, Modifier.width(WeightColumn), TextAlign.Center) },
+        reps = { ColumnTitle(repsTitle, Modifier.width(RepsColumn), TextAlign.Center) },
+        check = { Spacer(Modifier.width(CheckColumn)) },
+    )
 }
 
 @Composable
@@ -117,6 +120,59 @@ private fun ColumnTitle(text: String, modifier: Modifier, align: TextAlign) {
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
     )
+}
+
+/**
+ * The five columns of the set table in one line, [ColumnGap] apart: badge | previous | weight | reps | check. The titles and every row
+ * use it, so they always line up. The Previous column takes what the other four leave; the check circle is measured first and keeps
+ * its full width whatever the window does. A window too narrow for the Previous column (less than [PreviousMinWidth]) hides it and
+ * keeps its room empty; one narrower than the other four columns squeezes the badge and the value cells, the reps cell first.
+ */
+@Composable
+private fun SetColumns(
+    modifier: Modifier,
+    badge: @Composable () -> Unit,
+    previous: @Composable () -> Unit,
+    weight: @Composable () -> Unit,
+    reps: @Composable () -> Unit,
+    check: @Composable () -> Unit,
+) {
+    Layout(contents = listOf(badge, previous, weight, reps, check), modifier = modifier) { measurables, constraints ->
+        val gap = ColumnGap.roundToPx()
+        val width = constraints.maxWidth
+        var room = width
+        // Each cell is measured with what the cells before it left (and the gap that follows it), so the later ones give way first.
+        fun measureCell(slot: Int, gapAfter: Int): List<Placeable> {
+            val placeables = measurables[slot].map { it.measure(Constraints(maxWidth = (room - gapAfter).coerceAtLeast(0))) }
+            room -= placeables.sumOf { it.width } + gapAfter
+            return placeables
+        }
+        val checkP = measureCell(4, 0)
+        val badgeP = measureCell(0, gap)
+        val weightP = measureCell(2, gap)
+        val repsP = measureCell(3, gap)
+        // What is left belongs to the Previous column and the gap after it.
+        val previousWidth = room - gap
+        val previousP = if (previousWidth >= PreviousMinWidth.roundToPx()) {
+            measurables[1].map { it.measure(Constraints(minWidth = previousWidth, maxWidth = previousWidth)) }
+        } else {
+            emptyList()
+        }
+        val cells = badgeP + previousP + weightP + repsP + checkP
+        val rowHeight = (cells.maxOfOrNull { it.height } ?: 0).coerceIn(constraints.minHeight, constraints.maxHeight)
+
+        layout(width, rowHeight) {
+            val badgeWidth = badgeP.sumOf { it.width }
+            badgeP.forEach { it.placeRelative(0, (rowHeight - it.height) / 2) }
+            previousP.forEach { it.placeRelative(badgeWidth + gap, (rowHeight - it.height) / 2) }
+            // The weight column starts where the Previous column and its gap end (the room stays empty when the column is hidden).
+            val weightX = badgeWidth + gap + room.coerceAtLeast(0)
+            weightP.forEach { it.placeRelative(weightX, (rowHeight - it.height) / 2) }
+            val repsX = weightX + weightP.sumOf { it.width } + gap
+            repsP.forEach { it.placeRelative(repsX, (rowHeight - it.height) / 2) }
+            checkP.forEach { it.placeRelative(width - it.width, (rowHeight - it.height) / 2) }
+        }
+    }
 }
 
 // endregion
@@ -193,7 +249,7 @@ internal fun SetRowView(
     val shape = RoundedCornerShape(PulseMetrics.rowRadius)
     val details = accessibilityDetails(row)
     val toggleLabel = if (row.isDone) "Mark as not logged" else "Log this set"
-    Row(
+    SetColumns(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = SetRowHeight)
@@ -212,38 +268,39 @@ internal fun SetRowView(
                 }
             }
             .padding(start = RowInset),
-        horizontalArrangement = Arrangement.spacedBy(ColumnGap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TypeBadge(row, onOpenDetail)
-        InfoColumn(row, Modifier.weight(1f))
-        if (row.weightEditable) {
+        badge = { TypeBadge(row, onOpenDetail) },
+        previous = { InfoColumn(row, Modifier) },
+        weight = {
+            if (row.weightEditable) {
+                ValueCell(
+                    text = row.weightText,
+                    width = WeightColumn,
+                    isDone = row.isDone,
+                    tag = "set-weight-${row.id}",
+                    onClick = { onOpenKeypad(KeypadField.WEIGHT) },
+                )
+            } else {
+                ValueCell(
+                    text = row.weightText,
+                    width = WeightColumn,
+                    isDone = row.isDone,
+                    tag = "set-weight-${row.id}",
+                    onClick = null,
+                    modifier = Modifier.alpha(0.45f),
+                )
+            }
+        },
+        reps = {
             ValueCell(
-                text = row.weightText,
-                width = WeightColumn,
+                text = row.repsText,
+                width = RepsColumn,
                 isDone = row.isDone,
-                tag = "set-weight-${row.id}",
-                onClick = { onOpenKeypad(KeypadField.WEIGHT) },
+                tag = "set-reps-${row.id}",
+                onClick = { onOpenKeypad(KeypadField.REPS) },
             )
-        } else {
-            ValueCell(
-                text = row.weightText,
-                width = WeightColumn,
-                isDone = row.isDone,
-                tag = "set-weight-${row.id}",
-                onClick = null,
-                modifier = Modifier.alpha(0.45f),
-            )
-        }
-        ValueCell(
-            text = row.repsText,
-            width = RepsColumn,
-            isDone = row.isDone,
-            tag = "set-reps-${row.id}",
-            onClick = { onOpenKeypad(KeypadField.REPS) },
-        )
-        CheckButton(row.isDone, onToggle, Modifier.testTag("set-check-${row.id}"))
-    }
+        },
+        check = { CheckButton(row.isDone, onToggle, Modifier.testTag("set-check-${row.id}")) },
+    )
 }
 
 /** Extra spoken detail that is not part of the sentence-style label: personal record with its estimated 1RM, and the reps in reserve. */

@@ -13,7 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +30,9 @@ import health.pulse.strength.ui.theme.pulseMinHeight
 /**
  * The dark toast that offers "Undo" after an exercise was removed or a set was deleted ("Removed Cable crossover", "Set deleted").
  * The caller shows it while `ActiveWorkoutPresentation.undoText` is non-null and dispatches `WorkoutAction.Undo` from [onUndo].
- * It is a live region, so a screen reader announces the text when the toast appears.
+ * The text is a live region, so a screen reader announces it when the toast appears, and it has an "Undo" action of its own (the
+ * TalkBack actions menu and Switch Access list it): the user does not have to find the Undo button among everything else on the
+ * screen. The undo window (6 s) is the reducer's, so the toast cannot stay longer than the undo is valid.
  */
 @Composable
 internal fun UndoToast(text: String, onUndo: () -> Unit, modifier: Modifier = Modifier) {
@@ -53,7 +57,10 @@ internal fun UndoToast(text: String, onUndo: () -> Unit, modifier: Modifier = Mo
             modifier = Modifier
                 .weight(1f)
                 .padding(vertical = 8.dp)
-                .semantics { liveRegion = LiveRegionMode.Polite },
+                .semantics {
+                    liveRegion = LiveRegionMode.Polite
+                    customActions = listOf(CustomAccessibilityAction("Undo") { onUndo(); true })
+                },
         )
         Box(
             modifier = Modifier
