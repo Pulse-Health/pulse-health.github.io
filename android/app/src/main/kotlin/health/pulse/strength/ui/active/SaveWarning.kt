@@ -2,9 +2,14 @@ package health.pulse.strength.ui.active
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,12 +27,17 @@ import health.pulse.strength.ui.theme.PulseTheme
 /**
  * Tells the user that the workout in progress could not be written to the phone (usually: the storage is full), so it is not safe
  * if the app is closed now. It stays until a save works again. It is a live region, so a screen reader announces it.
+ *
+ * It keeps clear of the system bars and cut-outs at the sides, and at the top when [insetTop] is set (nothing above it takes the
+ * status bar: the header scrolls with the page).
  */
 @Composable
-internal fun SaveWarning(modifier: Modifier = Modifier) {
+internal fun SaveWarning(modifier: Modifier = Modifier, insetTop: Boolean = false) {
     val colors = PulseTheme.colors
+    val sides = if (insetTop) WindowInsetsSides.Top + WindowInsetsSides.Horizontal else WindowInsetsSides.Horizontal
     Row(
         modifier = modifier
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(sides))
             .widthIn(max = PulseMetrics.maxContentWidth)
             .fillMaxWidth()
             .padding(horizontal = PulseMetrics.screenInset, vertical = 4.dp)
