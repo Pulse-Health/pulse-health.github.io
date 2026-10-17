@@ -6,8 +6,8 @@
 # and commit the regenerated project (the `apple` CI job fails when the committed project is out of date).
 #
 # Targets
-#   PulseStrength          iOS app (embeds the widget extension and the Watch app)
-#   PulseStrengthWidgets   widget extension that hosts the Live Activity (Lock Screen + Dynamic Island)
+#   PulseStrength          iPhone and iPad app (embeds the widget extension and the Watch app)
+#   PulseStrengthWidgets   widget extension: Live Activity (Lock Screen + Dynamic Island), Home Screen / StandBy / iPad widgets, Lock Screen widgets, controls
 #   PulseStrengthWatch     watchOS 10 single-target app (embedded in the iOS app through "Embed Watch Content")
 #   PulseStrengthWatchWidgets   watchOS widget extension: the Apple Watch complications and Smart Stack cards (embedded in the Watch app)
 #
@@ -21,6 +21,12 @@
 #                                     (scheme PulseStrengthWidgetSnapshots)
 #   PulseStrengthWatchWidgetSnapshotTests   watchOS logic test without a host app: draws the Apple Watch widgets
 #                                     (scheme PulseStrengthWatchWidgetSnapshots)
+#
+# Device families: the app, the widget extension and the UI-test bundle target iPhone and iPad (TARGETED_DEVICE_FAMILY "1,2"). The widget extension
+# must, or the system never offers the iPad-only training-block widget (SB-03, systemExtraLarge); the UI-test bundle must, to run on an iPad
+# simulator. The Watch targets are "4"; the logic-test bundles that only draw views into PNG files stay "1". Orientations are in the app's
+# Info.plist (portrait on iPhone, all four on iPad: UISupportedInterfaceOrientations~ipad). There is no UIRequiresFullScreen, so Split View,
+# Slide Over and Stage Manager apply. "Designed for iPad" on a Mac stays off (SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD).
 #
 # Info.plist files and entitlements are the committed files under Apps/<target>/ (INFOPLIST_FILE and
 # CODE_SIGN_ENTITLEMENTS below); this spec does not use XcodeGen's `info:` / `entitlements:` generators, so there is
@@ -97,7 +103,7 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Apps/PulseStrength/PulseStrength.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
 
   # ---------------------------------------------------------------------------------------------------------------
@@ -128,7 +134,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).widgets
         INFOPLIST_FILE: Apps/PulseStrengthWidgets/Info.plist
         CODE_SIGN_ENTITLEMENTS: Apps/PulseStrengthWidgets/PulseStrengthWidgets.entitlements
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: "YES"
 
   # ---------------------------------------------------------------------------------------------------------------
@@ -183,8 +189,8 @@ targets:
   # hence GENERATE_INFOPLIST_FILE "YES" (the project-wide base value is "NO").
   # ---------------------------------------------------------------------------------------------------------------
 
-  # UI test of the iPhone app (Apps/PulseStrengthUITests): launches PulseStrength with -PulseUITest (demo data, no
-  # live services) and takes a screenshot after every step. Depending on the app target makes Xcode build the app
+  # UI test of the app on an iPhone or an iPad simulator (Apps/PulseStrengthUITests): launches PulseStrength with -PulseUITest
+  # (demo data, no live services) and takes a screenshot after every step. Depending on the app target makes Xcode build the app
   # (with the widget extension and the Watch app) first, and XcodeGen sets TestTargetID for it.
   PulseStrengthUITests:
     type: bundle.ui-testing
@@ -198,7 +204,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: $(PULSE_APP_BUNDLE_ID).uitests
         GENERATE_INFOPLIST_FILE: "YES"
         TEST_TARGET_NAME: PulseStrength
-        TARGETED_DEVICE_FAMILY: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
         SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: "NO"
 
   # Snapshot test of the Live Activity (Lock Screen and Dynamic Island) views. A logic-test bundle WITHOUT a host app
