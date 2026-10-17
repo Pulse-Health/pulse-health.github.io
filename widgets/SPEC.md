@@ -57,7 +57,7 @@ iOS: `accessoryCircular`, `accessoryRectangular`, `accessoryInline` families of 
 |---|---|---|---|
 | SB-01 | StandBy pair: Next up + weekly goal | `NextUpWidget` / `WeeklyGoalWidget` `systemSmall` laid out for StandBy (`widgetRenderingMode`, no container background) | the same widgets in the glanceable hub (`keyguard` category) |
 | SB-02 | Bench mode: Live Activity full screen | the rest/logging Live Activity adapted with `isActivityFullscreen` (large ring and countdown) | `BenchModeActivity` (show-when-locked, keep-screen-on, big rest timer; opened from the Live Update and the widget) |
-| SB-03 | iPad training block | `TrainingBlockWidget` `systemExtraLarge` (`block`) | `TrainingBlockWidget` 6x4 tablet widget |
+| SB-03 | iPad training block | `TrainingBlockWidget` `systemExtraLarge` (`block`), iPad Home Screen only (the host app and the extension target iPad) | `TrainingBlockWidget` 6x4 tablet widget |
 | SB-04 | Night mode | `NextUpWidget` StandBy night rendering (`isLuminanceReduced`, red on black) using `tomorrow` | `BenchModeActivity` night theme (red on black) using `tomorrow` |
 
 ### Watch (board "Apple Watch")
@@ -334,6 +334,7 @@ Colours (from `PulseTheme`): green `#1B8448` (light) / `#30D158` (dark), progres
 ground `#F2F2F7` / `#000`, blue `#0066D6` / `#0A84FF`, PR gold fill `#FFF6D6` text `#7A5200` (dark `#FFD60A`), recovery good/fair/low `#34C759` / `#FFCC00` / `#FF3B30`,
 heart `#FF3B30` / `#FF453A`. Type: SF (iOS) / system sans (Android), rounded tabular numerals for figures. Radius 22 pt on widget cards. Touch targets at least 44 pt / 48 dp.
 Dark mode and the tinted / dynamic-colour modes must remain legible; never put important text only in a colour.
+On iOS the Home Screen widgets also run on the iPad Home Screen (small, medium, large and the iPad-only extra large): a layout takes the size it is given and does not assume the width of an iPhone.
 
 ## 8. Verification
 

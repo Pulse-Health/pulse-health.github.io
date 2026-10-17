@@ -1,6 +1,6 @@
 # Pulse Strength for Apple platforms
 
-The strength-workout feature of Pulse for **iPhone**, **Apple Watch**, the **Lock Screen** (Live Activity) and the
+The strength-workout feature of Pulse for **iPhone** and **iPad**, **Apple Watch**, the **Lock Screen** (Live Activity) and the
 **Dynamic Island**. It implements the design "Pulse Gym & Strength" as real Swift: a strength hub with templates and
 history, the active-workout screen (set table, keypad, rest timer, supersets, undo, PR detection, coach tip), the
 workout summary, a Watch app that mirrors the workout and records heart rate, and a Live Activity that logs sets and
@@ -17,7 +17,8 @@ are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-ap
 > every widget (about 360 images), and re-run the app in dark mode, at large text sizes and on an iPhone SE. Several rounds of
 > adversarial review fixed what they found. What has **not** been tried is anything that needs real hardware or the system's
 > own widget surfaces (Live Activity buttons, widget gallery and configuration, Control Center, StandBy, Watch heart rate and
-> WatchConnectivity, notifications): see [Verification status](#verification-status).
+> WatchConnectivity, notifications): see [Verification status](#verification-status). The app also targets **iPad** (see [iPad](#ipad)); its
+> layouts are only seen in the simulator screenshots of the `ipad` and `ipad-land` entries of the `matrix` job, not on a device.
 
 > **Repository note.** This directory lives in the `pulse-health.github.io` website repository, which GitHub Pages publishes from
 > the repository root. The root `_config.yml` excludes `ios/` from that build, so these files are not served on the website.
@@ -29,7 +30,7 @@ are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-ap
 ios/
   README.md                  this file
   ARCHITECTURE.md            build contract: models, reducer, presenter, services, Apple targets (read this next)
-  project.yml                XcodeGen spec: iOS app, widget extension, Watch app, three visual-test targets, schemes
+  project.yml                XcodeGen spec: iOS app (iPhone and iPad), widget extension, Watch app, visual-test targets, schemes
   PulseStrength.xcodeproj/   generated from project.yml and COMMITTED: open this in Xcode (run xcodegen only after editing project.yml)
   Config/Signing.xcconfig    DEVELOPMENT_TEAM and PULSE_APP_BUNDLE_ID (optional git-ignored Signing.local.xcconfig overrides them)
   Packages/PulseStrengthKit/ Swift package (swift-tools-version 5.9, iOS 17 / watchOS 10 / macOS 14)
@@ -52,7 +53,7 @@ ios/
     Shared/LiveActivity/     Lock Screen and Dynamic Island views, the extra Live Activity states, planned-session countdown, bench mode (compiled into the extension)
     Shared/Widgets/          Common (theme, text rules), Home (Home Screen, StandBy, iPad), Lock (Lock Screen accessories), Extras, Watch (compiled into the extensions)
     Shared/Controls/         Control Center and Lock Screen controls (compiled into the widget extension)
-    PulseStrengthUITests/              UI tests: walk the iPhone app in the simulator, one screenshot per step (the long flow, the short tour, the onboarding tour)
+    PulseStrengthUITests/              UI tests: walk the app in an iPhone or iPad simulator, one screenshot per step (the long flow, the short tour, the onboarding tour)
     PulseStrengthLiveSnapshotTests/    test that draws the Lock Screen and Dynamic Island views into PNG files
     PulseStrengthWatchSnapshotTests/   test that draws the Watch pages into PNG files
     PulseStrengthWidgetSnapshotTests/  test that draws the Home Screen, StandBy, Lock Screen and extra widgets into PNG files
@@ -72,7 +73,7 @@ Intents inside a package would need `AppIntentsPackage` plumbing that only exist
   with Xcode 15.4.
 * **A paid Apple Developer Program team to run on a real iPhone / Apple Watch.** The app uses HealthKit and time-sensitive
   notifications; Apple's free personal teams may not be able to provision those (not tried). The simulators need no account.
-* iOS 17 / watchOS 10 or later on the simulator or the device. The Dynamic Island needs an iPhone 14 Pro or newer
+* iOS 17 / watchOS 10 or later on the simulator or the device (iPadOS 17 on an iPad). The Dynamic Island needs an iPhone 14 Pro or newer
   (or such a simulator); the Lock Screen presentation works on every iPhone with iOS 17.
 * **XcodeGen is not needed to open or run the project**: `PulseStrength.xcodeproj` is generated from `project.yml` and
   committed. You only need XcodeGen after changing `project.yml` (see "Regenerating the project").
@@ -82,7 +83,7 @@ Intents inside a package would need `AppIntentsPackage` plumbing that only exist
 
 1. Open **`ios/PulseStrength.xcodeproj`** (`open ios/PulseStrength.xcodeproj`). Xcode resolves the local package
    `Packages/PulseStrengthKit` by itself.
-2. **Simulator**: pick the **PulseStrength** scheme and any iPhone simulator, press Run. No signing needed.
+2. **Simulator**: pick the **PulseStrength** scheme and any iPhone or iPad simulator, press Run. No signing needed.
 3. **Real iPhone**: set your team and, if `health.pulse.strength` is not yours, your own bundle id. The safe way that keeps your values
    out of git: create the git-ignored file `ios/Config/Signing.local.xcconfig` (in Terminal, not through Xcode; it is not shown in the
    navigator) with
@@ -188,8 +189,8 @@ each test log, the number of PNGs per suite and their file names (also saved as 
 warning annotation; the log of its step then usually shows a compile error of the test code. The UI flow keeps going after a
 failed step, so open `ui-flow-log.txt` first: it names the steps that failed, with the screenshot taken at that point.
 
-* **`matrix` job:** a short second tour (`StrengthTourTests`, 21 screenshots, about 4 minutes; 15 to 21 are the pages of the walkthrough) on four simulators in parallel: `dark` (dark mode), `xxl` (accessibility-extra-large text), `se` (iPhone SE 3rd generation, 375 x 667 pt) and `ios17` (oldest installed iOS 17+ runtime). A simulator the runner lacks prints `SKIPPED: <reason>`; the entry still succeeds.
-* **Artifact `strength-matrix-<name>`** (14 days): `tour-<name>-NN-*.png`, `tour-<name>-layout.txt` (frames of header, navigator, card and rest dock, `pageScrolls`, `LAYOUT VIOLATION` lines), `tour-<name>-flow-log.txt`, `simulator-settings.txt`, `digest.txt` (also printed at the end of the job log).
+* **`matrix` job:** a short second tour (`StrengthTourTests`, 21 screenshots, about 4 minutes; 15 to 21 are the pages of the walkthrough) on six simulators in parallel: `dark` (dark mode), `xxl` (accessibility-extra-large text), `se` (iPhone SE 3rd generation, 375 x 667 pt), `ios17` (oldest installed iOS 17+ runtime), `ipad` (the first available iPad, portrait) and `ipad-land` (the same iPad, landscape). A simulator the runner lacks prints `SKIPPED: <reason>`; the entry still succeeds. For the two iPad entries `pick_tour_sim.py` takes the query "first available iPad": a device (else a device type) whose name contains "iPad", an 11-inch model first, on the newest installed iOS 17+ runtime. The onboarding tour runs in every entry as well.
+* **Artifact `strength-matrix-<name>`** (14 days): `tour-<name>-NN-*.png`, `onboarding-<name>-NN-*.png`, `tour-<name>-layout.txt` (frames of header, navigator, card and rest dock, `pageScrolls`, `LAYOUT VIOLATION` lines), `tour-<name>-flow-log.txt`, `simulator-settings.txt`, `digest.txt` (also printed at the end of the job log).
 * The tour belongs to the `PulseStrengthUITests` scheme, so `visual` runs it once more with the defaults (`tour-default-*` in `strength-screens`).
 
 **Run it locally** (macOS, Xcode 16; the UI flow needs the software keyboard, so disconnect the hardware keyboard in the
@@ -202,6 +203,8 @@ TEST_RUNNER_SCREENSHOT_DIR=/tmp/pulse-screens xcodebuild test -project PulseStre
   -scheme PulseStrengthLiveSnapshots -configuration Debug \
   -destination 'platform=iOS Simulator,name=iPhone 16 Pro' CODE_SIGNING_ALLOWED=NO
 # -scheme PulseStrengthUITests: same destination; -scheme PulseStrengthWatchSnapshots: -destination 'platform=watchOS Simulator,name=Apple Watch Series 10 (46mm)'
+# On an iPad: -scheme PulseStrengthUITests -destination 'platform=iOS Simulator,name=iPad Pro 11-inch (M4)'; add
+# TEST_RUNNER_TOUR_ORIENTATION=landscape to rotate it before the first launch, TEST_RUNNER_TOUR_CONFIG=ipad to name the files.
 ```
 
 **Limits.** The snapshot tests draw the views with `ImageRenderer`: the Lock Screen material, the island animation, scrolling
@@ -271,7 +274,7 @@ email and password) -> **profile** (main goal, experience) -> **Apple Health** -
 Tests: the reducer, the model (with scripted services), the form checks, the copy, the highlight clock, the record and the launch mode are in
 `Tests/PulseStrengthCoreTests/Onboarding*Tests.swift` and `HighlightPlaybackTests.swift`. `OnboardingTourTests` (in `StrengthTourTests.swift`) walks the screens in the
 simulator and writes `onboarding-<config>-NN-<name>.png`; the `visual` job runs it with the other UI tests and the `matrix` job runs it
-in dark mode, at large text, on an iPhone SE and on the oldest iOS 17 runtime.
+in dark mode, at large text, on an iPhone SE, on the oldest iOS 17 runtime and on an iPad (portrait and landscape).
 
 ## Widgets, controls and live surfaces
 
@@ -303,7 +306,36 @@ of where each one lives on iOS and Android, and [`ARCHITECTURE.md` 5.7](ARCHITEC
   new record on the Live Activity for four seconds and turns the finished workout into the finish card.
 
 What the widgets assume: weights are in kilograms (the unit setting of the Pulse app is not handled), and the Watch widgets' "Start" opens the Watch app
-(a start request from the Watch to the phone does not exist yet). The training-block widget for iPad (`SB-03`) is only offered once the app supports iPad.
+(a start request from the Watch to the phone does not exist yet). The training-block widget for iPad (`SB-03`, `systemExtraLarge`) is offered
+because the app and the widget extension target iPad (next section).
+
+## iPad
+
+The app and the widget extension target iPhone and iPad (`TARGETED_DEVICE_FAMILY: "1,2"` in `project.yml`, together with the UI-test bundle; the Watch
+targets stay `4`, the Watch app is still installed from the iPhone). That is what makes the system offer the iPad-only training-block widget `SB-03`
+(`systemExtraLarge`) and every other Home Screen widget on the iPad Home Screen. "Designed for iPad" on a Mac stays off.
+
+| | iPad | iPhone |
+| --- | --- | --- |
+| Orientation | all four (`UISupportedInterfaceOrientations~ipad` in `Apps/PulseStrength/Info.plist`); no `UIRequiresFullScreen`, so Split View, Slide Over and Stage Manager apply; one scene | portrait only, unchanged |
+| Layout | while the horizontal size class is regular the content keeps to a centred column: 640 pt for the hub and its pages, the workout screen and the summary, 540 pt for sheets and the onboarding (`View.pulseReadableColumn(_:)`, `PulseLayout`, `PulseTheme.swift`). The grey ground, the white header bar and its progress strip, the bars behind the Start and Done buttons and the onboarding picture still reach the screen edges | compact width: not touched (the modifier changes nothing there) |
+| Sheets, dialogs | the sheets keep the phone's detents and the system decides their shape on an iPad (expected: a centred form sheet), their content keeps to 540 pt either way. The confirmation dialogs (Finish, More, exercise options) are popovers: no Cancel row, a tap outside closes them | bottom sheets, action sheets |
+| Apple Watch | `WCSession.isSupported()` is false on an iPad: the Watch bridge and the Watch widget feed do nothing, there is no "Watch not connected" banner | as before |
+| Health | iPadOS 17 has Health: the iPad saves a finished workout to Health when no Watch recorded it, and the body weight sync works | as before |
+| Live Activity | asked for only when `ActivityAuthorizationInfo().areActivitiesEnabled` says so; there is no Dynamic Island | as before |
+| Haptics | none (no Taptic Engine). At the end of a rest while the app is open the rest-over notification plays its sound instead (`StrengthNotificationDelegate.playsRestSoundInForeground`) | haptic, the notification stays out of sight |
+
+**In CI** the `ipad` and `ipad-land` entries of the `matrix` job run the short tour and the onboarding tour on the first available iPad in portrait and in
+landscape (see "Screenshots in CI"). The tests find everything by accessibility identifier or label; the fixed offsets inside a set row are relative to
+the row, so they hold in the column.
+
+**Not verified.** Nothing was tried on an iPad. The simulator screenshots of the two iPad entries are the way to see the layouts, and they need a designer's
+eye (the column widths, the large navigation title at the left edge of the screen while the cards sit in the middle, the popovers that open at the
+middle of the screen instead of at their buttons, the shape of the sheets, and the onboarding picture: the hero clip and its poster are portrait,
+704 x 1280 px, and fill the screen, so an iPad shows an enlarged part of them, about two fifths of their height in landscape). Also not tried: Split View, Slide Over (320 pt) and Stage Manager
+resizing, a hardware keyboard and a pointer, whether the iPad Lock Screen shows the Live Activity and the Lock Screen accessory widgets (the system
+decides that per iPadOS version; the code only declares families and asks ActivityKit whether activities are enabled, so nothing breaks where they
+are not shown), the widgets in the system's gallery, and the rest-over sound.
 
 ## Placeholders to replace
 
@@ -368,7 +400,7 @@ own repository before using it for a product (then delete the `exclude` entry).
 
 | Target | Capability / setting |
 | --- | --- |
-| iOS app | HealthKit (writes workouts and reads nothing during a workout: the heart rate arrives from the Watch over WatchConnectivity; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); App Groups (`group.<bundle id>`: the widget snapshot and command inbox); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. |
+| iOS app | HealthKit (writes workouts and reads nothing during a workout: the heart rate arrives from the Watch over WatchConnectivity; reads and writes body weight (`bodyMass`) once the user turns on Sync with Apple Health in Settings); Live Activities (`NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, no push token: the app updates the activity locally); Time Sensitive Notifications (the rest alert); App Groups (`group.<bundle id>`: the widget snapshot and command inbox); the notification permission is requested at runtime by `PulseServices.requestPermissions()` and again, if still undecided, when the user turns the weigh-in reminder on (the weigh-in reminder is an ordinary, not time-sensitive, notification); URL type `pulse-strength`. No background mode is declared because none is needed. Device families iPhone and iPad (`TARGETED_DEVICE_FAMILY` `1,2`, like the widget extension): portrait on an iPhone, all four orientations on an iPad, no `UIRequiresFullScreen`. |
 | Widget extension | App Groups (the same id as the app: it reads the snapshot and leaves commands); `NSExtension` point `com.apple.widgetkit-extension`. `NSSupportsLiveActivities` is read from the host app. |
 | Watch widget extension | App Groups (the same id); `NSExtension` point `com.apple.widgetkit-extension` (watchOS). It reads the snapshot the Watch app stores from the phone. |
 | Watch app | HealthKit; App Groups; Background Modes: Workout processing (`WKBackgroundModes` = `workout-processing`); `WKApplication`, `WKCompanionAppBundleIdentifier`, `WKRunsIndependentlyOfCompanionApp` = false (the Watch needs the phone). |
@@ -412,7 +444,7 @@ sentence and up to three tips. "Skip", "Get Started" and a swipe down all close 
   `StrengthTourTests` opens it from the More menu, pages through all seven pages and takes screenshots 15 to 21 in every `matrix` configuration
   (dark mode, accessibility-extra-large text, iPhone SE, oldest available runtime). The screenshots were looked at in the simulator: nothing overflows,
   `Next` / `Get Started` stay visible, and on the SE and at large text the pages scroll inside (a short fade at the bottom shows there is more). Not tried:
-  a real device, VoiceOver, Reduce Motion, landscape and iPad layouts.
+  a real device, VoiceOver, Reduce Motion. The iPad layouts are only drawn by the `ipad` entries of the `matrix` job (see [iPad](#ipad)).
 
 ## Training plans and importing them
 
@@ -474,7 +506,7 @@ State at the last commit of this branch; the numbers come from the `strength-ios
   compile-checked (the build enforces API availability) but has never been run on an iOS 17 runtime.
 * The Watch app was rendered (snapshot tests) but not driven in a watchOS simulator; its Health session logic is covered by unit tests of
   the Core rules and a stub harness, not by a real session.
-* VoiceOver, Reduce Motion and the landscape / iPad layouts were not exercised. Bundle ids, team, App Group and the exercise photos are
+* VoiceOver and Reduce Motion were not exercised, and nothing was seen on an iPad ([iPad](#ipad): only the simulator runs of the `ipad` entries). Bundle ids, team, App Group and the exercise photos are
   placeholders / stand-ins (the photos have no cleared licence), see [Placeholders to replace](#placeholders-to-replace) and [Exercise photos](#exercise-photos).
 
 ### Must be tested on real hardware
@@ -501,6 +533,9 @@ CI and the simulators cannot show any of these, and none of them has been tried:
   suspended; the tinted and clear Home Screen modes; the controls in Control Center and on the Lock Screen; the Action button (log set, skip
   rest, start next); a planned session (countdown on the Lock Screen and in the Dynamic Island, the notification at the start); the record flash
   and the finish card of the Live Activity; the weekly goal after a change in the hub; and the Watch complications and Smart Stack cards.
+* **iPad**: the training-block widget in the iPad widget gallery and on the Home Screen; the hub, a workout, the keypad and the other sheets, the summary
+  and the onboarding in both orientations and in Split View / Slide Over; the confirmation dialogs as popovers; a workout saved to Health by the iPad;
+  the sound at the end of a rest while the app is open; the Lock Screen accessory widgets and the Live Activity where the iPadOS version shows them.
 * Also worth a pass on a device: WatchConnectivity reachability and the "Watch not connected" / "Health access denied" banners,
   a workout written to Health by the phone when no Watch is used, Dynamic Island layouts on a 14 Pro or newer,
   VoiceOver in the active-workout screen, and Reduce Motion (form demos, heart beat).
