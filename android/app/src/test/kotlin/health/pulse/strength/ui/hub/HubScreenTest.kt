@@ -1,7 +1,10 @@
 package health.pulse.strength.ui.hub
 
 import androidx.activity.ComponentActivity
+import androidx.activity.ComponentDialog
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.saveable.LocalSaveableStateRegistry
+import androidx.compose.runtime.saveable.SaveableStateRegistry
 import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -13,12 +16,16 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.SemanticsMatcher
@@ -27,13 +34,16 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import com.google.common.truth.Truth.assertThat
 import health.pulse.strength.StrengthAppEnvironment
 import health.pulse.strength.core.ExerciseLibrary
+import health.pulse.strength.core.RecoveryModel
 import health.pulse.strength.core.SampleData
+import health.pulse.strength.core.WorkoutAction
 import health.pulse.strength.core.WorkoutTemplate
 import health.pulse.strength.ui.components.LocalPulseClock
 import health.pulse.strength.ui.components.PulseClock
@@ -47,6 +57,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowDialog
 
 /** The hub on a phone with a real store and controller: navigation, back handling, starting, resuming and editing templates. */
 @RunWith(RobolectricTestRunner::class)
@@ -114,6 +125,32 @@ class HubScreenTest {
         rule.waitForIdle()
         rule.onNode(hasClickAction() and hasText(name) and hasSetTextAction().not()).performClick()
         rule.waitForIdle()
+    }
+
+    /** A tap on the dimmed area beside the open sheet (the scrim has no place the test could tap, so it is clicked as an action). */
+    private fun tapOutsideTheSheet() {
+        rule.onNodeWithContentDescription("Close sheet").performSemanticsAction(SemanticsActions.OnClick)
+        rule.waitForIdle()
+    }
+
+    /** The back button, delivered to the window of the open sheet (a question shown above it would get the latest dialog). */
+    private fun pressBackInTheSheet() {
+        rule.runOnUiThread {
+            val sheet = ShadowDialog.getShownDialogs().last { it.isShowing && it.javaClass.simpleName == "ModalBottomSheetDialogWrapper" }
+            (sheet as ComponentDialog).onBackPressedDispatcher.onBackPressed()
+        }
+        rule.waitForIdle()
+    }
+
+    /** A fast drag down on the title of the open sheet, far enough to throw the sheet off the screen. */
+    private fun swipeTheSheetDown(titleText: String) {
+        rule.onNodeWithText(titleText).performTouchInput { swipe(start = center, end = center.copy(y = center.y + 1200f), durationMillis = 120) }
+        rule.waitForIdle()
+    }
+
+    private fun assertAsksToDiscard() {
+        rule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        rule.onNodeWithText("Save").assertIsDisplayed() // the editor is still behind the question
     }
 
     // region Starting and resuming
@@ -268,6 +305,51 @@ class HubScreenTest {
         rule.onNodeWithText("Settings").assertIsDisplayed() // the lead's screen (a placeholder text for now)
         assertThat(backIsHandled()).isTrue()
         pressBack()
+        assertOnHome()
+    }
+
+    @Test
+    fun doubleTappingABackArrowWhileThePageSlidesOutPopsOnlyOneScreen() {
+        val env = HubTestSupport.environment()
+        // Real transitions: the page that leaves stays composed (and its arrow clickable) for the length of the slide.
+        rule.setContent {
+            CompositionLocalProvider(LocalPulseClock provides PulseClock(now = { HubTestSupport.demoNow }, ticks = false)) {
+                PulseTheme(darkTheme = false, reduceMotion = false) { StrengthHubScreen(env, {}, {}) }
+            }
+        }
+        rule.waitForIdle()
+        clickDescription("See All Templates")
+        clickTemplate("Lower A · Quads")
+        rule.onNodeWithText("Start Workout").assertIsDisplayed() // the template, above the list
+
+        rule.mainClock.autoAdvance = false
+        rule.onNodeWithContentDescription("Back").performSemanticsAction(SemanticsActions.OnClick)
+        rule.waitForIdle()
+        // Mid-slide: the template on its way out and the list coming in each have a back arrow, and the second tap can reach either.
+        val arrows = rule.onAllNodesWithContentDescription("Back")
+        var frames = 0
+        while (arrows.fetchSemanticsNodes().size < 2 && frames++ < 20) rule.mainClock.advanceTimeByFrame()
+        arrows.assertCountEquals(2)
+        for (index in 0..1) runCatching { arrows[index].performSemanticsAction(SemanticsActions.OnClick) }
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Lower A · Quads").assertIsDisplayed() // the list
+        rule.onNodeWithText("Today · Recommended").assertDoesNotExist()
+        assertThat(backIsHandled()).isTrue()
+        clickDescription("Back") // once the slide is over the arrow works again
+        assertOnHome()
+    }
+
+    @Test
+    fun theBackArrowOfTheExerciseDetailPopsExactlyItsOwnScreen() {
+        show()
+        click("Exercise Library")
+        click("Barbell bench press")
+        rule.onNodeWithText("Search exercises").assertDoesNotExist() // the exercise detail is on top of the library
+        clickDescription("Back")
+        rule.onNodeWithText("Search exercises").assertIsDisplayed()
+        clickDescription("Back")
         assertOnHome()
     }
 
@@ -498,6 +580,192 @@ class HubScreenTest {
         rule.onNode(hasText("Back squat") and hasClickAction() and hasSetTextAction().not()).assertIsOn()
     }
 
+    @Test
+    fun tappingOutsideAnEditedEditorAsksBeforeThrowingTheDraftAway() {
+        val env = HubTestSupport.environment()
+        val before = env.store.data.value
+        show(env)
+        click("New Template")
+        typeTemplateName("Draft")
+        tapOutsideTheSheet()
+        assertAsksToDiscard()
+        click("Keep editing")
+        rule.onNodeWithText("Discard changes?").assertDoesNotExist()
+        rule.onAllNodes(hasSetTextAction()).onFirst().assertTextEquals("Draft", includeEditableText = true) // nothing was lost
+        tapOutsideTheSheet()
+        assertAsksToDiscard()
+        click("Discard")
+        rule.onNodeWithText("Discard changes?").assertDoesNotExist()
+        rule.onNodeWithText("Save").assertDoesNotExist()
+        assertThat(env.store.data.value).isEqualTo(before)
+        // The next editor starts clean.
+        click("New Template")
+        rule.onNodeWithText("Template name").assertIsDisplayed() // an empty field
+    }
+
+    @Test
+    fun backAsksBeforeThrowingTheDraftAway() {
+        val env = HubTestSupport.environment()
+        val before = env.store.data.value
+        show(env)
+        clickDescription("Edit plan")
+        rule.onAllNodes(hasSetTextAction()).onFirst().performTextInput(" v2")
+        rule.waitForIdle()
+        pressBackInTheSheet()
+        assertAsksToDiscard()
+        click("Keep editing")
+        rule.onNodeWithText("Edit Plan").assertIsDisplayed()
+        pressBackInTheSheet()
+        click("Discard")
+        rule.onNodeWithText("Edit Plan").assertDoesNotExist()
+        assertThat(env.store.data.value).isEqualTo(before)
+    }
+
+    @Test
+    fun aSwipeDownAsksBeforeThrowingTheDraftAway() {
+        show()
+        clickDescription("Edit plan")
+        rule.onAllNodes(hasSetTextAction()).onFirst().performTextInput(" v2")
+        rule.waitForIdle()
+        swipeTheSheetDown("Edit Plan")
+        assertAsksToDiscard()
+        click("Keep editing")
+        rule.onNodeWithText("Edit Plan").assertIsDisplayed() // the sheet came back to its place
+        swipeTheSheetDown("Edit Plan")
+        click("Discard")
+        rule.onNodeWithText("Edit Plan").assertDoesNotExist()
+    }
+
+    @Test
+    fun closingAnEditorWithoutChangesDoesNotAsk() {
+        val env = HubTestSupport.environment()
+        val before = env.store.data.value
+        show(env)
+        click("New Template")
+        tapOutsideTheSheet()
+        rule.onNodeWithText("Discard changes?").assertDoesNotExist()
+        rule.onNodeWithText("Save").assertDoesNotExist()
+
+        clickDescription("Edit plan")
+        pressBackInTheSheet()
+        rule.onNodeWithText("Discard changes?").assertDoesNotExist()
+        rule.onNodeWithText("Edit Plan").assertDoesNotExist()
+
+        // Typing something and putting everything back is no change either.
+        clickDescription("Edit plan")
+        rule.onAllNodes(hasSetTextAction()).onFirst().performTextReplacement("Upper A · Pus")
+        rule.onAllNodes(hasSetTextAction()).onFirst().performTextReplacement("Upper A · Push")
+        rule.waitForIdle()
+        tapOutsideTheSheet()
+        rule.onNodeWithText("Discard changes?").assertDoesNotExist()
+        rule.onNodeWithText("Edit Plan").assertDoesNotExist()
+        assertThat(env.store.data.value).isEqualTo(before)
+    }
+
+    @Test
+    fun cancelAndSaveNeverAsk() {
+        val env = HubTestSupport.environment()
+        show(env)
+        click("New Template")
+        typeTemplateName("Gone")
+        click("Cancel")
+        rule.onNodeWithText("Discard changes?").assertDoesNotExist()
+        rule.onNodeWithText("Save").assertDoesNotExist()
+        assertThat(env.store.templates.map { it.name }).doesNotContain("Gone")
+
+        clickDescription("Edit plan")
+        rule.onAllNodes(hasSetTextAction()).onFirst().performTextReplacement("Upper A · Push v3")
+        click("Save")
+        rule.onNodeWithText("Discard changes?").assertDoesNotExist()
+        rule.onNodeWithText("Save").assertDoesNotExist()
+        assertThat(env.store.templates.first().name).isEqualTo("Upper A · Push v3")
+    }
+
+    @Test
+    fun theEditorKeepsAskingAfterRecreationOnlyWhenTheDraftIsChanged() {
+        val env = HubTestSupport.environment()
+        val tester = StateRestorationTester(rule)
+        tester.setContent {
+            CompositionLocalProvider(LocalPulseClock provides PulseClock(now = { HubTestSupport.demoNow }, ticks = false)) {
+                PulseTheme(darkTheme = false, reduceMotion = true) { StrengthHubScreen(env, {}, {}) }
+            }
+        }
+        rule.waitForIdle()
+        clickDescription("Edit plan")
+        tester.emulateSavedInstanceStateRestore() // an untouched draft that went through the saver still equals the template
+        rule.waitForIdle()
+        rule.onNodeWithText("Edit Plan").assertIsDisplayed()
+        tapOutsideTheSheet()
+        rule.onNodeWithText("Discard changes?").assertDoesNotExist()
+        rule.onNodeWithText("Edit Plan").assertDoesNotExist()
+
+        clickDescription("Edit plan")
+        rule.onAllNodes(hasSetTextAction()).onFirst().performTextInput(" v2")
+        rule.waitForIdle()
+        tester.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+        tapOutsideTheSheet()
+        assertAsksToDiscard()
+    }
+
+    @Test
+    fun theQuestionSurvivesRecreation() {
+        val env = HubTestSupport.environment()
+        val tester = StateRestorationTester(rule)
+        tester.setContent {
+            CompositionLocalProvider(LocalPulseClock provides PulseClock(now = { HubTestSupport.demoNow }, ticks = false)) {
+                PulseTheme(darkTheme = false, reduceMotion = true) { StrengthHubScreen(env, {}, {}) }
+            }
+        }
+        rule.waitForIdle()
+        click("New Template")
+        typeTemplateName("Kept")
+        tapOutsideTheSheet()
+        assertAsksToDiscard()
+        tester.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+        assertAsksToDiscard()
+        click("Keep editing")
+        rule.onAllNodes(hasSetTextAction()).onFirst().assertTextEquals("Kept", includeEditableText = true)
+    }
+
+    @Test
+    fun doubleTappingSaveSavesTheTemplateOnce() {
+        val env = HubTestSupport.environment()
+        show(env)
+        click("New Template")
+        typeTemplateName("Once")
+        click("Add Exercises")
+        choose("Back squat")
+        click("Add (1)")
+        // Both taps land before the sheet has slid away.
+        rule.mainClock.autoAdvance = false
+        repeat(2) { rule.onNodeWithText("Save").performSemanticsAction(SemanticsActions.OnClick) }
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        rule.onNodeWithText("Save").assertDoesNotExist()
+        assertThat(env.store.templates.count { it.name == "Once" }).isEqualTo(1)
+        assertThat(env.store.templates).hasSize(4)
+        assertThat(HubTestSupport.reopenedStore(env).templates).hasSize(4)
+    }
+
+    @Test
+    fun doubleTappingAddInTheChooserAddsTheExercisesOnce() {
+        val env = HubTestSupport.environment()
+        show(env)
+        click("New Template")
+        typeTemplateName("Twice")
+        click("Add Exercises")
+        choose("Back squat")
+        choose("Leg press")
+        rule.mainClock.autoAdvance = false
+        repeat(2) { rule.onNodeWithText("Add (2)").performSemanticsAction(SemanticsActions.OnClick) }
+        rule.mainClock.autoAdvance = true
+        rule.waitForIdle()
+        click("Save")
+        assertThat(env.store.templates.last().entries.map { it.exercise.name }).containsExactly("Back squat", "Leg press").inOrder()
+    }
+
     // endregion
 
     // region First run
@@ -593,6 +861,65 @@ class HubScreenTest {
 
     // endregion
 
+    // region Recovery on the home screen
+
+    /** The state of a card of the recovery grid on the home screen ("100 percent"). */
+    private fun gridState(muscle: String): String =
+        rule.onNodeWithContentDescription("$muscle recovery").fetchSemanticsNode().config[SemanticsProperties.StateDescription]
+
+    private fun readinessState(): String =
+        rule.onNodeWithContentDescription("Readiness").fetchSemanticsNode().config[SemanticsProperties.StateDescription]
+
+    /** Logs three sets of the first template's first exercise (a chest exercise) and finishes the workout, through the controller. */
+    private fun finishAChestWorkout(env: StrengthAppEnvironment) {
+        rule.runOnUiThread {
+            env.controller.startWorkout(env.store.templates.first())
+            repeat(3) { env.controller.send(WorkoutAction.LogNextSet) }
+            env.controller.finish(false)
+        }
+        rule.waitForIdle()
+    }
+
+    @Test
+    fun aFinishedWorkoutShowsInTheRecoveryGridAtOnce() {
+        val now = HubTestSupport.demoNow
+        val env = HubTestSupport.environment(recoveryOf = { RecoveryModel({ it.history }, { now }).provider }, clock = { now })
+        show(env)
+        assertThat(gridState("Chest")).isEqualTo("100 percent")
+        assertThat(readinessState()).isEqualTo("100 percent, Ready")
+
+        finishAChestWorkout(env)
+
+        // The grid below the card follows the card: chest was just trained, the other five groups are untouched (mean 83).
+        assertThat(gridState("Chest")).isEqualTo("0 percent")
+        assertThat(gridState("Shoulders")).isEqualTo("100 percent")
+        rule.onAllNodesWithText("0%", useUnmergedTree = true).assertCountEquals(1)
+        assertThat(readinessState()).isEqualTo("83 percent, Ready")
+    }
+
+    @Test
+    fun theRecoveryGridAgesWhileTheHubStaysOpen() {
+        var now = HubTestSupport.demoNow
+        val env = HubTestSupport.environment(recoveryOf = { RecoveryModel({ it.history }, { now }).provider }, clock = { now })
+        finishAChestWorkout(env)
+        rule.setContent {
+            CompositionLocalProvider(LocalPulseClock provides PulseClock(now = { now }, ticks = true)) {
+                PulseTheme(darkTheme = false, reduceMotion = true) { StrengthHubScreen(env, {}, {}) }
+            }
+        }
+        rule.waitForIdle()
+        assertThat(gridState("Chest")).isEqualTo("0 percent")
+
+        // Twelve hours later, at the next minute tick: a quarter of the 48 hours a session of three sets needs.
+        now = now.plusSeconds(12 * 3600L)
+        rule.mainClock.advanceTimeBy(60_000)
+        rule.waitForIdle()
+        assertThat(gridState("Chest")).isEqualTo("25 percent")
+        assertThat(readinessState()).isEqualTo("88 percent, Ready") // (25 + 5 * 100) / 6
+    }
+
+    // endregion
+
     // region State restoration
 
     @Test
@@ -640,6 +967,50 @@ class HubScreenTest {
         click("Save")
         assertThat(env.store.templates.single().name).isEqualTo("Kept")
         assertThat(env.store.templates.single().entries.map { it.exercise.name }).containsExactly("Back squat")
+    }
+
+    @Test
+    fun aScreenOpenedAfterRecreationDoesNotInheritTheStateOfAPoppedOne() {
+        val env = HubTestSupport.environment()
+        val tester = StateRestorationTester(rule)
+        tester.setContent {
+            CompositionLocalProvider(LocalPulseClock provides PulseClock(now = { HubTestSupport.demoNow }, ticks = false)) {
+                PulseTheme(darkTheme = false, reduceMotion = true) { StrengthHubScreen(env, {}, {}) }
+            }
+        }
+        rule.waitForIdle()
+        click("Exercise Library")
+        rule.onNode(hasSetTextAction()).performTextInput("bench")
+        rule.waitForIdle()
+        pressBack()
+        assertOnHome()
+        tester.emulateSavedInstanceStateRestore()
+        rule.waitForIdle()
+        click("Exercise Library")
+        rule.onNodeWithText("Search exercises").assertIsDisplayed() // an empty field, not the old "bench"
+        rule.onNodeWithText("Back squat").assertIsDisplayed()
+    }
+
+    @Test
+    fun aPoppedScreenLeavesNoSavedStateBehind() {
+        val env = HubTestSupport.environment()
+        val registry = SaveableStateRegistry(restoredValues = null, canBeSaved = { true })
+        rule.setContent {
+            CompositionLocalProvider(
+                LocalSaveableStateRegistry provides registry,
+                LocalPulseClock provides PulseClock(now = { HubTestSupport.demoNow }, ticks = false),
+            ) {
+                PulseTheme(darkTheme = false, reduceMotion = true) { StrengthHubScreen(env, {}, {}) }
+            }
+        }
+        rule.waitForIdle()
+        click("Exercise Library")
+        rule.onNode(hasSetTextAction()).performTextInput("bench")
+        rule.waitForIdle()
+        rule.runOnUiThread { assertThat(registry.performSave().toString()).contains("bench") } // the probe sees the open screen's text
+        pressBack()
+        assertOnHome()
+        rule.runOnUiThread { assertThat(registry.performSave().toString()).doesNotContain("bench") }
     }
 
     // endregion

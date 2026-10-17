@@ -2,12 +2,14 @@ package health.pulse.strength.ui.hub
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.Transition
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -17,6 +19,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -100,8 +103,10 @@ fun StrengthHubScreen(
 
     val home = remember(data, runningTemplateID) { homeData(data, runningTemplateID) }
     val time = rememberHubTime()
-    // Read per composition: the provider may be backed by observable state of the app.
-    val recovery: RecoveryProvider = controller.recovery
+    // The recovery model reads the stored history and the clock, which Compose does not observe: take a new snapshot whenever the data
+    // changes and once a minute, so a finished workout shows in every section and the percentages age while the hub stays open.
+    val minute by rememberNow(periodMillis = 60_000L)
+    val recovery = remember(data, minute, controller) { HubRecoverySnapshot.of(controller.recovery) }
 
     // System back goes one screen back; at the home screen nothing handles it and the activity closes.
     BackHandler(enabled = !navigator.isAtRoot) { navigator.pop() }
@@ -110,6 +115,16 @@ fun StrengthHubScreen(
     val colors = PulseTheme.colors
     val reduceMotion = LocalReduceMotion.current
     val stateHolder = rememberSaveableStateHolder()
+    // A screen that is popped takes its saved state with it, so one opened later never starts with its scroll position and text.
+    DisposableEffect(navigator, stateHolder) {
+        navigator.onRemoved = {
+            // The first call stops the screen from saving itself when it leaves the composition; the second drops a copy the holder
+            // may already have taken (the activity saving its state while the screen was open).
+            stateHolder.removeState(it.id)
+            stateHolder.removeState(it.id)
+        }
+        onDispose { navigator.onRemoved = {} }
+    }
     val top = navigator.entries.lastOrNull()
     val page = HubPage(id = top?.id ?: 0, depth = navigator.entries.size, route = top?.route)
 
@@ -131,6 +146,11 @@ fun StrengthHubScreen(
         ) { target ->
             // Each screen keeps its scroll position and field contents while it is covered by the one above it.
             stateHolder.SaveableStateProvider(target.id) {
+                // The back arrow of a page counts only while that page is the top screen and has come to rest: a double tap would
+                // otherwise reach the arrow of the page it is sliding out of, or of the page underneath, and pop a second screen.
+                val pageActions = remember(actions, target.id, transition) {
+                    actions.withPop { if (transition.isAtRest) navigator.popIf(target.id) }
+                }
                 HubDestination(
                     route = target.route,
                     environment = environment,
@@ -138,7 +158,7 @@ fun StrengthHubScreen(
                     recovery = recovery,
                     home = home,
                     time = time,
-                    actions = actions,
+                    actions = pageActions,
                 )
             }
         }
@@ -171,6 +191,10 @@ fun StrengthHubScreen(
         )
     }
 }
+
+/** True once a page has fully slid in and is not on its way out. */
+private val Transition<EnterExitState>.isAtRest: Boolean
+    get() = currentState == EnterExitState.Visible && targetState == EnterExitState.Visible
 
 /** One page of the hub's stack as the transition sees it: its identity, its depth (0 = home) and what it shows. */
 private data class HubPage(val id: Int, val depth: Int, val route: HubRoute?)

@@ -57,10 +57,14 @@ object HubTestSupport {
         now: Instant = demoNow,
         withActiveWorkout: Boolean = false,
         recovery: RecoveryProvider = DemoRecovery.provider,
+        /** Builds the recovery from the store (a real RecoveryModel reads its history); replaces [recovery]. */
+        recoveryOf: ((StrengthStore) -> RecoveryProvider)? = null,
+        /** The clock of the controller: when a workout finished through it counts as finished. */
+        clock: () -> Instant = { Instant.now() },
     ): StrengthAppEnvironment {
         val persistence = FileStrengthPersistence.temporary()
         val store = StrengthStore(persistence, seedDemoData = seed, now = now)
-        val controller = WorkoutController(store, persistence, recovery)
+        val controller = WorkoutController(store, persistence, recoveryOf?.invoke(store) ?: recovery, clock)
         if (withActiveWorkout) controller.startWorkout(store.templates.firstOrNull())
         return StrengthAppEnvironment.forParts(persistence, store, controller)
     }

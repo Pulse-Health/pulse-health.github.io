@@ -26,6 +26,7 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
@@ -374,6 +376,10 @@ internal class HubEditorDraft(name: String, entries: List<TemplateEntry>) {
 
     val canSave: Boolean get() = name.trim().isNotEmpty() && entries.isNotEmpty()
 
+    /** True when the draft is not what an editor opened for [template] (null = a new template) starts with. */
+    fun differsFrom(template: WorkoutTemplate?): Boolean =
+        name != (template?.name ?: "") || entries != (template?.entries ?: emptyList<TemplateEntry>())
+
     /** Appends the chosen exercises with their default sets (at least one), weight, reps and rest. */
     fun add(exercises: List<Exercise>) {
         entries = entries + exercises.map(::makeEntry)
@@ -423,32 +429,57 @@ internal class HubEditorDraft(name: String, entries: List<TemplateEntry>) {
     }
 }
 
-/** Runs [onDismiss] once the sheet has slid away. */
+/** Whether a sheet has started to close by its own doing (Cancel, Save, Add, Discard): from then on a second tap does nothing. */
+@Stable
+private class SheetExit {
+    var isClosing = false
+}
+
+/** Runs [onDismiss] once the sheet has slid away. Only the first call counts, so a double tap on Save or Add acts once. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun rememberSheetDismisser(sheetState: SheetState, onDismiss: () -> Unit): () -> Unit {
+private fun rememberSheetDismisser(sheetState: SheetState, exit: SheetExit, onDismiss: () -> Unit): () -> Unit {
     val scope = rememberCoroutineScope()
     return {
-        scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+        if (!exit.isClosing) {
+            exit.isClosing = true
+            scope.launch { sheetState.hide() }.invokeOnCompletion { onDismiss() }
+        }
     }
 }
 
 /**
  * "New Template" / "Edit Plan": name, exercises (move up / down, remove) and "Add Exercises". Nothing is saved until Save, which
- * writes the template with [StrengthStore.saveTemplate].
+ * writes the template with [StrengthStore.saveTemplate]. Closing the sheet with a swipe, a tap outside or back asks first while the
+ * draft differs from what the sheet opened with; Cancel closes it at once.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun HubTemplateEditorSheet(store: StrengthStore, template: WorkoutTemplate?, onDismiss: () -> Unit) {
     val colors = PulseTheme.colors
     val haptics = rememberPulseHaptics()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val draft = rememberSaveable(saver = HubEditorDraft.Saver) { HubEditorDraft(template?.name ?: "", template?.entries ?: emptyList()) }
+    val baseline = remember { template }
+    val draft = rememberSaveable(saver = HubEditorDraft.Saver) { HubEditorDraft(baseline?.name ?: "", baseline?.entries ?: emptyList()) }
     var showsChooser by rememberSaveable { mutableStateOf(false) }
-    val close = rememberSheetDismisser(sheetState, onDismiss)
+    var asksToDiscard by rememberSaveable { mutableStateOf(false) }
+    val exit = remember { SheetExit() }
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        // The state is rebuilt when this lambda changes, so it is remembered. Hiding is vetoed (and the question asked instead) for
+        // every way out the sheet does not own: a swipe, a tap on the scrim, back.
+        confirmValueChange = remember {
+            { target: SheetValue ->
+                val asks = target == SheetValue.Hidden && !exit.isClosing && draft.differsFrom(baseline)
+                if (asks) asksToDiscard = true
+                !asks
+            }
+        },
+    )
+    val close = rememberSheetDismisser(sheetState, exit, onDismiss)
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        // Back reports a dismissal even when hiding the sheet was vetoed: only a sheet that really is gone closes the editor.
+        onDismissRequest = { if (!sheetState.isVisible) onDismiss() },
         sheetState = sheetState,
         containerColor = colors.ground,
         contentColor = colors.ink,
@@ -461,7 +492,7 @@ internal fun HubTemplateEditorSheet(store: StrengthStore, template: WorkoutTempl
                 // The current stored template wins over the one the sheet was opened with (its "last performed" date may have moved).
                 val current = template?.let { opened -> store.templates.firstOrNull { it.id == opened.id } ?: opened }
                 val saved = draft.toTemplate(current)
-                if (saved != null) {
+                if (saved != null && !exit.isClosing) {
                     store.saveTemplate(saved)
                     haptics.success()
                     close()
@@ -475,6 +506,25 @@ internal fun HubTemplateEditorSheet(store: StrengthStore, template: WorkoutTempl
             store = store,
             onAdd = { draft.add(it) },
             onDismiss = { showsChooser = false },
+        )
+    }
+    if (asksToDiscard) {
+        AlertDialog(
+            onDismissRequest = { asksToDiscard = false },
+            containerColor = colors.card,
+            title = { Text("Discard changes?", style = PulseFont.headline, color = colors.ink) },
+            text = { Text("Your changes to this template have not been saved.", style = PulseFont.subhead, color = colors.inkSecondary) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        asksToDiscard = false
+                        close()
+                    },
+                ) { Text("Discard", style = PulseFont.headline, color = colors.destructive) }
+            },
+            dismissButton = {
+                TextButton(onClick = { asksToDiscard = false }) { Text("Keep editing", style = PulseFont.body) }
+            },
         )
     }
 }
@@ -699,7 +749,8 @@ internal fun HubExerciseChooserSheet(store: StrengthStore, onAdd: (List<Exercise
     }
     val data by store.data.collectAsState()
     val results = remember(data, query) { ExerciseLibrary.filter(store.exercises, query, muscle = null, equipment = null) }
-    val close = rememberSheetDismisser(sheetState, onDismiss)
+    val exit = remember { SheetExit() }
+    val close = rememberSheetDismisser(sheetState, exit, onDismiss)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -718,9 +769,11 @@ internal fun HubExerciseChooserSheet(store: StrengthStore, onAdd: (List<Exercise
             },
             onCancel = close,
             onConfirm = {
-                val all = store.exercises
-                onAdd(selected.mapNotNull { id -> all.firstOrNull { it.id == id } })
-                close()
+                if (!exit.isClosing) {
+                    val all = store.exercises
+                    onAdd(selected.mapNotNull { id -> all.firstOrNull { it.id == id } })
+                    close()
+                }
             },
         )
     }
