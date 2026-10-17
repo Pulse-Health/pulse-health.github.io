@@ -1,5 +1,6 @@
 #if os(iOS)
 import Foundation
+import UIKit
 import UserNotifications
 import PulseStrengthCore
 
@@ -14,7 +15,8 @@ enum WeightReminderResponse: Sendable, Equatable {
 /// The one delegate of the notification center (the center has a single delegate, so every notification of the feature goes through it).
 ///
 /// * Keeps notifications that arrive while the app is in the foreground out of sight: the rest dock and the haptic already tell
-///   the user that the rest is over, and the hub already shows the weigh-in card.
+///   the user that the rest is over, and the hub already shows the weigh-in card. An iPad has no haptic, so there the rest-over
+///   notification still plays its sound (no banner) while the app is in the foreground.
 /// * Passes the user's reaction to a weigh-in reminder (a tap, or a weight typed into the notification) to `onWeightReminder`.
 final class StrengthNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     /// The delegate every scheduler of the feature installs. The center holds its delegate weakly; this instance lives for the process.
@@ -23,12 +25,20 @@ final class StrengthNotificationDelegate: NSObject, UNUserNotificationCenterDele
     /// Called on an arbitrary queue; set once, by the weigh-in reminder scheduler.
     var onWeightReminder: (@Sendable (WeightReminderResponse) -> Void)?
 
+    /// True on a device without a Taptic Engine (an iPad). Set once by `RestNotificationScheduler`, before its first notification can arrive;
+    /// read on the queue the system calls the delegate on.
+    var playsRestSoundInForeground = false
+
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
-        completionHandler([])
+        if playsRestSoundInForeground, notification.request.identifier == StrengthConfig.restNotificationID {
+            completionHandler([.sound])
+        } else {
+            completionHandler([])
+        }
     }
 
     func userNotificationCenter(
@@ -80,6 +90,9 @@ final class RestNotificationScheduler: WorkoutSideEffect {
         let center = UNUserNotificationCenter.current()
         self.center = center
         center.delegate = delegate
+        // The haptic at the end of a rest (`RestEndFeedback`) does nothing on an iPad, which has no Taptic Engine: the sound is what tells the
+        // user there while the app is open. An iPhone is unchanged.
+        delegate.playsRestSoundInForeground = UIDevice.current.userInterfaceIdiom != .phone
     }
 
     /// Asks for permission to show alerts and play the sound (the time-sensitive level needs no extra option).

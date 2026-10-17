@@ -214,7 +214,8 @@ public final class StrengthAppEnvironment: ObservableObject {
 
     // MARK: Apple Health body weight
 
-    /// False when this device has no Health (previews, UI tests, iPads): the switch in Settings is then disabled.
+    /// False when this device has no Health (previews, UI tests, a device that reports Health as unavailable): the switch in Settings is then
+    /// disabled. An iPad running iPadOS 17 has Health, so it is available there.
     public var isHealthSyncAvailable: Bool {
         healthSync?.isAvailable ?? false
     }
