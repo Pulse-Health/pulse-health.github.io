@@ -24,14 +24,14 @@ enum RedFix {
 
     static func exercise(
         _ id: String, _ name: String, _ muscle: MuscleGroup, _ equipment: Equipment,
-        tracking: TrackingKind = .weightReps, best: Double = 0,
-        sets: Int = 3, kg: Double, reps: Int, rest: Int
+        tracking: TrackingKind = .weightReps, best: Double = 0, previousSets: [PreviousSet] = [],
+        sets: Int = 3, kg: Double, reps: Int, rest: Int, allowsAddedWeight: Bool = false
     ) -> Exercise {
         Exercise(
             id: id, name: name, muscle: muscle, secondary: "", equipment: equipment, tracking: tracking,
-            mediaKey: nil, previousBestE1RM: best, previousSets: [],
+            mediaKey: nil, previousBestE1RM: best, previousSets: previousSets,
             defaults: ExerciseDefaults(sets: sets, weightKg: kg, reps: reps, restSeconds: rest),
-            cues: [], barKg: 20, isCustom: false
+            cues: [], barKg: 20, isCustom: false, allowsAddedWeight: allowsAddedWeight
         )
     }
 
@@ -44,9 +44,11 @@ enum RedFix {
     static let pushup = exercise("pushup", "Push-up", .chest, .bodyweight, tracking: .repsOnly, kg: 0, reps: 12, rest: 60)
     static let plank = exercise("plank", "Plank", .core, .bodyweight, tracking: .duration, kg: 0, reps: 45, rest: 45)
     static let squat = exercise("squat", "Back squat", .legs, .barbell, kg: 60, reps: 6, rest: 180)
+    /// A reps-only exercise that carries an added or assisted load.
+    static let pullup = exercise("pullup", "Pull-up", .back, .bodyweight, tracking: .repsOnly, kg: 0, reps: 8, rest: 120, allowsAddedWeight: true)
 
     /// Exercises the fuzz tests draw from.
-    static let pool: [Exercise] = [bench, incline, ohp, lateral, pushdown, crossover, pushup, plank, squat]
+    static let pool: [Exercise] = [bench, incline, ohp, lateral, pushdown, crossover, pushup, plank, squat, pullup]
 
     // MARK: Workout states
 
@@ -145,7 +147,8 @@ enum RedFix {
             .moveExerciseBy(exerciseID: e, delta: 1), .replaceExercise(exerciseID: e, with: plank),
             .toggleSuperset(exerciseID: e), .setRest(exerciseID: e, seconds: 30),
             .adjustRest(seconds: 15), .skipRest, .setAutoStartRest(false), .setAlertWhenRestEnds(false),
-            .pause, .resume, .undo, .updateHeartRate(120), .setUsedWatch(true), .rename("Renamed"),
+            .pause, .resume, .undo, .updateHeartRate(120), .setUsedWatch(true), .rename("Renamed"), .setWeightUnit(.lb),
+            .startTimedSet(SetRef(exerciseID: e, setID: st)), .stopTimedSet, .cancelTimedSet,
         ]
     }
 }
@@ -193,6 +196,8 @@ final class WorkoutReducerRevisionTests: XCTestCase {
             .setRIR(exerciseID: e, setID: st, rir: nil), .setNote(exerciseID: e, note: ""),
             .toggleSuperset(exerciseID: last), .moveExercise(from: 1, to: 1), .moveExerciseBy(exerciseID: e, delta: 0),
             .addExercises([]), .toggleLastSetRIR(2), .nudgeNextSet(weightSteps: 0, repsSteps: 0),
+            .stopTimedSet, .cancelTimedSet,
+            .startTimedSet(SetRef(exerciseID: e, setID: st)),   // bench is not a timed exercise
         ]
         for action in noOps {
             var t = s
@@ -224,6 +229,7 @@ final class WorkoutReducerRevisionTests: XCTestCase {
             .setNote(exerciseID: ghost, note: "x"), .removeExercise(exerciseID: ghost),
             .moveExerciseBy(exerciseID: ghost, delta: 1), .replaceExercise(exerciseID: ghost, with: RFix.plank),
             .toggleSuperset(exerciseID: ghost), .setRest(exerciseID: ghost, seconds: 10),
+            .startTimedSet(SetRef(exerciseID: ghost, setID: ghostSet)), .startTimedSet(SetRef(exerciseID: e, setID: ghostSet)),
         ]
         for action in actions {
             var t = s
@@ -594,7 +600,7 @@ final class WorkoutReducerLoggingTests: XCTestCase {
         XCTAssertEqual(s.rest?.totalSeconds, 120)
     }
 
-    func testSupersetJumpIsToIndexPlusOneEvenWhenTheGroupIsNotContiguous() {
+    func testSupersetJumpIsToTheNextMemberEvenWhenTheGroupIsNotContiguous() {
         let legs = [
             RFix.entry(1, RFix.lateral, RFix.normal(2, 8, 15), rest: 60, group: "A"),
             RFix.entry(2, RFix.incline, RFix.normal(2, 20, 10), rest: 90),
@@ -602,10 +608,10 @@ final class WorkoutReducerLoggingTests: XCTestCase {
         ]
         var s = RFix.state(legs)
         s = RFix.reduced(s, RFix.toggle(s, 0, 0), at: 1)
-        XCTAssertEqual(s.currentIndex, 1)
+        XCTAssertEqual(s.currentIndex, 2, "the next member by order, not the exercise at index + 1")
         XCTAssertNil(s.rest)
         s = RFix.reduced(s, RFix.toggle(s, 2, 0), at: 2)
-        XCTAssertEqual(s.currentIndex, 0)
+        XCTAssertEqual(s.currentIndex, 0, "after the last member the first one is current again")
         XCTAssertEqual(s.rest?.totalSeconds, 60)
     }
 }
@@ -1035,8 +1041,10 @@ final class WorkoutReducerListEditTests: XCTestCase {
         s = RFix.reduced(s, .moveExerciseBy(exerciseID: RFix.ex(s, 4), delta: -1))
         XCTAssertEqual(s.exercises.map { $0.exercise.id }, ["bench", "ohp", "incline", "pushdown", "lateral", "crossover"])
         XCTAssertEqual(s.currentIndex, 2)
+        // bench would land between the two exercises of the superset: it goes behind them
         s = RFix.reduced(s, .moveExerciseBy(exerciseID: RFix.ex(s, 0), delta: 3))
-        XCTAssertEqual(s.exercises.map { $0.exercise.id }, ["ohp", "incline", "pushdown", "bench", "lateral", "crossover"])
+        XCTAssertEqual(s.exercises.map { $0.exercise.id }, ["ohp", "incline", "pushdown", "lateral", "bench", "crossover"])
+        XCTAssertEqual(s.exercises.map { $0.supersetGroup }, [nil, nil, "A", "A", nil, nil])
         XCTAssertEqual(s.currentExercise?.exercise.id, "incline")
     }
 
@@ -1222,12 +1230,32 @@ final class WorkoutReducerSupersetTests: XCTestCase {
         XCTAssertEqual(s.exercises.map { $0.supersetGroup }, [nil, nil, "A", "A", "A", nil])
     }
 
-    func testLeavingAGroupOfThreeKeepsTheOthers() {
+    func testLeavingAGroupOfThreeFromTheEndKeepsTheOthers() {
         var s = RFix.designState()
-        s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, 2)))
-        s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, 3)))
-        let expected: [String?] = [nil, nil, "A", nil, "A", nil]
-        XCTAssertEqual(s.exercises.map { $0.supersetGroup }, expected)   // ohp + pushdown stay together
+        s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, 2)))      // ohp joins lateral + pushdown
+        s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, 4)))      // pushdown leaves
+        let expected: [String?] = [nil, nil, "A", "A", nil, nil]
+        XCTAssertEqual(s.exercises.map { $0.supersetGroup }, expected)
+    }
+
+    func testLeavingFromTheMiddleOfAGroupKeepsEveryGroupTogether() {
+        var s = RFix.designState()
+        s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, 2)))      // A: ohp, lateral, pushdown
+        s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, 3)))      // lateral leaves the middle
+        // ohp and pushdown would be apart: with a member on each side nobody keeps the letter
+        XCTAssertEqual(s.exercises.map { $0.supersetGroup }, [nil, nil, nil, nil, nil, nil])
+
+        // A group of four splits into the members before and after the one that leaves
+        var four = RFix.state((1...6).map { n in
+            RFix.entry(n, n.isMultiple(of: 2) ? RFix.lateral : RFix.pushdown, RFix.normal(1, 10, 10), rest: 60, group: n <= 4 ? "A" : nil)
+        })
+        four = RFix.reduced(four, .toggleSuperset(exerciseID: RFix.ex(four, 1)))   // the second of four leaves
+        XCTAssertEqual(four.exercises.map { $0.supersetGroup }, [nil, nil, "B", "B", nil, nil])
+        var five = RFix.state((1...6).map { n in
+            RFix.entry(n, n.isMultiple(of: 2) ? RFix.lateral : RFix.pushdown, RFix.normal(1, 10, 10), rest: 60, group: n <= 5 ? "A" : nil)
+        })
+        five = RFix.reduced(five, .toggleSuperset(exerciseID: RFix.ex(five, 2)))   // the middle of five leaves
+        XCTAssertEqual(five.exercises.map { $0.supersetGroup }, ["A", "A", nil, "B", "B", nil])
     }
 
     func testLeavingAGroupOfTwoReleasesBothMembers() {
@@ -1250,19 +1278,44 @@ final class WorkoutReducerSupersetTests: XCTestCase {
         XCTAssertEqual(s.exercises.map { $0.supersetGroup }, ["A", "A", nil, nil, nil, nil])
     }
 
-    func testRunsOutOfLettersFallsBackToZ() {
-        var entries: [WorkoutExercise] = []
-        let letters = ["A", "B", "C", "D", "E"]
-        for (n, letter) in letters.enumerated() {
-            entries.append(RFix.entry(n * 2 + 1, RFix.lateral, RFix.normal(1, 8, 15), rest: 60, group: letter))
-            entries.append(RFix.entry(n * 2 + 2, RFix.pushdown, RFix.normal(1, 30, 12), rest: 60, group: letter))
-        }
-        entries.append(RFix.entry(11, RFix.bench, RFix.normal(1, 60, 8), rest: 150))
-        entries.append(RFix.entry(12, RFix.ohp, RFix.normal(1, 40, 8), rest: 120))
-        var s = RFix.state(entries)
-        s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, 10)))
-        XCTAssertEqual(s.exercises[10].supersetGroup, "Z")
-        XCTAssertEqual(s.exercises[11].supersetGroup, "Z")
+    func testASixthSupersetGetsItsOwnLetterAndTheLettersContinueAfterZ() {
+        // 40 pairs, each its own superset: the letters run A...Z, AA, AB, ... and never repeat
+        var s = RFix.state((0..<80).map { n in
+            RFix.entry(n + 1, n.isMultiple(of: 2) ? RFix.lateral : RFix.pushdown, RFix.normal(1, 10, 10), rest: 60)
+        })
+        for pair in 0..<40 { s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, pair * 2))) }
+        let groups = s.exercises.compactMap { $0.supersetGroup }
+        XCTAssertEqual(groups.count, 80)
+        XCTAssertEqual(Set(groups).count, 40, "every pair has its own group")
+        XCTAssertEqual(s.exercises[0].supersetGroup, "A")
+        XCTAssertEqual(s.exercises[10].supersetGroup, "F", "the sixth superset does not merge with the fifth")
+        XCTAssertEqual(s.exercises[50].supersetGroup, "Z")
+        XCTAssertEqual(s.exercises[52].supersetGroup, "AA")
+        XCTAssertEqual(s.exercises[54].supersetGroup, "AB")
+        XCTAssertEqual(s.exercises[78].supersetGroup, "AN")
+        for pair in 0..<40 { XCTAssertEqual(s.exercises[pair * 2].supersetGroup, s.exercises[pair * 2 + 1].supersetGroup) }
+    }
+
+    func testGroupNamesFollowTheSpreadsheetColumns() {
+        XCTAssertEqual((24..<30).map { WorkoutReducer.groupName(at: $0) }, ["Y", "Z", "AA", "AB", "AC", "AD"])
+        XCTAssertEqual(WorkoutReducer.groupName(at: 0), "A")
+        XCTAssertEqual(WorkoutReducer.groupName(at: 25), "Z")
+        XCTAssertEqual(WorkoutReducer.groupName(at: 26), "AA")
+        XCTAssertEqual(WorkoutReducer.groupName(at: 51), "AZ")
+        XCTAssertEqual(WorkoutReducer.groupName(at: 52), "BA")
+        XCTAssertEqual(WorkoutReducer.groupName(at: 701), "ZZ")
+        XCTAssertEqual(WorkoutReducer.groupName(at: 702), "AAA")
+    }
+
+    func testTheFirstUnusedLetterIsTaken() {
+        var s = RFix.state((0..<8).map { n in
+            RFix.entry(n + 1, n.isMultiple(of: 2) ? RFix.lateral : RFix.pushdown, RFix.normal(1, 10, 10), rest: 60,
+                       group: n < 4 ? (n < 2 ? "A" : "C") : nil)
+        })
+        s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, 4)))
+        XCTAssertEqual(s.exercises[4].supersetGroup, "B", "B is free")
+        s = RFix.reduced(s, .toggleSuperset(exerciseID: RFix.ex(s, 6)))
+        XCTAssertEqual(s.exercises[6].supersetGroup, "D", "A, B and C are taken")
     }
 
     func testSupersetsCreatedWithTheToggleDriveLogging() {

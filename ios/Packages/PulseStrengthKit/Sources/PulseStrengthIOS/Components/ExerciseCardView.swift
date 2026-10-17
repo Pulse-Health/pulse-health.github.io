@@ -92,7 +92,9 @@ struct ExerciseCardView: View {
                 .pulseLineLimit(2, whenLarger: 3)
                 .pulseShrinkWhenLarger(0.8)
                 .fixedSize(horizontal: false, vertical: true)
-            recoveryLine
+            if card.recoveryHasData {
+                recoveryLine
+            }
             supersetPill
         }
         .padding(.top, 2)

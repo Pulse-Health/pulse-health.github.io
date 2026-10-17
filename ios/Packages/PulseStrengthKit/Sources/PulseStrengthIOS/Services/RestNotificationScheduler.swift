@@ -162,7 +162,7 @@ final class RestNotificationScheduler: WorkoutSideEffect {
         guard let rest = state.rest, rest.frozenRemaining == nil else { return nil }
         guard rest.endsAt.timeIntervalSince(now) >= 1 else { return nil }
 
-        let snapshot = SnapshotBuilder.make(from: state, now: now)
+        let snapshot = SnapshotBuilder.make(from: state, now: now, locale: .current)
         let body: String
         if snapshot.targetSetID == nil {
             body = snapshot.nextSetText

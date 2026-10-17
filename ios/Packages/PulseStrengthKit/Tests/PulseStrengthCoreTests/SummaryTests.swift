@@ -115,7 +115,7 @@ final class SummaryBuilderTests: XCTestCase {
         let summary = build(session())
         XCTAssertEqual(summary.exercises[0].bestE1RM, 102, accuracy: 0.0001)
         XCTAssertEqual(summary.exercises[1].bestE1RM, 28 * (1 + 10.0 / 30), accuracy: 0.0001)
-        XCTAssertEqual(summary.exercises[2].bestE1RM, 12, accuracy: 0.0001)   // 8 x 15
+        XCTAssertEqual(summary.exercises[2].bestE1RM, 0, accuracy: 0.0001)    // 8 x 15: above the 12-rep cap, no estimate
     }
 
     func testWarmUpsNeverSetTheBestE1RM() {

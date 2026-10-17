@@ -141,6 +141,8 @@ final class ChannelLink {
         if phone.start(template: template) {
             generations += 1
             if let id = phone.state?.id { generation[id] = generations }
+            // a timed exercise besides the template's, so that the timer commands have something to act on
+            phone.send(.addExercises([ExerciseLibrary.exercise(id: "plank")!]))
         }
     }
 
@@ -270,14 +272,24 @@ extension ChannelLink {
             default: return .setReps(exerciseID: entry.id, setID: setID, reps: random.int(in: 1...15))
             }
         }
-        switch random.int(8) {
+        switch random.int(12) {
         case 0, 1: return .logSet(exerciseID: entry.id, setID: setID)
         case 2: return .nudgeNextSet(weightSteps: random.int(in: -2...2), repsSteps: random.int(in: -1...1))
         case 3, 4: return .setWeight(exerciseID: entry.id, setID: setID, kg: Double(random.int(in: 20...240)) / 2)
         case 5: return .adjustRest(seconds: random.int(in: -1...1) * 15)
         case 6: return .skipRest
+        case 7: return timedStart(in: state)
+        case 8: return .stopTimedSet
+        case 9: return .cancelTimedSet
         default: return .setReps(exerciseID: entry.id, setID: setID, reps: random.int(in: 1...15))
         }
+    }
+
+    /// Starts the first pending set of the workout's timed exercise (nil when it has none).
+    func timedStart(in state: WorkoutState) -> WorkoutAction? {
+        guard let entry = state.exercises.first(where: { $0.exercise.tracking == .duration }),
+              let set = entry.sets.first(where: { !$0.isDone }) else { return nil }
+        return .startTimedSet(SetRef(exerciseID: entry.id, setID: set.id))
     }
 
     func phoneAction(origin: inout ActionOrigin) -> WorkoutAction? {
@@ -295,7 +307,7 @@ extension ChannelLink {
             }
         }
         origin = .phone
-        switch random.int(10) {
+        switch random.int(12) {
         case 0: return .toggleSet(exerciseID: entry.id, setID: setID)
         case 1: return .setWeight(exerciseID: entry.id, setID: setID, kg: Double(random.int(in: 20...240)) / 2)
         case 2: return .addSet(exerciseID: entry.id)
@@ -305,6 +317,8 @@ extension ChannelLink {
         case 6: return .resume
         case 7: return .logNextSet
         case 8: return .updateHeartRate(random.int(in: 60...190))
+        case 9: return timedStart(in: state)
+        case 10: return .stopTimedSet
         default: return .undo
         }
     }
@@ -343,7 +357,7 @@ extension ChannelLink {
 }
 
 final class SyncChannelFuzzTests: XCTestCase {
-    struct Stats { var issued = 0, applied = 0, dupAfterRelaunch = 0, workouts = 0, jumps = 0 }
+    struct Stats { var issued = 0, applied = 0, dupAfterRelaunch = 0, workouts = 0, jumps = 0, timer = 0 }
     private var stats = Stats()
 
     @MainActor
@@ -361,6 +375,12 @@ final class SyncChannelFuzzTests: XCTestCase {
             link.drain()
         }
         stats.issued += link.issued.count
+        stats.timer += link.issued.filter { command in
+            switch command.action {
+            case .startTimedSet, .stopTimedSet, .cancelTimedSet: return true
+            default: return false
+            }
+        }.count
         stats.applied += link.appliedCount.values.reduce(0, +)
         stats.dupAfterRelaunch += link.appliedAfterRelaunch
         stats.workouts += link.generations
@@ -392,6 +412,7 @@ final class SyncChannelFuzzTests: XCTestCase {
             }
             XCTAssertTrue(kinds.isEmpty, "\(name): \(failingSeeds) of \(seeds.count) seeds failed: \(kinds) first: \(bad)")
             XCTAssertGreaterThan(stats.issued, 0, "\(name): the Watch did issue commands")
+            if !config.idempotentWatch { XCTAssertGreaterThan(stats.timer, 0, "\(name): the Watch did issue timer commands") }
             if config.relaunch {
                 XCTAssertEqual(stats.dupAfterRelaunch, 0, "\(name): a command was applied again after a phone relaunch")
             }

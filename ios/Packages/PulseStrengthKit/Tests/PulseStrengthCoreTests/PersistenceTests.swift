@@ -13,8 +13,9 @@ final class PersistenceTests: XCTestCase {
         return persistence
     }
 
+    /// The names of the data files (`schema.json` is checked by its own tests).
     private func fileNames(_ persistence: FileStrengthPersistence) -> [String] {
-        ((try? FileManager.default.contentsOfDirectory(atPath: persistence.directory.path)) ?? []).sorted()
+        ((try? FileManager.default.contentsOfDirectory(atPath: persistence.directory.path)) ?? []).filter { $0 != "schema.json" }.sorted()
     }
 
     private func text(_ persistence: FileStrengthPersistence, _ name: String) -> String {

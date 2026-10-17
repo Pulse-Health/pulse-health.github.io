@@ -1377,7 +1377,11 @@ private enum HubFormat {
             case .weightReps:
                 parts.append(NumberText.kg(planned.weightKg) + " kg × " + planned.repsText)
             case .repsOnly:
-                parts.append(planned.repsText + " reps")
+                if let load = StrengthResultText.signedLoad(planned.weightKg) {
+                    parts.append(load + " kg × " + planned.repsText)
+                } else {
+                    parts.append(planned.repsText + " reps")
+                }
             case .duration:
                 parts.append(planned.repsText + " s")
             }
@@ -1391,7 +1395,7 @@ private enum HubFormat {
         return parts.joined(separator: " · ")
     }
 
-    /// "W 50×8 · 82.5×6" for weight exercises, "12 reps" / "45 s" otherwise.
+    /// "W 50×8 · 82.5×6" for weight exercises, "+10×8" for a reps-only set with a load, "12 reps" / "45 s" otherwise.
     static func setsText(_ sets: [CompletedSet], tracking: TrackingKind) -> String {
         var texts: [String] = []
         for item in sets {
@@ -1400,7 +1404,11 @@ private enum HubFormat {
             case .weightReps:
                 texts.append(prefix + NumberText.kg(item.weightKg) + "×" + String(item.reps))
             case .repsOnly:
-                texts.append(prefix + String(item.reps) + " reps")
+                if let load = StrengthResultText.signedLoad(item.weightKg) {
+                    texts.append(prefix + load + "×" + String(item.reps))
+                } else {
+                    texts.append(prefix + String(item.reps) + " reps")
+                }
             case .duration:
                 texts.append(prefix + String(item.reps) + " s")
             }
@@ -1555,7 +1563,8 @@ private enum HubCoach {
             guard exercise.tracksWeight, exercise.previousBestE1RM > 0 else { continue }
             let normal = entry.plannedSets.last(where: { $0.type == .normal })
             let working = normal ?? entry.plannedSets.last(where: { $0.type != .warmup })
-            guard let planned = working, planned.reps > 0 else { continue }
+            // A set of more reps than the estimate allows (`Estimated1RM.maximumReliableReps`) cannot beat an estimated 1RM.
+            guard let planned = working, planned.reps > 0, planned.reps <= Estimated1RM.maximumReliableReps else { continue }
             let weight = beatingWeight(for: exercise, reps: planned.reps)
             return "Aim for \(NumberText.kg(weight)) kg × \(planned.reps) on your last \(HubFormat.shortName(exercise)) set."
         }
@@ -2480,7 +2489,12 @@ private struct HubWorkoutDetailView: View {
 
     private func recordText(_ record: PersonalRecord) -> String {
         let load = NumberText.kg(record.weightKg) + " kg × " + String(record.reps)
-        return load + " · est. 1RM " + NumberText.kg(record.estimated1RM.rounded()) + " kg"
+        switch record.kind {
+        case .estimated1RM: return load + " · est. 1RM " + NumberText.kg(record.estimated1RM.rounded()) + " kg"
+        case .heaviest, .repRecord: return load + " · " + record.kind.shortTitle
+        case .reps: return String(record.reps) + " reps · " + record.kind.shortTitle
+        case .duration: return String(record.reps) + " s · " + record.kind.shortTitle
+        }
     }
 
     private func exercisesSection(_ workout: CompletedWorkout) -> some View {

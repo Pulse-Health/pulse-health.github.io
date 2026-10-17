@@ -124,8 +124,9 @@ final class LibraryTests: XCTestCase {
         XCTAssertEqual(actual.isCustom, expected.isCustom, "isCustom \(tag)", file: file, line: line)
     }
 
-    private func sets(_ pairs: [(Double, Int)]) -> [PreviousSet] {
-        pairs.map { PreviousSet(weightKg: $0.0, reps: $0.1) }
+    /// The previous sets of the baseline; the first `warmups` of them are warm-ups.
+    private func sets(_ pairs: [(Double, Int)], warmups: Int = 0) -> [PreviousSet] {
+        pairs.enumerated().map { PreviousSet(weightKg: $0.element.0, reps: $0.element.1, type: $0.offset < warmups ? .warmup : nil) }
     }
 
     // MARK: - Library contents
@@ -220,7 +221,7 @@ final class LibraryTests: XCTestCase {
         assertSame(ExerciseLibrary.exercise(id: "bench"), Exercise(
             id: "bench", name: "Barbell bench press", muscle: .chest, secondary: "Shoulders · Triceps",
             equipment: .barbell, tracking: .weightReps, mediaKey: "bench", previousBestE1RM: 99,
-            previousSets: sets([(50, 8), (70, 5), (80, 6), (80, 6), (80, 5)]),
+            previousSets: sets([(50, 8), (70, 5), (80, 6), (80, 6), (80, 5)], warmups: 2),
             defaults: ExerciseDefaults(sets: 3, weightKg: 60, reps: 8, restSeconds: 150),
             cues: [
                 "Pull your shoulder blades back and down and keep your feet planted.",

@@ -128,7 +128,8 @@ final class RegressionTests: XCTestCase {
 
         let workoutID: UUID = svcMain {
             let rig = SvcRig(self, persistence: persistence)
-            rig.startUpperA()
+            // The unreadable history.json stops the demo seeding, so the template comes from the sample data directly.
+            rig.engine.start(template: SampleData.templates()[0])
             rig.logSets(2)
             let loggedBefore = rig.engine.state?.exercises.reduce(0) { $0 + $1.doneCount }
             XCTAssertEqual(loggedBefore, 2)

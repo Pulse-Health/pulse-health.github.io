@@ -1301,15 +1301,21 @@ enum StrengthResultText {
 
     // MARK: Sets
 
-    /// "W 50×8", "80×6", "8 reps" or "45 s": one set on the one-line summaries.
+    /// The added or assisted load of a reps-only set as "+10" or "−20"; nil for bodyweight.
+    static func signedLoad(_ kg: Double) -> String? {
+        guard kg.isFinite, abs(kg) >= 0.005 else { return nil }
+        return (kg > 0 ? "+" : "\u{2212}") + NumberText.kg(abs(kg))
+    }
+
+    /// "W 50×8", "80×6", "+10×8", "8 reps" or "45 s": one set on the one-line summaries.
     static func compactText(_ set: CompletedSet, tracking: TrackingKind) -> String {
         var text: String
         switch tracking {
         case .weightReps:
             text = NumberText.kg(set.weightKg) + "×" + String(set.reps)
         case .repsOnly:
-            if set.weightKg > 0 {
-                text = "+" + NumberText.kg(set.weightKg) + "×" + String(set.reps)
+            if let load = signedLoad(set.weightKg) {
+                text = load + "×" + String(set.reps)
             } else {
                 text = String(set.reps) + " reps"
             }
@@ -1336,14 +1342,14 @@ enum StrengthResultText {
         return "RIR " + String(max(0, rir))
     }
 
-    /// "80 kg × 6", "8 reps", "+10 kg × 8" or "45 s".
+    /// "80 kg × 6", "8 reps", "+10 kg × 8", "−20 kg × 8" or "45 s".
     static func detailText(_ set: CompletedSet, tracking: TrackingKind) -> String {
         switch tracking {
         case .weightReps:
             return NumberText.kg(set.weightKg) + " kg × " + String(set.reps)
         case .repsOnly:
-            if set.weightKg > 0 {
-                return "+" + NumberText.kg(set.weightKg) + " kg × " + String(set.reps)
+            if let load = signedLoad(set.weightKg) {
+                return load + " kg × " + String(set.reps)
             }
             return String(set.reps) + (set.reps == 1 ? " rep" : " reps")
         case .duration:

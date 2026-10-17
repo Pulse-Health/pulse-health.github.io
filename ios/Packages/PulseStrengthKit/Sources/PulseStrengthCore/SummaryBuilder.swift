@@ -16,11 +16,10 @@ public enum SummaryBuilder {
             let analysis = PresenterSupport.analyse(entry).sets
             var sets: [CompletedSet] = []
             var bestE1RM = 0.0
-            var bestIndex: Int?
             var isRecord = false
 
             for (index, set) in entry.sets.enumerated() where set.isDone {
-                sets.append(CompletedSet(type: set.type, weightKg: set.weightKg, reps: set.reps, rir: set.rir))
+                sets.append(CompletedSet(type: set.type, weightKg: set.weightKg, reps: set.reps, rir: set.rir, prKind: analysis[index].kind))
                 loggedSets += 1
                 if let rir = set.rir {
                     rirSum += rir
@@ -29,13 +28,24 @@ public enum SummaryBuilder {
                 if set.type.countsTowardVolume {
                     musclePerGroup[entry.exercise.muscle, default: 0] += 1
                 }
-                if analysis[index].e1RM > bestE1RM {
-                    bestE1RM = analysis[index].e1RM
-                    bestIndex = index
+                if analysis[index].e1RM > bestE1RM { bestE1RM = analysis[index].e1RM }
+                if let kind = analysis[index].kind {
+                    isRecord = true
+                    merge(
+                        PersonalRecord(
+                            exerciseID: entry.exercise.id,
+                            exerciseName: entry.exercise.name,
+                            weightKg: set.weightKg,
+                            reps: set.reps,
+                            estimated1RM: analysis[index].e1RM,
+                            previousBest: analysis[index].previous,
+                            kind: kind
+                        ),
+                        into: &records
+                    )
                 }
-                if analysis[index].isRecord { isRecord = true }
             }
-            volume += PresenterSupport.volumeKg(of: entry)
+            volume += entry.loggedVolumeKg
             guard !sets.isEmpty else { continue }
 
             let exercise = entry.exercise
@@ -48,23 +58,9 @@ public enum SummaryBuilder {
                 tracking: exercise.tracking,
                 sets: sets,
                 isPersonalRecord: isRecord,
-                bestE1RM: bestE1RM
+                bestE1RM: bestE1RM,
+                note: entry.note
             ))
-
-            if isRecord, let bestIndex {
-                let bestSet = entry.sets[bestIndex]
-                merge(
-                    PersonalRecord(
-                        exerciseID: exercise.id,
-                        exerciseName: exercise.name,
-                        weightKg: bestSet.weightKg,
-                        reps: bestSet.reps,
-                        estimated1RM: bestE1RM,
-                        previousBest: exercise.previousBestE1RM
-                    ),
-                    into: &records
-                )
-            }
         }
 
         // Duration: active time up to `finishedAt` (a workout finished while paused ends at the pause).
@@ -96,12 +92,26 @@ public enum SummaryBuilder {
         )
     }
 
-    /// Adds `record`, or replaces the existing record of the same exercise when it has the higher estimate.
+    /// Adds `record`, or replaces the existing record of the same exercise when it is the better one: the higher kind of record
+    /// (`PRKind` lists them best first), then the larger value (estimated 1RM, weight, reps, seconds).
     private static func merge(_ record: PersonalRecord, into records: inout [PersonalRecord]) {
         if let existing = records.firstIndex(where: { $0.exerciseID == record.exerciseID }) {
-            if record.estimated1RM > records[existing].estimated1RM { records[existing] = record }
+            if isBetter(record, than: records[existing]) { records[existing] = record }
         } else {
             records.append(record)
+        }
+    }
+
+    private static func isBetter(_ record: PersonalRecord, than other: PersonalRecord) -> Bool {
+        if record.kind.rank != other.kind.rank { return record.kind.rank > other.kind.rank }
+        return magnitude(of: record) > magnitude(of: other)
+    }
+
+    private static func magnitude(of record: PersonalRecord) -> Double {
+        switch record.kind {
+        case .estimated1RM: return record.estimated1RM
+        case .heaviest, .repRecord: return record.weightKg
+        case .reps, .duration: return Double(record.reps)
         }
     }
 }

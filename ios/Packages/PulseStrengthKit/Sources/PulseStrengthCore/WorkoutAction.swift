@@ -12,7 +12,7 @@ public enum WorkoutAction: Codable, Hashable, Sendable {
     case logNextSet
     case setWeight(exerciseID: UUID, setID: UUID, kg: Double)
     case setReps(exerciseID: UUID, setID: UUID, reps: Int)
-    /// Adjusts the next pending set: weight by `weightSteps` x Exercise.weightStepKg and
+    /// Adjusts the next pending set: weight by `weightSteps` x `Exercise.weightStep(in:)` (in the workout's unit) and
     /// reps by `repsSteps` x Exercise.repsStep. Used by the Watch and the Live Activity.
     case nudgeNextSet(weightSteps: Int, repsSteps: Int)
     case setSetType(exerciseID: UUID, setID: UUID, type: SetType)
@@ -23,6 +23,16 @@ public enum WorkoutAction: Codable, Hashable, Sendable {
     case addSet(exerciseID: UUID)
     case deleteSet(exerciseID: UUID, setID: UUID)
     case setNote(exerciseID: UUID, note: String)
+
+    // MARK: Timed sets
+    /// Starts timing a pending set of an exercise that tracks duration (ignored for any other set, and while a timed set already
+    /// runs): the stopwatch counts towards the set's seconds, `currentIndex` moves to its exercise and a running rest ends.
+    case startTimedSet(SetRef)
+    /// Logs the running timed set with the seconds timed so far (at most `WorkoutReducer.maximumDurationSeconds`); from there it is
+    /// `logSet`: the rest after it follows the normal rules. Ignored without a running timed set.
+    case stopTimedSet
+    /// Drops the running timed set without logging anything.
+    case cancelTimedSet
 
     // MARK: Navigation
     case goTo(index: Int)
@@ -45,6 +55,10 @@ public enum WorkoutAction: Codable, Hashable, Sendable {
     case skipRest
     case setAutoStartRest(Bool)
     case setAlertWhenRestEnds(Bool)
+
+    // MARK: Display
+    /// The unit weights are shown and typed in (the Watch and the Live Activity follow it). Stored weights stay in kilograms.
+    case setWeightUnit(WeightUnit)
 
     // MARK: Lifecycle
     case pause

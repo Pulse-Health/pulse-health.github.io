@@ -10,13 +10,21 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (860 tests, 905 with the Combine
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (1,481 tests, 1,551 with the Combine
 > stand-in). The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow
 > `strength-ios` has compiled it with Xcode 16 for the iOS and watchOS simulators, run a 30-step UI flow through the real
 > iPhone app, rendered the Lock Screen, Dynamic Island and Watch screens, and re-run the app in dark mode, at large text
 > sizes and on an iPhone SE. Several rounds of adversarial review fixed what they found. What has **not** been tried is
 > anything that needs real hardware (Live Activity buttons, Watch heart rate and WatchConnectivity, notifications):
 > see [Verification status](#verification-status).
+
+> **Workout logic.** The core records more than the estimated 1RM: the heaviest weight, the best weight for a rep range, most reps and
+> longest hold are personal records too (an estimate counts for 1 to 12 reps only). Pull-ups and dips take an added or assisted load,
+> supersets keep their members together (any number of them), the PREVIOUS column matches warm-ups to warm-ups and working sets to
+> working sets, a drop set that another drop set follows has no rest, new exercises start from the last working set, a changed
+> weight, rep count, rest or set type offers to update the template (when the `askToUpdateTemplate` preference allows it), and timed sets have a
+> stopwatch state in the reducer. The screens for assisted entry (a minus key) and for the timed-set stopwatch are not built yet.
+> Details: `ARCHITECTURE.md`, sections 3.2 and 3.3.
 
 > **Repository note.** This directory lives in the `pulse-health.github.io` website repository, which GitHub Pages publishes from
 > the repository root. The root `_config.yml` excludes `ios/` from that build, so these files are not served on the website.
@@ -99,7 +107,7 @@ Intents inside a package would need `AppIntentsPackage` plumbing that only exist
 
 ### Simulator notes
 
-* A fresh install starts empty (no demo workouts, no invented records). Create a template or start an empty workout from the hub; the UI-test mode `-PulseUITest` and the SwiftUI previews use demo data (see [Placeholders](#placeholders-to-replace)).
+* A fresh install starts empty (no demo workouts, no invented records). Create a template or start an empty workout from the hub, or add Push / Pull / Legs from the starter templates; the UI-test mode `-PulseUITest` and the SwiftUI previews use demo data (see [Placeholders](#placeholders-to-replace)).
 * Start a workout from the hub. To see the Live Activity, lock the simulator (Device > Lock, Cmd-L) while a workout runs;
   use an iPhone 14 Pro or newer simulator to see the Dynamic Island as well.
 * For the Watch app, use a simulator pair (iPhone + Apple Watch, created in Xcode > Window > Devices and Simulators, Shift-Cmd-2),
@@ -207,11 +215,13 @@ after the first run.
 
 1. All workout logic is a pure reducer in Core: `WorkoutState` + `WorkoutAction` -> `WorkoutReducer.reduce(_:_:now:)`.
 2. `WorkoutController` owns the state, persists it and notifies side effects. The phone is the `authority`, the Watch a `mirror`.
-3. `WorkoutPresenter` turns state into a display-ready `ActiveWorkoutPresentation`; views only render it and dispatch actions.
+3. `WorkoutPresenter` turns state into a display-ready `ActiveWorkoutPresentation`; views only render it and dispatch actions. Weights are stored in
+   kilograms; the text is written in the workout's unit (kg or lb, `WorkoutSettings.weightUnit`, chosen in `StrengthPreferences`) with the decimal and
+   grouping separators of the device's locale (`WeightFormatter`, `ARCHITECTURE.md` 3.6).
 4. `SnapshotBuilder` produces the compact `WorkoutSnapshot` that drives the Live Activity and the Watch.
 5. Platform services are `WorkoutSideEffect`s: Live Activity manager, rest notification, HealthKit writer, Watch bridge (iOS);
    WatchConnectivity client and `HKWorkoutSession` (watchOS). `PulseServices` registers the iOS set.
-6. Data lives as JSON files in the app's Application Support folder (`FileStrengthPersistence`; an App Group container is used when the entitlement is added); `StrengthStore` holds templates, history,
+6. Data lives as JSON files in the app's Application Support folder (`FileStrengthPersistence`; an App Group container is used when the entitlement is added); `StrengthStore` holds templates, plans, history,
    custom exercises and personal bests.
 7. Live Activity buttons are App Intents compiled into app and extension; they call `WorkoutCommandBus`, whose handler the
    app installs when `StrengthAppEnvironment` starts (the app waits up to 3 s for a background launch).
@@ -282,8 +292,8 @@ Everything below is a stand-in until the feature lives inside the Pulse app.
 | Permission texts | Health usage descriptions | `NSHealthShareUsageDescription` / `NSHealthUpdateUsageDescription` in the iOS and Watch `Info.plist` files |
 | App icon | generated green dumbbell | `Apps/PulseStrength/Assets.xcassets/AppIcon.appiconset/AppIcon.png` and the same in `Apps/PulseStrengthWatch` (1024 x 1024, opaque) |
 | Accent colour | green: `PulseTheme.green` (`#187A42` light, `#30D158` dark) tints the app's own controls; the system fallback tint `#1B8448` is `AccentColor.colorset` in both asset catalogs | `PulseTheme.swift`, `AccentColor.colorset` |
-| Demo data | demo templates, five invented workouts and personal bests, used by previews and the UI tests only | `StrengthAppEnvironment.preview(withActiveWorkout:)` seeds it; `StrengthAppEnvironment.live(seedDemoData:)` defaults to `false`, so the running app starts empty |
-| Muscle recovery | fixed demo percentages | `DemoRecovery.provider`, see below |
+| Demo data | three sample templates and five workouts, for previews and the `-PulseUITest` mode only. Their previous results and personal-record baselines come from that sample history like anyone's, there is no separate table of invented numbers. The app never seeds (`live(seedDemoData:)` defaults to `false`), so the running app starts empty. Builds before that seeded real files: `StrengthStore.hasSampleData` / `removeSampleData()` clean them up | `StrengthAppEnvironment.preview(withActiveWorkout:)` seeds it; `SampleData` |
+| Muscle recovery | estimated from the sets the user logged (a heuristic, see `RecoveryEstimator`); `DemoRecovery.provider` is fixed demo data that `StrengthAppEnvironment.preview` and tests pass explicitly | `RecoveryEstimator`, or the Pulse app's own model via `controller.recovery`, see below |
 | Product name in the onboarding | "Rebase" | `OnboardingBrand.name` (Core); the German and English texts, the legal sentences and the top bar all use it |
 | Legal pages | `https://pulse-health.github.io/` + `terms.html`, `privacy-policy.html`, `agb.html`, `datenschutz.html` | `OnboardingLegal` in `OnboardingCopy.swift`; the pages themselves still say "Pulse" |
 | Account service | accepts everything | `PulseOnboardingServices`, see "Onboarding (first run)" |
@@ -295,12 +305,19 @@ The seams are plain protocols and closures:
 
 * **Recovery data.** `RecoveryProvider` is `@Sendable (MuscleGroup) -> Int` (percent recovered, 0 to 100). Pass the Pulse
   app's own muscle-recovery model to `WorkoutController(store:persistence:role:recovery:clock:)`, or assign
-  `controller.recovery` later. The default, `DemoRecovery.provider`, returns fixed demo numbers.
+  `controller.recovery` later. The default estimates the recovery from the store's finished workouts (`RecoveryEstimator`: the
+  more working sets of a muscle group, the longer it needs, 30 to 96 hours); `DemoRecovery.provider` returns fixed demo numbers
+  for previews and tests.
 * **Storage.** `FileStrengthPersistence` is a small final class with one load/save pair per file (active workout,
-  templates, history, custom exercises, personal bests). Point it at a directory of the Pulse app
+  templates, history, custom exercises, personal bests, plans, body weights, weigh-in preferences, workout preferences, acknowledged
+  commands). The data
+  directory is versioned (`schema.json`, with migrations), a file that cannot be read completely is copied to
+  `<name>.corrupt-<date>.json` before anything is rewritten, and a directory written by a newer app version is never
+  written (`StrengthStore.persistenceIssues`, `lastPersistenceError`). Point it at a directory of the Pulse app
   (`FileStrengthPersistence(directory:)`), or replace it, and `StrengthStore`, with a type backed by the Pulse database:
   the controller and the screens only use the store's published properties and `record`, `saveTemplate`,
-  `addCustomExercise`, `history(for:now:)`. There is no persistence protocol yet; introducing one is the first change to
+  `addCustomExercise`, the management calls (rename, duplicate, reorder and delete templates; edit and delete
+  finished workouts; edit and delete custom exercises) and `history(for:now:)`. There is no persistence protocol yet; introducing one is the first change to
   make if the storage engine changes.
 * **Side effects.** Implement `WorkoutSideEffect` (three `@MainActor` callbacks: `workoutStarted`, `workoutChanged`,
   `workoutEnded`) and register it with `controller.addEffect(_:)`: Pulse analytics, syncing finished workouts to the
@@ -379,22 +396,26 @@ sentence and up to three tips. "Skip", "Get Started" and a swipe down all close 
 A **plan** is a rotation of workouts (Upper, Lower, Push, Pull, Legs, then Upper again), not a calendar: it has no weekdays, so a
 missed day never leaves it behind. The Strength hub shows the active plan with its next workout tagged "next up", how many of its workouts
 were done in the last 7 days, and a "Skip" button; doing a workout moves the rotation to the one after it, and the "Start Workout" card
-recommends the plan's next workout. Workouts can carry rep ranges (8–10) and a note per exercise (technique cues).
+recommends the plan's next workout. Workouts can carry rep ranges (8–10) and a note per exercise (technique cues). A rep inside the
+range is not a change to the workout when the app asks whether to update it afterwards. Deleting a workout also takes it out of every
+plan (the rotation stays on the workout that was next); resetting the plans in the data settings leaves the workouts.
 
 Plans come from a file: `tools/youtube-workouts/yt_workout.py` turns YouTube workout videos into `pulse-import.json`; put that file on
 the phone (AirDrop, Files) and choose **More › Import Plan…** in the Strength hub. Importing the same file again replaces the earlier copy
-and keeps your place in the rotation. Details: [ARCHITECTURE.md §3.6](ARCHITECTURE.md) and
+and keeps your place in the rotation. Details: [ARCHITECTURE.md §3.7](ARCHITECTURE.md) and
 [tools/youtube-workouts/README.md](tools/youtube-workouts/README.md). The plan screens are compiled by CI's Xcode jobs; they have not
 been run on a device (the UI flow tests do not exercise them).
 
 ## Verification status
 
-State at the last commit of this branch; the numbers come from the `strength-ios` workflow
-(<https://github.com/Pulse-Health/pulse-health.github.io/actions/workflows/strength-ios.yml>), whose jobs were all green on it.
+The Core test counts are from a local run on Linux (Swift 6.1.2) of the merge of `main` into the strength improvements (both configurations,
+0 failures); the `strength-ios` workflow
+(<https://github.com/Pulse-Health/pulse-health.github.io/actions/workflows/strength-ios.yml>) has not run on that merge yet, so the Apple-only
+statements below are those of the last commits it did run on, plus the syntax check of every app file (`swiftc -parse`) after the merge.
 
 **Verified**
 
-* **Core (`PulseStrengthCore`)**: 793 unit tests (812 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
+* **Core (`PulseStrengthCore`)**: 1,481 unit tests (1,551 with the Combine stand-in) pass on Linux (job `core-linux`) and on macOS (job `apple`):
   reducer, presenter, snapshot and summary builders, persistence, the phone <-> Watch sync protocol (acknowledgements, optimistic
   replay, delivery fuzzing with dropped, duplicated and reordered messages), exercise library and sample data.
 * **Compiles**: `xcodegen generate`, then `xcodebuild` of the iOS app (with the widget extension and the embedded Watch app) and of the

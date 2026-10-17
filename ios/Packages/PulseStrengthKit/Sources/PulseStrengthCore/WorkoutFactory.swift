@@ -2,13 +2,24 @@ import Foundation
 
 /// Creates workouts from nothing or from a template, and turns a workout back into a template.
 public enum WorkoutFactory {
-    /// A workout without exercises, started `now`.
-    public static func makeEmpty(name: String, now: Date, id: UUID = UUID()) -> WorkoutState {
-        WorkoutState(id: id, name: name, startedAt: now)
+    /// A workout without exercises, started `now`, whose settings (rest timer, weight unit) come from `preferences`.
+    public static func makeEmpty(
+        name: String,
+        now: Date,
+        id: UUID = UUID(),
+        preferences: StrengthPreferences = StrengthPreferences()
+    ) -> WorkoutState {
+        WorkoutState(id: id, name: name, startedAt: now, settings: settings(from: preferences))
     }
 
-    /// A workout whose exercises, sets (all pending), rest times and supersets come from `template`.
-    public static func makeWorkout(from template: WorkoutTemplate, now: Date, id: UUID = UUID()) -> WorkoutState {
+    /// A workout whose exercises, sets (all pending), rest times and supersets come from `template` and whose settings (rest timer,
+    /// weight unit) come from `preferences`.
+    public static func makeWorkout(
+        from template: WorkoutTemplate,
+        now: Date,
+        id: UUID = UUID(),
+        preferences: StrengthPreferences = StrengthPreferences()
+    ) -> WorkoutState {
         var groupSizes: [String: Int] = [:]
         for entry in template.entries {
             if let group = entry.supersetGroup { groupSizes[group, default: 0] += 1 }
@@ -33,7 +44,17 @@ public enum WorkoutFactory {
             templateBaseline: template.entries.map { $0.id },
             exercises: exercises,
             currentIndex: 0,
-            startedAt: now
+            startedAt: now,
+            settings: settings(from: preferences)
+        )
+    }
+
+    /// The settings a new workout starts with: the user's rest timer choices and weight unit.
+    private static func settings(from preferences: StrengthPreferences) -> WorkoutSettings {
+        WorkoutSettings(
+            autoStartRest: preferences.autoStartRest,
+            alertWhenRestEnds: preferences.alertWhenRestEnds,
+            weightUnit: preferences.weightUnit
         )
     }
 

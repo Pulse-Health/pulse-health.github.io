@@ -25,15 +25,62 @@ public struct RestState: Codable, Hashable, Sendable {
     }
 }
 
+/// A timed set (an exercise that tracks duration) that is being timed: a stopwatch towards a target.
+///
+/// The state holds no ticking counter: the elapsed time is `now - startedAt`, or `frozenElapsed` while the workout is paused (like
+/// `RestState.frozenRemaining`). The reducer never logs the set by itself when the target is reached; the screen decides (see
+/// `TimedSetPresentation.isOverTarget`).
+public struct TimedSetState: Codable, Hashable, Sendable {
+    /// The set being timed (a pending set of a duration exercise).
+    public var setRef: SetRef
+    /// When the timer started, moved forward by the time the workout was paused (so `now - startedAt` is the elapsed time).
+    public var startedAt: Date
+    /// The seconds the set asks for (the set's `reps` when the timer started; follows an edit of the set while it runs).
+    public var targetSeconds: Int
+    /// Set while the workout is paused: the elapsed time is frozen until resume.
+    public var frozenElapsed: TimeInterval?
+
+    public init(setRef: SetRef, startedAt: Date, targetSeconds: Int, frozenElapsed: TimeInterval? = nil) {
+        self.setRef = setRef
+        self.startedAt = startedAt
+        self.targetSeconds = targetSeconds
+        self.frozenElapsed = frozenElapsed
+    }
+
+    /// Seconds timed so far (0 when the clock moved backwards).
+    public func elapsed(now: Date) -> TimeInterval {
+        if let frozenElapsed { return max(0, frozenElapsed) }
+        return max(0, now.timeIntervalSince(startedAt))
+    }
+}
+
+/// The choices a workout runs with. They start from the user's `StrengthPreferences` and travel with the state to the Watch and the
+/// Live Activity.
 public struct WorkoutSettings: Codable, Hashable, Sendable {
     /// Start the rest timer when a set is logged.
     public var autoStartRest: Bool
     /// Haptic / sound / notification when rest ends.
     public var alertWhenRestEnds: Bool
+    /// The unit weights are shown and typed in. Display and entry only: every weight in the state stays in kilograms.
+    public var weightUnit: WeightUnit
 
-    public init(autoStartRest: Bool = true, alertWhenRestEnds: Bool = true) {
+    public init(autoStartRest: Bool = true, alertWhenRestEnds: Bool = true, weightUnit: WeightUnit = .kg) {
         self.autoStartRest = autoStartRest
         self.alertWhenRestEnds = alertWhenRestEnds
+        self.weightUnit = weightUnit
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case autoStartRest, alertWhenRestEnds, weightUnit
+    }
+
+    // `weightUnit` came later: a state written before it (an older phone, an older Watch, a saved workout) is in kilograms. A unit
+    // this version does not know reads the same way.
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.autoStartRest = try container.decode(Bool.self, forKey: .autoStartRest)
+        self.alertWhenRestEnds = try container.decode(Bool.self, forKey: .alertWhenRestEnds)
+        self.weightUnit = (try? container.decodeIfPresent(WeightUnit.self, forKey: .weightUnit)) ?? .kg
     }
 }
 
@@ -85,6 +132,9 @@ public struct WorkoutState: Codable, Hashable, Sendable {
     /// Incremented by the reducer on every change; used to order sync messages.
     public var revision: Int
     public var finishedAt: Date?
+    /// The timed set that is running; nil when none is. A rest and a timed set never run together. Absent in a state written
+    /// before timed sets existed.
+    public var timedSet: TimedSetState?
 
     public init(
         id: UUID = UUID(),
@@ -105,7 +155,8 @@ public struct WorkoutState: Codable, Hashable, Sendable {
         heartRateCount: Int = 0,
         usedWatch: Bool = false,
         revision: Int = 0,
-        finishedAt: Date? = nil
+        finishedAt: Date? = nil,
+        timedSet: TimedSetState? = nil
     ) {
         self.id = id
         self.name = name
@@ -126,6 +177,7 @@ public struct WorkoutState: Codable, Hashable, Sendable {
         self.usedWatch = usedWatch
         self.revision = revision
         self.finishedAt = finishedAt
+        self.timedSet = timedSet
     }
 }
 

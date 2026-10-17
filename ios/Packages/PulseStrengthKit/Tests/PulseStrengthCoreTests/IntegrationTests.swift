@@ -111,7 +111,9 @@ final class IntegrationFlowTests: XCTestCase {
             XCTAssertEqual(card.rows.map { $0.isDone }, [true, true, true, false, false])
             XCTAssertEqual(card.rows.map { $0.isNext }, [false, false, false, true, false])
             XCTAssertNil(card.coachTip, "no tip while a rest timer runs")
-            XCTAssertEqual(card.rows[2].isPersonalRecord, false, "82.5 x 6 is 99.0, not above 99 + 0.05")
+            XCTAssertEqual(card.rows[2].isPersonalRecord, true, "82.5 x 6 is no estimate record (99.0, not above 99 + 0.05) but beats the 80 kg of the best 6 reps")
+            XCTAssertEqual(card.rows[2].prKind, .repRecord(reps: 6))
+            XCTAssertNil(card.rows[2].estimated1RM)
             XCTAssertEqual(card.rows[2].accessibilityLabel, "Set 3, working set, 82.5 kilograms, 6 reps, logged")
 
             let dock = try XCTUnwrap(presentation.dock)
@@ -149,7 +151,8 @@ final class IntegrationFlowTests: XCTestCase {
 
             let presentation = try XCTUnwrap(rig.engine.presentation(now: rig.clock.now))
             let rows = try XCTUnwrap(presentation.card).rows
-            XCTAssertEqual(rows.map { $0.isPersonalRecord }, [false, false, false, false, true])
+            XCTAssertEqual(rows.map { $0.isPersonalRecord }, [false, false, true, false, true])
+            XCTAssertEqual(rows.map { $0.prKind }, [nil, nil, .repRecord(reps: 6), nil, .estimated1RM])
             XCTAssertEqual(rows[4].estimated1RM, 102)                        // 85 x (1 + 6/30)
             XCTAssertEqual(presentation.header.volumeText, "1,500")          // 495 + 495 + 510
             XCTAssertEqual(presentation.totals.completedExercises, 1)

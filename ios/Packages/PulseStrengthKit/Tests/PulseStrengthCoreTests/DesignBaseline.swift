@@ -6,6 +6,10 @@ import Foundation
 /// nobody set. The design-parity tests (presenter goldens, personal records, the demo data) still need that baseline, so they apply it
 /// explicitly through `DesignBaseline.apply`.
 enum DesignBaseline {
+    /// How many of the first sets of an exercise's last session were warm-ups (the bench press: 50 x 8 and 70 x 5). The demo history
+    /// and the presenter match warm-up rows to warm-ups, so the baseline has to say which sets they were.
+    static let warmups: [String: Int] = ["bench": 2]
+
     /// exercise id -> (best estimated 1RM in kg, last session's sets as (kg, reps)).
     static let values: [String: (e1RM: Double, sets: [(Double, Int)])] = [
         "bench": (99, [(50, 8), (70, 5), (80, 6), (80, 6), (80, 5)]),
@@ -51,7 +55,10 @@ enum DesignBaseline {
         guard let baseline = values[exercise.id] else { return exercise }
         var result = exercise
         result.previousBestE1RM = baseline.e1RM
-        result.previousSets = baseline.sets.map { PreviousSet(weightKg: $0.0, reps: $0.1) }
+        let warmupCount = warmups[exercise.id] ?? 0
+        result.previousSets = baseline.sets.enumerated().map { index, set in
+            PreviousSet(weightKg: set.0, reps: set.1, type: index < warmupCount ? .warmup : nil)
+        }
         return result
     }
 

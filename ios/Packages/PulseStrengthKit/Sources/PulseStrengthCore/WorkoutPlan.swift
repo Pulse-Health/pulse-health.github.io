@@ -62,6 +62,19 @@ public extension WorkoutPlan {
         return index + 1
     }
 
+    /// Takes every occurrence of `templateID` out of the rotation and keeps `nextIndex` on the workout that was next: when the next
+    /// workout itself is removed, the one after it is next (the first one when that was the last); an empty rotation has `nextIndex` 0.
+    /// Returns true when the plan held the template.
+    @discardableResult
+    mutating func removeTemplate(_ templateID: UUID) -> Bool {
+        guard templateIDs.contains(templateID) else { return false }
+        let start = templateIDs.isEmpty ? 0 : ((nextIndex % templateIDs.count) + templateIDs.count) % templateIDs.count
+        let removedBefore = templateIDs[..<start].filter { $0 == templateID }.count
+        templateIDs.removeAll { $0 == templateID }
+        nextIndex = templateIDs.isEmpty ? 0 : (start - removedBefore) % templateIDs.count
+        return true
+    }
+
     /// Moves the rotation to the workout after `templateID`. Does nothing when the template is not in the plan.
     mutating func advance(after templateID: UUID) {
         guard let index = templateIDs.firstIndex(of: templateID) else { return }
@@ -160,7 +173,11 @@ public struct PlanBundle: Codable, Equatable, Sendable {
             template.lastPerformed = nil
             template.entries = template.entries.map { entry in
                 var entry = entry
-                if let builtIn = ExerciseLibrary.exercise(id: entry.exercise.id) { entry.exercise = builtIn }
+                if let builtIn = ExerciseLibrary.exercise(id: entry.exercise.id) {
+                    entry.exercise = builtIn
+                } else {
+                    entry.exercise = Self.carryingLoadIfRepsOnly(entry.exercise)
+                }
                 entry.restSeconds = min(max(entry.restSeconds, 0), WorkoutReducer.maximumRestSeconds)
                 entry.plannedSets = entry.plannedSets.map { planned in
                     var planned = planned
@@ -188,7 +205,15 @@ public struct PlanBundle: Codable, Equatable, Sendable {
             if let days = plan.daysPerWeek { plan.daysPerWeek = (1...7).contains(days) ? days : nil }
             return plan
         }.filter { !$0.templateIDs.isEmpty }
-        result.customExercises = customExercises.filter { ExerciseLibrary.exercise(id: $0.id) == nil }
+        result.customExercises = customExercises.filter { ExerciseLibrary.exercise(id: $0.id) == nil }.map(Self.carryingLoadIfRepsOnly)
+        return result
+    }
+
+    /// Every custom reps-only exercise can carry an added or assisted load (`Exercise.custom` does the same); a file written before that
+    /// flag existed does not say so.
+    private static func carryingLoadIfRepsOnly(_ exercise: Exercise) -> Exercise {
+        var result = exercise
+        if result.tracking == .repsOnly { result.allowsAddedWeight = true }
         return result
     }
 

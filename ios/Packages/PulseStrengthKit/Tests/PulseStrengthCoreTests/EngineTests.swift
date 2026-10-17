@@ -83,7 +83,7 @@ final class SvcRig {
             test.addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
         }
         model = StrengthDataModel(persistence: persistence, seedDemoData: seed, now: SvcSyncFix.epoch)
-        engine = WorkoutEngine(role: role, persistence: persistence, data: model, clock: clock.reader)
+        engine = WorkoutEngine(role: role, persistence: persistence, data: model, recovery: DemoRecovery.provider, clock: clock.reader)
         engine.addEffect(recorder)
         engine.onUpdate = { [unowned self] in self.updates += 1 }
     }
@@ -737,7 +737,7 @@ final class EngineSyncTests: XCTestCase {
         func pickExercise() -> WorkoutExercise? { exercises.isEmpty ? nil : exercises[random.int(exercises.count)] }
         func pickSet(_ exercise: WorkoutExercise) -> LoggedSet? { exercise.sets.isEmpty ? nil : exercise.sets[random.int(exercise.sets.count)] }
         let unknown = SvcSyncFix.uuid(9_999)
-        switch random.int(34) {
+        switch random.int(35) {
         case 0, 1, 2, 3: return .logNextSet
         case 4, 5:
             guard let e = pickExercise(), let s = pickSet(e) else { return .logNextSet }
@@ -796,6 +796,7 @@ final class EngineSyncTests: XCTestCase {
         case 29, 30: return .updateHeartRate(random.int(5) == 0 ? nil : random.int(in: 60...190))
         case 31: return .setAutoStartRest(random.int(2) == 0)
         case 32: return .setUsedWatch(random.int(2) == 0)
+        case 33: return .setWeightUnit(random.int(2) == 0 ? .kg : .lb)
         default: return .rename("Workout \(random.int(50))")
         }
     }
@@ -917,7 +918,13 @@ final class EngineLifecycleTests: XCTestCase {
             rig.logSets(3)                                   // best working set 82.5 x 6 = 99 < 99.17
             let before = rig.model.data.personalBests["bench"]
             rig.engine.finish(updateTemplate: false)
-            XCTAssertEqual(rig.model.data.personalBests["bench"], before)
+            let after = rig.model.data.personalBests["bench"]
+            XCTAssertEqual(after?.estimated1RM, before?.estimated1RM)
+            XCTAssertEqual(after?.weightKg, before?.weightKg)
+            XCTAssertEqual(after?.reps, before?.reps)
+            XCTAssertEqual(after?.date, before?.date)
+            XCTAssertEqual(before?.repRecords[6], 80, "the best for 6 reps was 80 kg")
+            XCTAssertEqual(after?.repRecords[6], 82.5, "82.5 x 6 raises the 6 rep record, not the estimate")
         }
     }
 
@@ -1087,6 +1094,39 @@ final class EngineLifecycleTests: XCTestCase {
         }
     }
 
+    func testRestoreReplacesThePreviousResultsOfAnOlderBuildWithTheRealOnes() throws {
+        let persistence = FileStrengthPersistence.temporary()
+        let directory = persistence.directory
+        addTeardownBlock { try? FileManager.default.removeItem(at: directory) }
+        try svcMain {
+            let first = SvcRig(self, seed: false, persistence: persistence)
+            first.model.addStarterTemplates()
+            first.model.record(
+                SvcDataFix.workout(1, finishedAt: SvcDataFix.daysAgo(2), [SvcDataFix.entry("bench", [SvcDataFix.work(80, 5)], n: 1)]),
+                updateTemplate: nil
+            )
+            first.engine.start(template: first.model.data.templates[0])
+            // The workout as an older build saved it: the invented previous results of the library are embedded.
+            var saved = try XCTUnwrap(first.engine.state)
+            let bench = try XCTUnwrap(saved.exercises.firstIndex { $0.exercise.id == "bench" })
+            saved.exercises[bench].exercise.previousBestE1RM = 99
+            saved.exercises[bench].exercise.previousSets = [PreviousSet(weightKg: 80, reps: 6), PreviousSet(weightKg: 85, reps: 5)]
+            try persistence.saveActiveWorkout(saved)
+
+            let second = SvcRig(self, seed: false, persistence: persistence)
+            second.engine.restore()
+            let restored = try XCTUnwrap(second.engine.state)
+            let real = try XCTUnwrap(second.model.exercise(id: "bench"))
+            XCTAssertEqual(real.previousBestE1RM, 80 * (1 + 5.0 / 30), accuracy: 1e-9)
+            XCTAssertEqual(restored.exercises[bench].exercise.previousBestE1RM, real.previousBestE1RM)
+            XCTAssertEqual(restored.exercises[bench].exercise.previousSets, real.previousSets)
+            XCTAssertNotEqual(restored.exercises[bench].exercise.previousSets, saved.exercises[bench].exercise.previousSets)
+            XCTAssertEqual(restored.exercises.filter { $0.exercise.id != "bench" }.map { $0.exercise.previousBestE1RM }, [0, 0, 0, 0, 0])
+            XCTAssertEqual(second.recorder.events, [.started(restored)], "the effects see the refreshed workout")
+            XCTAssertEqual(second.diskState, restored, "the saved copy is brought up to date")
+        }
+    }
+
     func testRestoreLeavesARunningWorkoutAlone() {
         svcMain {
             let rig = SvcRig(self)
@@ -1123,7 +1163,9 @@ final class EngineLifecycleTests: XCTestCase {
             let rig = SvcRig(self, persistence: persistence)
             rig.engine.restore()
             XCTAssertNil(rig.engine.state)
-            rig.startUpperA()
+            // The directory holds a data file, so nothing is seeded over it: the template comes from the sample data directly.
+            XCTAssertEqual(persistence.loadIssues.map { $0.fileName }, ["active-workout.json"], "the damaged file was reported")
+            rig.engine.start(template: SampleData.templates()[0])
             XCTAssertNotNil(rig.diskState, "a fresh workout overwrites the damaged file")
         }
     }

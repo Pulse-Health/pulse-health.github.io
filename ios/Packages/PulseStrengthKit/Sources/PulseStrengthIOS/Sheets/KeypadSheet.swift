@@ -25,7 +25,7 @@ public struct KeypadSheet: View {
     /// The value being edited.
     @State private var field: KeypadField
     /// The text of the edited value ("82.", "0", "12"). At most 6 characters; a weight has at most 2 decimals and
-    /// reps stay within 0...999, so the card always shows what the reducer stores.
+    /// reps stay within 0...`repsLimit` (999 reps, 10,800 seconds), so the card always shows what the reducer stores.
     @State private var buffer: String
     /// True until the next key press: the first digit replaces the whole buffer.
     @State private var isFresh: Bool
@@ -247,11 +247,10 @@ public struct KeypadSheet: View {
         .disabled(previous == nil)
     }
 
-    /// The same set of the last session; the last one when this session has more sets.
+    /// The set of the last session that the PREVIOUS column shows for this set (warm-ups with warm-ups, working sets with working
+    /// sets); nil when the last session had no such set.
     private func previousSet(for current: KeypadTarget) -> PreviousSet? {
-        let list = current.exercise.exercise.previousSets
-        guard !list.isEmpty else { return nil }
-        return list[min(current.index, list.count - 1)]
+        current.exercise.matchedPreviousSet(at: current.index)
     }
 
     private func useLastText(_ current: KeypadTarget, _ previous: PreviousSet?) -> String {
@@ -287,7 +286,7 @@ public struct KeypadSheet: View {
             next = min(WorkoutReducer.maximumWeightKg, max(0, next))
         case .reps:
             next = KeypadSheet.parseNumber(buffer) + Double(direction * exercise.repsStep)
-            next = min(999, max(0, next.rounded()))
+            next = min(Double(KeypadSheet.repsLimit(exercise)), max(0, next.rounded()))
         }
         buffer = NumberText.kg(next)
         isFresh = true
@@ -301,7 +300,7 @@ public struct KeypadSheet: View {
         case .weight:
             buffer = NumberText.kg(previous.weightKg)
         case .reps:
-            buffer = String(min(999, max(0, previous.reps)))
+            buffer = String(min(KeypadSheet.repsLimit(current.exercise.exercise), max(0, previous.reps)))
         }
         isFresh = true
         commit()
@@ -401,7 +400,8 @@ public struct KeypadSheet: View {
 
     private func press(_ key: KeypadKey) {
         KeypadHaptics.key()
-        guard let next = KeypadSheet.applying(key, to: buffer, isFresh: isFresh, field: field) else {
+        let repsLimit = target.map { KeypadSheet.repsLimit($0.exercise.exercise) } ?? WorkoutReducer.maximumReps
+        guard let next = KeypadSheet.applying(key, to: buffer, isFresh: isFresh, field: field, repsLimit: repsLimit) else {
             return
         }
         buffer = next
@@ -410,9 +410,9 @@ public struct KeypadSheet: View {
     }
 
     /// The buffer after a key press, or nil when the key is ignored (second decimal point, decimal point on reps,
-    /// more than 6 characters, a third decimal of a weight, reps above 999). The last two keep the card equal to the
-    /// stored value: the reducer rounds a weight to 0.01 and clamps reps to 0...999.
-    private static func applying(_ key: KeypadKey, to buffer: String, isFresh: Bool, field: KeypadField) -> String? {
+    /// more than 6 characters, a third decimal of a weight, reps above `repsLimit`). The last two keep the card equal to the
+    /// stored value: the reducer rounds a weight to 0.01 and clamps reps to 0...`repsLimit`.
+    private static func applying(_ key: KeypadKey, to buffer: String, isFresh: Bool, field: KeypadField, repsLimit: Int) -> String? {
         switch key {
         case .delete:
             return buffer.count > 1 ? String(buffer.dropLast()) : "0"
@@ -431,7 +431,7 @@ public struct KeypadSheet: View {
             }
             switch field {
             case .reps:
-                if (Int(next) ?? 0) > 999 {
+                if (Int(next) ?? 0) > repsLimit {
                     return nil
                 }
             case .weight:
@@ -492,9 +492,15 @@ public struct KeypadSheet: View {
             let kilograms = KeypadSheet.parseNumber(buffer)
             controller.send(.setWeight(exerciseID: ref.exerciseID, setID: ref.setID, kg: kilograms))
         case .reps:
-            let reps = Int(min(999, KeypadSheet.parseNumber(buffer).rounded()))
+            let limit = target.map { KeypadSheet.repsLimit($0.exercise.exercise) } ?? WorkoutReducer.maximumReps
+            let reps = Int(min(Double(limit), KeypadSheet.parseNumber(buffer).rounded()))
             controller.send(.setReps(exerciseID: ref.exerciseID, setID: ref.setID, reps: reps))
         }
+    }
+
+    /// The most the reps card can hold: 999 reps, or the seconds of a timed set (`WorkoutReducer.maximumDurationSeconds`).
+    private static func repsLimit(_ exercise: Exercise) -> Int {
+        exercise.tracking == .duration ? WorkoutReducer.maximumDurationSeconds : WorkoutReducer.maximumReps
     }
 
     /// "82.5" -> 82.5, "82." -> 82, "" -> 0, anything else -> 0. Never negative, never NaN.

@@ -20,6 +20,11 @@ public struct StrengthData: Equatable, Sendable {
     public var bodyWeights: [BodyWeightEntry]
     /// How often the app asks the user to update their weight.
     public var weighIn: WeighInPreferences
+    /// The user's workout preferences (unit, rest timer, goal, ...), see `StrengthPreferences`.
+    public var preferences: StrengthPreferences
+    /// True while `history` is known to lack workouts that could not be read from disk. The personal bests may then be the only
+    /// trace of those workouts, so `recomputePersonalBests()` only raises them and never lowers or drops one.
+    public var historyIsIncomplete: Bool
 
     /// Creates the data from its collections.
     public init(
@@ -29,7 +34,9 @@ public struct StrengthData: Equatable, Sendable {
         personalBests: [String: PersonalBest] = [:],
         plans: [WorkoutPlan] = [],
         bodyWeights: [BodyWeightEntry] = [],
-        weighIn: WeighInPreferences = WeighInPreferences()
+        weighIn: WeighInPreferences = WeighInPreferences(),
+        preferences: StrengthPreferences = StrengthPreferences(),
+        historyIsIncomplete: Bool = false
     ) {
         self.templates = templates
         self.history = history
@@ -38,6 +45,8 @@ public struct StrengthData: Equatable, Sendable {
         self.plans = plans
         self.bodyWeights = bodyWeights
         self.weighIn = weighIn
+        self.preferences = preferences
+        self.historyIsIncomplete = historyIsIncomplete
     }
 
     /// True when there are neither templates nor finished workouts (the condition for seeding demo data).
@@ -80,23 +89,24 @@ public extension StrengthData {
         return overlay(base, memory: exerciseMemory(only: id))
     }
 
-    /// `exercise` with the remembered best e1RM and last sets of the same exercise id applied (anything remembered wins).
+    /// `exercise` with the remembered best e1RM and last sets of the same exercise id applied (anything remembered wins); an exercise
+    /// with nothing remembered keeps what it carries.
     func overlay(_ exercise: Exercise) -> Exercise {
         overlay(exercise, memory: exerciseMemory(only: exercise.id))
     }
 }
 
-/// What the history says about one exercise: its latest sets and its best estimated 1RM.
+/// What the history says about one exercise: its latest sets, its best estimated 1RM and its record marks.
 private struct ExerciseMemory {
     var lastDate: Date
     var lastSets: [PreviousSet]
     var bestE1RM: Double
+    var marks: RecordMarks
 }
 
 private extension StrengthData {
     func allExercises() -> [Exercise] {
-        let builtInIDs = Set(ExerciseLibrary.builtIn.map { $0.id })
-        var seen = builtInIDs
+        var seen = Set(ExerciseLibrary.builtIn.map { $0.id })
         var result = ExerciseLibrary.builtIn
         for custom in customExercises where seen.insert(custom.id).inserted {
             result.append(custom)
@@ -107,32 +117,42 @@ private extension StrengthData {
     func overlay(_ exercise: Exercise, memory: [String: ExerciseMemory]) -> Exercise {
         var result = exercise
         let remembered = memory[exercise.id]
-        let best = max(personalBests[exercise.id]?.estimated1RM ?? 0, remembered?.bestE1RM ?? 0)
+        let stored = personalBests[exercise.id]?.withoutUnreliableEstimate
+        let best = max(stored?.estimated1RM ?? 0, remembered?.bestE1RM ?? 0)
         if best > 0 { result.previousBestE1RM = best }
         if let sets = remembered?.lastSets, !sets.isEmpty { result.previousSets = sets }
+        var marks = stored?.marks ?? RecordMarks()
+        if let remembered { marks.merge(remembered.marks) }
+        if !marks.isEmpty { result.previousRecords = marks }
         return result
     }
 
-    /// One pass over the history (optionally for a single exercise id): latest sets and best e1RM per exercise.
+    /// One pass over the history (optionally for a single exercise id): latest sets, best e1RM and record marks per exercise.
+    ///
+    /// The latest sets are those of the exercise's most recent workout, and of ONE entry of it: when the exercise appears twice in that
+    /// workout, the first entry that has sets (an exercise that appears twice has its occurrences matched to the same previous sets, see
+    /// `PresenterSupport.matchedPreviousSets`). The bests and marks come from every entry of every workout.
     func exerciseMemory(only id: String? = nil) -> [String: ExerciseMemory] {
         var memory: [String: ExerciseMemory] = [:]
         for workout in history {
-            var setsByExercise: [String: [CompletedSet]] = [:]
+            var firstSets: [String: [CompletedSet]] = [:]
             var bestByExercise: [String: Double] = [:]
-            var order: [String] = []
+            var marksByExercise: [String: RecordMarks] = [:]
             for entry in workout.exercises {
                 if let id, entry.exerciseID != id { continue }
-                if setsByExercise[entry.exerciseID] == nil { order.append(entry.exerciseID) }
-                setsByExercise[entry.exerciseID, default: []].append(contentsOf: entry.sets)
+                if !entry.sets.isEmpty, firstSets[entry.exerciseID] == nil { firstSets[entry.exerciseID] = entry.sets }
                 bestByExercise[entry.exerciseID] = max(bestByExercise[entry.exerciseID] ?? 0, StrengthData.bestE1RM(of: entry))
+                var marks = marksByExercise[entry.exerciseID] ?? RecordMarks()
+                marks.merge(RecordMarks(entry: entry))
+                marksByExercise[entry.exerciseID] = marks
             }
-            for exerciseID in order {
-                let sets = setsByExercise[exerciseID] ?? []
-                var item = memory[exerciseID] ?? ExerciseMemory(lastDate: .distantPast, lastSets: [], bestE1RM: 0)
-                item.bestE1RM = max(item.bestE1RM, bestByExercise[exerciseID] ?? 0)
-                if !sets.isEmpty, (item.lastSets.isEmpty || workout.finishedAt > item.lastDate) {
+            for (exerciseID, best) in bestByExercise {
+                var item = memory[exerciseID] ?? ExerciseMemory(lastDate: .distantPast, lastSets: [], bestE1RM: 0, marks: RecordMarks())
+                item.bestE1RM = max(item.bestE1RM, best)
+                item.marks.merge(marksByExercise[exerciseID] ?? RecordMarks())
+                if let sets = firstSets[exerciseID], item.lastSets.isEmpty || workout.finishedAt > item.lastDate {
                     item.lastDate = workout.finishedAt
-                    item.lastSets = sets.map { PreviousSet(weightKg: $0.weightKg, reps: $0.reps) }
+                    item.lastSets = sets.map { PreviousSet(weightKg: $0.weightKg, reps: $0.reps, type: $0.type == .normal ? nil : $0.type, rir: $0.rir) }
                 }
                 memory[exerciseID] = item
             }
@@ -140,19 +160,31 @@ private extension StrengthData {
         return memory
     }
 
-    /// The e1RM recorded on the entry, or (when none was recorded) the best Epley estimate of its non-warm-up sets.
+    /// The best estimated 1RM of the entry: the best estimate (`Estimated1RM.estimate`, sets of 1...12 reps) of its non-warm-up sets,
+    /// or, when the entry recorded one, that value.
+    ///
+    /// A value recorded before the 12-rep cap that came from a set of more reps (20 kg x 100 reps was "estimated" at 87 kg) is no
+    /// estimate any more and gives way to what the sets say.
     static func bestE1RM(of entry: CompletedExercise) -> Double {
-        if entry.bestE1RM > 0 { return entry.bestE1RM }
-        return bestSet(in: entry.sets, tracking: entry.tracking)?.e1RM ?? 0
+        let derived = bestSet(in: entry.sets, tracking: entry.tracking)?.e1RM ?? 0
+        guard entry.bestE1RM > 0 else { return derived }
+        if entry.tracking == .weightReps, derived < entry.bestE1RM, entry.sets.contains(where: { set in
+            set.type != .warmup && set.reps > Estimated1RM.maximumReliableReps
+                && Estimated1RM.epley(weightKg: set.weightKg, reps: set.reps) == entry.bestE1RM
+        }) {
+            return derived
+        }
+        return entry.bestE1RM
     }
 
-    /// The non-warm-up set with the highest Epley estimate (the first one on a tie); nil without a weight-tracking set.
+    /// The non-warm-up set with the highest estimate (`Estimated1RM.estimate`; the first one on a tie); nil without a weight-tracking
+    /// set that has one.
     static func bestSet(in sets: [CompletedSet], tracking: TrackingKind) -> (e1RM: Double, weightKg: Double, reps: Int)? {
         guard tracking == .weightReps else { return nil }
         var best: (e1RM: Double, weightKg: Double, reps: Int)?
         for set in sets where set.type != .warmup {
-            let value = Estimated1RM.epley(weightKg: set.weightKg, reps: set.reps)
-            if value > 0, value > (best?.e1RM ?? 0) { best = (value, set.weightKg, set.reps) }
+            guard let value = Estimated1RM.estimate(weightKg: set.weightKg, reps: set.reps) else { continue }
+            if value > (best?.e1RM ?? 0) { best = (value, set.weightKg, set.reps) }
         }
         return best
     }
@@ -251,7 +283,10 @@ public extension StrengthData {
     /// Records a finished workout.
     ///
     /// * History: inserted newest first (a workout with the same id is replaced).
-    /// * Personal bests: raised for every exercise whose best estimated 1RM beats the stored one.
+    /// * Personal bests: raised for every exercise whose best estimated 1RM beats the stored one, and for every mark (heaviest weight,
+    ///   rep records, most reps, longest hold) the workout raises. The result is the same as `recomputePersonalBests()` over the new
+    ///   history; a workout that replaced an earlier one with the same id recomputes them, because the earlier version may have held
+    ///   a best the new one does not reach.
     /// * Templates: the workout's template gets `lastPerformed`; `updateTemplate` (when given) replaces the stored template with the same id
     ///   (or is added) and also gets `lastPerformed`.
     /// * Plans: every plan that contains the workout's template moves on to the workout after it (once per workout: recording the same
@@ -262,17 +297,12 @@ public extension StrengthData {
         let index = history.firstIndex { $0.finishedAt <= completed.finishedAt } ?? history.endIndex
         history.insert(completed, at: index)
 
-        for entry in completed.exercises {
-            let value = StrengthData.bestE1RM(of: entry)
-            guard value > 0, value > (personalBests[entry.exerciseID]?.estimated1RM ?? 0) else { continue }
-            let set = StrengthData.bestSet(in: entry.sets, tracking: entry.tracking)
-            personalBests[entry.exerciseID] = PersonalBest(
-                exerciseID: entry.exerciseID,
-                estimated1RM: value,
-                weightKg: set?.weightKg ?? 0,
-                reps: set?.reps ?? 0,
-                date: completed.finishedAt
-            )
+        if !isNewWorkout {
+            recomputePersonalBests()
+        } else {
+            for entry in completed.exercises {
+                StrengthData.raiseBest(&personalBests, with: entry, at: completed.finishedAt)
+            }
         }
 
         if let id = completed.templateID, let position = templates.firstIndex(where: { $0.id == id }) {
@@ -287,7 +317,78 @@ public extension StrengthData {
         }
     }
 
-    /// Fills an empty store (no templates, no history) with the demo templates, history and personal bests; true when it did.
+    /// The personal bests as a pure function of the complete history: for every exercise the best estimated 1RM of any workout
+    /// (the e1RM recorded on the entry, or the best estimate of its non-warm-up sets of 1...12 reps), with the set, reps and date that
+    /// reached it, and the marks of `RecordMarks` over all its non-warm-up sets (heaviest weight, rep records, most reps, longest
+    /// hold). The earliest workout wins a tie, an exercise without an estimate has the date of its earliest workout with a mark, and
+    /// bests of exercises without history (or without a single set that counts) do not exist.
+    func recomputedPersonalBests() -> [String: PersonalBest] {
+        // Oldest first; workouts with the same finish time keep the order in which they were recorded (the newer one is listed first).
+        let ordered = history.enumerated().sorted { lhs, rhs in
+            lhs.element.finishedAt != rhs.element.finishedAt ? lhs.element.finishedAt < rhs.element.finishedAt : lhs.offset > rhs.offset
+        }
+        var bests: [String: PersonalBest] = [:]
+        for item in ordered {
+            for entry in item.element.exercises {
+                StrengthData.raiseBest(&bests, with: entry, at: item.element.finishedAt)
+            }
+        }
+        return bests
+    }
+
+    /// Replaces the personal bests with `recomputedPersonalBests()`: a best can go down when the workout that set it was changed or deleted.
+    ///
+    /// While `historyIsIncomplete` the stored bests are kept and only raised by the recomputed ones (a better value, or an exercise
+    /// that has none yet), because a best that the readable history does not explain may belong to a workout that could not be read.
+    mutating func recomputePersonalBests() {
+        let recomputed = recomputedPersonalBests()
+        guard historyIsIncomplete else {
+            personalBests = recomputed
+            return
+        }
+        for (id, candidate) in recomputed {
+            personalBests[id] = personalBests[id]?.raised(by: candidate) ?? candidate
+        }
+    }
+
+    /// The best estimated 1RM and the record marks per exercise id among the workouts older than the one at `index` of the (newest
+    /// first) history: what a workout at that position had to beat.
+    internal func baselines(inWorkoutsOlderThanIndex index: Int) -> [String: (e1RM: Double, marks: RecordMarks)] {
+        var baselines: [String: (e1RM: Double, marks: RecordMarks)] = [:]
+        for workout in history.dropFirst(index + 1) {
+            for entry in workout.exercises {
+                var item = baselines[entry.exerciseID] ?? (0, RecordMarks())
+                item.e1RM = max(item.e1RM, StrengthData.bestE1RM(of: entry))
+                item.marks.merge(RecordMarks(entry: entry))
+                baselines[entry.exerciseID] = item
+            }
+        }
+        return baselines
+    }
+
+    /// Raises the best of the exercise of `entry` (finished at `date`) with what the entry reached (see `PersonalBest.raised(by:)`).
+    fileprivate static func raiseBest(_ bests: inout [String: PersonalBest], with entry: CompletedExercise, at date: Date) {
+        let estimate = bestE1RM(of: entry)
+        let value = estimate.isFinite && estimate > 0 ? estimate : 0
+        let marks = RecordMarks(entry: entry)
+        guard value > 0 || !marks.isEmpty else { return }
+        let set = value > 0 ? bestSet(in: entry.sets, tracking: entry.tracking) : nil
+        let candidate = PersonalBest(
+            exerciseID: entry.exerciseID,
+            estimated1RM: value,
+            weightKg: set?.weightKg ?? 0,
+            reps: set?.reps ?? 0,
+            date: date,
+            heaviestKg: marks.heaviestKg,
+            repRecords: marks.repRecords,
+            bestReps: marks.bestReps,
+            bestSeconds: marks.bestSeconds
+        )
+        bests[entry.exerciseID] = bests[entry.exerciseID]?.raised(by: candidate) ?? candidate
+    }
+
+    /// Fills an empty store (no templates, no history) with the demo templates, history and personal bests; true when it did. Only
+    /// previews and UI tests seed. The previous results the demo shows come from that history like any other user's.
     @discardableResult
     mutating func seedDemoDataIfEmpty(now: Date) -> Bool {
         guard isEmpty else { return false }
@@ -318,7 +419,11 @@ public extension StrengthData {
 
 public extension StrengthData {
     /// The sessions, e1RM trend, records and 30-day totals behind the exercise detail screen.
-    func history(for exerciseID: String, now: Date) -> ExerciseHistory {
+    ///
+    /// The texts in it ("85 kg × 5", the record rows) are written in the unit and with the separators of `format` (default: kilograms,
+    /// en_US); the numbers (`bestE1RM`, `volumeLast30Days`, the sets) stay in kilograms.
+    func history(for exerciseID: String, now: Date, format: DisplayFormat = .metric) -> ExerciseHistory {
+        let formatter = format.formatter
         let sessions = exerciseSessions(for: exerciseID)
         let tracking = sessions.first?.tracking ?? ExerciseLibrary.exercise(id: exerciseID)?.tracking
             ?? customExercises.first { $0.id == exerciseID }?.tracking ?? .weightReps
@@ -341,7 +446,7 @@ public extension StrengthData {
         }
         let seriesBest = series.map { $0.value }.max() ?? 0
         bestValue = max(bestValue, seriesBest)
-        if let stored = personalBests[exerciseID], stored.estimated1RM > bestValue + 1e-9 {
+        if let stored = personalBests[exerciseID]?.withoutUnreliableEstimate, stored.estimated1RM > bestValue + 1e-9 {
             bestValue = stored.estimated1RM
             bestWeight = stored.weightKg
             bestReps = stored.reps
@@ -355,9 +460,9 @@ public extension StrengthData {
         var bestSetText: String?
         switch tracking {
         case .weightReps:
-            if bestValue > 0, bestReps > 0 { bestSetText = NumberText.kg(bestWeight) + " kg × " + String(bestReps) }
+            if bestValue > 0, bestReps > 0 { bestSetText = String(format: "%@ × %ld", formatter.textWithUnit(kg: bestWeight), bestReps) }
         case .repsOnly:
-            if let top = StrengthData.topSet(in: sessions, by: { $0.reps }) {
+            if let top = StrengthData.topSet(in: sessions, by: { $0.bodyweightReps }) {
                 bestSetText = String(top.value) + (top.value == 1 ? " rep" : " reps")
                 bestDate = top.date
             }
@@ -368,6 +473,7 @@ public extension StrengthData {
             }
         }
 
+        let marks = datedMarks(of: sessions, stored: personalBests[exerciseID])
         return ExerciseHistory(
             exerciseID: exerciseID,
             sessions: sessions.map { $0.session },
@@ -377,17 +483,58 @@ public extension StrengthData {
             bestSetDate: bestSetText == nil ? nil : bestDate,
             volumeLast30Days: volume,
             sessionsLast30Days: recent.count,
-            records: records(for: tracking, sessions: sessions, bestE1RM: bestValue, bestDate: bestDate, bestSetText: bestSetText)
-                + bodyWeightRecords(for: exerciseID, tracking: tracking, sessions: sessions, bestE1RM: tracking == .weightReps ? bestValue : 0, bestDate: bestDate)
+            records: records(
+                for: tracking, sessions: sessions, bestE1RM: bestValue, bestDate: bestDate, bestSetText: bestSetText, marks: marks, formatter: formatter
+            ) + bodyWeightRecords(
+                for: exerciseID, tracking: tracking, sessions: sessions,
+                bestE1RM: tracking == .weightReps ? bestValue : 0, bestDate: bestDate, formatter: formatter
+            ),
+            previousSets: exerciseMemory(only: exerciseID)[exerciseID]?.lastSets ?? []
         )
     }
+}
+
+private extension CompletedSet {
+    /// The reps of a set of a reps-only exercise without an added or assisted load (what `RecordMarks.bestReps` counts); 0 for a loaded set.
+    var bodyweightReps: Int { abs(weightKg) < 0.005 ? reps : 0 }
 }
 
 private struct SessionItem {
     var session: ExerciseSession
     var tracking: TrackingKind
+    var carriesLoad: Bool
     var e1RM: Double
     var volumeKg: Double
+}
+
+/// Record marks with the date each was reached.
+private struct DatedMarks {
+    var marks = RecordMarks()
+    var heaviestDate: Date?
+    var repDates: [Int: Date] = [:]
+    var repsDate: Date?
+    var secondsDate: Date?
+
+    /// Raises every mark that `other` (reached at `date`) beats; the date of a mark only changes when it is beaten, so feeding the
+    /// sessions oldest first dates each mark with the earliest session that reached it.
+    mutating func raise(with other: RecordMarks, at date: Date) {
+        if let heaviest = other.heaviestKg, heaviest > marks.heaviestKg ?? -.infinity {
+            marks.heaviestKg = heaviest
+            heaviestDate = date
+        }
+        for (reps, weight) in other.repRecords where weight > marks.repRecords[reps] ?? -.infinity {
+            marks.repRecords[reps] = weight
+            repDates[reps] = date
+        }
+        if other.bestReps > marks.bestReps {
+            marks.bestReps = other.bestReps
+            repsDate = date
+        }
+        if other.bestSeconds > marks.bestSeconds {
+            marks.bestSeconds = other.bestSeconds
+            secondsDate = date
+        }
+    }
 }
 
 private extension StrengthData {
@@ -398,9 +545,10 @@ private extension StrengthData {
             let entries = workout.exercises.filter { $0.exerciseID == exerciseID && !$0.sets.isEmpty }
             guard let first = entries.first else { continue }
             let sets = entries.flatMap { $0.sets }
-            let volume = first.tracking == .weightReps
-                ? sets.reduce(0.0) { $0 + ($1.type == .warmup ? 0 : $1.weightKg * Double($1.reps)) }
-                : 0
+            // Weight x reps; a reps-only exercise counts its added loads only (bodyweight and assisted sets add nothing).
+            let volume = first.tracking == .duration
+                ? 0
+                : sets.reduce(0.0) { $0 + ($1.type == .warmup ? 0 : max(0, $1.weightKg) * Double($1.reps)) }
             let session = ExerciseSession(
                 id: workout.id,
                 date: workout.finishedAt,
@@ -409,7 +557,7 @@ private extension StrengthData {
                 isPersonalRecord: entries.contains { $0.isPersonalRecord }
             )
             let e1RM = entries.map { StrengthData.bestE1RM(of: $0) }.max() ?? 0
-            items.append((offset, SessionItem(session: session, tracking: first.tracking, e1RM: e1RM, volumeKg: volume)))
+            items.append((offset, SessionItem(session: session, tracking: first.tracking, carriesLoad: first.carriesLoad, e1RM: e1RM, volumeKg: volume)))
         }
         items.sort { lhs, rhs in
             if lhs.item.session.date != rhs.item.session.date { return lhs.item.session.date > rhs.item.session.date }
@@ -435,7 +583,9 @@ private extension StrengthData {
         sessions: [SessionItem],
         bestE1RM: Double,
         bestDate: Date?,
-        bestSetText: String?
+        bestSetText: String?,
+        marks: DatedMarks,
+        formatter: WeightFormatter
     ) -> [ExerciseRecordRow] {
         guard !sessions.isEmpty else { return [] }
         var rows: [ExerciseRecordRow] = []
@@ -453,11 +603,12 @@ private extension StrengthData {
         switch tracking {
         case .weightReps:
             if bestE1RM > 0 {
-                rows.append(ExerciseRecordRow(id: "e1rm", label: "Estimated 1RM", value: NumberText.thousands(bestE1RM) + " kg", date: bestDate))
+                rows.append(ExerciseRecordRow(id: "e1rm", label: "Estimated 1RM", value: formatter.volumeWithUnit(kg: bestE1RM), date: bestDate))
             }
             if let text = bestSetText {
                 rows.append(ExerciseRecordRow(id: "bestSet", label: "Best set", value: text, date: bestDate))
             }
+            rows.append(contentsOf: loadRows(marks, label: "Heaviest weight", format: { formatter.textWithUnit(kg: $0) }))
             if let common = commonWorkingWeight(in: sessions) {
                 var most = 0
                 var mostDate: Date?
@@ -468,21 +619,28 @@ private extension StrengthData {
                     }
                 }
                 if most > 0 {
-                    rows.append(ExerciseRecordRow(id: "repsAtWeight", label: "Most reps at " + NumberText.kg(common) + " kg", value: String(most), date: mostDate))
+                    rows.append(ExerciseRecordRow(
+                        id: "repsAtWeight", label: String(format: "Most reps at %@", formatter.textWithUnit(kg: common)), value: String(most), date: mostDate
+                    ))
                 }
             }
             if let top = bestSession({ $0.volumeKg }) {
-                rows.append(ExerciseRecordRow(id: "bestVolume", label: "Best session volume", value: NumberText.thousands(top.value) + " kg", date: top.date))
+                rows.append(ExerciseRecordRow(id: "bestVolume", label: "Best session volume", value: formatter.volumeWithUnit(kg: top.value), date: top.date))
             }
         case .repsOnly:
-            if let top = StrengthData.topSet(in: sessions, by: { $0.reps }) {
+            var most = StrengthData.topSet(in: sessions, by: { $0.bodyweightReps })
+            if marks.marks.bestReps > (most?.value ?? 0), let date = marks.repsDate { most = (marks.marks.bestReps, date) }
+            if let top = most {
                 rows.append(ExerciseRecordRow(id: "mostReps", label: "Most reps in a set", value: String(top.value), date: top.date))
             }
+            rows.append(contentsOf: loadRows(marks, label: "Heaviest added weight", format: { formatter.signedText(kg: $0) + " " + formatter.unit.symbol }))
             if let top = bestSession({ item in Double(item.session.sets.reduce(0) { $0 + ($1.type == .warmup ? 0 : $1.reps) }) }) {
                 rows.append(ExerciseRecordRow(id: "bestSessionReps", label: "Best session reps", value: NumberText.thousands(top.value), date: top.date))
             }
         case .duration:
-            if let top = StrengthData.topSet(in: sessions, by: { $0.reps }) {
+            var longest = StrengthData.topSet(in: sessions, by: { $0.reps })
+            if marks.marks.bestSeconds > (longest?.value ?? 0), let date = marks.secondsDate { longest = (marks.marks.bestSeconds, date) }
+            if let top = longest {
                 rows.append(ExerciseRecordRow(id: "longest", label: "Longest set", value: String(top.value) + " s", date: top.date))
             }
             if let top = bestSession({ item in Double(item.session.sets.reduce(0) { $0 + ($1.type == .warmup ? 0 : $1.reps) }) }) {
@@ -490,6 +648,34 @@ private extension StrengthData {
             }
         }
         return rows
+    }
+
+    /// The rows of the load marks: the heaviest weight ("heaviest") and the best 3, 5 and 8 rep maxes ("rm3", "rm5", "rm8": the
+    /// heaviest weight for at least that many reps), each only when achieved. A mark of 0 (bodyweight, as a reps-only exercise that
+    /// carries a load counts it) is no load worth a row. `format` writes a weight with its unit.
+    func loadRows(_ marks: DatedMarks, label heaviestLabel: String, format: (Double) -> String) -> [ExerciseRecordRow] {
+        var rows: [ExerciseRecordRow] = []
+        if let heaviest = marks.marks.heaviestKg, heaviest != 0 {
+            rows.append(ExerciseRecordRow(id: "heaviest", label: heaviestLabel, value: format(heaviest), date: marks.heaviestDate))
+        }
+        for reps in [3, 5, 8] {
+            guard let weight = marks.marks.repRecords[reps], weight != 0 else { continue }
+            rows.append(ExerciseRecordRow(
+                id: "rm\(reps)", label: String(format: "Best %ldRM", reps), value: format(weight), date: marks.repDates[reps]
+            ))
+        }
+        return rows
+    }
+
+    /// The record marks over all sessions with the date of the earliest session that reached each, raised by the stored personal best
+    /// (`stored`, dated with its own date) where that is higher: it can hold a mark of workouts that cannot be read any more.
+    func datedMarks(of sessions: [SessionItem], stored: PersonalBest?) -> DatedMarks {
+        var dated = DatedMarks()
+        for item in sessions.reversed() {
+            dated.raise(with: RecordMarks(sets: item.session.sets, tracking: item.tracking, carriesLoad: item.carriesLoad), at: item.session.date)
+        }
+        if let stored { dated.raise(with: stored.marks, at: stored.date) }
+        return dated
     }
 
     /// The record rows that need the user's body weight (none without a weigh-in):
@@ -501,7 +687,8 @@ private extension StrengthData {
         tracking: TrackingKind,
         sessions: [SessionItem],
         bestE1RM: Double,
-        bestDate: Date?
+        bestDate: Date?,
+        formatter: WeightFormatter
     ) -> [ExerciseRecordRow] {
         guard !bodyWeights.isEmpty else { return [] }
         switch tracking {
@@ -513,7 +700,7 @@ private extension StrengthData {
             return [ExerciseRecordRow(
                 id: "relativeStrength",
                 label: "Relative strength",
-                value: BodyWeightRules.multipleText(bestE1RM / weight) + " bodyweight",
+                value: String(format: "%@ bodyweight", BodyWeightRules.multipleText(bestE1RM / weight, locale: formatter.locale)),
                 date: bestDate
             )]
         case .repsOnly:
@@ -529,7 +716,7 @@ private extension StrengthData {
             return [ExerciseRecordRow(
                 id: "bodyweightLoad",
                 label: "Best session load (est.)",
-                value: NumberText.thousands(best.load) + " kg",
+                value: formatter.volumeWithUnit(kg: best.load),
                 date: best.date
             )]
         case .duration:
@@ -559,22 +746,46 @@ private extension StrengthData {
 /// A `StrengthData` bound to a `FileStrengthPersistence`: loads on creation, saves what a change touched, caches the exercise overlay.
 ///
 /// `StrengthStore` wraps this class with Combine publishing; the class itself is platform neutral so it runs (and is tested) everywhere.
+///
+/// Every mutating call changes the data in memory first and then writes the files it touched (and only those). A write that fails
+/// keeps the in-memory change and is reported: through the returned `Result` and through `lastPersistenceError`. A file whose write
+/// failed is written again by the next save of anything. Writing several files is not transactional; the order is chosen so that a
+/// failure in the middle loses nothing: the history first (the only copy of the sets), then the custom exercises, the personal bests
+/// (derived from the history), the templates and the plans.
 @MainActor
 public final class StrengthDataModel: WorkoutDataProviding {
     /// The current data.
-    public private(set) var data: StrengthData
+    public internal(set) var data: StrengthData
     /// The first error of the last save that failed; nil when the last save wrote every file it was asked to write.
     public private(set) var lastPersistenceError: Error?
+    /// The problems found while loading the files that the user has not acknowledged yet (see `PersistenceIssue`).
+    public private(set) var persistenceIssues: [PersistenceIssue] = []
 
-    private let persistence: FileStrengthPersistence?
-    private var cache: (list: [Exercise], byID: [String: Exercise])?
+    let persistence: FileStrengthPersistence?
+    var cache: (list: [Exercise], byID: [String: Exercise])?
+    private var unsavedFiles: PersistTargets = []
+    /// The locale whose region picks the weight unit of preferences that are created (a first launch, a reset); nil means kilograms.
+    let deviceLocale: Locale?
+    /// True once `preferences.json` exists (written, or found at load). Until then the next save of anything writes it, so the
+    /// unit picked from the region at the first launch is kept even if the region changes later. Loading writes nothing.
+    private var preferencesStored = false
 
-    /// Loads `persistence` (when given); with `seedDemoData` an empty store is filled with the demo data for `now`.
-    public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false, now: Date = Date()) {
+    /// Loads `persistence` (when given); with `seedDemoData` an empty store is filled with the demo data for `now`. The app seeds only
+    /// in previews and UI tests.
+    ///
+    /// Demo data is only written to a data directory that has no data files at all and no load issues: files that exist but
+    /// could not be read are never seeded over.
+    ///
+    /// Without a saved `preferences.json` the preferences are the defaults of a new install, with the weight unit that `deviceLocale`
+    /// calls for (the app passes `Locale.current`; nil, the default of tests and previews, means kilograms). A directory that holds
+    /// templates, history or other data of an older build keeps kilograms whatever the region.
+    public init(persistence: FileStrengthPersistence?, seedDemoData: Bool = false, now: Date = Date(), deviceLocale: Locale? = nil) {
         self.persistence = persistence
-        self.data = StrengthData()
+        self.deviceLocale = deviceLocale
+        self.data = StrengthData(preferences: StrengthDataModel.newInstallPreferences(deviceLocale))
         loadFromDisk()
-        if seedDemoData, data.seedDemoDataIfEmpty(now: now) {
+        let mayWrite = persistence.map { !$0.hasDataFiles && persistenceIssues.isEmpty } ?? true
+        if seedDemoData, mayWrite, data.seedDemoDataIfEmpty(now: now) {
             persist(templates: true, history: true, customExercises: false, personalBests: true)
         }
     }
@@ -588,49 +799,65 @@ public final class StrengthDataModel: WorkoutDataProviding {
     /// One template by id.
     public func template(id: UUID) -> WorkoutTemplate? { data.template(id: id) }
 
-    /// Adds a custom exercise and saves the custom exercises.
-    public func addCustomExercise(_ exercise: Exercise) {
+    /// Adds a custom exercise (or replaces the one with the same id) and saves the custom exercises. `.failure` when the id belongs
+    /// to a built-in exercise (nothing changes) or when the file could not be written (the exercise is added in memory).
+    @discardableResult
+    public func addCustomExercise(_ exercise: Exercise) -> Result<Void, Error> {
+        guard ExerciseLibrary.exercise(id: exercise.id) == nil else { return .failure(StrengthStoreError.reservedExerciseID) }
         let before = data.customExercises
         data.addCustomExercise(exercise)
-        guard data.customExercises != before else { return }
-        cache = nil
-        persist(templates: false, history: false, customExercises: true, personalBests: false)
+        guard data.customExercises != before else { return .success(()) }
+        return commit(customExercises: true, exercises: true)
     }
 
-    /// Adds or replaces a template and saves the templates.
-    public func saveTemplate(_ template: WorkoutTemplate) {
+    /// Adds or replaces a template and saves the templates. A template with a known id keeps its position, a new one is appended.
+    /// `.failure` when the file could not be written (the template is saved in memory).
+    @discardableResult
+    public func saveTemplate(_ template: WorkoutTemplate) -> Result<Void, Error> {
         data.saveTemplate(template)
-        persist(templates: true, history: false, customExercises: false, personalBests: false)
+        return commit(templates: true)
     }
 
     /// The workout to recommend next (see `StrengthData.nextTemplate`).
     public func nextTemplate() -> WorkoutTemplate? { data.nextTemplate() }
 
-    /// Adds or replaces a plan and saves the plans.
-    public func savePlan(_ plan: WorkoutPlan) {
+    /// Adds or replaces a plan and saves the plans. A plan that is saved active deactivates the others. `.failure` when the file could
+    /// not be written (the plan is saved in memory).
+    @discardableResult
+    public func savePlan(_ plan: WorkoutPlan) -> Result<Void, Error> {
         data.savePlan(plan)
-        persist(templates: false, history: false, customExercises: false, personalBests: false, plans: true)
+        return commit(plans: true)
     }
 
-    /// Makes a plan the active one and saves the plans.
-    public func activatePlan(id: UUID) {
+    /// Makes a plan the active one and saves the plans (an unknown id changes nothing).
+    @discardableResult
+    public func activatePlan(id: UUID) -> Result<Void, Error> {
+        let before = data.plans
         data.activatePlan(id: id)
-        persist(templates: false, history: false, customExercises: false, personalBests: false, plans: true)
+        guard data.plans != before else { return .success(()) }
+        return commit(plans: true)
     }
 
     /// Removes a plan (its templates stay) and saves the plans.
-    public func deletePlan(id: UUID) {
+    @discardableResult
+    public func deletePlan(id: UUID) -> Result<Void, Error> {
+        let before = data.plans
         data.deletePlan(id: id)
-        persist(templates: false, history: false, customExercises: false, personalBests: false, plans: true)
+        guard data.plans != before else { return .success(()) }
+        return commit(plans: true)
     }
 
     /// Passes over the next workout of a plan and saves the plans.
-    public func skipNextWorkout(planID: UUID) {
+    @discardableResult
+    public func skipNextWorkout(planID: UUID) -> Result<Void, Error> {
+        let before = data.plans
         data.skipNextWorkout(planID: planID)
-        persist(templates: false, history: false, customExercises: false, personalBests: false, plans: true)
+        guard data.plans != before else { return .success(()) }
+        return commit(plans: true)
     }
 
-    /// Imports a plan file (see `PlanBundle`). Nothing changes when the file cannot be read.
+    /// Imports a plan file (see `PlanBundle`). Nothing changes when the file cannot be read. A write error of the files it changed is
+    /// reported through `lastPersistenceError` (the import is applied in memory).
     public func importPlan(from fileData: Data) -> Result<PlanImportSummary, PlanImportError> {
         let bundle: PlanBundle
         do {
@@ -641,30 +868,38 @@ public final class StrengthDataModel: WorkoutDataProviding {
             return .failure(.unreadable)
         }
         let summary = data.importBundle(bundle)
-        cache = nil
-        persist(templates: true, history: false, customExercises: true, personalBests: false, plans: true)
+        _ = commit(templates: true, customExercises: true, plans: true, exercises: true)
         return .success(summary)
     }
 
     /// Records a finished workout (history, personal bests, template) and saves what changed.
     ///
     /// The data changes in memory in every case. The result is `.failure` when the workout could not be written to the history
-    /// file, which is the only place the workout's sets are kept; the other files are derived (the personal bests are re-read from
-    /// the history) or secondary (the template), so failing to write them is reported through `lastPersistenceError` only.
-    /// Every file is rewritten in full by its next save, so unsaved data is saved then.
+    /// file, which is the only place the workout's sets are kept; the other files are derived (the personal bests can be recomputed
+    /// from the history) or secondary (the template), so failing to write them is reported through `lastPersistenceError` only.
+    /// The templates and the personal bests are written only when the workout changed them.
     @discardableResult
     public func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error> {
+        let templatesBefore = data.templates
+        let bestsBefore = data.personalBests
+        let plansBefore = data.plans
         data.record(completed, updateTemplate: updateTemplate)
         cache = nil
-        if let historyError = persist(templates: true, history: true, customExercises: false, personalBests: true, plans: true) {
-            return .failure(historyError)
-        }
+        let failures = persist(
+            templates: data.templates != templatesBefore,
+            history: true,
+            customExercises: false,
+            personalBests: data.personalBests != bestsBefore,
+            plans: data.plans != plansBefore
+        )
+        if let failure = failures.first(where: { $0.target == .history }) { return .failure(failure.error) }
         return .success(())
     }
 
-    /// The history of one exercise as shown on its detail screen.
-    public func history(for exerciseID: String, now: Date) -> ExerciseHistory {
-        data.history(for: exerciseID, now: now)
+    /// The history of one exercise as shown on its detail screen, with its texts in the unit of the preferences and the separators of
+    /// `locale` (default: en_US).
+    public func history(for exerciseID: String, now: Date, locale: Locale = DisplayFormat.metric.locale) -> ExerciseHistory {
+        data.history(for: exerciseID, now: now, format: DisplayFormat(unit: data.preferences.weightUnit, locale: locale))
     }
 
     /// Stores a body weight (kg, rounded to 0.1) and saves the weigh-ins. nil, and nothing saved, when `kg` is not a plausible body weight.
@@ -695,6 +930,18 @@ public final class StrengthDataModel: WorkoutDataProviding {
         return true
     }
 
+    /// The user's workout preferences.
+    public var preferences: StrengthPreferences { data.preferences }
+
+    /// Replaces the workout preferences and saves them. `.failure` when the file could not be written (the preferences change in
+    /// memory anyway). The counts are kept in range by `StrengthPreferences` itself.
+    @discardableResult
+    public func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error> {
+        guard data.preferences != preferences || !preferencesStored else { return .success(()) }
+        data.preferences = preferences
+        return commit(preferences: true)
+    }
+
     /// Replaces the weigh-in reminder preferences and saves them.
     public func setWeighInPreferences(_ preferences: WeighInPreferences) {
         guard data.weighIn != preferences else { return }
@@ -708,8 +955,34 @@ public final class StrengthDataModel: WorkoutDataProviding {
         loadFromDisk()
     }
 
+    /// Forgets the load issues the user has seen (`persistenceIssues` becomes empty). The backups of damaged files stay on disk.
+    /// From then on the personal bests follow the history again, also after a history that had unreadable workouts.
+    public func acknowledgePersistenceIssues() {
+        persistence?.clearLoadIssues()
+        persistenceIssues = []
+        data.historyIsIncomplete = false
+    }
+
+    /// Takes over the issues the persistence found since the last call, such as those of the active-workout file that the
+    /// workout engine reads on its own. Issues the user has not acknowledged stay, also when a later read of the file was clean
+    /// (the file was rewritten since); a newer issue of the same file replaces the older one.
+    public func refreshPersistenceIssues() {
+        guard let persistence else { return }
+        var byFile: [String: PersistenceIssue] = [:]
+        for issue in persistenceIssues { byFile[issue.fileName] = issue }
+        for issue in persistence.loadIssues { byFile[issue.fileName] = issue }
+        persistenceIssues = byFile.values.sorted { $0.fileName < $1.fileName }
+    }
+
     private func loadFromDisk() {
         guard let persistence else { return }
+        persistence.rescanSchema()
+        let bestsFileExisted = persistence.hasPersonalBestsFile
+        let historyWasIncomplete = data.historyIsIncomplete
+        // A file that exists but cannot be read counts as stored: it is left alone until the user saves new preferences (the
+        // original is copied first, see `FileStrengthPersistence.write`).
+        preferencesStored = persistence.hasPreferencesFile
+        let preferences = persistence.loadPreferences() ?? preferencesWithoutFile(of: persistence)
         data = StrengthData(
             templates: persistence.loadTemplates(),
             history: persistence.loadHistory(),
@@ -717,12 +990,48 @@ public final class StrengthDataModel: WorkoutDataProviding {
             personalBests: persistence.loadPersonalBests(),
             plans: persistence.loadPlans(),
             bodyWeights: persistence.loadBodyWeights(),
-            weighIn: persistence.loadWeighInPreferences()
+            weighIn: persistence.loadWeighInPreferences(),
+            preferences: preferences,
+            historyIsIncomplete: historyWasIncomplete
         )
         cache = nil
+        refreshPersistenceIssues()
+        repairDerivedData(bestsFileExisted: bestsFileExisted)
     }
 
-    private func overlayCache() -> (list: [Exercise], byID: [String: Exercise]) {
+    /// Fixes what is derived from the files just read: the personal bests are recomputed from the history when their file is
+    /// missing, or damaged while the history is whole (a damaged history keeps the bests as they were read: they may be the only
+    /// trace of a workout that could not be read); template copies of built-in exercises take over the current library.
+    ///
+    /// Only a missing bests file is written back. A damaged file stays as it is until the next legitimate save of it.
+    private func repairDerivedData(bestsFileExisted: Bool) {
+        let damaged = Set((persistence?.loadIssues ?? []).map { $0.fileName })
+        let bestsDamaged = damaged.contains(FileStrengthPersistence.FileName.personalBests)
+        let historyDamaged = damaged.contains(FileStrengthPersistence.FileName.history)
+        if historyDamaged { data.historyIsIncomplete = true }
+        if !data.history.isEmpty, !bestsFileExisted || (bestsDamaged && !historyDamaged) {
+            data.recomputePersonalBests()
+            if !bestsFileExisted, persistence?.canWrite == true {
+                persist(templates: false, history: false, customExercises: false, personalBests: true)
+            }
+        }
+        refreshTemplateExercises()
+    }
+
+    /// The preferences when `preferences.json` could not be loaded. A directory that already holds the user's data without a
+    /// preferences file was written by a build that only knew kilograms: that user keeps kilograms (the region must not convert
+    /// their history on the upgrade) and can choose pounds in the settings. Only a directory without such data is a new install.
+    private func preferencesWithoutFile(of persistence: FileStrengthPersistence) -> StrengthPreferences {
+        if !persistence.hasPreferencesFile, persistence.hasUserDataFilesBesidesPreferences { return StrengthPreferences() }
+        return StrengthDataModel.newInstallPreferences(deviceLocale)
+    }
+
+    /// The preferences of a new install: the defaults with the unit that `deviceLocale` calls for (kilograms without a locale).
+    private static func newInstallPreferences(_ deviceLocale: Locale?) -> StrengthPreferences {
+        deviceLocale.map { StrengthPreferences(locale: $0) } ?? StrengthPreferences()
+    }
+
+    func overlayCache() -> (list: [Exercise], byID: [String: Exercise]) {
         if let cache { return cache }
         let list = data.exercises()
         var byID: [String: Exercise] = [:]
@@ -731,43 +1040,139 @@ public final class StrengthDataModel: WorkoutDataProviding {
         return (list, byID)
     }
 
-    /// Writes the requested files, attempting every one even when an earlier one fails.
+    /// The files `persist` can write.
+    struct PersistTargets: OptionSet {
+        let rawValue: Int
+        static let templates = PersistTargets(rawValue: 1)
+        static let history = PersistTargets(rawValue: 2)
+        static let customExercises = PersistTargets(rawValue: 4)
+        static let personalBests = PersistTargets(rawValue: 8)
+        static let bodyWeights = PersistTargets(rawValue: 16)
+        static let weighIn = PersistTargets(rawValue: 32)
+        static let preferences = PersistTargets(rawValue: 64)
+        static let plans = PersistTargets(rawValue: 128)
+    }
+
+    /// A file that `persist` could not write, and why.
+    struct PersistFailure {
+        let target: PersistTargets
+        let error: Error
+    }
+
+    /// Writes the files a change touched, then the files an earlier save could not write. Every file is attempted even when an
+    /// earlier one fails.
     ///
-    /// Sets `lastPersistenceError` to the first error (nil when every requested file was written) and returns the error of the
-    /// history file, nil when it was written or not requested.
+    /// Sets `lastPersistenceError` to the first error (nil when every file was written) and returns every failure, in write order.
     @discardableResult
-    private func persist(
+    func persist(
         templates: Bool,
         history: Bool,
         customExercises: Bool,
         personalBests: Bool,
         plans: Bool = false,
         bodyWeights: Bool = false,
-        weighIn: Bool = false
-    ) -> Error? {
+        weighIn: Bool = false,
+        preferences: Bool = false
+    ) -> [PersistFailure] {
         guard let persistence else {
             lastPersistenceError = nil
-            return nil
+            return []
         }
-        var firstError: Error?
-        var historyError: Error?
-        func attempt(_ write: () throws -> Void) -> Error? {
+        var pending = unsavedFiles
+        if templates { pending.insert(.templates) }
+        if history { pending.insert(.history) }
+        if customExercises { pending.insert(.customExercises) }
+        if personalBests { pending.insert(.personalBests) }
+        if plans { pending.insert(.plans) }
+        if bodyWeights { pending.insert(.bodyWeights) }
+        if weighIn { pending.insert(.weighIn) }
+        // The first save of anything also writes the preferences that were created at the first launch.
+        if preferences || !preferencesStored { pending.insert(.preferences) }
+        unsavedFiles = []
+
+        var failures: [PersistFailure] = []
+        func attempt(_ target: PersistTargets, _ write: () throws -> Void) {
+            guard pending.contains(target) else { return }
             do {
                 try write()
-                return nil
             } catch {
-                if firstError == nil { firstError = error }
-                return error
+                failures.append(PersistFailure(target: target, error: error))
+                unsavedFiles.insert(target)
             }
         }
-        if templates { _ = attempt { try persistence.saveTemplates(data.templates) } }
-        if history { historyError = attempt { try persistence.saveHistory(data.history) } }
-        if customExercises { _ = attempt { try persistence.saveCustomExercises(data.customExercises) } }
-        if personalBests { _ = attempt { try persistence.savePersonalBests(data.personalBests) } }
-        if plans { _ = attempt { try persistence.savePlans(data.plans) } }
-        if bodyWeights { _ = attempt { try persistence.saveBodyWeights(data.bodyWeights) } }
-        if weighIn { _ = attempt { try persistence.saveWeighInPreferences(data.weighIn) } }
-        lastPersistenceError = firstError
-        return historyError
+        attempt(.history) { try persistence.saveHistory(data.history) }
+        attempt(.customExercises) { try persistence.saveCustomExercises(data.customExercises) }
+        attempt(.personalBests) { try persistence.savePersonalBests(data.personalBests) }
+        attempt(.templates) { try persistence.saveTemplates(data.templates) }
+        attempt(.plans) { try persistence.savePlans(data.plans) }
+        attempt(.bodyWeights) { try persistence.saveBodyWeights(data.bodyWeights) }
+        attempt(.weighIn) { try persistence.saveWeighInPreferences(data.weighIn) }
+        attempt(.preferences) {
+            try persistence.savePreferences(data.preferences)
+            preferencesStored = true
+        }
+        lastPersistenceError = failures.first?.error
+        return failures
+    }
+
+    /// Saves the files a management change touched and reports the outcome: `.failure` with the first error among the files this
+    /// change asked to write. A file that an earlier save left unwritten is retried too, but its error only reaches
+    /// `lastPersistenceError`, so the result says whether this change was saved. `exercises` drops the cached exercise overlay.
+    func commit(
+        templates: Bool = false,
+        history: Bool = false,
+        customExercises: Bool = false,
+        personalBests: Bool = false,
+        plans: Bool = false,
+        bodyWeights: Bool = false,
+        weighIn: Bool = false,
+        preferences: Bool = false,
+        exercises: Bool = false
+    ) -> Result<Void, Error> {
+        if exercises || history || personalBests { cache = nil }
+        var requested: PersistTargets = []
+        if templates { requested.insert(.templates) }
+        if history { requested.insert(.history) }
+        if customExercises { requested.insert(.customExercises) }
+        if personalBests { requested.insert(.personalBests) }
+        if plans { requested.insert(.plans) }
+        if bodyWeights { requested.insert(.bodyWeights) }
+        if weighIn { requested.insert(.weighIn) }
+        if preferences { requested.insert(.preferences) }
+        let failures = persist(
+            templates: templates,
+            history: history,
+            customExercises: customExercises,
+            personalBests: personalBests,
+            plans: plans,
+            bodyWeights: bodyWeights,
+            weighIn: weighIn,
+            preferences: preferences
+        )
+        if let failure = failures.first(where: { requested.contains($0.target) }) { return .failure(failure.error) }
+        return .success(())
+    }
+
+    /// Removes every data file of the persistence after the whole data was reset (`FileStrengthPersistence.deleteAll()`) and forgets
+    /// the writes that were still pending: there is nothing left to write. When the removal fails (or is refused), every file counts
+    /// as unwritten, so the next save of anything writes the emptied data again.
+    func removeAllFiles() -> Result<Void, Error> {
+        cache = nil
+        guard let persistence else {
+            unsavedFiles = []
+            lastPersistenceError = nil
+            return .success(())
+        }
+        do {
+            try persistence.deleteAll()
+            unsavedFiles = []
+            preferencesStored = false
+            lastPersistenceError = nil
+            return .success(())
+        } catch {
+            unsavedFiles = [.templates, .history, .customExercises, .personalBests, .plans, .bodyWeights, .weighIn, .preferences]
+            lastPersistenceError = error
+            return .failure(error)
+        }
     }
 }

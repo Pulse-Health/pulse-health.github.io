@@ -23,6 +23,27 @@ public protocol WorkoutDataProviding: AnyObject {
     /// file); the engine then keeps the active-workout file, the last saved copy of the workout.
     @discardableResult
     func record(_ completed: CompletedWorkout, updateTemplate: WorkoutTemplate?) -> Result<Void, Error>
+    /// The recovery of each muscle group at `now`, estimated from the finished workouts (see `RecoveryEstimator`).
+    func recoveryProvider(now: Date) -> RecoveryProvider
+    /// False when the estimate at `now` is only the default 100 because the history has no recent workout (`RecoveryEstimate.hasData`).
+    func recoveryHasData(now: Date) -> Bool
+    /// The user's preferences: a new workout starts with their rest timer choices and weight unit.
+    var preferences: StrengthPreferences { get }
+    /// Saves new preferences (the engine remembers a rest timer choice made during a workout this way). `.failure` when they could
+    /// not be written; they change in memory anyway.
+    @discardableResult
+    func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error>
+}
+
+public extension WorkoutDataProviding {
+    /// True, for a provider whose recovery numbers are not estimated from a history.
+    func recoveryHasData(now: Date) -> Bool { true }
+
+    /// The default preferences, for a provider that has none.
+    var preferences: StrengthPreferences { StrengthPreferences() }
+
+    /// Does nothing, for a provider that keeps no preferences.
+    func updatePreferences(_ preferences: StrengthPreferences) -> Result<Void, Error> { .success(()) }
 }
 
 // MARK: - Engine
@@ -52,8 +73,15 @@ public final class WorkoutEngine {
 
     /// Phone (authority) or Watch (mirror).
     public let role: WorkoutRole
-    /// Muscle recovery lookup used by `presentation(now:)`.
-    public var recovery: RecoveryProvider
+    /// Muscle recovery lookup used by `presentation(now:)`. Unless one was set (or passed to `init`), it is the estimate that the
+    /// data provider makes from the finished workouts (`RecoveryEstimator`) at the time of the call; a provider that was set stays.
+    public var recovery: RecoveryProvider {
+        get { recoveryOverride ?? data.recoveryProvider(now: clock()) }
+        set { recoveryOverride = newValue }
+    }
+    /// The locale whose decimal and grouping separators the texts of `presentation(now:)` and `snapshot(now:)` use (default: en_US).
+    /// The app sets `Locale.current`; the unit comes from the workout (`WorkoutSettings.weightUnit`).
+    public var displayLocale = DisplayFormat.metric.locale
     /// The workout in progress; nil when there is none.
     public private(set) var state: WorkoutState?
     /// The workout finished most recently (cleared when the next one starts).
@@ -95,6 +123,7 @@ public final class WorkoutEngine {
     private let persistence: FileStrengthPersistence?
     private let data: WorkoutDataProviding
     private let clock: @Sendable () -> Date
+    private var recoveryOverride: RecoveryProvider?
     private var seenCommands = SeenCommands()
     private var effects: [WorkoutSideEffect] = []
     private var lastHeartRateReport: Date?
@@ -169,18 +198,19 @@ public final class WorkoutEngine {
         var sentAt: Date
     }
 
-    /// Creates an engine; `persistence` is only written when `role == .authority`.
+    /// Creates an engine; `persistence` is only written when `role == .authority`. Without `recovery` the muscle recovery is
+    /// estimated from the finished workouts of `data`; previews and tests pass `DemoRecovery.provider` or their own.
     public init(
         role: WorkoutRole,
         persistence: FileStrengthPersistence?,
         data: WorkoutDataProviding,
-        recovery: @escaping RecoveryProvider = DemoRecovery.provider,
+        recovery: RecoveryProvider? = nil,
         clock: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.role = role
         self.persistence = persistence
         self.data = data
-        self.recovery = recovery
+        self.recoveryOverride = recovery
         self.clock = clock
     }
 
@@ -197,19 +227,33 @@ public final class WorkoutEngine {
     /// Does nothing for a mirror, without persistence, without a saved workout, or while a workout is already in progress
     /// (the in-memory copy can be newer than the file because heart-rate samples are saved only every few seconds).
     ///
+    /// The previous results of the restored exercises are brought up to date like at the start (`start(template:)`), so a workout
+    /// saved by an older build does not keep results that are not in the history.
+    ///
     /// The acknowledged command ids are restored too (whether or not a workout is saved): a command that was applied before the
     /// relaunch is acknowledged again by the next envelope and is not applied a second time when it is redelivered.
     public func restore() {
         guard role == .authority, state == nil, let persistence else { return }
         restoreAcknowledgements(from: persistence)
-        guard let restored = persistence.loadActiveWorkout() else { return }
+        guard var restored = persistence.loadActiveWorkout() else { return }
+        // A workout saved by an older build carries the previous results that build knew (invented ones included).
+        var changed = false
+        for index in restored.exercises.indices {
+            let current = refreshed(restored.exercises[index].exercise)
+            if current != restored.exercises[index].exercise {
+                restored.exercises[index].exercise = current
+                changed = true
+            }
+        }
         state = restored
+        if changed { persistActiveWorkout() }
         lastHeartRateReport = nil
         onUpdate?()
         for effect in effects { effect.workoutStarted(restored) }
     }
 
-    /// Starts a workout from `template`, or an empty one named `name` (default "Workout"), and tells the effects.
+    /// Starts a workout from `template`, or an empty one named `name` (default "Workout"), and tells the effects. The workout's
+    /// settings (rest timer, weight unit) are the user's current preferences.
     ///
     /// Returns false (and changes nothing) while a workout is already in progress, so a double tap cannot replace a running workout.
     @discardableResult
@@ -218,13 +262,15 @@ public final class WorkoutEngine {
         let now = clock()
         var started: WorkoutState
         if let template {
-            started = WorkoutFactory.makeWorkout(from: template, now: now)
+            started = WorkoutFactory.makeWorkout(from: template, now: now, preferences: data.preferences)
             for index in started.exercises.indices {
                 started.exercises[index].exercise = refreshed(started.exercises[index].exercise)
             }
         } else {
             let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            started = WorkoutFactory.makeEmpty(name: trimmed.isEmpty ? StrengthConfig.defaultWorkoutName : trimmed, now: now)
+            started = WorkoutFactory.makeEmpty(
+                name: trimmed.isEmpty ? StrengthConfig.defaultWorkoutName : trimmed, now: now, preferences: data.preferences
+            )
         }
         state = started
         lastCompleted = nil
@@ -259,6 +305,7 @@ public final class WorkoutEngine {
         WorkoutReducer.reduce(&new, action, now: reducerTime)
         guard new != old else { return }
         state = new
+        if role == .authority { rememberRestChoice(of: action, in: new) }
 
         let isHeartRate: Bool
         if case .updateHeartRate = action { isHeartRate = true } else { isHeartRate = false }
@@ -476,22 +523,57 @@ public final class WorkoutEngine {
 
     // MARK: Derived values
 
-    /// The active-workout screen model for `now`; nil without a workout.
+    /// The active-workout screen model for `now`; nil without a workout. Its weights are in the workout's unit, written with
+    /// `displayLocale`. The finish check compares the workout with the template as it is saved now and follows the user's choice of
+    /// when to offer updating it (`StrengthPreferences.askToUpdateTemplate`).
     public func presentation(now: Date) -> ActiveWorkoutPresentation? {
-        state.map { WorkoutPresenter.present($0, now: now, recovery: recovery) }
+        state.map {
+            WorkoutPresenter.present(
+                $0,
+                now: now,
+                recovery: recoveryOverride ?? data.recoveryProvider(now: now),
+                recoveryHasData: recoveryOverride != nil || data.recoveryHasData(now: now),
+                locale: displayLocale,
+                template: template(of: $0),
+                templateUpdatePrompt: data.preferences.askToUpdateTemplate
+            )
+        }
     }
 
-    /// The Live Activity / Watch snapshot for `now`; nil without a workout.
+    /// The Live Activity / Watch snapshot for `now`; nil without a workout. Its weights are in the workout's unit, written with
+    /// `displayLocale`.
     public func snapshot(now: Date) -> WorkoutSnapshot? {
-        state.map { SnapshotBuilder.make(from: $0, now: now) }
+        state.map { SnapshotBuilder.make(from: $0, now: now, locale: displayLocale) }
     }
 
-    /// What changed against the template the workout started from (empty without a workout).
+    /// What changed against the template the workout started from, the sets and rest of the kept exercises included (empty without a
+    /// workout). Unlike the finish check it does not depend on the user's choice of when to offer updating the template.
     public func templateDiff() -> TemplateDiff {
-        state.map { TemplateDiff.compute(for: $0) } ?? TemplateDiff()
+        state.map { TemplateDiff.compute(for: $0, against: template(of: $0)) } ?? TemplateDiff()
     }
 
     // MARK: Helpers
+
+    /// The saved template the workout started from; nil for a workout without one or when the template was deleted since.
+    private func template(of workout: WorkoutState) -> WorkoutTemplate? {
+        workout.templateID.flatMap { data.template(id: $0) }
+    }
+
+    /// Authority: a rest timer choice made during the workout (here, on the Watch or on the Live Activity) is the user's choice for the
+    /// next workouts too, so it is saved as a preference.
+    private func rememberRestChoice(of action: WorkoutAction, in state: WorkoutState) {
+        // Only the toggle the action names is written: the workout keeps its own value of the other one when Settings change it.
+        var preferences = data.preferences
+        switch action {
+        case .setAutoStartRest:
+            preferences.autoStartRest = state.settings.autoStartRest
+        case .setAlertWhenRestEnds:
+            preferences.alertWhenRestEnds = state.settings.alertWhenRestEnds
+        default:
+            return
+        }
+        if preferences != data.preferences { data.updatePreferences(preferences) }
+    }
 
     /// Adopts the phone's `incoming` state (mirror), see `receive(_: SyncEnvelope)`.
     private func adopt(_ incoming: WorkoutState, from envelope: SyncEnvelope) {
@@ -670,12 +752,15 @@ public final class WorkoutEngine {
         }
     }
 
-    /// The template's exercise with the latest remembered best and last sets (everything else stays as the template has it).
+    /// The template's exercise brought up to date: a built-in exercise is the library's current one (name, cues, media, ...), any
+    /// exercise gets the latest remembered best, record marks and last sets. Nothing else of a custom exercise changes (the store refreshes the
+    /// template copies when the exercise is edited).
     private func refreshed(_ exercise: Exercise) -> Exercise {
         guard let latest = data.exercise(id: exercise.id) else { return exercise }
-        var result = exercise
+        var result = ExerciseLibrary.exercise(id: exercise.id) != nil ? latest : exercise
         result.previousBestE1RM = latest.previousBestE1RM
         result.previousSets = latest.previousSets
+        result.previousRecords = latest.previousRecords
         return result
     }
 }

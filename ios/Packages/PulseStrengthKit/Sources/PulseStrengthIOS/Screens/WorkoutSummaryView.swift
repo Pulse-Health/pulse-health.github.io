@@ -290,9 +290,10 @@ private struct WorkoutSummaryRecordRow: View {
             .background(PulseTheme.prFill, in: Circle())
     }
 
-    /// Whole-kilogram improvement over the previous best, as printed ("3 kg"); nil when it rounds to nothing.
+    /// Whole-kilogram improvement over the previous best, as printed ("3 kg"); nil when it rounds to nothing and for a record that is
+    /// not an estimated 1RM (its previous best is a weight, a number of reps or seconds).
     private var gainKg: Double? {
-        guard record.previousBest > 0 else { return nil }
+        guard record.kind == .estimated1RM, record.previousBest > 0 else { return nil }
         let gain = record.estimated1RM.rounded() - record.previousBest.rounded()
         return gain >= 1 ? gain : nil
     }
@@ -310,17 +311,36 @@ private struct WorkoutSummaryRecordRow: View {
         }
     }
 
-    /// "85 kg × 6 · est. 1RM 102 kg"
+    /// "85 kg × 6 · est. 1RM 102 kg", "85 kg × 6 · Heaviest", "20 reps · Most reps" or "90 s · Longest hold"
     private var detailText: String {
         let weight = NumberText.kg(record.weightKg)
-        let estimate = NumberText.kg(record.estimated1RM.rounded())
-        return "\(weight) kg × \(record.reps) · est. 1RM \(estimate) kg"
+        switch record.kind {
+        case .estimated1RM:
+            let estimate = NumberText.kg(record.estimated1RM.rounded())
+            return "\(weight) kg × \(record.reps) · est. 1RM \(estimate) kg"
+        case .heaviest, .repRecord:
+            return "\(weight) kg × \(record.reps) · \(record.kind.shortTitle)"
+        case .reps:
+            return "\(record.reps) reps · \(record.kind.shortTitle)"
+        case .duration:
+            return "\(record.reps) s · \(record.kind.shortTitle)"
+        }
     }
 
     private var accessibilityText: String {
         let weight = NumberText.kg(record.weightKg)
-        let estimate = NumberText.kg(record.estimated1RM.rounded())
-        var text = "New personal record, \(record.exerciseName), \(weight) kilograms for \(record.reps) reps, estimated one-rep max \(estimate) kilograms"
+        var text: String
+        switch record.kind {
+        case .estimated1RM:
+            let estimate = NumberText.kg(record.estimated1RM.rounded())
+            text = "New personal record, \(record.exerciseName), \(weight) kilograms for \(record.reps) reps, estimated one-rep max \(estimate) kilograms"
+        case .heaviest, .repRecord:
+            text = "New personal record, \(record.exerciseName), \(weight) kilograms for \(record.reps) reps, \(record.kind.spokenTitle)"
+        case .reps:
+            text = "New personal record, \(record.exerciseName), \(record.reps) reps, \(record.kind.spokenTitle)"
+        case .duration:
+            text = "New personal record, \(record.exerciseName), \(record.reps) seconds, \(record.kind.spokenTitle)"
+        }
         if let gainKg {
             text += ", up \(NumberText.kg(gainKg)) kilograms"
         }

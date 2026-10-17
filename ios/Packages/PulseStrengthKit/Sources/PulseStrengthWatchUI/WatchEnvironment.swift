@@ -45,7 +45,8 @@ public struct WatchEndedSummary: Equatable, Sendable {
     }
 }
 
-/// Set and volume totals of a workout (the presenter's rules: warm-up sets and exercises without a weight are left out of the volume).
+/// Set and volume totals of a workout (the presenter's rules: warm-up sets, exercises without a weight and weights that are not
+/// positive are left out of the volume).
 private struct WatchWorkoutTotals {
     var loggedSets = 0
     var totalSets = 0
@@ -54,12 +55,8 @@ private struct WatchWorkoutTotals {
     init(_ state: WorkoutState) {
         for entry in state.exercises {
             totalSets += entry.sets.count
-            for set in entry.sets where set.isDone {
-                loggedSets += 1
-                if set.type.countsTowardVolume && entry.exercise.tracksWeight {
-                    volumeKg += set.weightKg * Double(set.reps)
-                }
-            }
+            loggedSets += entry.doneCount
+            volumeKg += entry.loggedVolumeKg
         }
     }
 }
@@ -170,6 +167,7 @@ public final class WatchEnvironment: ObservableObject {
     public init() {
         let store = StrengthStore(persistence: nil)
         let controller = WorkoutController(store: store, persistence: nil, role: .mirror)
+        controller.displayLocale = .current
         let session = WatchWorkoutSession()
         let connectivity = WatchConnectivityClient(controller: controller)
 

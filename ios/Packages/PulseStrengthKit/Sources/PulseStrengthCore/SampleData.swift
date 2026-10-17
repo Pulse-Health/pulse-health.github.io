@@ -10,6 +10,12 @@ import Foundation
 public enum SampleData {
     // MARK: Public API
 
+    /// The ids of the three demo templates. `StrengthStore.removeSampleData()` deletes exactly these.
+    public static let templateIDs: [UUID] = [fixedID(1, 1), fixedID(1, 2), fixedID(1, 3)]
+
+    /// The ids of the five demo workouts. `StrengthStore.removeSampleData()` deletes exactly these.
+    public static let workoutIDs: [UUID] = (1...5).map { fixedID(3, $0) }
+
     /// The three demo templates: "Upper A · Push", "Lower A · Quads" and "Upper B · Pull" (never performed).
     public static func templates() -> [WorkoutTemplate] {
         [upperPush(), lowerQuads(), upperPull()]
@@ -39,24 +45,10 @@ public enum SampleData {
         return workouts.reversed()
     }
 
-    /// The best set per exercise of the demo history (bench: 85 kg × 5, 10 days ago, estimated 1RM 99).
+    /// The best set per exercise of the demo history (bench: 85 kg × 5, 10 days ago, estimated 1RM 99) with the record marks, as
+    /// `StrengthData.recomputedPersonalBests()` makes them from `history(now:)`.
     public static func personalBests(now: Date) -> [String: PersonalBest] {
-        var bests: [String: PersonalBest] = [:]
-        for workout in history(now: now).reversed() {
-            for entry in workout.exercises where entry.bestE1RM > 0 {
-                if entry.bestE1RM > (bests[entry.exerciseID]?.estimated1RM ?? 0) + 1e-9 {
-                    let best = bestSet(of: entry.sets)
-                    bests[entry.exerciseID] = PersonalBest(
-                        exerciseID: entry.exerciseID,
-                        estimated1RM: entry.bestE1RM,
-                        weightKg: best?.weightKg ?? 0,
-                        reps: best?.reps ?? 0,
-                        date: workout.finishedAt
-                    )
-                }
-            }
-        }
-        return bests
+        StrengthData(history: history(now: now)).recomputedPersonalBests()
     }
 }
 
@@ -65,7 +57,7 @@ public enum SampleData {
 private extension SampleData {
     static func upperPush() -> WorkoutTemplate {
         WorkoutTemplate(
-            id: fixedID(1, 1),
+            id: templateIDs[0],
             name: "Upper A · Push",
             entries: [
                 entry(1, "bench", [planned(.warmup, 50, 8), planned(.warmup, 70, 5), planned(.normal, 82.5, 6), planned(.normal, 82.5, 6), planned(.normal, 85, 6)], rest: 150),
@@ -80,7 +72,7 @@ private extension SampleData {
 
     static func lowerQuads() -> WorkoutTemplate {
         WorkoutTemplate(
-            id: fixedID(1, 2),
+            id: templateIDs[1],
             name: "Lower A · Quads",
             entries: [
                 entry(11, "squat", [planned(.warmup, 40, 8), planned(.warmup, 60, 5), planned(.normal, 80, 6), planned(.normal, 80, 6), planned(.normal, 80, 6)], rest: 180),
@@ -94,7 +86,7 @@ private extension SampleData {
 
     static func upperPull() -> WorkoutTemplate {
         WorkoutTemplate(
-            id: fixedID(1, 3),
+            id: templateIDs[2],
             name: "Upper B · Pull",
             entries: [
                 entry(21, "pullup", straight(3, 0, 8), rest: 120),
@@ -151,9 +143,9 @@ private extension SampleData {
     }
 
     static func sessionDefinitions() -> [SessionDefinition] {
-        let upperA = fixedID(1, 1)
-        let lowerA = fixedID(1, 2)
-        let upperB = fixedID(1, 3)
+        let upperA = templateIDs[0]
+        let lowerA = templateIDs[1]
+        let upperB = templateIDs[2]
         return [
             SessionDefinition(number: 1, name: "Upper B · Pull", templateID: upperB, daysAgo: 3, minutes: 52, averageHeartRate: 124, lines: [
                 ("pullup", [work(0, 8, rir: 2), work(0, 8, rir: 2), work(0, 7, rir: 1)]),
@@ -215,11 +207,15 @@ private extension SampleData {
             let isRecord = previous > 0 && bestValue > previous + 0.05
             baseline[exercise.id] = max(previous, bestValue)
 
+            var sets = line.sets
             if isRecord, let best {
                 records.append(PersonalRecord(
                     exerciseID: exercise.id, exerciseName: exercise.name, weightKg: best.weightKg, reps: best.reps,
                     estimated1RM: bestValue, previousBest: previous
                 ))
+                if let index = sets.firstIndex(where: { $0.type != .warmup && $0.weightKg == best.weightKg && $0.reps == best.reps }) {
+                    sets[index].prKind = .estimated1RM
+                }
             }
             if exercise.tracksWeight {
                 volume += workingSets.reduce(0.0) { $0 + $1.weightKg * Double($1.reps) }
@@ -235,7 +231,7 @@ private extension SampleData {
                 muscle: exercise.muscle,
                 mediaKey: exercise.mediaKey,
                 tracking: exercise.tracking,
-                sets: line.sets,
+                sets: sets,
                 isPersonalRecord: isRecord,
                 bestE1RM: bestValue
             ))
@@ -249,7 +245,7 @@ private extension SampleData {
         let finishedAt = now.addingTimeInterval(-Double(session.daysAgo) * 86_400)
         let duration = session.minutes * 60
         return CompletedWorkout(
-            id: fixedID(3, session.number),
+            id: workoutIDs[session.number - 1],
             name: session.name,
             templateID: session.templateID,
             startedAt: finishedAt.addingTimeInterval(-Double(duration)),
@@ -265,11 +261,11 @@ private extension SampleData {
         )
     }
 
-    /// The non-warm-up set with the highest Epley estimate (first on a tie).
+    /// The non-warm-up set with the highest estimate (sets of 1...12 reps; first on a tie).
     static func bestSet(of sets: [CompletedSet]) -> (e1RM: Double, weightKg: Double, reps: Int)? {
         var best: (e1RM: Double, weightKg: Double, reps: Int)?
         for set in sets where set.type != .warmup {
-            let value = Estimated1RM.epley(weightKg: set.weightKg, reps: set.reps)
+            guard let value = Estimated1RM.estimate(weightKg: set.weightKg, reps: set.reps) else { continue }
             if value > (best?.e1RM ?? 0) { best = (value, set.weightKg, set.reps) }
         }
         return best

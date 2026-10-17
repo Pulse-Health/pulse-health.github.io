@@ -305,7 +305,10 @@ public enum ExerciseLibrary {
         return matches.map { $0.exercise }
     }
 
-    /// Builds one library entry from a design row (`barKg` is 10 for the skull crusher, else 20).
+    /// The reps-only exercises that can carry an added load or be done with assistance: the weighted and assisted pull-up and dip.
+    private static let addedWeightIDs: Set<String> = ["pullup", "dips"]
+
+    /// Builds one library entry from a design row (`barKg` is 10 for the skull crusher, else 20; `allowsAddedWeight` for `addedWeightIDs`).
     private static func row(
         _ id: String,
         _ name: String,
@@ -333,7 +336,8 @@ public enum ExerciseLibrary {
             defaults: ExerciseDefaults(sets: sets, weightKg: kg, reps: reps, restSeconds: rest),
             cues: cues,
             barKg: id == "skull" ? 10 : 20,
-            isCustom: false
+            isCustom: false,
+            allowsAddedWeight: addedWeightIDs.contains(id)
         )
     }
 }

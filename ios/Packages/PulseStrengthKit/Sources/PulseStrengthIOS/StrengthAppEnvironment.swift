@@ -79,8 +79,9 @@ public final class StrengthAppEnvironment: ObservableObject {
     /// data through `preview(withActiveWorkout:)`.
     public static func live(seedDemoData: Bool = false) -> StrengthAppEnvironment {
         let persistence = makeLivePersistence()
-        let store = StrengthStore(persistence: persistence, seedDemoData: seedDemoData)
+        let store = StrengthStore(persistence: persistence, seedDemoData: seedDemoData, deviceLocale: Locale.current)
         let controller = WorkoutController(store: store, persistence: persistence, role: .authority)
+        controller.displayLocale = .current
         let services = PulseServices(controller: controller)
         let environment = StrengthAppEnvironment(
             persistence: persistence,
@@ -104,7 +105,8 @@ public final class StrengthAppEnvironment: ObservableObject {
 
     // MARK: Preview
 
-    /// Temporary persistence with the sample data and no live services; optionally with a workout already running.
+    /// Temporary persistence with the sample data (and the demo muscle recovery) and no live services; optionally with a workout
+    /// already running.
     ///
     /// `services` is a required property, so previews get a `PulseServices` that is registered with a detached
     /// controller nobody uses: the preview's own controller has no effects, so nothing reaches ActivityKit,
@@ -112,7 +114,7 @@ public final class StrengthAppEnvironment: ObservableObject {
     public static func preview(withActiveWorkout: Bool = false) -> StrengthAppEnvironment {
         let persistence = FileStrengthPersistence.temporary()
         let store = StrengthStore(persistence: persistence, seedDemoData: true)
-        let controller = WorkoutController(store: store, persistence: persistence, role: .authority)
+        let controller = WorkoutController(store: store, persistence: persistence, role: .authority, recovery: DemoRecovery.provider)
         let detached = WorkoutController(store: store, persistence: nil, role: .mirror)
         let services = PulseServices(controller: detached)
         let environment = StrengthAppEnvironment(
