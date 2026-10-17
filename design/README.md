@@ -4,7 +4,7 @@
 
 A clickable prototype of the new first-run experience, built around the looping runner video:
 **welcome → sign up / log in → profile → Apple Health → AI Coaching → notifications → done**.
-It is the design reference for the SwiftUI onboarding in `ios/` ([ported](#the-swiftui-port)). Nothing is sent or stored; the forms are not connected to anything.
+It is the design reference for the SwiftUI onboarding that was ported in the standalone Pulse Strength app (`ios/`, [ported](#the-swiftui-port)). That app moved to the Baseline repository; the `ios/` tree was removed from this repository and stays in the git history before the commit that removed it. Nothing is sent or stored; the forms are not connected to anything.
 
 ## Open it
 
