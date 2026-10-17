@@ -182,6 +182,7 @@ public struct ActiveWorkoutView: View {
                 .overlay(alignment: .bottom) {
                     toastLayer(presentation)
                 }
+                .pulseReadableColumn()
             dockArea(presentation.dock)
         }
         .onChange(of: presentation.dock?.phase) { oldPhase, newPhase in
@@ -219,6 +220,7 @@ public struct ActiveWorkoutView: View {
             )
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 8)
+            .pulseReadableColumn()
         }
     }
 
@@ -309,6 +311,7 @@ public struct ActiveWorkoutView: View {
             )
             .padding(.horizontal, 14)
             .padding(.bottom, 22)
+            .pulseReadableColumn()
             .transition(dockTransition)
         }
     }
@@ -511,9 +514,10 @@ public struct ActiveWorkoutView: View {
     }
 
     /// The shared look of the sheets: 26 pt top corners, grouped-grey background, no grabber
-    /// (each sheet has its own Done / Cancel button).
+    /// (each sheet has its own Done / Cancel button). On a wide screen the content keeps to the width of a form sheet.
     private func sheetStyled<Content: View>(_ content: Content, detents: Set<PresentationDetent>) -> some View {
         content
+            .pulseReadableColumn(PulseLayout.focusedColumn)
             .presentationDetents(detents)
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(PulseTheme.sheetRadius)
@@ -523,6 +527,7 @@ public struct ActiveWorkoutView: View {
     /// The same look for a sheet that sizes itself to its content and sets its own detents.
     private func sheetStyledHugging<Content: View>(_ content: Content) -> some View {
         content
+            .pulseReadableColumn(PulseLayout.focusedColumn)
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(PulseTheme.sheetRadius)
             .presentationBackground(PulseTheme.ground)
