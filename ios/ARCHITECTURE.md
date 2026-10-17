@@ -558,7 +558,7 @@ Contract (all `public`, Foundation only; the prototype in `design/` is the refer
 ## 4. Verification policy
 
 * Core: `swift build` + `swift test` on Linux must pass; each area ships tests (`Tests/PulseStrengthCoreTests/<Area>Tests.swift`).
-  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 860 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 905 (the controller and
+  Status (Linux, Swift 6.1, zero warnings): `swift test` runs 887 tests, `swift test -Xswiftc -DPULSE_COMBINE_SHIM` runs 932 (the controller and
   store only compile with Combine or the stand-in); all pass. The sync protocol (3.4) has `SyncProtocolTests.swift`: scenarios on an in-memory
   phone / Watch link that delivers, delays, duplicates, reorders and drops messages, the pure adoption rules, and a seeded fuzz of 320 runs of
   40 steps that ends with full delivery and asserts that the Watch equals the phone and that no command ran twice. `SyncHardeningTests.swift` holds one
@@ -675,7 +675,7 @@ The keypad keeps its text buffer locally and dispatches `setWeight` / `setReps` 
 }
 public struct StrengthHubView: View { public init(environment: StrengthAppEnvironment, onStart: @escaping (WorkoutTemplate?) -> Void, onResume: @escaping () -> Void) }
 public struct ExerciseDetailView: View { public init(exercise: Exercise, store: StrengthStore) }
-public struct WorkoutSummaryView: View { public init(workout: CompletedWorkout, onDone: @escaping () -> Void) }
+public struct WorkoutSummaryView: View { public init(workout: CompletedWorkout, onDone: @escaping () -> Void) }   // opens with the finish celebration (WorkoutSummaryCelebration.swift; the curves, count-up and confetti paths are SummaryCelebration.swift in the core), then the stats sheet scrolls over it
 public struct WorkoutInProgressBar: View { public init(presentation: ActiveWorkoutPresentation, onResume: @escaping () -> Void) }
 public struct PulseStrengthRootView: View { public init(environment: StrengthAppEnvironment) }   // NavigationStack hub; fullScreenCover ActiveWorkoutView; summary cover; onOpenURL for pulse-strength://workout
 ```

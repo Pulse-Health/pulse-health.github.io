@@ -7,9 +7,15 @@ import PulseStrengthCore
 
 /// "Workout Complete" (Summary.dc.html): shown full screen over the app after a workout is finished and saved.
 ///
-/// From top to bottom: the title with the workout name, date and duration; the personal-record card (only with PRs);
-/// the figure tiles (duration, volume, sets, and average heart rate / average RIR when they were recorded); the
-/// per-exercise results; the sets per muscle group; and a "Done" button that stays pinned at the bottom.
+/// It opens with a celebration (`WorkoutSummaryHero`: a medal whose ring and check draw themselves, confetti, the title and the
+/// three big figures counting up) and a cue, "All Stats", that scrolls down when tapped. The stats come up over the celebration
+/// as a sheet; from top to bottom it holds the workout name with the date and duration, the personal-record card (only with
+/// PRs), the figure tiles (duration, volume, sets, and average heart rate / average RIR when they were recorded), the
+/// per-exercise results and the sets per muscle group. A "Done" button stays at the bottom throughout: see-through over the
+/// celebration, the solid green button over the stats.
+///
+/// The motion is a pure function of time (`SummaryCelebration` in the core holds the curves and the confetti paths and is unit
+/// tested); with Reduce Motion the celebration is its finished picture and the success haptic fires at once.
 ///
 /// The design's heart-rate zones, calories, coach text, "Save to Health" switch and template row need data or
 /// settings that a `CompletedWorkout` does not carry (the workout is already saved when this screen appears), so
@@ -19,7 +25,17 @@ public struct WorkoutSummaryView: View {
     private let workout: CompletedWorkout
     private let onDone: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var didAnnounce = false
+    /// Where the top of the scrolled content was before any scrolling: the baseline of `sheetProgress`.
+    @State private var restTop: CGFloat?
+    /// The height of the area the celebration fills; the stats sheet is at least that tall.
+    @State private var viewportHeight: CGFloat = 0
+    /// How far the stats sheet has come up over the celebration (0 to 1), in steps of 1/60 so the screen is not redrawn
+    /// for every point of scrolling.
+    @State private var sheetProgress: Double = 0
+
+    private static let scrollSpace = "workoutSummaryScroll"
 
     public init(workout: CompletedWorkout, onDone: @escaping () -> Void) {
         self.workout = workout
@@ -29,45 +45,166 @@ public struct WorkoutSummaryView: View {
     // MARK: Body
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                headerBlock
-                if !workout.personalRecords.isEmpty {
-                    WorkoutSummaryRecordsCard(records: workout.personalRecords)
+        ScrollViewReader { reader in
+            ZStack {
+                WorkoutSummaryBackdrop(scrollProgress: sheetProgress)
+                heroLayer
+                ScrollView {
+                    VStack(spacing: 0) {
+                        heroSpacer
+                        statsSheet
+                    }
                 }
-                WorkoutSummaryStatsCard(tiles: statTiles)
-                if !workout.exercises.isEmpty {
-                    exercisesSection
+                .coordinateSpace(name: WorkoutSummaryView.scrollSpace)
+                .scrollIndicators(.hidden)
+                .accessibilitySortPriority(1)
+                VStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    WorkoutSummaryScrollCue(
+                        visibility: SummaryCelebration.heroVisibility(scrollProgress: sheetProgress),
+                        action: {
+                            showStats(reader)
+                        }
+                    )
                 }
-                if !workout.muscleSets.isEmpty {
-                    musclesSection
-                }
+                .accessibilitySortPriority(2)
             }
-            .padding(.horizontal, PulseTheme.screenInset)
-            .padding(.top, 28)
-            .padding(.bottom, 24)
         }
-        .scrollIndicators(.hidden)
-        .background(PulseTheme.ground.ignoresSafeArea())
         .safeAreaInset(edge: .bottom, spacing: 0) {
             doneBar
         }
-        .onAppear {
-            announce()
+        .onPreferenceChange(WorkoutSummaryHeroFrameKey.self) { (frame: WorkoutSummaryHeroFrameKey.Frame) in
+            track(frame)
         }
+        .task {
+            await announce()
+        }
+    }
+
+    // MARK: Celebration
+
+    /// The celebration sits still behind the scroll view while the stats sheet comes up over it: it shrinks and fades a little
+    /// as the sheet covers it.
+    private var heroLayer: some View {
+        WorkoutSummaryHero(
+            subtitle: heroSubtitle,
+            figures: SummaryFigures(
+                durationSeconds: workout.durationSeconds,
+                volumeKg: workout.volumeKg,
+                sets: workout.loggedSets
+            ),
+            spokenDuration: StrengthResultText.durationSpoken(seconds: workout.durationSeconds),
+            spokenVolume: NumberText.thousands(workout.volumeKg) + " kilograms"
+        )
+        .scaleEffect(1 - 0.07 * sheetProgress)
+        .offset(y: CGFloat(-24 * sheetProgress))
+        .opacity(SummaryCelebration.heroVisibility(scrollProgress: sheetProgress))
+        .allowsHitTesting(false)
+        .accessibilityHidden(sheetProgress > 0.9)
+        .accessibilitySortPriority(3)
+    }
+
+    /// The empty first page of the scroll view: as tall as the area the celebration fills, so the stats sheet starts just below it.
+    /// Its position tells how far the user has scrolled.
+    private var heroSpacer: some View {
+        Color.clear
+            .containerRelativeFrame(.vertical)
+            .background(
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: WorkoutSummaryHeroFrameKey.self,
+                        value: WorkoutSummaryHeroFrameKey.Frame(
+                            minY: proxy.frame(in: .named(WorkoutSummaryView.scrollSpace)).minY,
+                            height: proxy.size.height
+                        )
+                    )
+                }
+            )
+            .accessibilityHidden(true)
+    }
+
+    private func track(_ frame: WorkoutSummaryHeroFrameKey.Frame) {
+        if abs(viewportHeight - frame.height) > 0.5 {
+            viewportHeight = frame.height
+        }
+        guard frame.height > 0 else { return }
+        if restTop == nil {
+            restTop = frame.minY
+        }
+        let scrolled = (restTop ?? frame.minY) - frame.minY
+        let progress = SummaryCelebration.scrollProgress(
+            sheetTop: Double(frame.height - scrolled),
+            heroHeight: Double(frame.height)
+        )
+        let stepped = (progress * 60).rounded() / 60
+        if stepped != sheetProgress {
+            sheetProgress = stepped
+        }
+    }
+
+    private func showStats(_ reader: ScrollViewProxy) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if reduceMotion {
+            reader.scrollTo(WorkoutSummaryAnchor.sheet, anchor: .top)
+        } else {
+            withAnimation(Animation.easeInOut(duration: 0.6)) {
+                reader.scrollTo(WorkoutSummaryAnchor.sheet, anchor: .top)
+            }
+        }
+    }
+
+    // MARK: Stats sheet
+
+    private var statsSheet: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            headerBlock
+            if !workout.personalRecords.isEmpty {
+                WorkoutSummaryRecordsCard(records: workout.personalRecords)
+            }
+            WorkoutSummaryStatsCard(tiles: statTiles)
+            if !workout.exercises.isEmpty {
+                exercisesSection
+            }
+            if !workout.muscleSets.isEmpty {
+                musclesSection
+            }
+        }
+        .padding(.horizontal, PulseTheme.screenInset)
+        .padding(.top, 34)
+        .padding(.bottom, 24)
+        .frame(maxWidth: .infinity, minHeight: viewportHeight, alignment: .top)
+        .background {
+            UnevenRoundedRectangle(
+                topLeadingRadius: PulseTheme.sheetRadius,
+                bottomLeadingRadius: 0,
+                bottomTrailingRadius: 0,
+                topTrailingRadius: PulseTheme.sheetRadius,
+                style: .continuous
+            )
+            .fill(PulseTheme.ground)
+            .shadow(color: Color.black.opacity(0.18), radius: 15, x: 0, y: -5)
+        }
+        .overlay(alignment: .top) {
+            Capsule()
+                .fill(PulseTheme.separator)
+                .frame(width: 40, height: 5)
+                .padding(.top, 9)
+                .accessibilityHidden(true)
+        }
+        .id(WorkoutSummaryAnchor.sheet)
     }
 
     // MARK: Header
 
     private var headerBlock: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Workout Complete")
+            Text(verbatim: workout.name)
                 .tracking(0.37)
                 .pulseFont(34, .bold, relativeTo: .largeTitle)
                 .foregroundStyle(PulseTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
-            Text(verbatim: subtitle)
+            Text(verbatim: sheetSubtitle)
                 .pulseFont(15, relativeTo: .subheadline)
                 .foregroundStyle(PulseTheme.inkSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -75,11 +212,18 @@ public struct WorkoutSummaryView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    /// "Upper A · Push · Fri, Oct 13 · 52 min"
-    private var subtitle: String {
-        let day = StrengthResultText.weekdayMonthDay(workout.finishedAt, now: Date())
-        let length = StrengthResultText.durationSubtitle(seconds: workout.durationSeconds)
-        return workout.name + " · " + day + " · " + length
+    private var dayText: String {
+        StrengthResultText.weekdayMonthDay(workout.finishedAt, now: Date())
+    }
+
+    /// "Upper A · Fri, Oct 13": under the title of the celebration.
+    private var heroSubtitle: String {
+        workout.name + " · " + dayText
+    }
+
+    /// "Fri, Oct 13 · 52 min": under the workout name at the top of the stats.
+    private var sheetSubtitle: String {
+        dayText + " · " + StrengthResultText.durationSubtitle(seconds: workout.durationSeconds)
     }
 
     // MARK: Figures
@@ -165,34 +309,66 @@ public struct WorkoutSummaryView: View {
 
     // MARK: Done
 
+    /// See-through over the celebration, the solid bar of the stats page once the sheet is up.
     private var doneBar: some View {
-        Button {
+        let solid = SummaryCelebration.barProgress(scrollProgress: sheetProgress)
+        return Button {
             finish()
         } label: {
             Text("Done")
         }
-        .buttonStyle(PulsePrimaryButtonStyle())
+        .buttonStyle(WorkoutSummaryDoneButtonStyle(progress: solid))
+        .accessibilityIdentifier("summary.done")
         .padding(.horizontal, PulseTheme.screenInset)
         .padding(.top, 10)
         .padding(.bottom, 8)
         .frame(maxWidth: .infinity)
-        .background(PulseTheme.ground.ignoresSafeArea(edges: .bottom))
+        .background(PulseTheme.ground.opacity(solid).ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) {
             StrengthHairline()
+                .opacity(solid)
         }
     }
 
     // MARK: Feedback
 
-    private func announce() {
+    /// The success haptic lands with the impact of the celebration (the check landing), not when the screen opens.
+    private func announce() async {
         guard !didAnnounce else { return }
         didAnnounce = true
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        if !reduceMotion {
+            let wait = SummaryCelebration.appearDelay + SummaryCelebration.impact
+            try? await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+        }
+        generator.notificationOccurred(.success)
     }
 
     private func finish() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
         onDone()
+    }
+}
+
+// MARK: - Scroll tracking
+
+private enum WorkoutSummaryAnchor: Hashable {
+    case sheet
+}
+
+/// Where the empty first page of the scroll view is (its top in the scroll view's space) and how tall it is.
+private struct WorkoutSummaryHeroFrameKey: PreferenceKey {
+    struct Frame: Equatable {
+        var minY: CGFloat
+        var height: CGFloat
+    }
+
+    static let defaultValue: Frame = Frame(minY: 0, height: 0)
+
+    static func reduce(value: inout Frame, nextValue: () -> Frame) {
+        value = nextValue()
     }
 }
 

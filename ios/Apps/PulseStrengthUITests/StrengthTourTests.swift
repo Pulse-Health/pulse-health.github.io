@@ -630,7 +630,7 @@ final class StrengthTour: UIDriver {
                 failShot("summary-missing")
                 return
             }
-            tourShot(11, "summary-top", settle: 1.4)
+            tourShot(11, "summary-top", settle: 6.5)   // the celebration has settled after about six seconds
         }
     }
 

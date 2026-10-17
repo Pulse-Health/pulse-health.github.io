@@ -10,7 +10,7 @@ The Pulse app repository is not part of this build, so the feature is a self-con
 (`PulseStrengthKit`) plus a small host Xcode project that runs it standalone. The integration points with the Pulse app
 are listed under [Integrating with the Pulse app](#integrating-with-the-pulse-app).
 
-> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (860 tests, 905 with the Combine
+> **Status in one paragraph.** The platform-neutral core is unit-tested on Linux and macOS (887 tests, 932 with the Combine
 > stand-in). The Apple-only code was written without access to the Apple SDKs, and since then the GitHub Actions workflow
 > `strength-ios` has compiled it with Xcode 16 for the iOS and watchOS simulators, run a 30-step UI flow through the real
 > iPhone app, rendered the Lock Screen, Dynamic Island and Watch screens, and re-run the app in dark mode, at large text
@@ -159,7 +159,7 @@ configuration, `CODE_SIGNING_ALLOWED=NO` and `-parallel-testing-enabled NO`.
 | Scheme (target) | What it produces | Files in the artifact |
 | --- | --- | --- |
 | `PulseStrengthLiveSnapshots` (`PulseStrengthLiveSnapshotTests`, no host app) | Lock Screen card, Dynamic Island compact / minimal / expanded in 12 workout states, plus contact sheets | `live-NN-*.png` (about 57), `live-measurements.txt` (sizes and limit violations) |
-| `PulseStrengthUITests` (`PulseStrengthUITests`) | One long walk through the iPhone app in demo mode (`-PulseUITest`): hub, active workout, keypad, sheets, rest timer, undo, finish, summary, exercise library | `ui-NN-*.png` (55), `ui-flow-log.txt` (OK / FAILED / SKIPPED per step) |
+| `PulseStrengthUITests` (`PulseStrengthUITests`) | One long walk through the iPhone app in demo mode (`-PulseUITest`): hub, active workout, keypad, sheets, rest timer, undo, finish, summary, exercise library | `ui-NN-*.png` (57), `ui-flow-log.txt` (OK / FAILED / SKIPPED per step) |
 | `PulseStrengthWatchSnapshots` (`PulseStrengthWatchSnapshotTests`, no host app) | The Watch pages at 45 mm and at 40 / 41 / 44 / 49 mm, plus experimental root-view shots | `watch-NN-*.png` (44), `watch-manifest.txt` (a `BLANK` line marks an image that came out empty) |
 
 The tests write their files to the directory in `SCREENSHOT_DIR`; the workflow passes it as `TEST_RUNNER_SCREENSHOT_DIR`
@@ -221,6 +221,28 @@ after the first run.
    own timer ("Sync protocol" in `ARCHITECTURE.md` 3.4).
 9. Clock-driven UI uses `TimelineView`; the Live Activity uses `Text(timerInterval:)` and a stale date, because a widget cannot tick.
 10. Contracts, file by file: [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+
+## Workout summary: the finish celebration
+
+After a workout is finished the summary opens with a celebration instead of a list: a medal whose ring and check draw themselves, a
+burst of confetti from the medal and a spray from both lower corners, the title, and the three big figures (duration, volume, sets)
+counting up. A bobbing "All Stats" chevron (tap it or just scroll) brings the stats up over the celebration as a sheet: workout name,
+personal records, the figure tiles, the exercises and the muscles. "Done" stays at the bottom throughout, see-through over the
+celebration and the solid green button over the stats. The success haptic lands with the check, about 1.7 s in.
+
+| Layer | Where | What |
+| --- | --- | --- |
+| Core (Linux-tested) | `SummaryCelebration.swift` | the timeline, the easing curves, the count-up of the figures (`SummaryFigures`) and the confetti paths (`ConfettiPiece`): pure functions of the seconds since the screen opened |
+| | `Tests/.../SummaryCelebrationTests.swift` | the timeline order, the curves' ends, the figures' formats and monotonic counting, the confetti set (size, determinism, launch times, paths) |
+| iOS | `Sources/PulseStrengthIOS/Screens/WorkoutSummaryCelebration.swift` | `WorkoutSummaryHero` (a `TimelineView` for the ~6 s the motion lasts, then the finished picture), the medal, rays, confetti `Canvas`, the scroll cue and the Done button style |
+| | `Sources/PulseStrengthIOS/Screens/WorkoutSummaryView.swift` | the screen: the celebration behind a scroll view whose first page is empty, the stats sheet that scrolls over it, the Done bar |
+
+* **Reduce Motion** shows the finished picture at once (no confetti, no counting, no bobbing) and fires the haptic immediately.
+* **VoiceOver** reads the title and the three final figures, never the numbers while they count and never the decoration; the cue is a
+  button ("Show all stats", identifier `summary.scrollCue`).
+* **Not designed in code:** the design showed heart-rate zones, RPE and Save / Discard on the summary; a `CompletedWorkout` carries none of
+  that (the workout is saved before the screen opens), so the stats sheet keeps the sections it had.
 
 ## Onboarding (first run)
 

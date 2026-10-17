@@ -693,7 +693,15 @@ final class StrengthFlow: UIDriver {
                 shot("summary-missing")
                 return
             }
-            shot("summary-top", settle: 1.4)
+            // The celebration plays for about six seconds: one frame while the confetti flies, one when everything has settled.
+            shot("summary-celebration", settle: 2.4)
+            shot("summary-top", settle: 4.2)
+            // The "All Stats" cue scrolls down to the stats; a swipe does the same when the cue cannot be tapped.
+            if !tap(.button("Show all stats"), timeout: 3, required: false) {
+                note("the scroll cue could not be tapped; swiping up instead")
+                app.swipeUp()
+            }
+            shot("summary-stats", settle: 1.2)
             app.swipeUp()
             shot("summary-middle", settle: 0.9)
             app.swipeUp()
