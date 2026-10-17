@@ -317,6 +317,23 @@ class HubLogicTest {
         assertThat(coach(WorkoutTemplate(name = "Zero", entries = listOf(noReps)), demoStore)).isEqualTo("Chest is recovered.")
     }
 
+    @Test
+    fun recoverySnapshotFreezesTheFiguresAndComparesByValue() {
+        var chest = 40
+        val provider: (MuscleGroup) -> Int = { if (it == MuscleGroup.CHEST) chest else if (it == MuscleGroup.CORE) 140 else 90 }
+        val snapshot = HubRecoverySnapshot.of(provider)
+        chest = 100
+        assertThat(snapshot(MuscleGroup.CHEST)).isEqualTo(40) // the model moved on, the snapshot did not
+        assertThat(snapshot(MuscleGroup.CORE)).isEqualTo(100) // clamped like HubMuscles.percent
+        // Equal figures are equal snapshots (Compose then skips the sections), different figures are not.
+        assertThat(HubRecoverySnapshot.of(provider)).isNotEqualTo(snapshot)
+        chest = 40
+        assertThat(HubRecoverySnapshot.of(provider)).isEqualTo(snapshot)
+        assertThat(HubRecoverySnapshot.of(provider).hashCode()).isEqualTo(snapshot.hashCode())
+        // The ring and the chips read the same numbers as the grid.
+        assertThat(HubMuscles.readiness(snapshot)).isEqualTo(HubMuscles.readiness(provider))
+    }
+
     // endregion
 
     // region Routes and navigation state
@@ -383,6 +400,68 @@ class HubLogicTest {
         assertThat(restored.entries.map { it.id }.toSet()).hasSize(3) // ids continue after the restored ones
     }
 
+    @Test
+    fun navigatorKeepsItsIdCounterAcrossSaveAndRestore() {
+        val navigator = HubNavigator()
+        navigator.push(HubRoute.Library) // id 1
+        navigator.push(HubRoute.Exercise("bench")) // id 2
+        navigator.pop()
+        navigator.pop()
+        assertThat(navigator.entries).isEmpty()
+        val saved = with(HubNavigator.Saver) { SaverScope { true }.save(navigator) }!!
+        val restored = HubNavigator.Saver.restore(saved)!!
+        // The restored stack is empty, but the ids 1 and 2 belonged to screens that were popped: a page saved under one of them
+        // must not come back for a screen opened now.
+        restored.push(HubRoute.Library)
+        assertThat(restored.entries.single().id).isEqualTo(3)
+    }
+
+    @Test
+    fun navigatorRestoresItsCounterAndSkipsDamagedEntries() {
+        val restored = HubNavigator.Saver.restore(listOf("7", "4|library", "5|templates", "6|nowhere"))!!
+        assertThat(restored.entries.map { it.id }).containsExactly(4, 5).inOrder()
+        restored.push(HubRoute.History)
+        assertThat(restored.entries.last().id).isEqualTo(7)
+        // An empty or damaged list still gives a working navigator.
+        val broken = HubNavigator.Saver.restore(emptyList<String>())!!
+        broken.push(HubRoute.Library)
+        assertThat(broken.entries.single().id).isEqualTo(1)
+    }
+
+    @Test
+    fun navigatorReportsEveryEntryThatLeavesTheStack() {
+        val navigator = HubNavigator()
+        val removed = mutableListOf<Int>()
+        navigator.onRemoved = { removed.add(it.id) }
+        navigator.push(HubRoute.Templates) // 1
+        navigator.push(HubRoute.Library) // 2
+        navigator.push(HubRoute.History) // 3
+        navigator.pop()
+        assertThat(removed).containsExactly(3)
+        navigator.popToRoot()
+        assertThat(removed).containsExactly(3, 2, 1).inOrder()
+        assertThat(navigator.pop()).isFalse() // nothing to remove at the home screen
+        navigator.popToRoot()
+        assertThat(removed).hasSize(3)
+    }
+
+    @Test
+    fun popIfOnlyPopsTheScreenOnTop() {
+        val navigator = HubNavigator()
+        navigator.push(HubRoute.Library) // 1
+        navigator.push(HubRoute.Exercise("bench")) // 2
+        val removed = mutableListOf<Int>()
+        navigator.onRemoved = { removed.add(it.id) }
+        assertThat(navigator.popIf(1)).isFalse() // the page below, reached by a second tap
+        assertThat(navigator.popIf(9)).isFalse()
+        assertThat(navigator.entries.map { it.id }).containsExactly(1, 2).inOrder()
+        assertThat(navigator.popIf(2)).isTrue()
+        assertThat(navigator.popIf(2)).isFalse() // the same arrow again: its page is gone
+        assertThat(navigator.entries.map { it.id }).containsExactly(1)
+        assertThat(removed).containsExactly(2)
+        assertThat(navigator.popIf(0)).isFalse() // the home screen is id 0 and never on the stack
+    }
+
     // endregion
 
     // region Editor draft
@@ -438,6 +517,36 @@ class HubLogicTest {
         assertThat(edited.id).isEqualTo(existing.id)
         assertThat(edited.lastPerformed).isEqualTo(existing.lastPerformed)
         assertThat(edited.name).isEqualTo("Push day")
+    }
+
+    @Test
+    fun draftKnowsWhetherItDiffersFromWhatTheEditorOpenedWith() {
+        assertThat(HubEditorDraft("", emptyList()).differsFrom(null)).isFalse() // a new template, untouched
+        val draft = HubEditorDraft("", emptyList())
+        draft.name = "P"
+        assertThat(draft.differsFrom(null)).isTrue()
+        draft.name = ""
+        assertThat(draft.differsFrom(null)).isFalse() // typed and deleted again
+        draft.add(listOf(ExerciseLibrary.exercise("bench")!!))
+        assertThat(draft.differsFrom(null)).isTrue()
+        draft.remove(0)
+        assertThat(draft.differsFrom(null)).isFalse()
+
+        val existing = template("Push", null, "bench", "squat")
+        val editing = HubEditorDraft(existing.name, existing.entries)
+        assertThat(editing.differsFrom(existing)).isFalse()
+        editing.move(1, -1)
+        assertThat(editing.differsFrom(existing)).isTrue()
+        editing.move(0, 1)
+        assertThat(editing.differsFrom(existing)).isFalse() // moved back
+        editing.remove(1)
+        assertThat(editing.differsFrom(existing)).isTrue()
+        editing.entries = existing.entries
+        editing.name = "Push "
+        assertThat(editing.differsFrom(existing)).isTrue()
+        // A draft that went through the saver (a rotation) still equals the template it was opened from.
+        val saved = with(HubEditorDraft.Saver) { SaverScope { true }.save(HubEditorDraft(existing.name, existing.entries)) }!!
+        assertThat(HubEditorDraft.Saver.restore(saved)!!.differsFrom(existing)).isFalse()
     }
 
     @Test

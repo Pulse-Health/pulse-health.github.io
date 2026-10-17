@@ -105,6 +105,25 @@ internal class HubHomeData(
     val runningTemplateID: UUID?,
 )
 
+/**
+ * The recovery of every muscle group at one moment, fixed. The recovery model reads the stored history and the clock, neither of
+ * which Compose observes, so the home screen takes one snapshot (again whenever the data changes and every minute) and hands it to
+ * all its sections: the ring, the chips, the coach note and the grid always agree, and equal snapshots let Compose skip them.
+ */
+@Immutable
+internal class HubRecoverySnapshot private constructor(private val percents: Map<MuscleGroup, Int>) : RecoveryProvider {
+    override fun invoke(muscle: MuscleGroup): Int = percents[muscle] ?: 100
+
+    override fun equals(other: Any?): Boolean = other is HubRecoverySnapshot && other.percents == percents
+
+    override fun hashCode(): Int = percents.hashCode()
+
+    companion object {
+        fun of(recovery: RecoveryProvider): HubRecoverySnapshot =
+            HubRecoverySnapshot(MuscleGroup.entries.associateWith { HubMuscles.percent(it, recovery) })
+    }
+}
+
 internal fun homeData(data: StrengthData, runningTemplateID: UUID?): HubHomeData = HubHomeData(
     templates = data.templates,
     history = data.history,
@@ -129,7 +148,10 @@ internal class HubActions(
     val requestStart: (WorkoutTemplate?) -> Unit,
     val resume: () -> Unit,
     val edit: (HubEditorTarget) -> Unit,
-)
+) {
+    /** The same actions with the back action of one page (see [HubNavigator.popIf]). */
+    fun withPop(pop: () -> Unit): HubActions = HubActions(push, pop, requestStart, resume, edit)
+}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

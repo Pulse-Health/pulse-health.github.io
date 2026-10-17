@@ -97,11 +97,15 @@ internal sealed interface HubEditorTarget {
 
 /** The back stack above the hub's home screen: empty = the home screen is showing. */
 @Stable
-internal class HubNavigator(initial: List<HubEntry> = emptyList()) {
+internal class HubNavigator(initial: List<HubEntry> = emptyList(), firstFreeID: Int = 1) {
     var entries: List<HubEntry> by mutableStateOf(initial)
         private set
 
-    private var nextID: Int = (initial.maxOfOrNull { it.id } ?: 0) + 1
+    // Ids are never reused by one navigator, not even after a restore: a screen opened later must not meet the state a popped one left.
+    private var nextID: Int = maxOf(firstFreeID, (initial.maxOfOrNull { it.id } ?: 0) + 1)
+
+    /** Told about every entry that leaves the stack, so the hub can drop the page state it saved for it. */
+    var onRemoved: (HubEntry) -> Unit = {}
 
     val isAtRoot: Boolean get() = entries.isEmpty()
 
@@ -113,19 +117,29 @@ internal class HubNavigator(initial: List<HubEntry> = emptyList()) {
 
     /** Goes one screen back; false at the home screen. */
     fun pop(): Boolean {
-        if (entries.isEmpty()) return false
+        val top = entries.lastOrNull() ?: return false
         entries = entries.dropLast(1)
+        onRemoved(top)
         return true
     }
 
+    /**
+     * Goes one screen back, but only when [entryID] is the screen on top: a back arrow of a page that is already on its way out (or of
+     * the page below it, which a double tap reaches) must not pop a second screen.
+     */
+    fun popIf(entryID: Int): Boolean = entries.lastOrNull()?.id == entryID && pop()
+
     fun popToRoot() {
+        val removed = entries
         entries = emptyList()
+        for (entry in removed.asReversed()) onRemoved(entry)
     }
 
     companion object {
+        // The first element is the next id, the others are the entries.
         val Saver: Saver<HubNavigator, Any> = listSaver<HubNavigator, String>(
-            save = { navigator -> navigator.entries.map { it.encode() } },
-            restore = { saved -> HubNavigator(saved.mapNotNull(HubEntry::decode)) },
+            save = { navigator -> listOf(navigator.nextID.toString()) + navigator.entries.map { it.encode() } },
+            restore = { saved -> HubNavigator(saved.drop(1).mapNotNull(HubEntry::decode), saved.firstOrNull()?.toIntOrNull() ?: 1) },
         )
     }
 }
