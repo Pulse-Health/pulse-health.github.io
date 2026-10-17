@@ -171,6 +171,13 @@ real-device screenshots if you prefer; the Console accepts either.
 - **History size.** Finishing a workout and starting the app rewrite the whole history file on the main thread. Measured on a desktop
   JVM: 0.2-0.4 s per Finish at 500-1000 workouts, 3-8 times that on a slow phone; it is jank, not an ANR (roughly 3000 workouts would
   be needed for that). Writing off the main thread is the next step if it matters.
+- **Every set tap writes the workout to disk on the main thread.** A key of the keypad, a stepper tap or a checked set saves the running
+  workout (an atomic file write with `fsync`) and sets the rest alarms again. On fast storage this is not noticeable; on a slow or full
+  phone it can stutter. Debouncing the saves or writing off the main thread is the next step if it matters (a failed save is shown in the
+  workout, see `WorkoutController.persistenceError`).
+- **The undo window is fixed at 6 seconds** (`WorkoutReducer.undoWindow` in `:core`, as on iOS). The toast text offers an "Undo" action
+  to TalkBack, but a user whose accessibility timeout is longer cannot get more time; that needs a configurable window in the core.
+- **The keypad has no hardware-keyboard input** (digits, Enter, Backspace); tapping the keys is the only way.
 - **Open-source notices.** Settings > About says the app is built with open-source software under the Apache License 2.0 but the app
   ships no licenses screen; Apache 2.0 asks for its text to accompany the binary. Decide before a wide release (a static notices asset
   or a licenses plugin).
