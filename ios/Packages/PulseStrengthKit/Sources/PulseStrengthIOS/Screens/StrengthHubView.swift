@@ -92,6 +92,7 @@ public struct StrengthHubView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 14)
             .padding(.bottom, 24)
+            .pulseReadableColumn()
             .fileImporter(isPresented: $showsImporter, allowedContentTypes: [.json]) { (result: Result<URL, Error>) in
                 importPlan(from: result)
             }
@@ -1672,6 +1673,7 @@ private struct HubExerciseLibraryView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 8)
             .padding(.bottom, 24)
+            .pulseReadableColumn()
         }
         .background(PulseTheme.ground.ignoresSafeArea())
         .navigationTitle("Exercise Library")
@@ -1856,6 +1858,7 @@ private struct HubTemplateListView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 8)
             .padding(.bottom, 24)
+            .pulseReadableColumn()
         }
         .background(PulseTheme.ground.ignoresSafeArea())
         .navigationTitle("Templates")
@@ -1956,6 +1959,7 @@ private struct HubTemplateDetailView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 8)
             .padding(.bottom, 24)
+            .pulseReadableColumn()
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             startBar(template)
@@ -2052,6 +2056,7 @@ private struct HubTemplateDetailView: View {
         .buttonStyle(PulsePrimaryButtonStyle())
         .padding(.horizontal, PulseTheme.screenInset)
         .padding(.vertical, 8)
+        .pulseReadableColumn()
         .background(PulseTheme.ground)
     }
 }
@@ -2137,6 +2142,7 @@ private struct HubPlanListView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 8)
             .padding(.bottom, 24)
+            .pulseReadableColumn()
         }
         .background(PulseTheme.ground.ignoresSafeArea())
         .navigationTitle("Plans")
@@ -2403,6 +2409,7 @@ private struct HubHistoryListView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 8)
             .padding(.bottom, 24)
+            .pulseReadableColumn()
         }
         .background(PulseTheme.ground.ignoresSafeArea())
         .navigationTitle("Recent Workouts")
@@ -2460,6 +2467,7 @@ private struct HubWorkoutDetailView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 8)
             .padding(.bottom, 24)
+            .pulseReadableColumn()
         }
     }
 
@@ -2657,6 +2665,7 @@ private struct HubRecoveryView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 8)
             .padding(.bottom, 24)
+            .pulseReadableColumn()
         }
         .background(PulseTheme.ground.ignoresSafeArea())
         .navigationTitle("Muscle Recovery")

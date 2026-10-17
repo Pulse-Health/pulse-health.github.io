@@ -68,6 +68,8 @@ struct OnboardingWelcomeView: View {
         }
         .padding(.horizontal, OnboardingTheme.heroInset)
         .padding(.bottom, 14)
+        // On a wide screen (an iPad) the copy and the buttons stay in a column over the picture.
+        .pulseReadableColumn(PulseLayout.focusedColumn)
     }
 
     /// The block in a scroll view that starts under the top bar, so that nothing runs up into the status bar and everything can be

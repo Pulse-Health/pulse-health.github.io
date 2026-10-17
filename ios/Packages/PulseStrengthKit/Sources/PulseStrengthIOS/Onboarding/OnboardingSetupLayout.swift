@@ -40,6 +40,8 @@ struct OnboardingSetupLayout<Content: View, Foot: View>: View {
                 pinnedFoot
             }
         }
+        // On a wide screen (an iPad) every setup step keeps to one column, the scroll view, the buttons and the fade included.
+        .pulseReadableColumn(PulseLayout.focusedColumn)
         .task(id: isActive) {
             await moveFocusToTitle()
         }

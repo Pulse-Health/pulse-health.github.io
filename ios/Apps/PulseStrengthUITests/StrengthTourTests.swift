@@ -8,9 +8,14 @@
 //   xxl       accessibility Dynamic Type sizes          (simctl ui content_size accessibility-extra-large)
 //   se        iPhone SE (3rd generation), 375 x 667 pt  (the active screen must fit without page scrolling)
 //   ios17     the oldest iOS 17+ runtime of the runner  (runtime differences)
+//   ipad      an iPad, portrait                         (regular width: the content keeps to a column; the system shapes the sheets)
+//   ipad-land the same iPad, landscape                  (TOUR_ORIENTATION=landscape rotates the device before the first launch)
 //
 // The test knows nothing about the condition: the workflow sets it on the simulator before xcodebuild starts and names it
-// in TOUR_CONFIG (forwarded as TEST_RUNNER_TOUR_CONFIG; 'default' when unset). The name only goes into the file names:
+// in TOUR_CONFIG (forwarded as TEST_RUNNER_TOUR_CONFIG; 'default' when unset). The name only goes into the file names. The one
+// exception is the orientation: only XCUIDevice can rotate a simulator, so the test reads TOUR_ORIENTATION ('landscape' or
+// 'portrait'; unset for the iPhone entries) and rotates the device before the first launch (UIDriver.applyRequestedOrientation).
+// The files:
 //
 //   tour-<config>-<NN>-<name>.png     21 screenshots, in the directory of SCREENSHOT_DIR, attached to the test result as well
 //   tour-<config>-flow-log.txt        the step log (OK / FAILED / SKIPPED per step), like ui-flow-log.txt
@@ -24,7 +29,8 @@
 // Same rules as the flow: the app is launched with '-PulseUITest' (fresh demo store, no live services), continueAfterFailure
 // is true, every step runs through UIDriver.step and a failed step closes stray overlays; a step that needs the active
 // workout screen brings it back (reopen from the hub, else start a new workout) or skips itself. The helpers of
-// FlowSupport.swift are used as they are; StrengthFlowTests.swift is not touched.
+// FlowSupport.swift are used as they are (they also know the popovers of an iPad, where a confirmation dialog has no Cancel
+// row); StrengthFlowTests.swift is not touched.
 //
 // What is left out on purpose: text entry (it needs the software keyboard), supersets, undo, pause, rest-over, empty workout,
 // the long scrolls: the flow covers those. The workout is finished with sets still unlogged, which shows the finish dialog with
@@ -106,6 +112,7 @@ final class StrengthTour: UIDriver {
         let systemVersion = ProcessInfo.processInfo.operatingSystemVersionString
         output.log("Pulse Strength tour '" + config + "', iOS " + systemVersion)
         output.log("TOUR_CONFIG=" + (ProcessInfo.processInfo.environment["TOUR_CONFIG"] ?? "(not set)"))
+        applyRequestedOrientation()
         let report = TourLayout(driver: self, output: output, testCase: testCase, config: config)
         layout = report
 
@@ -385,9 +392,12 @@ final class StrengthTour: UIDriver {
         pause(0.8)
     }
 
-    /// Closes the More menu when it is still open: a tap on the inert part of the navigation bar (left of the More button)
-    /// dismisses a menu and does nothing otherwise.
+    /// Closes the More menu when it is still open: on an iPad the menu is a popover and a tap outside it closes it; on an iPhone a tap
+    /// on the inert part of the navigation bar (left of the More button) dismisses a menu and does nothing otherwise.
     private func recoverMenu() {
+        if dismissPopover() {
+            return
+        }
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.07)).tap()
         pause(0.6)
     }
@@ -822,6 +832,7 @@ final class OnboardingTour: UIDriver {
         launchArguments = ["-PulseUITest", "-PulseShowOnboarding", "-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
         output.log("Onboarding tour '" + config + "', iOS " + ProcessInfo.processInfo.operatingSystemVersionString)
         output.log("TOUR_CONFIG=" + (ProcessInfo.processInfo.environment["TOUR_CONFIG"] ?? "(not set)"))
+        applyRequestedOrientation()
         relaunch()
 
         welcomeStep()

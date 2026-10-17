@@ -11,6 +11,7 @@
 // and are attached to the test result as well (XCTAttachment, lifetime keepAlways).
 
 import XCTest
+import UIKit
 
 /// "7" -> "07".
 func twoDigits(_ value: Int) -> String {
@@ -284,6 +285,23 @@ class UIDriver {
     }
 
     // MARK: Launching
+
+    /// Rotates the device to the orientation named in TOUR_ORIENTATION ("landscape" or "portrait"); any other value, or none, leaves the
+    /// device as it is (the iPhone entries of the matrix job never set it). Call it before the first launch of the app: the app starts in
+    /// the orientation of the device.
+    func applyRequestedOrientation() {
+        let wanted = (ProcessInfo.processInfo.environment["TOUR_ORIENTATION"] ?? "").lowercased()
+        switch wanted {
+        case "landscape":
+            XCUIDevice.shared.orientation = .landscapeLeft
+        case "portrait":
+            XCUIDevice.shared.orientation = .portrait
+        default:
+            return
+        }
+        output.log("Device orientation set to " + wanted)
+        pause(1.0)
+    }
 
     func relaunch() {
         app.launchArguments = launchArguments
@@ -627,7 +645,8 @@ class UIDriver {
         if app.keyboards.count == 0 {
             return
         }
-        for name in ["Search", "search", "Done", "done", "Return", "return"] {
+        // "Hide keyboard" is the key at the bottom right of an iPad keyboard, the last resort when the return key has another name.
+        for name in ["Search", "search", "Done", "done", "Return", "return", "Hide keyboard"] {
             let key = app.keyboards.buttons[name]
             if key.exists {
                 key.tap()
@@ -637,22 +656,52 @@ class UIDriver {
         }
     }
 
+    // MARK: Popovers (iPad)
+
+    /// The layer behind a popover. On an iPad a confirmation dialog (Finish, More and the exercise options of the workout screen) and a
+    /// menu are popovers: they have no Cancel row, and a tap outside closes them. It never exists on an iPhone, where they are sheets.
+    private var popoverDismissRegion: XCUIElement {
+        app.otherElements["PopoverDismissRegion"]
+    }
+
+    /// True while a popover is showing.
+    func popoverShowing() -> Bool {
+        popoverDismissRegion.exists
+    }
+
+    /// Closes the popover with a tap on its dismiss region, near the top left corner of the screen and so away from the popover.
+    /// False when there is none.
+    @discardableResult
+    func dismissPopover() -> Bool {
+        let region = popoverDismissRegion
+        guard region.exists else {
+            return false
+        }
+        region.coordinate(withNormalizedOffset: CGVector(dx: 0.03, dy: 0.03)).tap()
+        pause(0.6)
+        return true
+    }
+
     // MARK: Recovery
 
     /// The harmless buttons that close a dialog, an alert or a sheet (never "Discard" or "Finish Workout").
     static let overlayButtons = ["Cancel", "Back to Workout", "Keep Training", "Done"]
 
-    /// True when a dialog, alert, sheet or the keyboard is showing.
+    /// True when a dialog, alert, sheet, popover (iPad) or the keyboard is showing.
     func overlayShowing() -> Bool {
         for label in UIDriver.overlayButtons {
             if exists(.button(label)) {
                 return true
             }
         }
+        if popoverShowing() {
+            return true
+        }
         return app.keyboards.count > 0
     }
 
-    /// Closes whatever dialog, alert or sheet a failed step left open, using only harmless buttons.
+    /// Closes whatever dialog, alert, sheet or popover a failed step left open, using only harmless buttons (and, for a popover on an
+    /// iPad, a tap outside it).
     func recoverOverlays() {
         for _ in 0..<4 {
             dismissKeyboard()
@@ -664,6 +713,9 @@ class UIDriver {
                     handled = true
                     break
                 }
+            }
+            if !handled && dismissPopover() {
+                handled = true
             }
             if !handled {
                 return

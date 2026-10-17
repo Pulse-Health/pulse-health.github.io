@@ -339,9 +339,10 @@ public struct ExerciseListSheet: View {
     }
 
     /// The shared look of the sheets: 26 pt top corners, grouped-grey background, no grabber
-    /// (each sheet has its own Done / Cancel button).
+    /// (each sheet has its own Done / Cancel button). On a wide screen the content keeps to the width of a form sheet.
     private func styled<Content: View>(_ content: Content, detents: Set<PresentationDetent>) -> some View {
         content
+            .pulseReadableColumn(PulseLayout.focusedColumn)
             .presentationDetents(detents)
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(PulseTheme.sheetRadius)
@@ -351,6 +352,7 @@ public struct ExerciseListSheet: View {
     /// The same look for a sheet that sizes itself to its content and sets its own detents.
     private func styledHugging<Content: View>(_ content: Content) -> some View {
         content
+            .pulseReadableColumn(PulseLayout.focusedColumn)
             .presentationDragIndicator(.hidden)
             .presentationCornerRadius(PulseTheme.sheetRadius)
             .presentationBackground(PulseTheme.ground)

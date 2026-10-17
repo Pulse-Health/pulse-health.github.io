@@ -37,7 +37,10 @@ widgets, tile services and complication services in the manifest of `:app` and `
 * **Units.** Weights are kilograms everywhere (the unit setting of PR #12 is not handled by the widgets yet).
 * **No network.** Widgets, tiles and notifications work from files on the device. The Android app still declares no `INTERNET` / `ACCESS_NETWORK_STATE` permission (the one that
   WorkManager, a dependency of Glance, adds is removed in the manifest; a unit test guards it).
-* **iPad.** `SB-03` (the training block, `systemExtraLarge`) needs the host app to support iPad; the app is iPhone-only today, so the widget exists but the system will not offer it.
+* **iPad.** `SB-03` (the training block, `systemExtraLarge`, a family that only the iPad Home Screen has) is offered because the host app and the widget extension target iPad
+  (`TARGETED_DEVICE_FAMILY` `1,2` in `ios/project.yml`). The other Home Screen widgets are offered on the iPad Home Screen too, in the sizes they declare (small, medium, large). A widget
+  that has no family on a device (the accessory widgets where the iPadOS version has no Lock Screen widgets) is simply not listed there. Only the iPad extra-large render exists
+  (`WidgetSnapshotTests`, 715 x 382 pt); the widget gallery on an iPad has not been looked at.
 * **Watch.** `Start` on the Watch widgets opens the Watch app; starting a workout from the Watch needs a start request on the Watch to phone channel that does not exist yet.
 * **Family in tests.** `widgetFamily` is read-only in SwiftUI's environment, so the widgets that depend on it take an explicit value for the snapshot tests (`familyOverride`,
   `HomeSurface`).
@@ -81,8 +84,8 @@ hide, so the record tile says "Latest record" after 24 hours. The lift-trend spa
 `wear/tools/tile-previews/render.mjs` from the same words, colours and icons). From Wear OS 4 the rest gauge is live; on Wear OS 3 it shows the
 value of the last update and the countdown digits still tick. The Start complication opens the watch app, which asks the phone.
 
-**iOS.** The Watch widgets' "Start" opens the Watch app: a start request from the Watch to the phone does not exist yet. SB-03 needs iPad support in the host app. The widget
-renders are `ImageRenderer` drawings, so they show no container background, timers or tinting.
+**iOS.** The Watch widgets' "Start" opens the Watch app: a start request from the Watch to the phone does not exist yet. SB-03 is offered on the iPad Home Screen because the host app and
+the widget extension target iPad. The widget renders are `ImageRenderer` drawings, so they show no container background, timers or tinting.
 
 **Both.** Weights are kilograms (the unit setting of the Pulse app is not handled). The Android data model has no training plans, rep ranges, entry notes or stored body weight
 (`nextUp` plan fields stay empty; the weekly goal is a setting, 1 to 7, default 4). Neither platform has readiness or partners without the wider Pulse app.

@@ -41,6 +41,8 @@ public struct ActiveHeaderView: View {
                     .padding(.top, 2)
             }
             .padding(.horizontal, PulseTheme.screenInset)
+            // On a wide screen the buttons and figures sit in the column of the screen below; the bar behind them and the strip run edge to edge.
+            .pulseReadableColumn()
 
             ActiveProgressStrip(segments: header.segments)
                 .padding(.top, 6)

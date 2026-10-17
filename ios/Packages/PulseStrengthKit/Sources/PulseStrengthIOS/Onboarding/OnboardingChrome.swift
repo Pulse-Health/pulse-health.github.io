@@ -24,6 +24,8 @@ struct OnboardingTopBar: View {
         .padding(.trailing, OnboardingTheme.heroInset - 5)
         .frame(height: OnboardingTheme.topBarHeight)
         .overlay(progress)
+        // On a wide screen (an iPad) the brand, Back and the pause button line up with the column of the screens below.
+        .pulseReadableColumn(PulseLayout.focusedColumn)
         .onAppear {
             if reduceMotion {
                 markDrawn = 1

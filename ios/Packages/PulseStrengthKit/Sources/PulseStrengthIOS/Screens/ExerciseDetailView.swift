@@ -74,6 +74,7 @@ public struct ExerciseDetailView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 2)
             .padding(.bottom, 40)
+            .pulseReadableColumn()
         }
         .scrollIndicators(.hidden)
         .background(PulseTheme.ground.ignoresSafeArea())

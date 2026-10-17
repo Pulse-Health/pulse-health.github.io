@@ -14,8 +14,9 @@
 #               Uploads the PNGs, logs and result summaries as artifact `strength-screens` (14 days) and the zipped .xcresult
 #               bundles as `strength-xcresults` (3 days). Failed assertions do not fail the job; only "no PNG at all" does.
 #               See ios/README.md, "Screenshots in CI".
-#   matrix      A short second screenshot tour (StrengthTourTests) on four simulators in parallel: dark mode, accessibility text size,
-#               iPhone SE (3rd generation), oldest installed iOS 17+ runtime. A missing simulator prints `SKIPPED: <reason>` and does not
+#   matrix      A short second screenshot tour (StrengthTourTests) on six simulators in parallel: dark mode, accessibility text size,
+#               iPhone SE (3rd generation), oldest installed iOS 17+ runtime, and the first available iPad in portrait (`ipad`) and in
+#               landscape (`ipad-land`). A missing simulator prints `SKIPPED: <reason>` and does not
 #               fail the entry. Artifact `strength-matrix-<name>` (14 days) with PNGs, a layout report and a digest at the end of the log.
 
 name: strength-ios
@@ -952,11 +953,14 @@ jobs:
           echo "OK: $total screenshot(s) in the artifact strength-screens"
 
   # A SHORT second screenshot tour (ios/Apps/PulseStrengthUITests/StrengthTourTests.swift, 21 screenshots, about 4 minutes) under
-  # four conditions the long flow of `visual` never looks at. One runner per entry, in parallel, and no entry stops the others:
-  #   dark    iPhone 16 Pro, dark appearance               (the dark values of PulseTheme)
-  #   xxl     iPhone 16 Pro, content size accessibility-extra-large   (layouts at Dynamic Type accessibility sizes)
-  #   se      iPhone SE (3rd generation), 375 x 667 pt     (the active-workout screen must fit without page scrolling)
-  #   ios17   an iPhone on the oldest installed iOS runtime >= 17.0   (runtime differences)
+  # six conditions the long flow of `visual` never looks at. One runner per entry, in parallel, and no entry stops the others:
+  #   dark      iPhone 16 Pro, dark appearance               (the dark values of PulseTheme)
+  #   xxl       iPhone 16 Pro, content size accessibility-extra-large   (layouts at Dynamic Type accessibility sizes)
+  #   se        iPhone SE (3rd generation), 375 x 667 pt     (the active-workout screen must fit without page scrolling)
+  #   ios17     an iPhone on the oldest installed iOS runtime >= 17.0   (runtime differences)
+  #   ipad      the first available iPad (a device or device type whose name contains "iPad", an 11-inch model first) on the newest
+  #             installed iOS runtime >= 17.0, portrait   (regular width: the screens keep to a column; the system shapes the sheets)
+  #   ipad-land the same iPad, landscape (the tour rotates the device itself: TOUR_ORIENTATION)
   # A simulator type or runtime that the runner does not have prints a line `SKIPPED: <reason>` and the entry still succeeds.
   # Every other failure (compile error, failed assertion, crashed test) does not fail the entry either: the final gate fails it
   # only when not a single PNG exists. The END of each job log is a digest: errors, number of PNGs, the LAYOUT VIOLATION lines and
@@ -987,11 +991,24 @@ jobs:
             device: 'oldest iPhone on the oldest iOS runtime >= 17.0'
             appearance: light
             content_size: large
+          - name: ipad
+            # Not a device name either: pick_tour_sim.py takes the first available iPad (the name contains "iPad") of the newest runtime.
+            device: 'first available iPad'
+            appearance: light
+            content_size: large
+            orientation: portrait
+          - name: ipad-land
+            device: 'first available iPad'
+            appearance: light
+            content_size: large
+            orientation: landscape
     env:
       TOUR_NAME: ${{ matrix.name }}
       TOUR_DEVICE: ${{ matrix.device }}
       TOUR_APPEARANCE: ${{ matrix.appearance }}
       TOUR_CONTENT_SIZE: ${{ matrix.content_size }}
+      # Only the iPad entries set it (the others leave the property out, which is an empty string here): the tour then rotates the device.
+      TOUR_ORIENTATION: ${{ matrix.orientation }}
       LOG_DIR: ${{ github.workspace }}/matrix-logs
       SCREENS_DIR: ${{ github.workspace }}/screens
       RESULTS_DIR: ${{ github.workspace }}/xcresults
@@ -999,6 +1016,7 @@ jobs:
       # SCREENSHOT_DIR (an absolute path: the simulator shares the file system of the runner) and TOUR_CONFIG (the file name part).
       TEST_RUNNER_SCREENSHOT_DIR: ${{ github.workspace }}/screens
       TEST_RUNNER_TOUR_CONFIG: ${{ matrix.name }}
+      TEST_RUNNER_TOUR_ORIENTATION: ${{ matrix.orientation }}
       HOMEBREW_NO_AUTO_UPDATE: '1'
       HOMEBREW_NO_INSTALL_CLEANUP: '1'
     defaults:
@@ -1011,7 +1029,8 @@ jobs:
       #   run_logged.sh <log> <command...>  runs the command, tees the complete output to the log and, when it fails, prints the
       #                                     unique error / failure lines and the last 100 lines.
       #   pick_tour_sim.py <device>         prints "OK<TAB>udid<TAB>name<TAB>runtime id<TAB>runtime name" or "SKIPPED<TAB>reason";
-      #                                     creates the device when its type exists on a runtime but no device does.
+      #                                     creates the device when its type exists on a runtime but no device does. "oldest ..." takes
+      #                                     an iPhone of the oldest runtime, "first available iPad" an iPad of the newest one.
       #   summarize_result.py, fallback_attachments.py   as in `visual`.
       - name: Prepare
         run: |
@@ -1158,6 +1177,33 @@ jobs:
               return skipped("the oldest iOS runtime (" + runtime_label(runtime) + ") offers no iPhone device type that could be created")
 
 
+          def ipad_rank(name):
+              # An 11-inch iPad (about 820 x 1180 pt in portrait) is the size the layout is judged at; any other iPad is fine when there is none.
+              return 0 if "11-inch" in name else 1
+
+
+          def pick_ipad(runtimes, devices):
+              # The first available iPad: any device, else any device type, whose name contains "iPad", on the newest runtime that has one.
+              # An 11-inch model comes first and the rest is sorted by name, so the choice is the same on every run of a runner image.
+              type_names = sorted({t.get("name", "") for r in runtimes for t in r.get("supportedDeviceTypes", []) if "iPad" in t.get("name", "")})
+              for runtime in reversed(runtimes):
+                  entries = [d for d in devices.get(runtime["identifier"], []) if d.get("isAvailable", True) and "iPad" in d.get("name", "")]
+                  if entries:
+                      entries.sort(key=lambda d: (ipad_rank(d["name"]), d["name"]))
+                      log("iPads on " + runtime_label(runtime) + ": " + ", ".join(d["name"] for d in entries))
+                      return ok(entries[0]["udid"], entries[0]["name"], runtime)
+                  types = [t for t in runtime.get("supportedDeviceTypes", []) if "iPad" in t.get("name", "")]
+                  types.sort(key=lambda t: (ipad_rank(t["name"]), t["name"]))
+                  for type_entry in types:
+                      made = create_device(runtime, type_entry)
+                      if made:
+                          return ok(made["udid"], made["name"], runtime)
+              if CREATE_ERRORS:
+                  return skipped("an iPad device type exists but 'simctl create' failed (" + "; ".join(CREATE_ERRORS) + ")")
+              return skipped("no iPad simulator and no iPad device type is available on any installed iOS runtime >= 17.0 (iPad types seen: "
+                             + (", ".join(type_names) or "none") + ")")
+
+
           def main():
               wanted = sys.argv[1] if len(sys.argv) > 1 else ""
               runtimes = ios_runtimes()
@@ -1170,6 +1216,8 @@ jobs:
                   return skipped("no iOS simulator runtime >= 17.0 is installed on this runner")
               if wanted.lower().startswith("oldest"):
                   return pick_oldest(runtimes, devices)
+              if wanted.lower().startswith("first available ipad"):
+                  return pick_ipad(runtimes, devices)
               return pick_named(runtimes, devices, wanted)
 
 
@@ -1371,7 +1419,7 @@ jobs:
           {
             echo "simulator: $TOUR_SIM_NAME ($TOUR_UDID)"
             echo "runtime: $TOUR_RUNTIME"
-            echo "requested: appearance=$TOUR_APPEARANCE content_size=$TOUR_CONTENT_SIZE"
+            echo "requested: appearance=$TOUR_APPEARANCE content_size=$TOUR_CONTENT_SIZE orientation=${TOUR_ORIENTATION:-as booted}"
           } > "$settings"
           # XCUIElement.typeText needs the software keyboard (the long flow types; the tour does not, the setting stays the same).
           defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool NO || true
@@ -1463,7 +1511,7 @@ jobs:
           log="$LOG_DIR/xcodebuild-tour.log"
           {
             echo "strength-ios matrix digest: $TOUR_NAME"
-            echo "requested: device='$TOUR_DEVICE' appearance=$TOUR_APPEARANCE content_size=$TOUR_CONTENT_SIZE"
+            echo "requested: device='$TOUR_DEVICE' appearance=$TOUR_APPEARANCE content_size=$TOUR_CONTENT_SIZE orientation=${TOUR_ORIENTATION:-as booted}"
             if [ -n "${TOUR_SKIPPED:-}" ]; then
               echo "SKIPPED: ${TOUR_SKIP_REASON:-no reason recorded}"
             else
@@ -1538,7 +1586,7 @@ jobs:
             echo ""
             echo "| Item | Value |"
             echo "| --- | --- |"
-            echo "| requested | $TOUR_DEVICE, $TOUR_APPEARANCE, content size $TOUR_CONTENT_SIZE |"
+            echo "| requested | $TOUR_DEVICE, $TOUR_APPEARANCE, content size $TOUR_CONTENT_SIZE, orientation ${TOUR_ORIENTATION:-as booted} |"
             if [ -n "${TOUR_SKIPPED:-}" ]; then
               echo "| result | SKIPPED: ${TOUR_SKIP_REASON:-no reason recorded} |"
             else

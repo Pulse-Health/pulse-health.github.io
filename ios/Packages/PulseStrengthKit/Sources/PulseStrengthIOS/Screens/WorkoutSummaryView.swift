@@ -46,6 +46,7 @@ public struct WorkoutSummaryView: View {
             .padding(.horizontal, PulseTheme.screenInset)
             .padding(.top, 28)
             .padding(.bottom, 24)
+            .pulseReadableColumn()
         }
         .scrollIndicators(.hidden)
         .background(PulseTheme.ground.ignoresSafeArea())
@@ -175,6 +176,7 @@ public struct WorkoutSummaryView: View {
         .padding(.horizontal, PulseTheme.screenInset)
         .padding(.top, 10)
         .padding(.bottom, 8)
+        .pulseReadableColumn()
         .frame(maxWidth: .infinity)
         .background(PulseTheme.ground.ignoresSafeArea(edges: .bottom))
         .overlay(alignment: .top) {

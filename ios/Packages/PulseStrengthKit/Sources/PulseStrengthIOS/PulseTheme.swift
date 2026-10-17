@@ -133,6 +133,19 @@ public enum PulseDynamicType {
     static let controlHeightStyle: Font.TextStyle = .largeTitle
 }
 
+// MARK: - Wide screens
+
+/// The widths of the column that a screen keeps on a wide display (an iPad), see `View.pulseReadableColumn(_:)`. A phone is narrower than
+/// both and never sees them.
+public enum PulseLayout {
+    /// The widest the content of a screen gets (the hub and its pages, the workout screen, the summary): wide enough for the cards and the
+    /// set table to breathe, narrow enough that a line of text stays easy to read.
+    public static let screenColumn: CGFloat = 640
+
+    /// The widest a sheet, a step of the onboarding or a page of the walkthrough gets (a form sheet on an iPad is 540 pt wide).
+    public static let focusedColumn: CGFloat = 540
+}
+
 /// A design number (font size, icon frame, column width, padding) that grows with Dynamic Type like the given text style,
 /// and equals `value` at the default (large) size. For views that need the scaled number itself: `Text` concatenation,
 /// shapes, paddings, `Font` values.
@@ -214,7 +227,38 @@ private struct PulseLargerTextShrinkModifier: ViewModifier {
     }
 }
 
+/// `pulseReadableColumn`: the content keeps to a column of at most `maxWidth` points, centred, while the horizontal size class is regular.
+/// With a compact size class (every iPhone, which is portrait only, and a narrow iPad window) the content is as wide as it always was.
+///
+/// Both frames are in the view tree in every case; only a width changes. A window that is resized across the size class threshold
+/// (Split View, Stage Manager) therefore keeps the state of the screen instead of building it again.
+private struct PulseReadableColumnModifier: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    private let maxWidth: CGFloat
+
+    init(maxWidth: CGFloat) {
+        self.maxWidth = maxWidth
+    }
+
+    private var columnWidth: CGFloat {
+        horizontalSizeClass == .regular ? maxWidth : CGFloat.infinity
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .frame(maxWidth: columnWidth)
+            .frame(maxWidth: .infinity)
+    }
+}
+
 public extension View {
+    /// Keeps this view in a column of at most `maxWidth` points, centred, while the horizontal size class is regular (an iPad); a compact
+    /// layout is not touched. Apply it to the content of a screen and not to its background, so the background still reaches the edges
+    /// of the screen: `ScrollView { content.pulseReadableColumn() }.background(ground)`.
+    func pulseReadableColumn(_ maxWidth: CGFloat = PulseLayout.screenColumn) -> some View {
+        self.modifier(PulseReadableColumnModifier(maxWidth: maxWidth))
+    }
+
     /// A fixed design size that grows with Dynamic Type (identical at the default size). `style` = the text style it scales like.
     func pulseFont(
         _ size: CGFloat,

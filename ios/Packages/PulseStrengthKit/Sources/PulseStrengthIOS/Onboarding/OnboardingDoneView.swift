@@ -39,6 +39,8 @@ struct OnboardingDoneScreen: View {
                 }
             }
         }
+        // On a wide screen (an iPad) the last screen keeps to the same column as the steps before it.
+        .pulseReadableColumn(PulseLayout.focusedColumn)
         .onChange(of: isActive) { (_: Bool, active: Bool) in
             if active {
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
