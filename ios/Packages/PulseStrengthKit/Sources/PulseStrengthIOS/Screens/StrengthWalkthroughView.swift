@@ -76,6 +76,9 @@ public struct StrengthWalkthroughView: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
+        // The same 560 pt cap as the page and the footer below, so Back and Skip stay over them on a wide screen.
+        .frame(maxWidth: 560)
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: Pages
