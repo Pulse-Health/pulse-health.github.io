@@ -167,6 +167,7 @@ public struct PulseStrengthRootView: View {
             .dynamicTypeSize(PulseDynamicType.activeWorkoutRange)
             .padding(.horizontal, 14)
             .padding(.bottom, 8)
+            .pulseReadableColumn()
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
     }
