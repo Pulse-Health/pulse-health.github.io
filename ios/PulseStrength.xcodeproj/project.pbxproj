@@ -1440,7 +1440,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID).widgets";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1474,7 +1474,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID).uitests";
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = PulseStrength;
 			};
 			name = Debug;
@@ -1494,7 +1494,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -1593,7 +1593,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1625,7 +1625,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID).widgets";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -1812,7 +1812,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PULSE_APP_BUNDLE_ID).uitests";
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_TARGET_NAME = PulseStrength;
 			};
 			name = Release;
