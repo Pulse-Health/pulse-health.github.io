@@ -70,10 +70,11 @@
         <h1>Datenschutzerklärung</h1>
         
         <div class="meta">
-            <strong>Gültig ab:</strong> 23. Juni 2026 &middot; <strong>Zuletzt aktualisiert:</strong> 16. Oktober 2026<br>
+            <strong>Gültig ab:</strong> 23. Juni 2026 &middot; <strong>Zuletzt aktualisiert:</strong> 25. November 2026 (Entwurf: Android)<br>
             <strong>Sprache:</strong> Deutsch | <a href="privacy-policy.html">English</a><br>
-            <strong>Siehe auch:</strong> <a href="agb.html">AGB</a> · <a href="impressum.html">Impressum</a>
+            <strong>Siehe auch:</strong> <a href="agb.html">AGB</a> · <a href="impressum.html">Impressum</a> · <a href="account-deletion.html">Konto löschen</a>
         </div>
+        <!-- OWNER CHECK: DRAFT of 2026-11-25 for the Android release (Android additions are sections 4e-4g, 5b, 5c and the marked rows/sentences). Based on the PUBLISHED version 1.2 of 16.10.2026, which still names Supabase as the backend although Railway hosts it since 16.10.2026, and which does not yet cover Apple In-App Purchase, doctor sharing, attachments, cycle coaching or diagnostics on iOS. The unpublished draft 1.3 (legal repo, public-site-patches/0001-...patch) fixes that; reconcile the two before publishing (the Android text refers to "our servers (Section 5)" on purpose and names no hosting provider). The version line at the bottom says 1.2 + Android draft; set the final number. -->
 
         <h2>1. Verantwortlicher für Datenverarbeitung</h2>
         <p>
@@ -88,6 +89,12 @@
             die Ihnen hilft, Ihre Trainings-, Ernährungs- und Schlafmuster persönlich zu verfolgen. 
             Diese Datenschutzerklärung erläutert, wie wir Ihre Daten verarbeiten.
         </p>
+        <p>
+            Sie gilt für die App auf <strong>iOS</strong> und auf <strong>Android</strong> (Paket <code>com.robinjungerich.pulse</code>), die in den Stores als <strong>Baseline</strong> erscheint.
+            Wo sie Apple HealthKit oder Apple Health nennt, gilt auf Android sinngemäß Health Connect (Abschnitt 4e). Wie Sie Ihr Konto löschen, steht
+            auf der Seite <a href="account-deletion.html">Konto löschen</a>.
+        </p>
+        <!-- OWNER CHECK: The app is called Pulse on this site and Baseline in the repository and the Play listing. The sentence above bridges the two names; confirm the final name and rename the site pages consistently. -->
 
         <h2>3. Welche Daten verarbeiten wir?</h2>
         <table>
@@ -181,9 +188,27 @@
                 <td>Clerk (🇺🇸 USA)</td>
                 <td>Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO); Übermittlung in die USA abgesichert durch EU-Standardvertragsklauseln</td>
             </tr>
+            <tr>
+                <td>Gesundheitsdaten (Health Connect, Android)</td>
+                <td>Android Health Connect (auf Ihrem Gerät)</td>
+                <td>Bleibt auf Ihrem Gerät</td>
+                <td>Einwilligung (Art. 9 Abs. 2 lit. a DSGVO) &mdash; siehe Abschnitt 4e</td>
+            </tr>
+            <tr>
+                <td>Premium-Abonnement (Android)</td>
+                <td>Google Play Billing (Kaufbeleg, Status)</td>
+                <td>Abrechnungsdienst auf unseren Servern (Abschnitt 5b)</td>
+                <td>Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO)</td>
+            </tr>
+            <tr>
+                <td>Technische Berichte (Android, optional)</td>
+                <td>Automatisch erzeugt, nur mit Ihrer Handlung oder Einwilligung</td>
+                <td>Unser Backend, ohne Kontoverknüpfung (Abschnitt 5c)</td>
+                <td>Einwilligung (Art. 6 Abs. 1 lit. a DSGVO)</td>
+            </tr>
         </table>
 
-        <h2>4. Apple HealthKit</h2>
+        <h2>4. Apple HealthKit (iOS)</h2>
         <p>
             <strong>Daten:</strong> Herzdaten, Trainings- und Fitnessdaten, Schlafmetriken,
             Aktivitydaten sowie Ihr Geburtsdatum und biologisches Geschlecht von Apple Watch und iPhone.
@@ -327,7 +352,93 @@
                 Health, wo Sie es verwalten.</li>
         </ul>
 
+
+        <h2 id="health-connect">4e. Android: Health Connect</h2>
+        <!-- OWNER CHECK: This anchor (datenschutz.html#health-connect, English: privacy-policy.html#health-connect) is the page to enter as privacy-policy URL in the Play Console Health Connect declaration and as the link behind the app's permission rationale (the app shows its own rationale screen; decision O31 adds the Health Connect / Google privacy link to the legal sheet, not built yet). -->
+        <p>
+            Auf Android liest und schreibt Baseline Gesundheitsdaten &uuml;ber <strong>Health Connect</strong>
+            (Android-Systemdienst, Google). Wo diese Erkl&auml;rung von HealthKit oder Apple Health spricht, gilt auf Android
+            sinngem&auml;&szlig; Health Connect. Health Connect fragt jede Datenart einzeln bei Ihnen an; diese Seite ist die dort und in Google Play
+            verlinkte Datenschutzerkl&auml;rung. Sie k&ouml;nnen jede Berechtigung jederzeit in Health Connect widerrufen. Baseline liest nichts, bevor Sie es erlauben.
+        </p>
+        <p><strong>Daten, die Baseline mit Ihrer Erlaubnis lesen kann</strong> (genau die in der App deklarierten Berechtigungen):</p>
+        <ul>
+            <li><strong>Herz und Erholung:</strong> Herzfrequenz, Herzfrequenzvariabilit&auml;t (Health Connect liefert RMSSD, nicht SDNN wie Apple Health), Ruhepuls,
+                Sauerstoffs&auml;ttigung, Atemfrequenz, Hauttemperatur.</li>
+            <li><strong>Schlaf und Aktivit&auml;t:</strong> Schlaf, Schritte, aktive Kalorien, Distanz, Trainingseinheiten (Workouts).</li>
+            <li><strong>K&ouml;rpermessungen (dort, wo ein K&ouml;rperprofil gebraucht wird):</strong> K&ouml;rpergr&ouml;&szlig;e, Gewicht, Grundumsatz.</li>
+            <li><strong>Blutdruck (optional):</strong> als letzter Wert und 7-Tage-Mittel, au&szlig;erhalb aller Scores.</li>
+            <li><strong>Zyklus (optional, eigene Einwilligung, Abschnitt 4g):</strong> Menstruation.</li>
+            <li><strong>Befunde (optional):</strong> Allergien und Unvertr&auml;glichkeiten, Diagnosen, Impfungen, Laborwerte, Medikamente, Prozeduren und Vitalwerte aus Health Connect
+                (Abschnitt 4a gilt sinngem&auml;&szlig;: nur auf dem Ger&auml;t, nie an den KI-Anbieter).</li>
+            <li><strong>Wasser und Koffein (optional):</strong> Von den Ern&auml;hrungsdaten werden ausschlie&szlig;lich das Wasservolumen und das Koffein-Feld gelesen und geschrieben.
+                Health Connect kennt keine Berechtigung nur f&uuml;r Koffein, Baseline wertet aber nichts anderes aus. Alkohol und Medikation werden nicht in Health Connect gelesen oder geschrieben.</li>
+            <li><strong>Hintergrund und &auml;ltere Daten (optional):</strong> Mit der Berechtigung &bdquo;im Hintergrund lesen&ldquo; kann die App die Tageswerte vor dem &Ouml;ffnen berechnen.
+                Ohne die Berechtigung &bdquo;&auml;ltere Daten lesen&ldquo; antwortet Health Connect nur f&uuml;r die 30 Tage vor der ersten Freigabe; mit ihr kann Baseline Ihren Verlauf (bis zu 180 Tage) importieren.
+                Beides ist freiwillig; die App funktioniert ohne.</li>
+        </ul>
+        <p><strong>Daten, die Baseline in Health Connect schreiben kann</strong> (nur mit Ihrer Erlaubnis und nur f&uuml;r Funktionen, die Sie nutzen):</p>
+        <ul>
+            <li>Trainingseinheiten, ggf. mit Route, Herzfrequenz, aktiven Kalorien und Distanz (Export-Schalter &bdquo;Workouts&ldquo;, standardm&auml;&szlig;ig an, sobald Sie die Berechtigung erteilen);</li>
+            <li>Schlaf (Export-Schalter &bdquo;Schlaf&ldquo;) und Blutdruck (Export-Schalter &bdquo;Blutdruck&ldquo;), jeweils nur Werte, die Sie in Baseline selbst eintragen;</li>
+            <li>K&ouml;rpergewicht, wenn Sie den Gewichts-Abgleich einschalten (Abschnitt 4d gilt sinngem&auml;&szlig;);</li>
+            <li>Wasser und Koffein, wenn Sie den Abgleich in den Profil-Einstellungen einschalten (standardm&auml;&szlig;ig aus).</li>
+        </ul>
+        <p>
+            <strong>Speicherort:</strong> Die Rohdaten bleiben in Health Connect und auf Ihrem Ger&auml;t. Baseline berechnet Scores und Verl&auml;ufe auf dem Ger&auml;t.
+            Ob Health Connect selbst Daten sichert oder synchronisiert, bestimmen Sie in den Android- bzw. Health-Connect-Einstellungen; darauf haben wir keinen Einfluss.
+            Was den KI-Coach erreichen kann, richtet sich nach Abschnitt 7: berechnete Zusammenfassungen, keine Rohdaten, und nur mit Ihrer Einwilligung.
+        </p>
+        <p>
+            <strong>Begrenzte Verwendung:</strong> Wir verwenden Daten aus Health Connect nur, um Ihnen die sichtbaren Funktionen der App bereitzustellen und zu verbessern.
+            Wir verkaufen sie nicht, nutzen sie nicht f&uuml;r Werbung und geben sie nicht an Datenh&auml;ndler oder andere Dritte weiter, au&szlig;er
+            wie in dieser Erkl&auml;rung beschrieben (KI-Coaching mit Ihrer Einwilligung, Abschnitt 7).
+        </p>
+        <p>
+            <strong>Rechtsgrundlage:</strong> ausdr&uuml;ckliche Einwilligung (Art. 9 Abs. 2 lit. a DSGVO), die Sie jederzeit mit Wirkung f&uuml;r die Zukunft widerrufen k&ouml;nnen
+            (in Health Connect unter App-Berechtigungen &rarr; Baseline, oder durch Deinstallieren der App).
+        </p>
+        <!-- OWNER CHECK: The list above is the manifest of branch android-parity (2026-11-25), including READ_MENSTRUATION, the seven READ_MEDICAL_DATA_* permissions, READ_BASAL_METABOLIC_RATE, READ_HYDRATION/NUTRITION (caffeine-only use, hc-hydration-caffeine.md), READ_HEALTH_DATA_IN_BACKGROUND and READ_HEALTH_DATA_HISTORY (O12/O13 keep the history permission). Re-check against the final release manifest and the Play Console declaration (they must match this text). "180 days" is the import window in docs/parity-debt.md O12 (unverified on a device). Not re-verified: that the Android clinical-records code keeps records out of every AI payload exactly as on iOS; the export switches' defaults come from hc-write-foundation.md (all default on). -->
+
+        <h2>4f. Android: Standort, Bluetooth, Kamera, Mikrofon, Mitteilungen, Google Play-Dienste</h2>
+        <ul>
+            <li><strong>Standort (nur f&uuml;r L&auml;ufe und Radfahrten, nur w&auml;hrend der Nutzung):</strong> Baseline liest Ihren genauen Standort &uuml;ber den
+                Standortdienst der Google Play-Dienste, solange eine Aufzeichnung l&auml;uft, und zeigt dazu eine laufende Mitteilung. Routen bleiben auf dem Ger&auml;t
+                und gehen nur mit Ihrer Erlaubnis in Health Connect. Kein Standort im Hintergrund, kein Standort in der Cloud.</li>
+            <li><strong>Bluetooth:</strong> Verbindung zu einem Herzfrequenz-Brustgurt, den Sie in der Sensorliste antippen. Die Suche leitet keinen Standort ab.</li>
+            <li><strong>Kamera:</strong> nur f&uuml;r den Barcode-Scanner der Ern&auml;hrung. Bilder werden auf dem Ger&auml;t ausgewertet und weder gespeichert noch gesendet;
+                nur die erkannte Barcode-Nummer wird wie in Abschnitt 8 abgefragt.</li>
+            <li><strong>Mikrofon:</strong> nur f&uuml;r die Spracheingabe bei Lebensmitteln, ausschlie&szlig;lich mit der Spracherkennung auf dem Ger&auml;t (ab Android 13);
+                Audio wird nicht gespeichert und nicht hochgeladen.</li>
+            <li><strong>Mitteilungen und Alarme:</strong> Erinnerungen und Hinweise werden lokal auf dem Ger&auml;t geplant; die Berechtigung wird erst gefragt, wenn Sie eine Mitteilung einschalten.</li>
+            <li><strong>Google Play-Dienste und Wear OS:</strong> Der Standortdienst (oben) ist Teil der Google Play-Dienste. Nutzen Sie eine gekoppelte Wear-OS-Uhr, tauschen Handy und Uhr
+                Trainingsdaten &uuml;ber die Datenschicht der Google Play-Dienste aus; wir erhalten diese Daten dadurch nicht.</li>
+        </ul>
+        <!-- OWNER CHECK: (1) Wear OS: owner decision O7 says the watch app is not shipped as its own Play listing, but the phone app still contains the Data Layer link (play-services-wearable). Keep or delete the Wear sentence depending on whether any watch can connect in the release. (2) Barcode: the build uses the ML Kit barcode-scanning artifact (bundled model, on device); Google's ML Kit documentation says it may collect performance/usage telemetry through Play services. Confirm and mention in the Play data-safety form (O18). (3) Firebase Cloud Messaging is in the code (CheerPushService) but not configured until the owner creates Firebase (O5): when it goes live, add Google (FCM) as a recipient for push tokens and notifications to the processor table and here. -->
+
+        <h2>4g. Ihre Einwilligungen (Android und iOS)</h2>
+        <p>
+            Einwilligungen in die Verarbeitung von Gesundheitsdaten werden getrennt je Zweck eingeholt, sind standardm&auml;&szlig;ig aus und lassen sich jederzeit unter
+            <strong>Profil &rarr; Konto &amp; Datenschutz</strong> widerrufen. Ein Widerruf wirkt f&uuml;r die Zukunft; die Rechtm&auml;&szlig;igkeit der
+            bisherigen Verarbeitung bleibt unber&uuml;hrt. Auf Android wird jede Entscheidung mit Zeitpunkt auf dem Ger&auml;t protokolliert.
+        </p>
+        <ul>
+            <li><strong>Cloud-Speicherung (&bdquo;healthCloud&ldquo;):</strong> Chat-Inhalte und die auf dem Ger&auml;t berechneten Gesundheitsanalyse-Zusammenfassungen werden auf unseren
+                Servern (Abschnitt 5) gespeichert. Auf Android ist das aus, bis Sie es einschalten; mit &bdquo;Cloud-Sync stoppen&ldquo; beenden Sie es wieder.</li>
+            <li><strong>KI-Coaching (&bdquo;aiCoaching&ldquo;):</strong> Abschnitt 7.</li>
+            <li><strong>Zyklusdaten (&bdquo;cycleData&ldquo;):</strong> Wenn Sie es erlauben, liest Baseline Ihre Menstruationseintr&auml;ge aus Health Connect, damit zyklusbedingte Schwankungen
+                bei HRV und Temperatur nicht als Verschlechterung gemeldet werden. Diese Eintr&auml;ge bleiben auf dem Ger&auml;t und sind nie Teil einer Coaching-Anfrage.
+                Nur wenn Sie zus&auml;tzlich <strong>Zyklus-Coaching</strong> (&bdquo;cycleCoaching&ldquo;) erlauben, kann der Coach die Zyklusphase und den Zyklustag erfahren, sonst nichts;
+                der Widerruf l&ouml;scht zudem die gespeicherten Coach-Werkzeugergebnisse auf unseren Servern. Besonders sensible Daten (Art. 9 DSGVO): eigener Zweck, nie geb&uuml;ndelt.</li>
+            <li><strong>Medikation (&bdquo;medicationContext&ldquo;):</strong> wie in Abschnitt 4b: nur Wirkstoffklassen, nie Pr&auml;parat, Dosis oder Uhrzeit.</li>
+            <li><strong>Katalogverbesserung (&bdquo;catalogImprovement&ldquo;):</strong> Findet die App ein von Ihnen eingegebenes Medikament nicht im Katalog, kann sie den eingegebenen
+                <em>Namen</em> an uns senden, damit der Katalog f&uuml;r alle erg&auml;nzt wird (Medikamenten-L&uuml;cken-Bericht). Das geschieht nur mit dieser Einwilligung. Gespeichert wird nur der
+                normalisierte Begriff mit einem Z&auml;hler, ohne Nutzer-ID und ohne Zeitstempel; Eingaben, die wie Text, Adresse oder Notiz aussehen, werden abgelehnt.</li>
+        </ul>
+        <!-- OWNER CHECK: healthCloud (O19), cycleData (O21) and catalogImprovement (O22) are owner decisions of 2026-11-25; at the time of writing the Android code had only AI_COACHING, MEDICATION, CYCLE_COACHING, RECIPE_IMPORT_SAMPLES and DOCTOR_SHARING in ConsentPurpose.kt. This text describes the decided behaviour, taken from the iOS ConsentStore, and must be re-checked against the shipped Android build (label "Stop cloud sync", the controls under Profile -> Account & privacy, defaults off, "audited" = a record with time). iOS lists account and healthCloud as mandatory purposes, while the text says Android's healthCloud is off until switched on (O19): confirm this deliberate difference. The purposes recipeImportSamples and doctorSharing exist in the code and are not described here; decide whether they belong in this section (doctor sharing is hidden on Android, O4). -->
+
         <h2>5. Supabase Datenspeicher</h2>
+        <!-- OWNER CHECK: Stale: the backend has run on Railway (EU West, Amsterdam; a US company) since 16.10.2026, not Supabase Frankfurt (CLAUDE.md, railway/README.md; the legal repo COMPLIANCE-STATUS.md flags the same). Android talks to Railway only. Not changed here because the DPA/retention facts are open (DPA-Register #9); fix together with draft 1.3 before publishing. -->
         <p>
             <strong>Speichert:</strong> Ihr Benutzerprofil und Ihre Trainingshistorie. Bei Nutzung des KI-Coachings speichert Supabase zusätzlich Ihre <strong>Chat-Nachrichten, die auf Ihrem Gerät berechneten Gesundheitsanalyse-Zusammenfassungen sowie die im Onboarding eingegebenen Gesundheitsangaben (z. B. Erkrankungen und körperliche Einschränkungen)</strong>. Dies sind besondere Kategorien von Gesundheitsdaten, die auf Grundlage Ihrer ausdrücklichen Einwilligung (Art. 9 Abs. 2 lit. a DSGVO) verarbeitet werden. <strong>Ernährungslogs werden ausschließlich auf Ihrem Gerät gespeichert und nicht zu Supabase hochgeladen.</strong>
         </p>
@@ -386,6 +497,41 @@
                 jeden Personenbezug.</li>
         </ul>
 
+
+        <h2>5b. Premium-Abonnement &uuml;ber Google Play Billing (Android)</h2>
+        <p>
+            Auf Android wird Premium ausschlie&szlig;lich &uuml;ber <strong>Google Play Billing</strong> verkauft. Stripe wird auf Android nicht verwendet. Kauf, Zahlung, Steuer,
+            Rechnung, K&uuml;ndigung und Erstattung wickelt Google Play ab; Ihre Zahlungsmittel und Anschrift erhalten wir nicht.
+        </p>
+        <ul>
+            <li><strong>Was unser Abrechnungsdienst speichert:</strong> Ihre Nutzer-ID, die Produktkennung (Monat/Jahr), den Kaufbeleg-Token und die Bestellnummer von Google Play, den bezahlten
+                Zeitraum, den Status des Abonnements (aktiv, Kulanzfrist, gek&uuml;ndigt, erstattet) sowie den daraus abgeleiteten Premium-Zugang. Keine Zahlungs-, Rechnungs- oder Anschriftsdaten, kein Name.</li>
+            <li><strong>Pr&uuml;fung:</strong> Unser Dienst fragt den Kauf bei Google ab (Google Play Developer API), bevor Premium freigeschaltet wird.</li>
+            <li><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO (Vertragserf&uuml;llung).</li>
+            <li><strong>Empf&auml;nger:</strong> Google (Google Play) f&uuml;r den Kauf in eigener Verantwortung, nach Googles eigener Datenschutzerkl&auml;rung; unser Hosting-Anbieter (Abschnitte 5 und 9) f&uuml;r den Abrechnungsdienst.</li>
+            <li><strong>Speicherdauer:</strong> bis zur Kontol&ouml;schung; danach nur Belege, die wir gesetzlich aufbewahren m&uuml;ssen, und nur f&uuml;r die gesetzliche Frist. Die Kontol&ouml;schung
+                k&uuml;ndigt ein Google-Play-Abonnement nicht von selbst; k&uuml;ndigen Sie es in Google Play. Siehe <a href="account-deletion.html">Konto l&ouml;schen</a>.</li>
+        </ul>
+        <!-- OWNER CHECK: Google Play Billing is an owner decision (2026-11-25) but not in the code yet: the repository still has the Stripe path on Android and only Apple routes in billing/server. The stored fields above are the Apple tables transposed (billing_apple_accounts / billing_apple_subscriptions) and must be replaced by the real Play schema. Confirm: (a) Google's role (independent controller for payment and tax as merchant of record vs processor) and the Google entity for the EU (Google Ireland Limited vs Google LLC); (b) that no obfuscated account id or other identifier is sent to Google; (c) whether deleting the account ends or revokes a Play subscription (Play Developer API) and, if so, change this text and account-deletion.html; (d) the statutory retention period for sales records (section 257 HGB / section 147 AO), deliberately not stated. iOS purchases via Apple In-App Purchase are described only in the unpublished draft 1.3 (legal repo, public-site-patches). -->
+
+        <h2>5c. Technische Berichte (Absturz- und Diagnoseberichte)</h2>
+        <p>
+            Auf Android sendet Baseline technische Berichte nur, wenn Sie es ausl&ouml;sen oder erlauben:
+        </p>
+        <ul>
+            <li><strong>Manuell:</strong> &bdquo;Bericht senden&ldquo; in der Diagnose oder nach einem Absturz, wenn die App danach fragt.</li>
+            <li><strong>Automatisch (Opt-in, standardm&auml;&szlig;ig aus):</strong> Mit dem Schalter &bdquo;Technische Berichte automatisch senden&ldquo; in der Diagnose sendet die App Berichte dar&uuml;ber,
+                wie das System die App beendet hat (z.&nbsp;B. Absturz, H&auml;nger). Ausschalten l&ouml;scht, was noch zum Senden wartet.</li>
+        </ul>
+        <p>
+            <strong>Inhalt:</strong> Ger&auml;tetyp, Android- und App-Version, Sprache, ein Protokollauszug, Namen von Klassen und Programmzeilen (nie der Text einer Fehlermeldung) und eine
+            kurze Spur zuletzt ge&ouml;ffneter Bildschirme. Gesundheits-, Coaching- und Ern&auml;hrungsinhalte werden gezielt entfernt, bevor ein Bericht entsteht.
+            <strong>Empf&auml;nger:</strong> ausschlie&szlig;lich unser eigenes Backend (Abschnitt 5), nicht Rollbar oder ein anderer Absturzdienst. Der Bericht tr&auml;gt keine Nutzer- oder Konto-ID, nur eine bei jedem App-Start neu gezogene Sitzungs-ID. Berichte werden h&ouml;chstens 60 Tage gespeichert (h&ouml;chstens die 500 neuesten).
+            <strong>Rechtsgrundlage:</strong> Ihre Einwilligung bzw. Ihre Handlung beim manuellen Senden (Art. 6 Abs. 1 lit. a DSGVO).
+            Weil die Berichte keinem Konto zugeordnet sind, k&ouml;nnen wir sie Ihnen nicht zuordnen und deshalb auf Anfrage nicht gezielt l&ouml;schen.
+        </p>
+        <!-- OWNER CHECK: Taken from core/diagnostics (DiagnosticsUpload.kt, AutomaticHangReports.kt, CrashPayloadSanitizer.kt) and the manifest comment. (1) Android sends to the own backend (railway/api diagnostics, table diagnostic_reports) and uses no Rollbar; iOS uses Rollbar behind the diagnostics consent. Owner decision O26 says Android reports "follow iOS (opt-in switch)": confirm Android will not add Rollbar, otherwise add it to the processor table. (2) A source comment in DiagnosticsUpload.kt still says "Android has no sign-in at all" (outdated): verify the shipped request carries no Authorization header or user id. (3) Retention (60 days, newest 500) is taken from RoPA processing 15 / railway/api/diagnostics.ts; confirm. (4) The legal basis wording (Art. 6(1)(a)) is mine; the iOS text cites Art. 6(1)(a) and 49(1)(a) because Rollbar is in the USA. -->
+
         <h2>6. Clerk Authentifizierung</h2>
         <p>
             <strong>Anbieter:</strong> Clerk, Inc.
@@ -410,6 +556,11 @@
         <p>
             <strong>Datenschutzvereinbarung:</strong> Ja, mit Standardvertragsklauseln (SCC) vorhanden.
         </p>
+        <p>
+            <strong>Android:</strong> Auch die Android-App nutzt Clerk für Anmeldung und Sitzung. Melden Sie sich mit Google oder Facebook an, authentifiziert der jeweilige Anbieter Sie und teilt
+            Clerk die für die Anmeldung nötigen Angaben (z.&nbsp;B. Name und E-Mail-Adresse) mit; für diese Anbieter gelten deren eigene Datenschutzerklärungen.
+        </p>
+        <!-- OWNER CHECK: Android offers Google and Facebook sign-in; Apple sign-in is switched off in the code (SignInOptions.APPLE_ENABLED = false) until configured in the Clerk dashboard (O1). The Clerk SDK is only in the build with baseline.clerkSdk=true and a CLERK_PUBLISHABLE_KEY. Confirm the providers of the release and what the Clerk DPA (still "signed" in the table below, but not evidenced in the DPA register) says. -->
 
         <h2>7. KI-Coaching &amp; KI-Funktionen (EU-gehostete Modelle, EU-intern)</h2>
         <p>
@@ -578,8 +729,17 @@
                 <td>SCC</td>
             </tr>
             <tr>
+                <td><strong>Google</strong> (Google Play, Health Connect, Google Play-Dienste) &mdash; nur Android</td>
+                <td>Google Play Billing: Zahlungsabwicklung in eigener Verantwortung. Health Connect und Standortdienst: Systemdienste auf Ihrem Ger&auml;t, wir senden dorthin keine Daten.</td>
+                <td>Google Ireland Limited (EU) bzw. Google LLC (USA)</td>
+                <td>Kauf und Verwaltung des Premium-Abonnements auf Android; Abfrage des Kaufs durch unseren Abrechnungsdienst</td>
+                <td>N/A (nach derzeitiger Einordnung kein Auftragsverarbeiter)</td>
+                <td>Googles eigene Bedingungen</td>
+            </tr>
+            <!-- OWNER CHECK: Google's role for Play Billing (independent controller vs processor), the Google entity and the transfer mechanism are not decided; see DPA-Register entry 15 in the legal repo. -->
+            <tr>
                 <td><strong>Rollbar</strong></td>
-                <td>Auftragsverarbeiter (Absturz-/Fehler-Reporting) — optional</td>
+                <td>Auftragsverarbeiter (Absturz-/Fehler-Reporting) — optional, nur iOS</td>
                 <td>🇺🇸 USA</td>
                 <td>App-Absturz-/Fehlerdiagnose (nur technische Daten — Gesundheits-, Coaching- und Ernährungsinhalte sind by design ausgeschlossen; keine Übermittlung ohne Ihre Einwilligung)</td>
                 <td>⏳ AVV ausstehend</td>
@@ -637,7 +797,7 @@
         <p>Sie haben folgende Rechte:</p>
         <ul>
             <li><strong>Auskunftsrecht (Art. 15):</strong> Sie können Ihre Daten anfordern</li>
-            <li><strong>Recht auf Löschung (Art. 17):</strong> Sie können Ihr Konto und alle damit verknüpften Daten löschen (zur anonymen Fragenstichprobe siehe Abschnitt 5a)</li>
+            <li><strong>Recht auf Löschung (Art. 17):</strong> Sie können Ihr Konto und alle damit verknüpften Daten in der App oder per E-Mail löschen lassen, siehe <a href="account-deletion.html">Konto löschen</a> (zur anonymen Fragenstichprobe siehe Abschnitt 5a)</li>
             <li><strong>Recht auf Datenportabilität (Art. 20):</strong> Sie können Ihre Daten exportieren</li>
             <li><strong>Recht auf Berichtigung (Art. 16):</strong> Sie können Ihre Daten bearbeiten</li>
             <li><strong>Recht auf Widerspruch (Art. 21):</strong> Sie können bestimmte Verarbeitungen ablehnen</li>
@@ -693,8 +853,8 @@
 
         <hr style="margin: 40px 0;">
         <p style="text-align: center; color: #6b6b6b; font-size: 12px;">
-            Letzte Aktualisierung: 16. Oktober 2026<br>
-            Version 1.2
+            Letzte Aktualisierung: 25. November 2026<br>
+            Version 1.2 (Android-Entwurf vom 25.11.2026)
         </p>
     </div>
     <script src="site.js"></script>
