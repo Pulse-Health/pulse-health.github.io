@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete your account / Konto löschen - Baseline</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: white;
+        }
+        h1 { color: #1a73e8; border-bottom: 3px solid #1a73e8; padding-bottom: 10px; }
+        h2 { color: #1a73e8; margin-top: 30px; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #1a73e8;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+        .meta {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 30px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-left: 4px solid #1a73e8;
+        }
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-left: 4px solid #1a73e8;
+        }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background: #f5f5f5; }
+        h1, h2, h3 { overflow-wrap: anywhere; }
+        @media (max-width: 720px) {
+            .container { padding: 24px 14px; }
+            th, td { padding: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← Home / Startseite</a>
+
+        <h1>Baseline: Delete your account / Konto löschen</h1>
+
+        <div class="meta">
+            <strong>Jump to / Springe zu:</strong> <a href="#en">English</a> · <a href="#de">Deutsch</a><br>
+            <strong>App:</strong> Baseline (Android, package <code>com.robinjungerich.pulse</code>, and iOS) &middot;
+            <strong>Developer / Anbieter:</strong> Robin Jüngerich, Dorfstraße 179, 24222 Schwentinental, Germany (<a href="impressum.html">Impressum</a>)
+        </div>
+
+        <!-- OWNER CHECK: The site still calls the app "Pulse" elsewhere (index, privacy policy, terms); this page uses the app's current name "Baseline", as the Play listing will. Confirm the final name and align the other pages. -->
+
+        <div id="en" lang="en">
+            <h2>Delete your account (English)</h2>
+            <p>
+                This page explains how to delete your <strong>Baseline</strong> account and the data stored for it, inside the app
+                and without the app. Baseline is provided by Robin Jüngerich (see the <a href="impressum.html">Impressum</a>).
+            </p>
+
+            <div class="section">
+                <h3>Option 1: delete the account in the app</h3>
+                <p><strong>Android</strong></p>
+                <ol>
+                    <li>Open Baseline and sign in to the account you want to delete.</li>
+                    <li>Go to the <strong>Profile</strong> tab and scroll to the end. Tap <strong>Delete account</strong>
+                        (below <strong>Sign out</strong>). The same button is in Profile &rarr; <strong>Account &amp; privacy</strong>.</li>
+                    <li>Read the warning and tap <strong>Delete account</strong> again to confirm. If you have a Premium subscription,
+                        the dialog tells you what deleting does to it first.</li>
+                </ol>
+                <p><strong>iPhone (iOS)</strong></p>
+                <ol>
+                    <li>Open Baseline and sign in.</li>
+                    <li>Go to the <strong>Profile</strong> tab, open your account card at the top and tap <strong>Delete account</strong>.</li>
+                    <li>Confirm in the <strong>Delete account?</strong> dialog.</li>
+                </ol>
+                <p>
+                    The deletion runs in this order: a subscription billed by the Baseline billing service is ended, your data on our
+                    servers is deleted, your sign-in account is deleted, and the data on your device is erased.
+                    If a step fails you stay signed in with your data and can repeat the deletion.
+                </p>
+                <!-- OWNER CHECK: The in-app order above is taken from android AccountRepository.deleteAccount() and the iOS delete flow. The Android Google Play Billing step is not in the code yet (the code still contains the Stripe path); confirm the wording once Play Billing ships. -->
+            </div>
+
+            <div class="section" id="request">
+                <h3>Option 2: ask for deletion without the app</h3>
+                <p>
+                    If you cannot open the app (for example you uninstalled it or lost your device), send an email to
+                    <a class="js-contact-email-link" data-subject="Baseline: delete my account"></a><noscript>robin.juengerich@icloud.com</noscript>
+                    (the support address of the app) with the subject <em>Baseline: delete my account</em>.
+                </p>
+                <ul>
+                    <li>Write from the email address you use to sign in to Baseline, or tell us that address. It is how we find the account.</li>
+                    <li>We may ask you to confirm that the account is yours before we delete anything.</li>
+                    <li>We confirm the deletion by email, without undue delay and at the latest within one month
+                        (Art. 12(3) GDPR).</li>
+                </ul>
+            </div>
+
+            <h3>What is deleted</h3>
+            <p>When the account is deleted, we delete everything linked to it:</p>
+            <ul>
+                <li>your profile, settings and onboarding answers;</li>
+                <li>AI coach chats, chat summaries and coach feedback stored on our servers, and stored coach tool results;</li>
+                <li>workouts, strength sessions, training summaries, your own templates and exercises, cookbook recipes and other cloud copies of your content;</li>
+                <li>crew membership, shared days, cheers and mutes, and doctor-share copies, if you used them;</li>
+                <li>Premium access records and the billing rows linked to your account (the purchase records our billing service keeps for your subscription);</li>
+                <li>AI usage and error logs linked to your account;</li>
+                <li>your sign-in account at our sign-in provider (Clerk), including your email address;</li>
+                <li>everything stored in the app on your device (chats, consent records, local stores).</li>
+            </ul>
+
+            <h3>What is kept, and for how long</h3>
+            <ul>
+                <li><strong>Payment and tax records.</strong> Purchases of Premium are processed by Google Play (Android) or Apple (iOS).
+                    These providers keep their own payment and invoice records under their own terms and legal duties. Where we must keep
+                    accounting records under German commercial and tax law, we keep them only for the statutory retention period (several years,
+                    depending on the type of record) and use them for nothing else; after that they are deleted.
+                    <!-- OWNER CHECK: Confirm which accounting records you actually hold for Play sales (e.g. Play Console payout statements, which normally carry no user identity) and the retention period your tax adviser applies (statutory periods under section 257 HGB / section 147 AO; do not state a number until confirmed). -->
+                </li>
+                <li><strong>Anonymous entries.</strong> A small sample of coach questions and daily plan counters are stored without any link
+                    to your account (see section 5a of the <a href="privacy-policy.html">privacy policy</a>). We cannot tell which entries are yours, so we cannot delete them
+                    individually.</li>
+                <li><strong>Technical reports you sent.</strong> Diagnostics reports you chose to send, or that you allowed to be sent automatically, carry no account
+                    information, so they are not linked to your account either.</li>
+                <li><strong>Backups.</strong> Copies of the database in our hosting provider's backups disappear when the backups expire.
+                    <!-- OWNER CHECK: Backup scope and expiry at Railway are not documented in the repositories (see DPA-Register #9 and RoPA, processing 13). State the real period or keep this general wording. -->
+                </li>
+                <li><strong>Data outside our servers.</strong> Data that Baseline wrote to Health Connect (Android) or Apple Health (iOS), and data
+                    you exported or shared yourself, is not deleted by us. Health Connect or Apple Health lets you manage it.</li>
+                <li><strong>Legal claims.</strong> If we need data to establish, exercise or defend legal claims, we keep only what is needed until the matter is closed.</li>
+            </ul>
+
+            <h3>Your subscription</h3>
+            <p>
+                Deleting the account does <strong>not</strong> by itself cancel a subscription that was bought through Google Play or the App Store.
+                Cancel it yourself first: in Google Play under <em>Payments &amp; subscriptions &rarr; Subscriptions</em>,
+                in iOS under <em>Settings &rarr; your name &rarr; Subscriptions</em>.
+                <!-- OWNER CHECK: Confirm for Google Play. The Android code still deletes a Stripe customer, which ends that subscription at once. With Google Play Billing the billing service cannot necessarily cancel a Play subscription on account deletion; if it can (Play Developer API), change this sentence and the in-app dialog together. -->
+            </p>
+
+            <h3>More information</h3>
+            <p>
+                See the <a href="privacy-policy.html">privacy policy</a> (your rights, section 10) and the
+                <a href="impressum.html">Impressum</a>. Questions: <a class="js-contact-email-link"></a><noscript>robin.juengerich@icloud.com</noscript>.
+            </p>
+        </div>
+
+        <hr style="margin: 40px 0;">
+
+        <div id="de" lang="de">
+            <h2>Konto löschen (Deutsch)</h2>
+            <p>
+                Diese Seite erklärt, wie Sie Ihr <strong>Baseline</strong>-Konto und die dazu gespeicherten Daten löschen, in der App
+                und ohne die App. Baseline wird von Robin Jüngerich angeboten (siehe <a href="impressum.html">Impressum</a>).
+            </p>
+
+            <div class="section">
+                <h3>Möglichkeit 1: Konto in der App löschen</h3>
+                <p><strong>Android</strong></p>
+                <ol>
+                    <li>Öffnen Sie Baseline und melden Sie sich mit dem Konto an, das Sie löschen möchten.</li>
+                    <li>Gehen Sie zum Tab <strong>Profil</strong> und scrollen Sie ans Ende. Tippen Sie auf <strong>Konto löschen</strong>
+                        (unter <strong>Abmelden</strong>). Dieselbe Schaltfläche finden Sie unter Profil &rarr; <strong>Konto &amp; Datenschutz</strong>.</li>
+                    <li>Lesen Sie den Hinweis und bestätigen Sie mit einem weiteren Tipp auf <strong>Konto löschen</strong>. Haben Sie ein Premium-Abonnement,
+                        sagt Ihnen der Dialog zuerst, was die Löschung damit macht.</li>
+                </ol>
+                <p><strong>iPhone (iOS)</strong></p>
+                <ol>
+                    <li>Öffnen Sie Baseline und melden Sie sich an.</li>
+                    <li>Gehen Sie zum Tab <strong>Profil</strong>, öffnen Sie oben Ihre Konto-Karte und tippen Sie auf <strong>Konto löschen</strong>.</li>
+                    <li>Bestätigen Sie im Dialog <strong>Konto löschen?</strong>.</li>
+                </ol>
+                <p>
+                    Die Löschung läuft in dieser Reihenfolge: Ein vom Baseline-Abrechnungsdienst abgerechnetes Abonnement wird beendet, Ihre Daten auf
+                    unseren Servern werden gelöscht, Ihr Anmeldekonto wird gelöscht, und die Daten auf Ihrem Gerät werden entfernt.
+                    Schlägt ein Schritt fehl, bleiben Sie mit Ihren Daten angemeldet und können die Löschung wiederholen.
+                </p>
+            </div>
+
+            <div class="section">
+                <h3>Möglichkeit 2: Löschung ohne die App anfordern</h3>
+                <p>
+                    Wenn Sie die App nicht öffnen können (zum Beispiel weil Sie sie deinstalliert oder das Gerät verloren haben), schreiben Sie eine E-Mail an
+                    <a class="js-contact-email-link" data-subject="Baseline: Konto löschen"></a><noscript>robin.juengerich@icloud.com</noscript>
+                    (die Support-Adresse der App) mit dem Betreff <em>Baseline: Konto löschen</em>.
+                </p>
+                <ul>
+                    <li>Schreiben Sie von der E-Mail-Adresse, mit der Sie sich bei Baseline anmelden, oder nennen Sie uns diese Adresse. Über sie finden wir das Konto.</li>
+                    <li>Wir können Sie bitten zu bestätigen, dass das Konto Ihnen gehört, bevor wir etwas löschen.</li>
+                    <li>Wir bestätigen die Löschung per E-Mail unverzüglich, spätestens innerhalb eines Monats (Art. 12 Abs. 3 DSGVO).</li>
+                </ul>
+            </div>
+
+            <h3>Was gelöscht wird</h3>
+            <p>Mit dem Konto löschen wir alles, was damit verknüpft ist:</p>
+            <ul>
+                <li>Ihr Profil, Ihre Einstellungen und Ihre Onboarding-Angaben;</li>
+                <li>KI-Coach-Chats, Chat-Zusammenfassungen und Coach-Bewertungen auf unseren Servern sowie gespeicherte Werkzeug-Ergebnisse des Coaches;</li>
+                <li>Workouts, Strength-Einheiten, Trainingszusammenfassungen, eigene Vorlagen und Übungen, Kochbuch-Rezepte und weitere Cloud-Kopien Ihrer Inhalte;</li>
+                <li>Crew-Mitgliedschaft, geteilte Tage, Cheers und Stummschaltungen sowie Arzt-Freigaben, falls Sie diese genutzt haben;</li>
+                <li>Premium-Zugangsdaten und die mit Ihrem Konto verknüpften Abrechnungszeilen (die Kaufdaten, die unser Abrechnungsdienst zu Ihrem Abonnement führt);</li>
+                <li>mit Ihrem Konto verknüpfte KI-Nutzungs- und Fehlerprotokolle;</li>
+                <li>Ihr Anmeldekonto bei unserem Anmeldedienst (Clerk), einschließlich Ihrer E-Mail-Adresse;</li>
+                <li>alles, was die App auf Ihrem Gerät speichert (Chats, Einwilligungsnachweise, lokale Speicher).</li>
+            </ul>
+
+            <h3>Was bleibt, und wie lange</h3>
+            <ul>
+                <li><strong>Zahlungs- und Steuerunterlagen.</strong> Käufe von Premium werden von Google Play (Android) bzw. Apple (iOS) abgewickelt.
+                    Diese Anbieter führen eigene Zahlungs- und Rechnungsunterlagen nach ihren eigenen Bedingungen und gesetzlichen Pflichten. Soweit wir nach deutschem
+                    Handels- und Steuerrecht Buchführungsunterlagen aufbewahren müssen, bewahren wir sie nur für die gesetzliche Aufbewahrungsfrist auf (mehrere Jahre,
+                    je nach Art des Belegs) und verwenden sie für nichts anderes; danach werden sie gelöscht.</li>
+                <li><strong>Anonyme Einträge.</strong> Eine kleine Stichprobe von Coach-Fragen und tägliche Plan-Zähler werden ohne jede Verknüpfung mit Ihrem Konto
+                    gespeichert (siehe Abschnitt 5a der <a href="datenschutz.html">Datenschutzerklärung</a>). Wir können nicht erkennen, welche Einträge von Ihnen stammen, und
+                    sie deshalb nicht einzeln löschen.</li>
+                <li><strong>Technische Berichte, die Sie gesendet haben.</strong> Diagnoseberichte, die Sie selbst gesendet oder zum automatischen Senden freigegeben haben,
+                    enthalten keine Kontoangaben und sind deshalb ebenfalls nicht mit Ihrem Konto verknüpft.</li>
+                <li><strong>Sicherungskopien.</strong> Kopien der Datenbank in den Backups unseres Hosting-Anbieters verschwinden, wenn die Backups ablaufen.</li>
+                <li><strong>Daten außerhalb unserer Server.</strong> Daten, die Baseline in Health Connect (Android) oder Apple Health (iOS) geschrieben hat, und Daten, die Sie selbst
+                    exportiert oder geteilt haben, löschen wir nicht. In Health Connect bzw. Apple Health können Sie sie verwalten.</li>
+                <li><strong>Rechtsansprüche.</strong> Brauchen wir Daten, um Rechtsansprüche geltend zu machen, auszuüben oder zu verteidigen, behalten wir nur das Nötige, bis die Sache abgeschlossen ist.</li>
+            </ul>
+
+            <h3>Ihr Abonnement</h3>
+            <p>
+                Die Kontolöschung kündigt ein über Google Play oder den App Store gekauftes Abonnement <strong>nicht</strong> von selbst.
+                Kündigen Sie es vorher selbst: in Google Play unter <em>Zahlungen &amp; Abos &rarr; Abos</em>,
+                unter iOS unter <em>Einstellungen &rarr; Ihr Name &rarr; Abonnements</em>.
+            </p>
+
+            <h3>Weitere Informationen</h3>
+            <p>
+                Siehe die <a href="datenschutz.html">Datenschutzerklärung</a> (Ihre Rechte, Abschnitt 10) und das
+                <a href="impressum.html">Impressum</a>. Fragen: <a class="js-contact-email-link"></a><noscript>robin.juengerich@icloud.com</noscript>.
+            </p>
+        </div>
+
+        <hr style="margin: 40px 0;">
+        <p style="text-align: center; color: #6b6b6b; font-size: 12px;">
+            Last updated / Zuletzt aktualisiert: 25. November 2026 (Entwurf / draft, awaiting owner legal check)
+        </p>
+    </div>
+    <script src="site.js"></script>
+</body>
+</html>
